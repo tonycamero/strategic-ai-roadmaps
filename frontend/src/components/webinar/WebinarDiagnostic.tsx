@@ -44,7 +44,7 @@ const AUTH_KEY = "webinar_auth";
 const COMPLETED_KEY = "webinar_completed_roles";
 const ORIENTATION_DONE_KEY = "webinar_orientation_done";
 const ROLE_PAYLOADS_KEY = "webinar_role_payloads";
-const PROGRESS_KEY = "webinar_progress";
+
 const TEAM_REPORT_KEY = "webinar_team_report";
 const ROLE_RESULTS_KEY = "webinar_role_results";
 const SESSION_ID_KEY = "webinar_session_id";
