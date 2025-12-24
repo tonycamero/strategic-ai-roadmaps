@@ -2,11 +2,6 @@
   "buildCommand": "pnpm -r --filter @roadmap/shared --filter @roadmap/backend --filter @roadmap/frontend build",
   "installCommand": "pnpm install",
   "outputDirectory": "frontend/dist",
-  "functions": {
-    "api/**/*.ts": {
-      "runtime": "nodejs20.x"
-    }
-  },
   "rewrites": [
     {
       "source": "/api/(.*)",
