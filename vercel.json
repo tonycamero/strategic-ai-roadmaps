@@ -1,9 +1,19 @@
-```json
 {
   "buildCommand": "pnpm -r --filter @roadmap/shared --filter @roadmap/backend --filter @roadmap/frontend build",
   "installCommand": "pnpm install",
-  "source": "/(.*)",
-  "destination": "/index.html"
-}
-]
+  "outputDirectory": "frontend/dist",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/health",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
