@@ -1,0 +1,24 @@
+import { Router } from 'express';
+import * as ticketInstanceController from '../controllers/ticketInstance.controller';
+import { authenticate, requireRole, requireEditorMode } from '../middleware/auth';
+
+const router = Router();
+
+// Get tickets for a pack
+router.get(
+  '/',
+  authenticate,
+  requireRole('owner', 'team', 'superadmin'),
+  ticketInstanceController.getTicketsForPack
+);
+
+// Update ticket instance status
+router.patch(
+  '/:id/status',
+  authenticate,
+  requireRole('owner', 'team', 'superadmin'),
+  requireEditorMode(),
+  ticketInstanceController.updateTicketStatus
+);
+
+export default router;

@@ -1,0 +1,168 @@
+# Marketing Campaign SOP Inventory (Phase 1 — GHL-Native)
+
+This canvas contains fully validated, **GHL-native** SOP inventory entries for the **Marketing Campaigns** category. Each record follows the Ops-style formatting: standalone SOP sections, pretty JSON, no array wrapper.
+
+---
+
+## SOP 1 — Multi-Channel Nurture Sequence Builder (Email + SMS)
+
+```json
+{
+  "inventoryId": "MKT-001",
+  "titleTemplate": "Build a multi-channel nurture sequence using Email and SMS",
+  "category": "Marketing Campaigns",
+  "valueCategory": "Lead Nurture",
+  "ghlComponents": ["Workflows", "Email", "SMS", "Custom Fields", "Tags"],
+  "ghlTriggers": ["Tag Added", "Form Submitted"],
+  "ghlActions": ["Send Email", "Send SMS", "Add Tag", "Wait"],
+  "ghlLimitations": ["No conditional branching on message engagement without tags"],
+  "description": "Creates a structured multi-step nurture sequence that uses a mix of email and SMS messaging to move leads toward booking or purchase, based on engagement triggers and timing rules.",
+  "verticalTags": ["Agency", "Coaching", "Trades", "Ecommerce"],
+  "implementationStatus": "production-ready"
+}
+```
+
+---
+
+## SOP 2 — Lead Magnet Delivery Automation
+
+```json
+{
+  "inventoryId": "MKT-002",
+  "titleTemplate": "Automate lead magnet delivery with tag-based follow-up",
+  "category": "Marketing Campaigns",
+  "valueCategory": "Lead Intake",
+  "ghlComponents": ["Forms", "Workflows", "Email", "Tags"],
+  "ghlTriggers": ["Form Submitted"],
+  "ghlActions": ["Send Email", "Add Tag", "Update Field"],
+  "ghlLimitations": ["Files must be hosted externally or as attachments"],
+  "description": "Streamlines lead magnet delivery through automated email delivery and follow-up sequences designed to convert top-of-funnel leads into sales conversations.",
+  "verticalTags": ["Agency", "Coaching", "Education"],
+  "implementationStatus": "production-ready"
+}
+```
+
+---
+
+## SOP 3 — Retargeting Audience Builder (Tag Segmentation Engine)
+
+```json
+{
+  "inventoryId": "MKT-003",
+  "titleTemplate": "Build retargeting audiences using tag-based segmentation",
+  "category": "Marketing Campaigns",
+  "valueCategory": "Lead Qualification",
+  "ghlComponents": ["Tags", "Smart Lists", "Workflows", "Custom Fields"],
+  "ghlTriggers": ["Tag Added", "Form Submitted"],
+  "ghlActions": ["Add Tag", "Update Field"],
+  "ghlLimitations": ["No dynamic scoring; scoring must be modeled using multiple tags"],
+  "description": "Creates segmented retargeting audiences based on behavior, source, activity, and funnel stage. Enables downstream ad platform syncing via Zapier or native integrations.",
+  "verticalTags": ["Agency", "Ecommerce", "Coaching"],
+  "implementationStatus": "production-ready"
+}
+```
+
+---
+
+## SOP 4 — 3-Step Cold Lead Reactivation Sequence
+
+```json
+{
+  "inventoryId": "MKT-004",
+  "titleTemplate": "Implement a 3-step cold lead reactivation sequence",
+  "category": "Marketing Campaigns",
+  "valueCategory": "Lead Nurture",
+  "ghlComponents": ["Workflows", "Email", "SMS", "Tasks"],
+  "ghlTriggers": ["Tag Added", "Contact Idle"],
+  "ghlActions": ["Send Email", "Send SMS", "Create Task"],
+  "ghlLimitations": ["No native idle trigger; must use workflow delays + conditions"],
+  "description": "Reactivates cold or unresponsive leads using a structured combination of personalized email, SMS nudges, and internal tasks for manual outreach.",
+  "verticalTags": ["Agency", "Real Estate", "Coaching", "Trades"],
+  "implementationStatus": "production-ready"
+}
+```
+
+---
+
+## SOP 5 — Appointment Reminder & No-Show Reduction Sequence
+
+```json
+{
+  "inventoryId": "MKT-005",
+  "titleTemplate": "Deploy multi-channel appointment reminders to reduce no-shows",
+  "category": "Marketing Campaigns",
+  "valueCategory": "Appointment Confirmation",
+  "ghlComponents": ["Calendars", "Email/SMS", "Workflows"],
+  "ghlTriggers": ["Appointment Booked"],
+  "ghlActions": ["Send SMS", "Send Email"],
+  "ghlLimitations": ["Reminders cannot dynamically reference availability changes"],
+  "description": "Reduces missed appointments through a multi-step reminder sequence triggered at optimized intervals (24 hrs, 3 hrs, 15 min).",
+  "verticalTags": ["Agency", "Healthcare", "Coaching", "Trades"],
+  "implementationStatus": "production-ready"
+}
+```
+
+---
+
+## SOP 6 — Review Request Automation (Post-Delivery)
+
+```json
+{
+  "inventoryId": "MKT-006",
+  "titleTemplate": "Automate review requests after project or service delivery",
+  "category": "Marketing Campaigns",
+  "valueCategory": "Client Retention",
+  "ghlComponents": ["Workflows", "Email/SMS", "Tasks", "Tags"],
+  "ghlTriggers": ["Pipeline Stage Changed", "Task Completed"],
+  "ghlActions": ["Send Email", "Send SMS", "Add Tag", "Create Task"],
+  "ghlLimitations": ["Cannot detect sentiment; responses must be processed manually"],
+  "description": "Automatically triggers review requests when a client completes a project or milestone, improving reputation and referral flow.",
+  "verticalTags": ["Agency", "Trades", "Home Services", "Healthcare"],
+  "implementationStatus": "production-ready"
+}
+```
+
+---
+
+## SOP 7 — Source-Based Lead Routing + Campaign Personalization
+
+```json
+{
+  "inventoryId": "MKT-007",
+  "titleTemplate": "Personalize nurture sequences and routing based on lead source",
+  "category": "Marketing Campaigns",
+  "valueCategory": "Lead Qualification",
+  "ghlComponents": ["Forms", "Tags", "Custom Fields", "Workflows", "Email/SMS"],
+  "ghlTriggers": ["Form Submitted", "Tag Added"],
+  "ghlActions": ["Add Tag", "Send Email", "Update Field"],
+  "ghlLimitations": ["Must manually enforce UTM capture through forms or URL parameters"],
+  "description": "Creates differentiated nurture paths based on UTM parameters, ad campaign IDs, or referral sources, enabling targeted messaging and improved conversions.",
+  "verticalTags": ["Agency", "Ecommerce", "Coaching"],
+  "implementationStatus": "production-ready"
+}
+```
+
+---
+
+## SOP 8 — Webinar Registration → Attendance → Follow-Up Engine
+
+```json
+{
+  "inventoryId": "MKT-008",
+  "titleTemplate": "Automate webinar registration, reminders, and post-event follow-up",
+  "category": "Marketing Campaigns",
+  "valueCategory": "Lead Nurture",
+  "ghlComponents": ["Forms", "Calendars", "Email/SMS", "Workflows", "Tags"],
+  "ghlTriggers": ["Form Submitted", "Tag Added"],
+  "ghlActions": ["Send Email", "Send SMS", "Add Tag", "Update Field"],
+  "ghlLimitations": ["Attendance detection requires tag logic or external integration"],
+  "description": "Provides a full-funnel webinar automation system: registration confirmation, reminder cadence, attendance tagging, and segmented follow-up messaging.",
+  "verticalTags": ["Coaching", "Education", "Agency"],
+  "implementationStatus": "production-ready"
+}
+```
+
+---
+
+# END OF DOCUMENT
+

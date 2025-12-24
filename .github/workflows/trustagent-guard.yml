@@ -1,0 +1,24 @@
+name: TrustAgent Guard
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm install -g pnpm
+          pnpm install
+      - name: Run FE-TA Guard
+        run: bash backend/src/scripts/run_feta_check.sh

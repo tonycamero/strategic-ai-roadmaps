@@ -1,0 +1,156 @@
+import crypto from 'crypto';
+import type { CapabilityProfile } from '../shared/types/capability-profile';
+import type { AgentConfig } from '../db/schema';
+
+export interface AgentPromptContext {
+  firmName: string;
+  businessContext?: string;      // short description of the firm
+  roadmapSummary?: string;       // 1-2 line summary of the roadmap
+  roadmapSections?: string[];    // section titles only
+}
+
+export interface BuiltAgentInstructions {
+  instructions: string;
+  instructionsHash: string;
+}
+
+/**
+ * Build the system prompt for the tenant's Roadmap Coach assistant.
+ * 
+ * Layers:
+ * 1. Core Identity
+ * 2. Business Context
+ * 3. Safety & Guardrails
+ * 4. Capability Profile
+ * 5. Persona
+ * 6. Roadmap Map
+ */
+export function buildAgentSystemPrompt(
+  ctx: AgentPromptContext,
+  capabilities: CapabilityProfile
+): BuiltAgentInstructions {
+  const {
+    firmName,
+    businessContext,
+    roadmapSummary,
+    roadmapSections = [],
+  } = ctx;
+
+  const lines: string[] = [];
+
+  // 1. Core Identity Layer
+  lines.push(
+    [
+      `You are the embedded Strategic AI Roadmap coach for ${firmName}.`,
+      `Your job is to help this firm understand, prioritize, and implement their Strategic AI Roadmap in clear, concrete steps.`,
+      `You speak like a practical operator: concise, direct, and focused on execution.`,
+    ].join(' ')
+  );
+
+  // 2. Business Context Layer
+  if (businessContext || roadmapSummary) {
+    const ctxLines: string[] = [];
+
+    if (businessContext) {
+      ctxLines.push(`Firm context: ${businessContext}`);
+    }
+
+    if (roadmapSummary) {
+      ctxLines.push(`Roadmap focus: ${roadmapSummary}`);
+    }
+
+    lines.push(ctxLines.join('\n'));
+  }
+
+  // 3. Safety & Guardrails Layer
+  lines.push(
+    [
+      `You do NOT have direct access to systems or data.`,
+      `Never claim you changed anything in a CRM, project tool, or database.`,
+      `When changes are needed, describe the exact steps the team should take.`,
+      `If you don't know something from the provided context, say so and ask for clarification instead of guessing.`,
+    ].join(' ')
+  );
+
+  // 4. Capability Profile Layer (permissions, not marketing)
+  lines.push(
+    [
+      `Capabilities in this context:`,
+      `- Can propose tickets or structured actions: ${capabilities.canWriteTickets ? 'YES' : 'NO'}.`,
+      `- Can suggest changes to roadmap structure or content: ${capabilities.canChangeRoadmap ? 'YES' : 'NO'}.`,
+      `- Can reference or diagnose across multiple firms: ${
+        capabilities.canSeeCrossTenant ? 'YES (superadmin diagnostics only)' : 'NO (this firm only)'
+      }.`,
+      `You must behave as if these constraints are real system limits.`,
+      `If a requested action is outside your capabilities, explain what you *would* do and mark it clearly as a suggestion.`,
+    ].join(' ')
+  );
+
+  // 5. Persona Layer (tone)
+  lines.push(
+    [
+      `User persona for this conversation: ${capabilities.persona}.`,
+      capabilities.persona === 'owner'
+        ? `Treat the user as an owner/founder: focus on prioritization, ROI, tradeoffs, and where to deploy their team's time first.`
+        : capabilities.persona === 'staff'
+        ? `Treat the user as staff/implementer: give step-by-step guidance, checklists, and concrete actions they can execute.`
+        : `Treat the user as an advisor/consultant: focus on best practices, risks, and how to communicate recommendations to the firm.`,
+    ].join(' ')
+  );
+
+  // 6. Roadmap Map Layer (lightweight)
+  if (roadmapSections.length > 0) {
+    lines.push(
+      [
+        `Roadmap sections available in this firm:`,
+        ...roadmapSections.map((s) => `- ${s}`),
+        `When the user asks where to start, reference these section names explicitly and propose a simple order of operations.`,
+      ].join('\n')
+    );
+  }
+
+  const instructions = lines.join('\n\n');
+
+  const instructionsHash = crypto
+    .createHash('sha256')
+    .update(instructions, 'utf8')
+    .digest('hex');
+
+  return { instructions, instructionsHash };
+}
+
+/**
+ * Build context from AgentConfig for use with buildAgentSystemPrompt
+ */
+export function buildContextFromConfig(
+  config: AgentConfig,
+  tenantName: string
+): AgentPromptContext {
+  // Extract roadmap sections from roadmapMetadata if available
+  const roadmapSections: string[] = [];
+  
+  if (config.roadmapMetadata) {
+    const metadata = config.roadmapMetadata as any;
+    
+    // Build a simple roadmap summary from metadata
+    const painPoints = metadata.top_pain_points || [];
+    const goals = metadata.primary_goals || [];
+    
+    if (painPoints.length > 0 || goals.length > 0) {
+      const parts: string[] = [];
+      if (painPoints.length > 0) {
+        parts.push(`Addressing: ${painPoints.slice(0, 2).join(', ')}`);
+      }
+      if (goals.length > 0) {
+        parts.push(`Goals: ${goals.slice(0, 2).join(', ')}`);
+      }
+    }
+  }
+
+  return {
+    firmName: tenantName,
+    businessContext: config.businessContext || undefined,
+    roadmapSummary: undefined, // Can be computed from roadmapMetadata if needed
+    roadmapSections,
+  };
+}

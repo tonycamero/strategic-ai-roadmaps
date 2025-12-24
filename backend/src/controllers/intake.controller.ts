@@ -1,0 +1,197 @@
+import { Response } from 'express';
+import { db } from '../db';
+import { intakes, users, tenants } from '../db/schema';
+import { eq } from 'drizzle-orm';
+import { AuthRequest } from '../middleware/auth';
+import { SubmitIntakeRequest } from '@roadmap/shared';
+import { ZodError } from 'zod';
+import { onboardingProgressService } from '../services/onboardingProgress.service';
+
+export async function submitIntake(req: AuthRequest, res: Response) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const { role, answers } = SubmitIntakeRequest.parse(req.body);
+
+    // Verify user role matches intake role
+    if (req.user.role !== role) {
+      return res.status(403).json({ error: 'Role mismatch' });
+    }
+
+    // Check if intake already exists
+    const [existing] = await db
+      .select()
+      .from(intakes)
+      .where(eq(intakes.userId, req.user.userId))
+      .limit(1);
+
+    if (existing) {
+      // Update existing intake
+      const [updated] = await db
+        .update(intakes)
+        .set({ 
+          answers, 
+          role,
+          status: 'completed',
+          completedAt: new Date(),
+        })
+        .where(eq(intakes.id, existing.id))
+        .returning();
+
+      // 🎯 Onboarding Hook: Mark Owner Intake complete (also on update)
+      if (role === 'owner') {
+        try {
+          const tenantId = (req as any).tenantId;
+          if (tenantId) {
+            await onboardingProgressService.markStep(
+              tenantId,
+              'OWNER_INTAKE',
+              'COMPLETED'
+            );
+          }
+        } catch (error) {
+          console.error('Failed to update onboarding progress:', error);
+        }
+      }
+
+      return res.json({ intake: updated });
+    }
+
+    // Create new intake
+    const [intake] = await db
+      .insert(intakes)
+      .values({
+        userId: req.user.userId,
+        role,
+        answers,
+        tenantId: (req as any).tenantId, // 🔥 Tenant boundary
+        status: 'completed',
+        completedAt: new Date(),
+      })
+      .returning();
+
+    // 🎯 Onboarding Hook: Mark Owner Intake complete
+    if (role === 'owner') {
+      try {
+        // Get tenant ID from middleware
+        const tenantId = (req as any).tenantId;
+        const tenant = tenantId ? await db.query.tenants.findFirst({
+          where: eq(tenants.id, tenantId),
+        }) : null;
+        
+        if (tenant) {
+          await onboardingProgressService.markStep(
+            tenant.id,
+            'OWNER_INTAKE',
+            'COMPLETED'
+          );
+        }
+      } catch (error) {
+        console.error('Failed to update onboarding progress:', error);
+        // Don't fail the intake submission if onboarding update fails
+      }
+    }
+
+    // 🎯 Onboarding Hook: Check if all team intakes are complete
+    if (['ops', 'sales', 'delivery'].includes(role)) {
+      try {
+        const tenantId = (req as any).tenantId;
+        const tenant = tenantId ? await db.query.tenants.findFirst({
+          where: eq(tenants.id, tenantId),
+        }) : null;
+        
+        if (tenant) {
+          // Check if all three team roles have completed intakes
+          const allIntakes = await db
+            .select()
+            .from(intakes)
+            .where(eq(intakes.tenantId, tenantId));
+          
+          const hasOps = allIntakes.some(i => i.role === 'ops');
+          const hasSales = allIntakes.some(i => i.role === 'sales');
+          const hasDelivery = allIntakes.some(i => i.role === 'delivery');
+          
+          if (hasOps && hasSales && hasDelivery) {
+            await onboardingProgressService.markStep(
+              tenant.id,
+              'TEAM_INTAKES',
+              'COMPLETED'
+            );
+          }
+        }
+      } catch (error) {
+        console.error('Failed to update team intakes onboarding progress:', error);
+      }
+    }
+
+    return res.json({ intake });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ error: 'Invalid request data', details: error.errors });
+    }
+    console.error('Submit intake error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+export async function getOwnerIntakes(req: AuthRequest, res: Response) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const userRole: string = req.user.role;
+    if (userRole !== 'owner' && userRole !== 'superadmin') {
+      return res.status(403).json({ error: 'Only owners and superadmins can view intakes' });
+    }
+
+    // Both superadmin and owner see only their own tenant's intakes when viewing dashboard
+    // (Superadmin can see all tenants via SuperAdmin panel separately)
+    const tenantId = (req as any).tenantId;
+    if (!tenantId) {
+      return res.status(403).json({ error: 'Tenant not resolved' });
+    }
+    const results = await db
+      .select()
+      .from(intakes)
+      .innerJoin(users, eq(intakes.userId, users.id))
+      .where(eq(intakes.tenantId, tenantId)); // 🔥 Multi-tenant isolation
+
+    // Format response to match expected structure
+    const formattedIntakes = results.map(row => ({
+      id: row.intakes.id,
+      userId: row.intakes.userId,
+      role: row.intakes.role,
+      answers: row.intakes.answers,
+      createdAt: row.intakes.createdAt,
+      userEmail: row.users.email,
+      userName: row.users.name,
+    }));
+
+    return res.json({ intakes: formattedIntakes });
+  } catch (error) {
+    console.error('Get owner intakes error:', error);
+    return res.status(500).json({ error: 'Failed to fetch intakes' });
+  }
+}
+
+export async function getMyIntake(req: AuthRequest, res: Response) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const [intake] = await db
+      .select()
+      .from(intakes)
+      .where(eq(intakes.userId, req.user.userId))
+      .limit(1);
+
+    return res.json({ intake: intake || null });
+  } catch (error) {
+    console.error('Get intake error:', error);
+    return res.status(500).json({ error: 'Failed to fetch intake' });
+  }
+}

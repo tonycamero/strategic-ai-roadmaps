@@ -1,0 +1,199 @@
+[
+  {
+    "inventoryId": "CHAMBER-001",
+    "titleTemplate": "New Member Onboarding → Pipeline Activation + Welcome Sequence",
+    "category": "Membership",
+    "valueCategory": "Member Onboarding",
+    "ghlComponents": [
+      "Forms",
+      "Pipelines",
+      "Workflows",
+      "Tags",
+      "Email/SMS",
+      "Tasks"
+    ],
+    "ghlTriggers": [
+      "Form Submitted",
+      "Opportunity Stage Changed"
+    ],
+    "ghlActions": [
+      "Create Opportunity",
+      "Assign Task",
+      "Send Email",
+      "Send SMS",
+      "Add Tag",
+      "Update Field"
+    ],
+    "ghlLimitations": [
+      "Multi-contact organizations require separate custom fields for billing vs. primary contact",
+      "GHL pipelines cannot natively show organization roll-ups without custom configuration"
+    ],
+    "isSidecar": false,
+    "implementationStatus": "production-ready",
+    "description": "Standardizes new-member onboarding by capturing business profile information, creating a membership opportunity, sending a welcome sequence, and generating a task checklist for the Chamber team.",
+    "implementationPattern": "Standardizes new-member onboarding by capturing business profile information, creating a membership opportunity, sending a welcome sequence, and generating a task checklist for the Chamber team.",
+    "complexity": "medium",
+    "dependencies": [],
+    "verticalTags": [
+      "Chamber",
+      "Economic Development",
+      "Associations"
+    ]
+  },
+  {
+    "inventoryId": "CHAMBER-002",
+    "titleTemplate": "Membership Renewal Automation (Email/SMS + Task Generation)",
+    "category": "Membership",
+    "valueCategory": "Retention",
+    "ghlComponents": [
+      "Workflows",
+      "Email/SMS",
+      "Tasks",
+      "Tags",
+      "Custom Fields"
+    ],
+    "ghlTriggers": [
+      "Date-Based Trigger",
+      "Tag Added"
+    ],
+    "ghlActions": [
+      "Send Email",
+      "Send SMS",
+      "Assign Task",
+      "Add Tag",
+      "Update Field"
+    ],
+    "ghlLimitations": [
+      "True churn prediction models require analytics sidecar not included in GHL-only workflows"
+    ],
+    "isSidecar": false,
+    "implementationStatus": "production-ready",
+    "description": "Implements a full membership renewal cycle: 60-day notice, 30-day reminder, expiration tagging, and auto-creation of internal follow-up tasks to retain at-risk members.",
+    "implementationPattern": "Implements a full membership renewal cycle: 60-day notice, 30-day reminder, expiration tagging, and auto-creation of internal follow-up tasks to retain at-risk members.",
+    "complexity": "medium",
+    "dependencies": [],
+    "verticalTags": [
+      "Chamber",
+      "Associations"
+    ]
+  },
+  {
+    "inventoryId": "CHAMBER-003",
+    "titleTemplate": "Event Registration → Ticket Confirmation → Reminder Workflow",
+    "category": "Events",
+    "valueCategory": "Event Attendance",
+    "ghlComponents": [
+      "Forms",
+      "Calendars",
+      "Workflows",
+      "Email/SMS",
+      "Tags",
+      "Tasks"
+    ],
+    "ghlTriggers": [
+      "Form Submitted",
+      "Date-Based Trigger"
+    ],
+    "ghlActions": [
+      "Send Email",
+      "Send SMS",
+      "Add Tag",
+      "Assign Task",
+      "Update Field"
+    ],
+    "ghlLimitations": [
+      "Event capacity tracking requires manual dashboard or sidecar integration",
+      "Calendar invites cannot be dynamically updated once sent"
+    ],
+    "isSidecar": false,
+    "implementationStatus": "production-ready",
+    "description": "Automates the Chamber event flow: registration → ticket confirmation → SMS/Email reminders → internal task for event-day check-in support.",
+    "implementationPattern": "Automates the Chamber event flow: registration → ticket confirmation → SMS/Email reminders → internal task for event-day check-in support.",
+    "complexity": "medium",
+    "dependencies": [],
+    "verticalTags": [
+      "Chamber",
+      "Events",
+      "Associations"
+    ]
+  },
+  {
+    "inventoryId": "CHAMBER-004",
+    "titleTemplate": "Sponsorship Intake → Review → Activation Pipeline",
+    "category": "Sponsorships",
+    "valueCategory": "Revenue Operations",
+    "ghlComponents": [
+      "Pipelines",
+      "Forms",
+      "Workflows",
+      "Email/SMS",
+      "Tasks",
+      "Users"
+    ],
+    "ghlTriggers": [
+      "Form Submitted",
+      "Opportunity Stage Changed"
+    ],
+    "ghlActions": [
+      "Create Opportunity",
+      "Assign User",
+      "Notify User",
+      "Add Tag",
+      "Send Email"
+    ],
+    "ghlLimitations": [
+      "Complex multi-tier sponsorship levels require additional custom fields",
+      "Automated revenue reporting limited without external BI connectors"
+    ],
+    "isSidecar": false,
+    "implementationStatus": "production-ready",
+    "description": "Sets up a structured sponsorship pipeline: sponsor inquiry submission → Chamber review → approval tasks → onboarding and activation workflows.",
+    "implementationPattern": "Sets up a structured sponsorship pipeline: sponsor inquiry submission → Chamber review → approval tasks → onboarding and activation workflows.",
+    "complexity": "medium",
+    "dependencies": [],
+    "verticalTags": [
+      "Chamber",
+      "Economic Development",
+      "Associations"
+    ]
+  },
+  {
+    "inventoryId": "CHAMBER-005",
+    "titleTemplate": "Referral Partner Lead Routing System",
+    "category": "Referrals",
+    "valueCategory": "Partner Engagement",
+    "ghlComponents": [
+      "Forms",
+      "Workflows",
+      "Pipeline",
+      "Tags",
+      "Users",
+      "Tasks"
+    ],
+    "ghlTriggers": [
+      "Form Submitted",
+      "Tag Added"
+    ],
+    "ghlActions": [
+      "Assign User",
+      "Create Opportunity",
+      "Send Email",
+      "Add Tag",
+      "Notify User"
+    ],
+    "ghlLimitations": [
+      "True partner attribution scoring requires analytics modules outside GHL-native capabilities"
+    ],
+    "isSidecar": false,
+    "implementationStatus": "production-ready",
+    "description": "Implements a partner referral system where inbound leads are tagged by referring member, routed to appropriate Chamber staff, and tracked in a referral pipeline.",
+    "implementationPattern": "Implements a partner referral system where inbound leads are tagged by referring member, routed to appropriate Chamber staff, and tracked in a referral pipeline.",
+    "complexity": "medium",
+    "dependencies": [],
+    "verticalTags": [
+      "Chamber",
+      "Economic Development",
+      "Associations"
+    ]
+  }
+]

@@ -1,0 +1,225 @@
+[
+  {
+    "inventoryId": "TEAM-001",
+    "titleTemplate": "Internal Task Assignment and Accountability Workflow",
+    "category": "Team Operations",
+    "valueCategory": "Task Management",
+    "ghlComponents": [
+      "Workflows",
+      "Tasks",
+      "Users",
+      "Conditions",
+      "Email/SMS"
+    ],
+    "ghlTriggers": [
+      "Task Created",
+      "Tag Added",
+      "Opportunity Stage Changed"
+    ],
+    "ghlActions": [
+      "Assign Task",
+      "Notify User",
+      "Update Task",
+      "Send Email",
+      "Add Tag"
+    ],
+    "ghlLimitations": [
+      "No native task dependencies",
+      "Tasks cannot be grouped hierarchically"
+    ],
+    "isSidecar": false,
+    "implementationStatus": "production-ready",
+    "description": "Establishes a standard method for auto-assigning tasks to the correct team member based on role, pipeline stage, or tagged project type. Improves accountability and reduces manual delegation bottlenecks.",
+    "implementationPattern": "Establishes a standard method for auto-assigning tasks to the correct team member based on role, pipeline stage, or tagged project type. Improves accountability and reduces manual delegation bottlenecks.",
+    "complexity": "medium",
+    "dependencies": [],
+    "verticalTags": [
+      "Agency",
+      "Consulting",
+      "Trades",
+      "Real Estate"
+    ]
+  },
+  {
+    "inventoryId": "TEAM-002",
+    "titleTemplate": "Daily Team Work Summary Digest (Slack/Email)",
+    "category": "Team Operations",
+    "valueCategory": "Team Communication",
+    "ghlComponents": [
+      "Workflows",
+      "Tasks",
+      "Email",
+      "SMS",
+      "Custom Fields"
+    ],
+    "ghlTriggers": [
+      "Scheduled",
+      "Task Completed"
+    ],
+    "ghlActions": [
+      "Send Email",
+      "Send SMS",
+      "Fetch Tasks",
+      "Format Summary"
+    ],
+    "ghlLimitations": [
+      "Summaries cannot dynamically filter by user without additional custom fields"
+    ],
+    "isSidecar": false,
+    "implementationStatus": "production-ready",
+    "description": "Sends an automated daily digest summarizing tasks completed, overdue, or upcoming. Helps the team stay aligned without manual check-ins and reduces reliance on meetings.",
+    "implementationPattern": "Sends an automated daily digest summarizing tasks completed, overdue, or upcoming. Helps the team stay aligned without manual check-ins and reduces reliance on meetings.",
+    "complexity": "medium",
+    "dependencies": [],
+    "verticalTags": [
+      "Agency",
+      "Healthcare",
+      "Trades",
+      "Coaching"
+    ]
+  },
+  {
+    "inventoryId": "TEAM-003",
+    "titleTemplate": "Internal SLA Monitoring for Overdue Tasks",
+    "category": "Team Operations",
+    "valueCategory": "Performance Management",
+    "ghlComponents": [
+      "Workflows",
+      "Conditions",
+      "Delays",
+      "Tasks",
+      "Email/SMS"
+    ],
+    "ghlTriggers": [
+      "Task Created",
+      "Delay Timer"
+    ],
+    "ghlActions": [
+      "Notify User",
+      "Escalate to Manager",
+      "Add Tag",
+      "Assign Task"
+    ],
+    "ghlLimitations": [
+      "Cannot track real-time task edits; evaluates on timer"
+    ],
+    "isSidecar": false,
+    "implementationStatus": "production-ready",
+    "description": "Creates a rules-based system to monitor overdue tasks and notify responsible team members or escalate to leadership when tasks exceed SLA thresholds.",
+    "implementationPattern": "Creates a rules-based system to monitor overdue tasks and notify responsible team members or escalate to leadership when tasks exceed SLA thresholds.",
+    "complexity": "medium",
+    "dependencies": [],
+    "verticalTags": [
+      "Agency",
+      "Consulting",
+      "Trades"
+    ]
+  },
+  {
+    "inventoryId": "TEAM-004",
+    "titleTemplate": "Weekly Leadership Scorecard Automation",
+    "category": "Team Operations",
+    "valueCategory": "Reporting",
+    "ghlComponents": [
+      "Custom Fields",
+      "Workflows",
+      "Reports",
+      "Dashboards",
+      "Email"
+    ],
+    "ghlTriggers": [
+      "Scheduled Weekly"
+    ],
+    "ghlActions": [
+      "Pull Report",
+      "Format Summary",
+      "Send Email"
+    ],
+    "ghlLimitations": [
+      "GHL dashboards limited to native metrics",
+      "No cross-object calculated fields without API"
+    ],
+    "isSidecar": false,
+    "implementationStatus": "production-ready",
+    "description": "Automates a weekly leadership scorecard summarizing KPIs such as tasks completed, overdue items, deal movement, and upcoming deadlines.",
+    "implementationPattern": "Automates a weekly leadership scorecard summarizing KPIs such as tasks completed, overdue items, deal movement, and upcoming deadlines.",
+    "complexity": "medium",
+    "dependencies": [],
+    "verticalTags": [
+      "Agency",
+      "Coaching",
+      "Sales Teams",
+      "Trades"
+    ]
+  },
+  {
+    "inventoryId": "TEAM-005",
+    "titleTemplate": "Round-Robin Task Assignment System",
+    "category": "Team Operations",
+    "valueCategory": "Task Management",
+    "ghlComponents": [
+      "Workflows",
+      "Users",
+      "Custom Fields",
+      "Tasks"
+    ],
+    "ghlTriggers": [
+      "Task Created",
+      "Tag Added"
+    ],
+    "ghlActions": [
+      "Assign User",
+      "Update Field",
+      "Add Tag"
+    ],
+    "ghlLimitations": [
+      "True round-robin requires a custom field to store the next user index"
+    ],
+    "isSidecar": false,
+    "implementationStatus": "production-ready",
+    "description": "Implements a round-robin assignment engine that evenly distributes tasks to team members while maintaining fairness and preventing overload.",
+    "implementationPattern": "Implements a round-robin assignment engine that evenly distributes tasks to team members while maintaining fairness and preventing overload.",
+    "complexity": "medium",
+    "dependencies": [],
+    "verticalTags": [
+      "Agency",
+      "Customer Support",
+      "Sales Ops"
+    ]
+  },
+  {
+    "inventoryId": "TEAM-006",
+    "titleTemplate": "Internal Notifications for Pipeline Stage Changes",
+    "category": "Team Operations",
+    "valueCategory": "Team Communication",
+    "ghlComponents": [
+      "Pipelines",
+      "Workflows",
+      "Email/SMS",
+      "Tasks"
+    ],
+    "ghlTriggers": [
+      "Opportunity Stage Changed"
+    ],
+    "ghlActions": [
+      "Notify User",
+      "Assign Task",
+      "Update Field"
+    ],
+    "ghlLimitations": [
+      "Cannot conditionally notify multiple teams without branching logic"
+    ],
+    "isSidecar": false,
+    "implementationStatus": "production-ready",
+    "description": "Notifies the appropriate team members whenever a deal moves stages, ensuring everyone stays aligned and handoffs are executed smoothly.",
+    "implementationPattern": "Notifies the appropriate team members whenever a deal moves stages, ensuring everyone stays aligned and handoffs are executed smoothly.",
+    "complexity": "medium",
+    "dependencies": [],
+    "verticalTags": [
+      "Agency",
+      "Trades",
+      "Real Estate",
+      "Consulting"
+    ]
+  }
+]
