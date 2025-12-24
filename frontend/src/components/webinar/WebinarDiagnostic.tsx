@@ -76,7 +76,7 @@ export function WebinarDiagnostic({
   const [evidenceInput, setEvidenceInput] = useState("");
 
   // Role Progress State
-  const [progress, setProgress] = useState<any>(null);
+
   const [completedRoles, setCompletedRoles] = useState<RoleId[]>([]);
   const [questionStep, setQuestionStep] = useState(0);
   const [currentRoleEvidence, setCurrentRoleEvidence] = useState<
@@ -90,7 +90,7 @@ export function WebinarDiagnostic({
     | "ROLE_COMPLETE"
     | "RESULTS"
   >("AUTH");
-  const [teamReport, setTeamReport] = useState<any>(null);
+
   const [teamResults, setTeamResults] = useState<any>(null);
   const [narrative, setNarrative] = useState<any>(null); // Phase 4D: Narrative Lattice
   const [showDebug, setShowDebug] = useState(false); // Phase 4D: Debug Toggle
@@ -213,23 +213,9 @@ export function WebinarDiagnostic({
       setViewMode("RESULTS");
     }
 
-    const savedProgress = sessionStorage.getItem(PROGRESS_KEY);
-    if (savedProgress) {
-      try {
-        setProgress(JSON.parse(savedProgress));
-      } catch (e) {
-        console.error(e);
-      }
-    }
 
-    const savedReport = sessionStorage.getItem(TEAM_REPORT_KEY);
-    if (savedReport) {
-      try {
-        setTeamReport(JSON.parse(savedReport));
-      } catch (e) {
-        console.error(e);
-      }
-    }
+
+
 
     const savedResults = sessionStorage.getItem(TEAM_RESULTS_KEY);
     if (savedResults) {
@@ -457,9 +443,7 @@ export function WebinarDiagnostic({
       // Increment question step
       setQuestionStep((prev: number) => prev + 1);
 
-      if (response.progress) {
-        setProgress(response.progress);
-      }
+
 
       // Completion detection: Options empty (A1/T1)
       const isComplete =
@@ -499,7 +483,7 @@ export function WebinarDiagnostic({
       }
 
       if (response.teamReport) {
-        setTeamReport(response.teamReport);
+
         sessionStorage.setItem(
           TEAM_REPORT_KEY,
           JSON.stringify(response.teamReport),
@@ -773,9 +757,7 @@ export function WebinarDiagnostic({
 
   // Results View
   if (viewMode === "RESULTS") {
-    const roleResults = JSON.parse(
-      sessionStorage.getItem(ROLE_RESULTS_KEY) || "{}",
-    );
+
     const rolePayloads = JSON.parse(
       sessionStorage.getItem(ROLE_PAYLOADS_KEY) || "{}",
     );
