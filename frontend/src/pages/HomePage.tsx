@@ -200,7 +200,7 @@ const HomePage: React.FC = () => {
 
       {/* TrustAgent - only show when not authenticated */}
       {!isAuthenticated && (
-        <TrustAgentShell enabled={true} />
+        <TrustAgentShell enabled={true} mode="homepage" />
       )}
     </div>
   );

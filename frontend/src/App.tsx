@@ -71,7 +71,7 @@ function PortalTrustAgent() {
   if (!isAuthenticated || user?.role === 'superadmin') return null;
 
   return (
-    <SmartShell enabled={true} />
+    <SmartShell enabled={true} agentType="roadmap" />
   );
 }
 

@@ -13,6 +13,7 @@ import {
   getHomepageAssistantDebug,
   type PageContext,
 } from '../services/publicAgentSession.service';
+import { HOMEPAGE_PULSEAGENT_PROMPT } from '../trustagent/homepagePrompt.v2.backup';
 
 interface ChatRequest {
   sessionId?: string;
@@ -36,7 +37,7 @@ export async function chat(req: Request, res: Response): Promise<void> {
 
     // Allow empty message for proactive greeting, otherwise validate
     const userMessage = message?.trim() || '';
-    
+
     if (userMessage.length > 2000) {
       res.status(400).json({ error: 'Message too long (max 2000 characters)' });
       return;
@@ -60,13 +61,14 @@ export async function chat(req: Request, res: Response): Promise<void> {
 
     // For empty message (proactive greeting), use a special prompt that forces the exact opener
     const messageToSend = userMessage || 'Start the conversation now using your mandatory opening.';
-    
 
-    // Query assistant
+
+    // Query assistant with SAFE Override (Injects Smartass Persona)
     const assistantReply = await queryHomepageAssistant(
       session.openaiThreadId,
       messageToSend,
-      _safetyOverride
+      _safetyOverride,
+      HOMEPAGE_PULSEAGENT_PROMPT // Force the Smartass Constitution
     );
 
     // Log assistant message event

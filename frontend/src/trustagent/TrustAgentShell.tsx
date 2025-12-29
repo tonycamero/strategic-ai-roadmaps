@@ -30,15 +30,14 @@ interface TrustAgentShellProps {
   // Future: allow disabling via prop
   enabled?: boolean;
   mode?: 'homepage' | 'feta';
+  agentType?: 'public' | 'roadmap';
 }
 
-export function TrustAgentShell({ enabled = true, mode: trustAgentMode = defaultMode }: TrustAgentShellProps) {
+export function TrustAgentShell({ enabled = true, mode: trustAgentMode = defaultMode, agentType = 'public' }: TrustAgentShellProps) {
   const { setPayload } = useRoadmap();
   const [introOpen, setIntroOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
-  const [mode] = useState<'simulated' | 'live'>(
-    (import.meta.env.VITE_TRUSTAGENT_MODE as 'simulated' | 'live') || 'simulated'
-  );
+  const [mode] = useState<'simulated' | 'live'>('live');
   const [, setLocation] = useLocation();
 
   // Conversation state
@@ -69,7 +68,8 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
 
   // Check if intro has been seen on mount
   useEffect(() => {
-    if (!enabled || !config.introEnabled) return;
+    // Disable intro for roadmap agent (portal users already onboarded)
+    if (!enabled || !config.introEnabled || agentType === 'roadmap') return;
 
     const introSeen = localStorage.getItem('trustagent_intro_seen');
     if (!introSeen) {
@@ -100,19 +100,39 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
     setPanelOpen(false);
   };
 
-  // Load visitor context on mount
+  // Load visitor context on mount (Public Only)
   useEffect(() => {
+    if (agentType === 'roadmap') return;
     const context = loadVisitorContext();
     setVisitorContext(context);
-  }, []);
+  }, [agentType]);
 
-  // Load greeting when panel opens (in live mode)
+  // Public Lifecycle: Load greeting when panel opens (in live mode)
   useEffect(() => {
+    if (agentType === 'roadmap') return;
     if (mode === 'live' && panelOpen && !greetingPreloaded && messages.length === 0) {
       setGreetingPreloaded(true);
       handleInitialGreeting();
     }
-  }, [mode, panelOpen]);
+  }, [mode, panelOpen, agentType]);
+
+  // Roadmap Lifecycle: Contextual Greeting on mount (or open)
+  useEffect(() => {
+    if (agentType !== 'roadmap') return;
+    // For roadmap, we might want to greet immediately or just be ready.
+    // Let's silently prepare.
+    if (panelOpen && messages.length === 0 && !greetingPreloaded) {
+      setGreetingPreloaded(true);
+      // Simple local greeting to start conversation
+      const welcomeMsg: ConversationMessage = {
+        id: 'init-roadmap',
+        speaker: 'agent',
+        message: "Hello. I'm your Executive Roadmap Copilot. How can I help you execute on your strategy today?",
+        timestamp: new Date()
+      };
+      setMessages([welcomeMsg]);
+    }
+  }, [agentType, panelOpen, messages.length]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -150,24 +170,19 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
     setPanelOpen(true);
 
     // In live mode, convert to natural language prompt
-    if (mode === 'live') {
-      const prompts: Record<string, string> = {
-        explain_roadmap: 'Can you explain the Strategic AI Roadmap in simple terms?',
-        fit_check: 'I want to know if the Strategic AI Roadmap is right for my firm. Can you help assess fit?',
-        roi_teaser: 'Can you walk me through ROI examples for a professional-service firm like mine?',
-      };
+    const prompts: Record<string, string> = {
+      explain_roadmap: 'Can you explain the Strategic AI Roadmap in simple terms?',
+      fit_check: 'I want to know if the Strategic AI Roadmap is right for my firm. Can you help assess fit?',
+      roi_teaser: 'Can you walk me through ROI examples for a professional-service firm like mine?',
+    };
 
-      const prompt = prompts[flowId] || 'Tell me about the Strategic AI Roadmap';
-      setInputValue(prompt);
+    const prompt = prompts[flowId] || 'Tell me about the Strategic AI Roadmap';
+    setInputValue(prompt);
 
-      // Trigger send after a brief delay to let UI update
-      setTimeout(() => {
-        handleSendMessage();
-      }, 100);
-    } else {
-      // Simulated mode: use scripted flows
-      startFlow(flowId as FlowId);
-    }
+    // Trigger send after a brief delay to let UI update
+    setTimeout(() => {
+      handleSendMessage();
+    }, 100);
   };
 
   // Start a flow
@@ -311,73 +326,48 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
     addUserMessage(label);
 
     // Live Mode: Send option ID to backend
-    if (mode === 'live') {
-      sendingRef.current = true;
-      setIsLoading(true);
+    sendingRef.current = true;
+    setIsLoading(true);
 
-      try {
-        const pageContext = {
-          entryPage: window.location.pathname,
-          referrer: document.referrer || undefined,
-        };
+    try {
+      const pageContext = {
+        entryPage: window.location.pathname,
+        referrer: document.referrer || undefined,
+      };
 
-        // Send optionID as the answer
-        const response = await trustagentApi.chat(optionId, sessionId, pageContext, trustAgentMode === 'feta' ? 'feta' : undefined);
+      // Send optionID as the answer
+      const response = await trustagentApi.chat(optionId, sessionId, pageContext, trustAgentMode as 'feta' | 'homepage');
 
-        // Parse JSON response
-        const { message: messageText, cta: parsedCta } = parseAgentResponse(response.message);
+      // Parse JSON response
+      const { message: messageText, cta: parsedCta } = parseAgentResponse(response.message);
 
-        // Add assistant message
-        const agentMessage: ConversationMessage = {
-          id: `${Date.now()}-${Math.random()}`,
-          speaker: 'agent',
-          message: messageText,
-          timestamp: new Date(),
-          options: response.options,
-          cta: response.cta || parsedCta,
-          reveal: response.reveal,
-        };
+      // Add assistant message
+      const agentMessage: ConversationMessage = {
+        id: `${Date.now()}-${Math.random()}`,
+        speaker: 'agent',
+        message: messageText,
+        timestamp: new Date(),
+        options: response.options,
+        cta: response.cta || parsedCta,
+        reveal: response.reveal,
+      };
 
-        setMessages(prev => [...prev, agentMessage]);
-      } catch (error: any) {
-        console.error('Live API error:', error);
-        const errorMessage: ConversationMessage = {
-          id: `${Date.now()}-${Math.random()}`,
-          speaker: 'agent',
-          message: error.message || 'I encountered an issue processing your selection.',
-          timestamp: new Date(),
-        };
-        setMessages(prev => [...prev, errorMessage]);
-      } finally {
-        setIsLoading(false);
-        sendingRef.current = false;
-      }
-      return;
+      setMessages(prev => [...prev, agentMessage]);
+    } catch (error: any) {
+      console.error('Live API error:', error);
+      const errorMessage: ConversationMessage = {
+        id: `${Date.now()}-${Math.random()}`,
+        speaker: 'agent',
+        message: error.message || 'I encountered an issue processing your selection.',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+      sendingRef.current = false;
     }
-
-    // Simulated Mode: Local navigation (Legacy)
-    if (!nextStepId) return;
-
-    // Update context based on option (fit check flow)
-    if (nextStepId.includes('fit-solo')) {
-      updateVisitorContext({ teamSizeBracket: 'solo' });
-    } else if (nextStepId.includes('fit-small')) {
-      updateVisitorContext({ teamSizeBracket: '2-5' });
-    } else if (nextStepId.includes('fit-ideal')) {
-      const bracket = nextStepId.includes('6-15') ? '6-15' : '16-50';
-      updateVisitorContext({ teamSizeBracket: bracket as any });
-    } else if (nextStepId.includes('fit-large')) {
-      updateVisitorContext({ teamSizeBracket: '50+' });
-    }
-
-    // Navigate to next step
-    setTimeout(() => {
-      const nextStep = findStep(currentFlowId, nextStepId);
-      if (nextStep) {
-        addAgentMessage(nextStep);
-      }
-    }, 500);
-  };
+    return;
+  }
 
   // Handle CTA click
   const handleCtaClick = (cta: any) => {
@@ -469,6 +459,9 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
 
   // Handle initial greeting (proactive first message)
   const handleInitialGreeting = async () => {
+    // Strict Guard: Never run public greeting for roadmap agent
+    if (agentType === 'roadmap') return;
+
     // Prevent duplicate calls (React StrictMode calls effects twice in dev)
     if (greetingInProgressRef.current || isLoading || messages.length > 0) return;
 
@@ -482,7 +475,7 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
       };
 
       // Send a special init message that triggers the opening behavior
-      const response = await trustagentApi.chat('', sessionId, pageContext, trustAgentMode === 'feta' ? 'feta' : undefined);
+      const response = await trustagentApi.chat('', sessionId, pageContext, trustAgentMode as 'feta' | 'homepage');
 
       // Parse JSON response
       const { message: messageText, cta: parsedCta } = parseAgentResponse(response.message);
@@ -522,65 +515,75 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
     }
 
     // Live mode: call real API
-    if (mode === 'live') {
-      try {
-        const pageContext = {
-          entryPage: window.location.pathname,
-          referrer: document.referrer || undefined,
-        };
-
-        const response = await trustagentApi.chat(userMessage, sessionId, pageContext, trustAgentMode === 'feta' ? 'feta' : undefined);
-
-        // Parse JSON response
-        const { message: messageText, cta: parsedCta } = parseAgentResponse(response.message);
-
-        // Add assistant message
-        const agentMessage: ConversationMessage = {
-          id: `${Date.now()}-${Math.random()}`,
-          speaker: 'agent',
-          message: messageText,
-          timestamp: new Date(),
-          options: response.options,
-          cta: response.cta || parsedCta,
-          reveal: response.reveal,
-        };
-
-        setMessages(prev => [...prev, agentMessage]);
-      } catch (error: any) {
-        console.error('Live API error:', error);
-
-        // Show error message in chat
-        const errorMessage: ConversationMessage = {
-          id: `${Date.now()}-${Math.random()}`,
-          speaker: 'agent',
-          message: error.message || 'I encountered an issue processing your message. Please try again.',
-          timestamp: new Date(),
-        };
-        setMessages(prev => [...prev, errorMessage]);
-      } finally {
-        setIsLoading(false);
-        sendingRef.current = false;
-      }
-      return;
-    }
-
-    // Simulated mode: route freeform to generic response
-    setTimeout(() => {
-      const response: FlowStep = {
-        id: 'generic-response',
-        speaker: 'agent',
-        message: `I'm in demo mode right now, so I can't fully process that. But I can help you with:\n\n• Understanding the Roadmap\n• Checking if you're a fit\n• Seeing ROI examples\n\nWhat would you like to explore?`,
-        options: [
-          { id: 'opt-gen-1', label: 'Explain the Roadmap', nextStepId: 'explain-1' },
-          { id: 'opt-gen-2', label: 'Am I a fit?', nextStepId: 'fit-check-1' },
-          { id: 'opt-gen-3', label: 'Show ROI', nextStepId: 'roi-1' },
-        ],
+    try {
+      const pageContext = {
+        entryPage: window.location.pathname,
+        referrer: document.referrer || undefined,
       };
-      addAgentMessage(response);
+
+      let response;
+      if (agentType === 'roadmap') {
+        // Use Roadmap Agent API
+        // We need to import 'api' from '../lib/api'. Since we can't easily add top-level imports in this specific tool call without viewing the top, 
+        // and we know 'fetch' works, we'll inline the fetch for now to ensure correctness with the new 'answer' format.
+        // Actually, let's use the fetch pattern to match trustagentApi but for roadmap.
+        const res = await fetch('/api/roadmap/qna', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+          body: JSON.stringify({ question: userMessage })
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || err.message || 'Failed to contact Roadmap Agent');
+        }
+        const data = await res.json();
+
+        // Adapt to TrustAgent ChatResponse format
+        response = {
+          sessionId: sessionId,
+          message: data.answer,
+          options: [], // Roadmap agent currently doesn't return options, but we could add suggested actions later
+          cta: undefined
+        };
+
+      } else {
+        // Use FE-TA API (Public)
+        response = await trustagentApi.chat(userMessage, sessionId, pageContext, trustAgentMode as 'feta' | 'homepage');
+      }
+
+      // Parse JSON response
+      const { message: messageText, cta: parsedCta } = parseAgentResponse(response.message);
+
+      // Add assistant message
+      const agentMessage: ConversationMessage = {
+        id: `${Date.now()}-${Math.random()}`,
+        speaker: 'agent',
+        message: messageText,
+        timestamp: new Date(),
+        options: response.options,
+        cta: response.cta || parsedCta,
+        reveal: response.reveal,
+      };
+
+      setMessages(prev => [...prev, agentMessage]);
+    } catch (error: any) {
+      console.error('Live API error:', error);
+
+      // Show error message in chat
+      const errorMessage: ConversationMessage = {
+        id: `${Date.now()}-${Math.random()}`,
+        speaker: 'agent',
+        message: error.message || 'I encountered an issue processing your message. Please try again.',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
       sendingRef.current = false;
-    }, 800);
-  };
+    }
+    return;
+  }
 
   if (!enabled) return null;
 
@@ -678,7 +681,9 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
           <div className="p-6 border-b border-slate-800 flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-slate-100">{config.panel.title}</h3>
-              <p className="text-xs text-slate-400">{config.panel.subtitle}</p>
+              <p className="text-xs text-slate-400">
+                {agentType === 'roadmap' ? 'Your Executive Roadmap Copilot' : config.panel.subtitle}
+              </p>
             </div>
             <button
               onClick={handlePanelClose}
@@ -810,17 +815,13 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
 
           {/* Footer */}
           <div className="p-6 border-t border-slate-800">
-            {/* Suggested prompts */}
-            {messages.length === 0 && (
+            {/* Suggested prompts (Public Only) */}
+            {messages.length === 0 && agentType !== 'roadmap' && (
               <div className="mb-4 flex flex-wrap gap-2">
                 <button
                   onClick={() => {
-                    if (mode === 'live') {
-                      setInputValue('Can you explain the Strategic AI Roadmap in simple terms?');
-                      setTimeout(() => handleSendMessage(), 100);
-                    } else {
-                      startFlow('explain_roadmap');
-                    }
+                    setInputValue('Can you explain the Strategic AI Roadmap in simple terms?');
+                    setTimeout(() => handleSendMessage(), 100);
                   }}
                   className="px-3 py-1.5 text-xs bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-full text-slate-300 transition-colors"
                 >
@@ -828,12 +829,8 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
                 </button>
                 <button
                   onClick={() => {
-                    if (mode === 'live') {
-                      setInputValue('I want to know if the Strategic AI Roadmap is right for my firm. Can you help assess fit?');
-                      setTimeout(() => handleSendMessage(), 100);
-                    } else {
-                      startFlow('fit_check');
-                    }
+                    setInputValue('I want to know if the Strategic AI Roadmap is right for my firm. Can you help assess fit?');
+                    setTimeout(() => handleSendMessage(), 100);
                   }}
                   className="px-3 py-1.5 text-xs bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-full text-slate-300 transition-colors"
                 >
@@ -841,12 +838,8 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
                 </button>
                 <button
                   onClick={() => {
-                    if (mode === 'live') {
-                      setInputValue('Can you walk me through ROI examples for a professional-service firm like mine?');
-                      setTimeout(() => handleSendMessage(), 100);
-                    } else {
-                      startFlow('roi_teaser');
-                    }
+                    setInputValue('Can you walk me through ROI examples for a professional-service firm like mine?');
+                    setTimeout(() => handleSendMessage(), 100);
                   }}
                   className="px-3 py-1.5 text-xs bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-full text-slate-300 transition-colors"
                 >
@@ -863,14 +856,18 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                placeholder={messages.length > 0 && messages[messages.length - 1].options ? "Please select an option above..." : "Type a message..."}
-                disabled={messages.length > 0 && !!messages[messages.length - 1].options}
+                placeholder={
+                  agentType === 'roadmap'
+                    ? "Ask about your roadmap..."
+                    : (messages.length > 0 && messages[messages.length - 1].options ? "Please select an option above..." : "Type a message...")
+                }
+                disabled={agentType !== 'roadmap' && (messages.length > 0 && !!messages[messages.length - 1].options)}
                 className="flex-1 px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <button
                 onClick={handleSendMessage}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50"
-                disabled={!inputValue.trim() || isLoading || (messages.length > 0 && !!messages[messages.length - 1].options)}
+                disabled={!inputValue.trim() || isLoading || (agentType !== 'roadmap' && messages.length > 0 && !!messages[messages.length - 1].options)}
               >
                 {isLoading ? 'Sending...' : 'Send'}
               </button>

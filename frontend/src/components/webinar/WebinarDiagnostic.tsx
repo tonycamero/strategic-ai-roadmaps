@@ -6,9 +6,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import ReactMarkdown from "react-markdown";
+import { SaveResultsCTA } from "./SaveResultsCTA";
 import { webinarApi } from "./webinarApi";
 import { shapeOnepager } from "../../lib/onepagerShaper";
 import { useRoadmap } from "../../context/RoadmapContext";
+
+// Placeholder for API_BASE_URL, adjust as needed for your environment
+const API_BASE_URL = "";
 
 type RoleId = "OWNER" | "SALES" | "OPS" | "DELIVERY";
 
@@ -98,7 +102,10 @@ export function WebinarDiagnostic({
   const [strategyError, setStrategyError] = useState<string | null>(null);
   const [isPdfGenerating, setIsPdfGenerating] = useState(false);
 
-  // PDF Generation Handler
+  // PDF Generation  // Save State
+  const [isSaved, setIsSaved] = useState(false);
+
+  // Handlers
   const handleGeneratePdf = async () => {
     if (completedRoles.length < 4) return;
     setIsPdfGenerating(true);
@@ -365,6 +372,57 @@ export function WebinarDiagnostic({
     setEvidenceInput("");
 
     await processMessage(id, label, evidence);
+  };
+
+  const handleSaveSnapshot = async (formData: { email: string; name: string; orgName: string }) => {
+    if (!sessionId || !teamResults) return;
+
+    // Collect full state
+    const rolePayloads = JSON.parse(sessionStorage.getItem(ROLE_PAYLOADS_KEY) || "{}");
+    // Ensure board state is captured if mutable (currently static in component render? No, teamResults has board)
+
+    // Construct payload
+    const payload = {
+      rolePayloads,
+      teamResults,
+      narrative, // if computed separately
+      completedRoles,
+      boardState: teamResults.board, // explicit
+      version: "1.0"
+    };
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/public/diagnostic/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email,
+          name: formData.name,
+          orgName: formData.orgName,
+          teamSessionId: sessionId,
+          payload
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Save failed");
+      }
+
+      const data = await res.json();
+      setIsSaved(true);
+
+      // If token returned (auto-login), store it
+      if (data.token) {
+        localStorage.setItem("auth_token", data.token);
+        // Trigger global auth refresh
+        onAuthChange(true);
+      }
+
+    } catch (error: any) {
+      console.error("Save error:", error);
+      throw error; // Re-throw for CTA component to handle
+    }
   };
 
   const processMessage = async (
@@ -682,9 +740,9 @@ export function WebinarDiagnostic({
                 onClick={() => !isCompleted && startRole(role)}
                 disabled={isCompleted}
                 className={`group px-6 py-4 border rounded-lg font-medium transition-all text-left flex items-center justify-between ${isCompleted
-                  ? "bg-slate-900/50 border-slate-800 text-slate-500 cursor-not-allowed"
+                  ? "bg-slate-900/50 border-slate-800 text-slate-400 cursor-not-allowed"
                   : "bg-slate-950 border-slate-700 hover:border-blue-500 hover:bg-slate-900 text-white"
-                  }`}
+                  } `}
               >
                 <div className="flex flex-col">
                   <span className="text-sm font-semibold">
@@ -799,7 +857,7 @@ export function WebinarDiagnostic({
                   const isDone = completedRoles.includes(roleId);
                   const payload = rolePayloads[roleId];
                   return (
-                    <div key={roleId} className={`p-6 rounded-xl border ${isDone ? 'bg-slate-900/50 border-emerald-500/30' : 'bg-slate-900/30 border-slate-800'}`}>
+                    <div key={roleId} className={`p - 6 rounded - xl border ${isDone ? 'bg-slate-900/50 border-emerald-500/30' : 'bg-slate-900/30 border-slate-800'} `}>
                       <div className="flex justify-between items-center mb-3">
                         <h4 className="font-bold text-slate-200">{ROLE_LABELS[roleId]}</h4>
                         {isDone ? <span className="text-xs text-emerald-400 font-bold">READY</span> : <span className="text-xs text-slate-500">PENDING</span>}
@@ -1150,6 +1208,16 @@ export function WebinarDiagnostic({
             </div>
           )}
 
+
+          {/* SAVE RESULTS CTA */}
+          {teamResults && (
+            <SaveResultsCTA
+              onSave={handleSaveSnapshot}
+              isSaved={isSaved}
+              canRefire={false}
+            />
+          )}
+
           {/* DEBUG PANEL (Phase 4D) */}
           {showDebug && narrative && (
             <div className="mx-8 mb-32 p-6 bg-black/80 font-mono text-xs text-green-400 border border-green-900 rounded-xl overflow-x-auto">
@@ -1183,12 +1251,12 @@ export function WebinarDiagnostic({
           <div className="flex items-center gap-4">
             <button
               onClick={() => setShowDebug(!showDebug)}
-              className={`text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded border ${showDebug ? 'bg-green-900/20 text-green-400 border-green-900' : 'bg-transparent text-slate-700 border-slate-800 hover:border-slate-600'}`}
+              className={`text - [10px] uppercase font - bold tracking - widest px - 2 py - 1 rounded border ${showDebug ? 'bg-green-900/20 text-green-400 border-green-900' : 'bg-transparent text-slate-700 border-slate-800 hover:border-slate-600'} `}
             >
               Lattice Debug
             </button>
             <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${completedRoles.length === 4 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-amber-500'}`}></div>
+              <div className={`w - 3 h - 3 rounded - full ${completedRoles.length === 4 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-amber-500'} `}></div>
               <span className="text-sm font-bold text-white tracking-wide">
                 {completedRoles.length}/4 Roles Complete
               </span>
@@ -1205,13 +1273,13 @@ export function WebinarDiagnostic({
             onClick={teamResults ? handleGeneratePdf : handleGenerateStrategy}
             disabled={completedRoles.length < 4 || isGeneratingStrategy || isPdfGenerating}
             className={`
-                   px-8 py-3 rounded-xl font-bold text-sm transition-all shadow-lg flex items-center gap-3
+px - 8 py - 3 rounded - xl font - bold text - sm transition - all shadow - lg flex items - center gap - 3
                    ${teamResults
                 ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/30'
                 : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/30'
               }
-                   disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed
-                `}
+disabled: bg - slate - 800 disabled: text - slate - 500 disabled: cursor - not - allowed
+  `}
           >
             {isGeneratingStrategy || isPdfGenerating ? (
               <>
@@ -1373,13 +1441,13 @@ export function WebinarDiagnostic({
           {messages.map((msg: Message) => (
             <div
               key={msg.id}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} `}
             >
               <div
-                className={`max-w-[85%] rounded-lg p-4 ${msg.role === "user"
+                className={`max - w - [85 %] rounded - lg p - 4 ${msg.role === "user"
                   ? "bg-blue-600 text-white"
                   : "bg-slate-950 text-slate-200"
-                  }`}
+                  } `}
               >
                 {msg.role === "agent" ? (
                   <div className="prose prose-invert prose-sm max-w-none">

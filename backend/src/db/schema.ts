@@ -766,4 +766,23 @@ export const sopTickets = pgTable('sop_tickets', {
 });
 
 export type SopTicket = typeof sopTickets.$inferSelect;
-export type NewSopTicket = typeof sopTickets.$inferInsert;
+
+// ============================================================================
+// DIAGNOSTIC SNAPSHOTS
+// ============================================================================
+
+export const diagnosticSnapshots = pgTable('diagnostic_snapshots', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  email: varchar('email', { length: 255 }),
+  orgName: varchar('org_name', { length: 255 }),
+  // Allow multiple snapshots per session (history), but maybe index for lookup
+  teamSessionId: varchar('team_session_id', { length: 255 }).notNull(),
+  payload: json('payload').notNull(),
+  version: integer('version').notNull().default(1),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type DiagnosticSnapshot = typeof diagnosticSnapshots.$inferSelect;
+export type NewDiagnosticSnapshot = typeof diagnosticSnapshots.$inferInsert;

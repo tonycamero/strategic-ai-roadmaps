@@ -85,4 +85,27 @@ router.post(
     pdfController.generateTeamPdf
 );
 
+// New Persistence Routes
+import * as diagnosticController from '../controllers/diagnostic.controller';
+
+/**
+ * POST /api/public/diagnostic/save
+ * Save diagnostic snapshot (unauthenticated or authenticated)
+ */
+router.post(
+    '/save',
+    ipRateLimiter,
+    diagnosticController.saveSnapshot
+);
+
+/**
+ * GET /api/public/diagnostic/latest
+ * Retrieve latest snapshot by teamSessionId
+ */
+router.get(
+    '/latest',
+    ipRateLimiter,
+    diagnosticController.getLatestSnapshot
+);
+
 export default router;

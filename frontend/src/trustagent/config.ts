@@ -25,7 +25,7 @@ export interface TrustAgentConfig {
   autoAdvanceDelay: number; // ms between auto-advancing messages
 }
 
-export const trustAgentMode = 'feta' as const;
+export const trustAgentMode = 'homepage' as const;
 
 // Default configuration
 export const config: TrustAgentConfig = {

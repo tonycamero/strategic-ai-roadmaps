@@ -14,6 +14,11 @@ const router = Router();
 router.use(authenticate);
 
 // POST /api/diagnostics/generate - Accepts DiagnosticMap JSON, triggers full pipeline
+// Hard guard to prevent crashes if controller is missing
+if (typeof diagnosticController.generateFromDiagnostic !== "function") {
+    throw new Error("diagnostic_generation route handler not a function: generateFromDiagnostic");
+}
+
 router.post('/generate', diagnosticController.generateFromDiagnostic);
 
 export default router;
