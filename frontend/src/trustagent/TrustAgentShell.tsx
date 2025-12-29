@@ -17,7 +17,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'wouter';
 import ReactMarkdown from 'react-markdown';
-import { type FlowId, type FlowStep, type ConversationMessage, getInitialStep, findStep } from './flows';
+import { type FlowId, type FlowStep, type ConversationMessage, findStep } from './flows';
 import { type VisitorContext, loadVisitorContext, generateBookingParams, personalizeMessage } from './visitorContext';
 import { analytics } from './analytics';
 import { config, getQuickPicks, trustAgentMode as defaultMode } from './config';
@@ -42,7 +42,7 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
 
   // Conversation state
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
-  const [currentFlowId, setCurrentFlowId] = useState<FlowId>('intro');
+  const [currentFlowId] = useState<FlowId>('intro');
   const [visitorContext, setVisitorContext] = useState<VisitorContext>({});
   const [inputValue, setInputValue] = useState('');
   const [answers, setAnswers] = useState<Record<string, string>>({});
