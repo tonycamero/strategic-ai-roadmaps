@@ -18,7 +18,7 @@ import { createPortal } from 'react-dom';
 import { useLocation } from 'wouter';
 import ReactMarkdown from 'react-markdown';
 import { type FlowId, type FlowStep, type ConversationMessage, getInitialStep, findStep } from './flows';
-import { type VisitorContext, loadVisitorContext, updateVisitorContext, generateBookingParams, personalizeMessage } from './visitorContext';
+import { type VisitorContext, loadVisitorContext, generateBookingParams, personalizeMessage } from './visitorContext';
 import { analytics } from './analytics';
 import { config, getQuickPicks, trustAgentMode as defaultMode } from './config';
 import { trustagentApi } from './api';
@@ -185,16 +185,7 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
     }, 100);
   };
 
-  // Start a flow
-  const startFlow = (flowId: FlowId) => {
-    setCurrentFlowId(flowId);
-    const initialStep = getInitialStep(flowId);
-    addAgentMessage(initialStep);
 
-    if (config.analyticsEnabled) {
-      analytics.flowStarted(flowId);
-    }
-  };
 
   // Add agent message to conversation
   const addAgentMessage = (step: FlowStep) => {
@@ -305,7 +296,7 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
   };
 
   // Handle option click
-  const handleOptionClick = async (optionId: string, label: string, nextStepId?: string) => {
+  const handleOptionClick = async (optionId: string, label: string) => {
     // Prevent double-click
     if (isLoading || sendingRef.current) return;
 
@@ -747,7 +738,7 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
                         {msg.options.map((option) => (
                           <button
                             key={option.id}
-                            onClick={() => handleOptionClick(option.id, option.label, option.nextStepId)}
+                            onClick={() => handleOptionClick(option.id, option.label)}
                             className="w-full px-4 py-2.5 bg-slate-800/80 hover:bg-slate-700 text-left text-slate-100 rounded-lg border border-slate-700 transition-colors"
                           >
                             {option.label}
