@@ -230,6 +230,7 @@ const HTML_TEMPLATE = `<!doctype html>
         <div class="h2" style="font-size: 14px; border:none; margin:0; text-transform:uppercase; letter-spacing:0.05em;">{{this.roleName}}</div>
         <div style="font-weight: 700; color: var(--text); margin-top: 4px;">{{this.headline}}</div>
         <p style="margin-top: 8px;">{{this.verdict}}</p>
+        <div style="margin-top: 16px;">{{this.evidenceHtml}}</div>
       </div>
       {{/each}}
       
@@ -391,6 +392,26 @@ function renderTemplate(template: string, data: any): string {
       item = item.replace(/{{this.roleName}}/g, role.roleName);
       item = item.replace(/{{this.headline}}/g, role.headline);
       item = item.replace(/{{this.verdict}}/g, role.verdict || "");
+
+      // Evidence HTML Generation
+      let evidenceHtml = "";
+      if (role.evidenceArtifact?.type === 'snapshot') {
+        evidenceHtml = `
+          <div style="border: 1px solid var(--border); border-radius: 4px; overflow: hidden; position: relative;">
+            <img src="${role.evidenceArtifact.imageUrl}" style="width: 100%; display: block;" />
+            <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.8); color: white; padding: 8px 12px; font-size: 11px; font-weight: 600;">
+              ${role.evidenceArtifact.caption}
+            </div>
+          </div>`;
+      } else {
+        // Fallback
+        evidenceHtml = `
+          <div style="background: var(--panel); padding: 12px; border-radius: 4px; border: 1px dashed var(--border); color: var(--text-faint); font-style: italic; font-size: 10px; text-align: center;">
+            Pattern derived from cross-role intake responses.
+          </div>`;
+      }
+      item = item.replace(/{{this.evidenceHtml}}/g, evidenceHtml);
+
       item = item.replace(/{{this.diagnosis}}/g, role.diagnosis || "");
       return item;
     }).join('');
