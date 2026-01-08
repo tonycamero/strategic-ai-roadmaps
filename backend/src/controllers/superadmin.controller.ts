@@ -1,6 +1,7 @@
 import { Response } from 'express';
+import { nanoid } from 'nanoid';
 import { db } from '../db';
-import { users, intakes, tenants, roadmaps, auditEvents, tenantDocuments, discoveryCallNotes, roadmapSections, ticketPacks, ticketInstances, tenantMetricsDaily, webinarRegistrations, onboardingStates, implementationSnapshots, roadmapOutcomes, agentConfigs, agentThreads, webinarSettings } from '../db/schema';
+import { users, intakes, tenants, roadmaps, auditEvents, tenantDocuments, discoveryCallNotes, roadmapSections, ticketPacks, ticketInstances, tenantMetricsDaily, webinarRegistrations, onboardingStates, implementationSnapshots, roadmapOutcomes, agentConfigs, agentThreads, webinarSettings, executiveBriefs } from '../db/schema';
 import { eq, and, sql, count, desc, asc } from 'drizzle-orm';
 import { AuthRequest } from '../middleware/auth';
 import path from 'path';
@@ -17,6 +18,7 @@ import { ImplementationMetricsService } from '../services/implementationMetrics.
 import { saveCaseStudy } from '../services/caseStudyExport.service';
 import { getOrCreateRoadmapForTenant } from '../services/roadmapOs.service';
 import { refreshVectorStoreContent } from '../services/tenantVectorStore.service';
+import { getModerationStatus } from '../services/ticketModeration.service';
 
 const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 
@@ -27,6 +29,20 @@ const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 function requireSuperAdmin(req: AuthRequest, res: Response): boolean {
   if (!req.user || (req.user.role as string) !== 'superadmin') {
     res.status(403).json({ error: 'SuperAdmin access required' });
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Authority check for Executive-only surfaces.
+ * Maps roles to the Executive category.
+ */
+function requireExecutiveAuthority(req: AuthRequest, res: Response): boolean {
+  const executiveRoles = ['superadmin', 'exec_sponsor', 'owner'];
+  if (!req.user || !executiveRoles.includes(req.user.role as string)) {
+    // Structural Gating: Return 404/Null to prevent inference of existence
+    res.status(404).json({ error: 'Not Found' });
     return false;
   }
   return true;
@@ -337,6 +353,50 @@ export async function getRoadmapSectionsForFirm(req: AuthRequest, res: Response)
 }
 
 // ============================================================================
+// POST /api/superadmin/firms/:tenantId/close-intake
+// ============================================================================
+
+export async function closeIntakeWindow(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    if (!requireExecutiveAuthority(req, res)) return;
+
+    const { tenantId } = req.params;
+
+    // Deterministic Snapshot ID
+    const snapshotId = `intake_snap_${nanoid()}`;
+    const closedAt = new Date();
+
+    // 1. Freeze the Tenant State
+    await db
+      .update(tenants)
+      .set({
+        intakeWindowState: 'CLOSED',
+        intakeSnapshotId: snapshotId,
+        intakeClosedAt: closedAt,
+      })
+      .where(eq(tenants.id, tenantId));
+
+    // 2. Audit Log (Critical for Authority Contract)
+    await db.insert(auditEvents).values({
+      tenantId,
+      actorUserId: req.user?.id,
+      actorRole: req.user?.role as string,
+      eventType: 'intake_window_closed',
+      entityType: 'tenant',
+      entityId: tenantId,
+      metadata: { snapshotId, closedAt },
+    });
+
+    return res.json({ ok: true, snapshotId, closedAt: closedAt.toISOString() });
+
+  } catch (error) {
+    console.error('Close intake window error:', error);
+    return res.status(500).json({ error: 'Failed to close intake window' });
+  }
+}
+
+// ============================================================================
 // GET /api/superadmin/firms/:tenantId - Firm Detail
 // ============================================================================
 
@@ -361,6 +421,9 @@ export async function getFirmDetail(req: AuthRequest, res: Response) {
         firmSizeTier: tenants.firmSizeTier,
         notes: tenants.notes,
         lastDiagnosticId: tenants.lastDiagnosticId,
+        intakeWindowState: tenants.intakeWindowState,
+        intakeSnapshotId: tenants.intakeSnapshotId,
+        intakeClosedAt: tenants.intakeClosedAt,
         tenantCreatedAt: tenants.createdAt,
         ownerUserId: users.id,
         ownerName: users.name,
@@ -414,7 +477,10 @@ export async function getFirmDetail(req: AuthRequest, res: Response) {
     const firmRoadmaps = await db
       .select()
       .from(roadmaps)
-      .where(eq(roadmaps.tenantId, tenantId));
+      .where(eq(roadmaps.tenantId, tenantId))
+      .orderBy(desc(roadmaps.createdAt));
+
+    const latestRoadmap = firmRoadmaps[0] || null;
 
     // Get onboarding state
     const [onboarding] = await db
@@ -485,6 +551,12 @@ export async function getFirmDetail(req: AuthRequest, res: Response) {
       actorRole: row.audit_events.actorRole,
     }));
 
+    // GATING: Fetch diagnostic status (for Roadmap readiness)
+    let diagnosticStatus = { total: 0, pending: 0, approved: 0, rejected: 0, readyForRoadmap: false };
+    if (tenantData.lastDiagnosticId) {
+      diagnosticStatus = await getModerationStatus(tenantId, tenantData.lastDiagnosticId);
+    }
+
     return res.json({
       tenantSummary: {
         id: tenantData.tenantId,
@@ -499,8 +571,13 @@ export async function getFirmDetail(req: AuthRequest, res: Response) {
         firmSizeTier: tenantData.firmSizeTier,
         createdAt: tenantData.tenantCreatedAt,
         notes: tenantData.notes,
+        notes: tenantData.notes,
         lastDiagnosticId: tenantData.lastDiagnosticId,
+        intakeWindowState: tenantData.intakeWindowState,
+        intakeSnapshotId: tenantData.intakeSnapshotId,
+        intakeClosedAt: tenantData.intakeClosedAt,
       },
+      diagnosticStatus, // Added for Ticket 5 gating
       owner: owner ? {
         id: owner.id,
         name: owner.name,
@@ -525,6 +602,7 @@ export async function getFirmDetail(req: AuthRequest, res: Response) {
       documentSummary,
       intakes: formattedIntakes,
       roadmaps: firmRoadmaps,
+      latestRoadmap, // Canonical source of truth
       recentActivity: formattedAudits,
     });
   } catch (error) {
@@ -801,16 +879,17 @@ export async function getFirmDetailV2(req: AuthRequest, res: Response) {
         lastDiagnosticId: tenantRow.lastDiagnosticId,
         createdAt: tenantRow.tenantCreatedAt,
         updatedAt: tenantRow.tenantUpdatedAt,
+        ownerUserId: tenantRow.ownerUserId,
       },
-      owner: owner
-        ? {
-          id: owner.id,
-          name: owner.name,
-          email: owner.email,
-          role: owner.role,
-          createdAt: owner.createdAt,
-        }
-        : null,
+      // 12. EXECUTIVE BRIEF SIGNAL (STRUCTURAL ONLY)
+      execBrief: await (async () => {
+        const [brief] = await db
+          .select({ status: executiveBriefs.status, id: executiveBriefs.id })
+          .from(executiveBriefs)
+          .where(sql`${executiveBriefs.tenantId} = ${tenantId}`)
+          .limit(1);
+        return brief ? { exists: true, status: brief.status } : { exists: false, status: null };
+      })(),
       onboarding: onboardingData
         ? {
           percentComplete: onboardingData.percentComplete,
@@ -906,6 +985,7 @@ export async function getFirmDetailV2(req: AuthRequest, res: Response) {
         activeConfigs,
         recentThreads: agentThreadsData,
       },
+      latestRoadmap: lastRoadmap, // Canonical source of truth
     };
 
     return res.json(response);
@@ -1560,9 +1640,24 @@ export async function getFirmWorkflowStatus(req: AuthRequest, res: Response) {
 
 export async function generateSop01ForFirm(req: AuthRequest, res: Response) {
   try {
-    if (!requireSuperAdmin(req, res)) return;
+    // SECURITY: This is an Executive Authority action (Ticket 4)
+    if (!requireExecutiveAuthority(req, res)) return;
 
     const { tenantId } = req.params;
+
+    // GATING: Finalization is BLOCKED unless Brief is ACKNOWLEDGED or WAIVED
+    const [brief] = await db
+      .select()
+      .from(executiveBriefs)
+      .where(eq(executiveBriefs.tenantId, tenantId))
+      .limit(1);
+
+    if (!brief || !(['ACKNOWLEDGED', 'WAIVED'].includes(brief.status))) {
+      return res.status(403).json({
+        error: 'Gated Action',
+        details: 'Leadership alignment required. Executive Brief must be ACKNOWLEDGED or WAIVED before executing diagnostic synthesis.'
+      });
+    }
 
     // Build normalized intake context
     const normalized = await buildNormalizedIntakeContext(tenantId);
@@ -2196,6 +2291,30 @@ export async function generateRoadmapForFirm(req: AuthRequest, res: Response) {
     console.log(`  - Roadmap Skeleton: ${sop01RoadmapSkeleton.length} chars`);
     console.log(`  - Discovery Notes: ${discoveryNotesMarkdown?.length || 0} chars`);
 
+    // Gating Check: Ensure Intake is CLOSED and Executive Brief is ACKNOWLEDGED or WAIVED
+    const [brief] = await db
+      .select()
+      .from(executiveBriefs)
+      .where(eq(executiveBriefs.tenantId, tenantId))
+      .limit(1);
+
+    const isIntakeClosed = tenant.intakeWindowState === 'CLOSED';
+    const isBriefResolved = brief && ['ACKNOWLEDGED', 'WAIVED'].includes(brief.status);
+
+    if (!isIntakeClosed) {
+      return res.status(400).json({
+        error: 'Intake window is not closed.',
+        message: 'You must close the Intake Window before generating diagnostics.'
+      });
+    }
+
+    if (!isBriefResolved) {
+      return res.status(400).json({
+        error: 'Executive Brief not resolved.',
+        message: 'Executive Brief must be ACKNOWLEDGED or WAIVED before synthesis can proceed.'
+      });
+    }
+
     // Build simplified DiagnosticMap structure
     // Note: We pass both structured data + raw SOP-01 markdown to the pipeline
     const diagnosticMap: DiagnosticMap = {
@@ -2555,3 +2674,179 @@ export async function updateWebinarPassword(req: AuthRequest, res: Response) {
 }
 
 
+
+// ============================================================================
+// EXECUTIVE BRIEF CRUD (EXECUTIVE AUTHORITY ONLY)
+// ============================================================================
+
+export async function getExecutiveBrief(req: AuthRequest, res: Response) {
+  try {
+    if (!requireExecutiveAuthority(req, res)) return;
+    const { tenantId } = req.params;
+
+    const [brief] = await db
+      .select()
+      .from(executiveBriefs)
+      .where(eq(executiveBriefs.tenantId, tenantId))
+      .limit(1);
+
+    return res.json({ brief: brief || null });
+  } catch (error) {
+    console.error('Get exec brief error:', error);
+    return res.status(500).json({ error: 'Failed to fetch executive brief' });
+  }
+}
+
+export async function upsertExecutiveBrief(req: AuthRequest, res: Response) {
+  try {
+    if (!requireExecutiveAuthority(req, res)) return;
+    const { tenantId } = req.params;
+    const { content } = req.body;
+    const userId = req.user!.userId;
+
+    if (!tenantId || !userId) {
+      return res.status(400).json({ error: 'Missing tenantId or userId' });
+    }
+
+    // Check if it exists using explicit SQL cast for safety if needed
+    const [existing] = await db
+      .select()
+      .from(executiveBriefs)
+      .where(eq(executiveBriefs.tenantId, tenantId))
+      .limit(1);
+
+    if (existing) {
+      // Logic constraint: Cannot edit if ACKNOWLEDGED or WAIVED
+      if (['ACKNOWLEDGED', 'WAIVED'].includes(existing.status)) {
+        return res.status(403).json({ error: 'Cannot edit locked brief' });
+      }
+
+      const [updated] = await db
+        .update(executiveBriefs)
+        .set({
+          content: content || '',
+          lastUpdatedBy: userId,
+          updatedAt: new Date(),
+        })
+        .where(eq(executiveBriefs.id, existing.id))
+        .returning();
+
+      // Audit Log: Update
+      await db.insert(auditEvents).values({
+        tenantId,
+        actorUserId: userId,
+        actorRole: req.user?.role as string,
+        eventType: 'brief_updated',
+        entityType: 'executive_brief',
+        entityId: updated.id,
+        metadata: { status: updated.status }
+      });
+
+      return res.json({ brief: updated });
+    } else {
+      const [created] = await db
+        .insert(executiveBriefs)
+        .values({
+          tenantId: tenantId,
+          content: content || '',
+          status: 'DRAFT',
+          createdBy: userId,
+          lastUpdatedBy: userId,
+        })
+        .returning();
+
+      // Audit Log: Create
+      await db.insert(auditEvents).values({
+        tenantId,
+        actorUserId: userId,
+        actorRole: req.user?.role as string,
+        eventType: 'brief_created',
+        entityType: 'executive_brief',
+        entityId: created.id,
+        metadata: { status: 'DRAFT' }
+      });
+
+      return res.json({ brief: created });
+    }
+  } catch (error: any) {
+    console.error('Upsert exec brief error:', error);
+    return res.status(500).json({
+      error: 'Failed to save executive brief',
+      details: error?.message || 'Unknown database error'
+    });
+  }
+}
+
+export async function transitionExecutiveBriefStatus(req: AuthRequest, res: Response) {
+  try {
+    if (!requireExecutiveAuthority(req, res)) return;
+    const { tenantId } = req.params;
+    const { status, reason } = req.body; // Added reason
+    const userId = req.user!.userId;
+
+    const [existing] = await db
+      .select()
+      .from(executiveBriefs)
+      .where(eq(executiveBriefs.tenantId, tenantId))
+      .limit(1);
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Brief not found' });
+    }
+
+    // Get Tenant for Snapshot ID
+    const [tenant] = await db
+      .select({ intakeSnapshotId: tenants.intakeSnapshotId })
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
+
+    // Valid transitions logic
+    const current = existing.status;
+    let allowed = false;
+
+    if (current === 'DRAFT' && status === 'READY_FOR_EXEC_REVIEW') allowed = true;
+    if (current === 'READY_FOR_EXEC_REVIEW' && (status === 'ACKNOWLEDGED' || status === 'WAIVED')) allowed = true;
+
+    if (!allowed) {
+      return res.status(400).json({ error: `Transition from ${current} to ${status} not permitted` });
+    }
+
+    const [updated] = await db
+      .update(executiveBriefs)
+      .set({
+        status,
+        lastUpdatedBy: userId,
+        updatedAt: new Date(),
+      })
+      .where(eq(executiveBriefs.id, existing.id))
+      .returning();
+
+    // Map status to audit event type
+    let auditEventType = 'brief_updated';
+    if (status === 'READY_FOR_EXEC_REVIEW') auditEventType = 'brief_submitted_for_exec';
+    if (status === 'ACKNOWLEDGED') auditEventType = 'brief_acknowledged';
+    if (status === 'WAIVED') auditEventType = 'brief_waived';
+
+    // Audit Log
+    await db.insert(auditEvents).values({
+      tenantId,
+      actorUserId: userId,
+      actorRole: req.user?.role as string,
+      eventType: auditEventType,
+      entityType: 'executive_brief',
+      entityId: updated.id,
+      metadata: {
+        previousStatus: current,
+        newStatus: status,
+        intakeSnapshotId: tenant?.intakeSnapshotId,
+        reason: status === 'WAIVED' ? reason : undefined
+      }
+    });
+
+    return res.json({ brief: updated });
+  } catch (error) {
+    console.error('Transition exec brief error:', error);
+    return res.status(500).json({ error: 'Failed to transition brief status' });
+  }
+}

@@ -1,8 +1,13 @@
 import { Route, Switch, Link, useLocation, Redirect } from 'wouter';
 import { useAuth } from '../context/AuthContext';
+import { useSuperAdminAuthority } from '../hooks/useSuperAdminAuthority';
+import { AuthorityCategory } from '@roadmap/shared';
+
+// Pages
 import SuperAdminOverviewPage from './pages/SuperAdminOverviewPage';
 import SuperAdminFirmsPage from './pages/SuperAdminFirmsPage';
 import SuperAdminFirmDetailPage from './pages/SuperAdminFirmDetailPage';
+import SuperAdminControlPlaneFirmDetailPage from './pages/SuperAdminControlPlaneFirmDetailPage';
 import SuperAdminAgentPage from './pages/SuperAdminAgentPage';
 import EugeneCohortPage from './pages/EugeneCohortPage';
 import SuperAdminRoadmapViewerPage from './pages/SuperAdminRoadmapViewerPage';
@@ -11,111 +16,221 @@ import SuperAdminLeadsPage from './pages/SuperAdminLeadsPage';
 export function SuperAdminLayout() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const { isSystem, isOperator, category } = useSuperAdminAuthority();
 
-  const isActive = (path: string) => location === path;
+  const isActive = (path: string) => location === path || location.startsWith(path + '/');
+
+  // Guard against System/Agent accounts accessing the UI at all if strictly enforced,
+  // but predominantly just hide navigation.
+  if (isSystem) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-500 font-mono text-xs">
+        AGENT_ACCESS_RESTRICTED_TO_API
+      </div>
+    );
+  }
+
+  // Human-readable Authority Label
+  const getAuthorityLabel = () => {
+    switch (category) {
+      case AuthorityCategory.EXECUTIVE: return 'Authority: Executive';
+      case AuthorityCategory.DELEGATE: return 'Authority: Delegate';
+      case AuthorityCategory.OPERATOR: return 'Authority: Operator';
+      default: return 'Role: Unknown';
+    }
+  };
 
   return (
-    <div className="min-h-screen flex bg-slate-950 text-slate-100">
-      <aside className="w-64 border-r border-slate-800 p-4 flex flex-col gap-4">
-        <div className="font-semibold text-lg tracking-tight">
-          SA • Strategic AI
+    <div className="min-h-screen flex bg-slate-950 text-slate-100 font-sans selection:bg-indigo-500/30">
+      {/* Sidebar Navigation */}
+      <aside className="w-72 border-r border-slate-900 bg-slate-950 flex flex-col fixed inset-y-0 z-50">
+
+        {/* Context Branding */}
+        <div className="p-6 pb-4 border-b border-slate-900/50">
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-2 h-2 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.5)] ${category === AuthorityCategory.EXECUTIVE ? 'bg-purple-500 shadow-purple-500/50' : 'bg-indigo-500'
+              }`}></div>
+            <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-indigo-400">
+              Control Plane
+            </span>
+          </div>
+          <div className="font-bold text-lg tracking-tight text-slate-100">
+            Strategic AI
+          </div>
+          <div className="text-[10px] text-slate-500 font-mono mt-1 truncate">
+            {user?.email}
+          </div>
+          <div className={`mt-2 inline-flex items-center px-1.5 py-0.5 rounded border text-[9px] font-bold uppercase tracking-wide
+            ${category === AuthorityCategory.EXECUTIVE
+              ? 'bg-purple-900/20 border-purple-800 text-purple-300'
+              : 'bg-slate-900 border-slate-800 text-slate-400'
+            }`}>
+            {getAuthorityLabel()}
+          </div>
         </div>
-        <div className="text-xs text-slate-500">
-          {user?.name} • {user?.email}
-        </div>
-        <nav className="flex flex-col gap-2 text-sm">
-          <Link href="/superadmin">
-            <span
-              className={`px-2 py-1 rounded block cursor-pointer ${isActive('/superadmin') ? 'bg-slate-800' : 'hover:bg-slate-900'
-                }`}
-            >
-              Command Center
-            </span>
-          </Link>
-          <Link href="/superadmin/pipeline">
-            <span
-              className={`px-2 py-1 rounded block cursor-pointer ${location.startsWith('/superadmin/pipeline')
-                  ? 'bg-slate-800'
-                  : 'hover:bg-slate-900'
-                }`}
-            >
-              Cohort Pipeline
-            </span>
-          </Link>
-          <Link href="/superadmin/firms">
-            <span
-              className={`px-2 py-1 rounded block cursor-pointer ${isActive('/superadmin/firms')
-                  ? 'bg-slate-800'
-                  : 'hover:bg-slate-900'
-                }`}
-            >
-              Firms
-            </span>
-          </Link>
-          <Link href="/superadmin/leads">
-            <span
-              className={`px-2 py-1 rounded block cursor-pointer ${isActive('/superadmin/leads')
-                  ? 'bg-slate-800'
-                  : 'hover:bg-slate-900'
-                }`}
-            >
-              Webinar Registrations
-            </span>
-          </Link>
+
+        {/* Navigation Groups */}
+        <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-8">
+
+          {/* SECTION 1: AUTHORITY CONTROL PLANE (Restricted) */}
+          {/* Hidden from Operators */}
+          {!isOperator && (
+            <div className="space-y-2">
+              <div className="px-3 text-[10px] font-extrabold uppercase tracking-widest text-slate-600">
+                Authority Core
+              </div>
+
+              <NavItem
+                href="/superadmin/firms"
+                active={isActive('/superadmin/firms') || isActive('/superadmin/control-plane')}
+                icon="🏢"
+                label="Firm Directory"
+                description="Entity management & state"
+              />
+
+              <NavItem
+                href="/superadmin/pipeline"
+                active={isActive('/superadmin/pipeline')}
+                icon="📊"
+                label="Cohort Pipeline"
+                description="Global flow & blockage"
+              />
+            </div>
+          )}
+
+          {/* SECTION 2: OPERATIONAL ADMIN (Legacy / Shared) */}
+          <div className="space-y-2">
+            <div className="px-3 text-[10px] font-extrabold uppercase tracking-widest text-slate-600">
+              Operational Admin
+            </div>
+
+            <NavItem
+              href="/superadmin"
+              active={location === '/superadmin'}
+              icon="⚡" // Unicode icon
+              label="Command Center"
+              description="Legacy dashboard view"
+            />
+
+            <NavItem
+              href="/superadmin/leads"
+              active={isActive('/superadmin/leads')}
+              icon="👥"
+              label="Webinar Leads"
+              description="Intake processing queue"
+            />
+          </div>
+
         </nav>
-        <div className="mt-auto pt-4 border-t border-slate-800">
+
+        {/* Footer Actions */}
+        <div className="p-4 border-t border-slate-900 bg-slate-950/50">
           <Link href="/dashboard">
-            <span className="text-xs text-slate-400 hover:text-slate-200 cursor-pointer block">
-              ← Back to Dashboard
-            </span>
+            <button className="w-full flex items-center gap-2 px-3 py-2 rounded text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition-colors mb-2">
+              <span>←</span> Exit to Dashboard
+            </button>
           </Link>
           <button
             onClick={logout}
-            className="mt-2 w-full text-xs text-left text-slate-400 hover:text-red-400"
+            className="w-full text-left px-3 py-2 rounded text-xs font-medium text-red-900/60 hover:text-red-400 hover:bg-red-900/10 transition-colors"
           >
-            Logout
+            Sign Out
           </button>
         </div>
       </aside>
-      <main className="flex-1 p-6 overflow-auto">
-        <Switch>
-          {/* Command Center */}
-          <Route path="/superadmin" component={SuperAdminOverviewPage} />
 
-          {/* Cohort Pipeline (primary Kanban board) */}
-          <Route path="/superadmin/pipeline" component={EugeneCohortPage} />
+      {/* Main Content Area */}
+      <main className="flex-1 ml-72 min-w-0 bg-slate-950 relative">
+        {/* Top Context Bar (Mobile/Immersive reinforcement) */}
+        {!isOperator && (
+          <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r z-40 pointer-events-none ${category === AuthorityCategory.EXECUTIVE
+              ? 'from-purple-900/50 via-indigo-900/50 to-slate-900/50'
+              : 'from-indigo-900/50 via-slate-800/50 to-slate-900/50'
+            }`} />
+        )}
 
-          {/* Firms Directory */}
-          <Route path="/superadmin/firms" component={SuperAdminFirmsPage} />
-          <Route
-            path="/superadmin/firms/:tenantId"
-            component={SuperAdminFirmDetailPage}
-          />
+        <div className="h-full">
+          <Switch>
+            {/* Command Center */}
+            <Route path="/superadmin" component={SuperAdminOverviewPage} />
 
-          {/* Leads */}
-          <Route path="/superadmin/leads" component={SuperAdminLeadsPage} />
+            {/* Cohort Pipeline (primary Kanban board) */}
+            <Route path="/superadmin/pipeline" component={EugeneCohortPage} />
 
-          {/* Agent Tap-In (no sidebar nav, only quick action entry) */}
-          <Route path="/superadmin/agent" component={SuperAdminAgentPage} />
+            {/* Firms Directory (New Control Plane List) - Protected Route */}
+            <Route path="/superadmin/firms">
+              {isOperator ? <Redirect to="/superadmin" /> : <SuperAdminFirmsPage />}
+            </Route>
 
-          {/* Supporting routes */}
-          <Route
-            path="/superadmin/tenant/:tenantId/roadmap"
-            component={SuperAdminRoadmapViewerPage}
-          />
+            {/* CONTROL PLANE Firm Detail (New UX) - Protected Route */}
+            <Route path="/superadmin/control-plane/firms/:tenantId">
+              {(params) => (
+                isOperator
+                  ? <Redirect to="/superadmin" />
+                  : <SuperAdminControlPlaneFirmDetailPage />
+              )}
+            </Route>
 
-          {/* Legacy routes → redirect to new pipeline path */}
-          <Route path="/superadmin/cohort-pipeline">
-            <Redirect to="/superadmin/pipeline" />
-          </Route>
-          <Route path="/superadmin/cohorts/eugene-q1-2026">
-            <Redirect to="/superadmin/pipeline" />
-          </Route>
-          <Route path="/superadmin/roadmaps">
-            <Redirect to="/superadmin/firms" />
-          </Route>
-        </Switch>
+            {/* LEGACY Firm Detail (Preserved for Operational Admin) */}
+            <Route
+              path="/superadmin/firms/:tenantId"
+              component={SuperAdminFirmDetailPage}
+            />
+
+            {/* Leads */}
+            <Route path="/superadmin/leads" component={SuperAdminLeadsPage} />
+
+            {/* Agent Tap-In */}
+            <Route path="/superadmin/agent" component={SuperAdminAgentPage} />
+
+            {/* Supporting routes */}
+            <Route
+              path="/superadmin/tenant/:tenantId/roadmap"
+              component={SuperAdminRoadmapViewerPage}
+            />
+
+            {/* Redirects */}
+            <Route path="/superadmin/cohort-pipeline">
+              <Redirect to="/superadmin/pipeline" />
+            </Route>
+            <Route path="/superadmin/cohorts/eugene-q1-2026">
+              <Redirect to="/superadmin/pipeline" />
+            </Route>
+            <Route path="/superadmin/roadmaps">
+              <Redirect to="/superadmin/firms" />
+            </Route>
+          </Switch>
+        </div>
       </main>
     </div>
   );
+}
+
+// Sub-component for clean nav items
+function NavItem({ href, active, icon, label, description }: any) {
+  return (
+    <Link href={href}>
+      <div className={`
+                group flex items-start gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 border border-transparent
+                ${active
+          ? 'bg-slate-900/80 border-slate-800 text-slate-100 shadow-sm'
+          : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+        }
+            `}>
+        <span className={`mt-0.5 text-sm ${active ? 'grayscale-0' : 'grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all'}`}>
+          {icon}
+        </span>
+        <div>
+          <div className={`text-xs font-bold leading-none mb-1 ${active ? 'text-indigo-300' : 'text-slate-300 group-hover:text-white'}`}>
+            {label}
+          </div>
+          {description && (
+            <div className="text-[9px] text-slate-600 font-medium leading-tight group-hover:text-slate-500">
+              {description}
+            </div>
+          )}
+        </div>
+      </div>
+    </Link>
+  )
 }

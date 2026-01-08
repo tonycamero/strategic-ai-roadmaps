@@ -302,23 +302,27 @@ export const superadminApi = {
     const filename = `${safeName}-intakes-${new Date().toISOString().split('T')[0]}.${format}`;
     return downloadFile(`/export/firms/${tenantId}/intakes?${params.toString()}`, filename);
   },
-  
+
   // Workflow management functions
   getFirmWorkflowStatus: (tenantId: string) =>
     apiGet<any>(`/firms/${tenantId}/workflow-status`),
-  
+
   generateSop01: (tenantId: string) =>
     apiPost<{ ok: boolean }>(`/firms/${tenantId}/generate-sop01`),
-  
+
   getDiscoveryNotes: (tenantId: string) =>
     apiGet<{ notes: string; updatedAt: string | null }>(`/firms/${tenantId}/discovery-notes`),
-  
+
   saveDiscoveryNotes: (tenantId: string, notes: string) =>
     apiPost<{ ok: boolean }>(`/firms/${tenantId}/discovery-notes`, { notes }),
-  
+
   generateRoadmap: (tenantId: string) =>
     apiPost<{ ok: boolean }>(`/firms/${tenantId}/generate-roadmap`),
-  
+
+  // CR-UX-3: Intake Closure
+  closeIntakeWindow: (tenantId: string) =>
+    apiPost<{ ok: boolean; snapshotId: string; closedAt: string }>(`/firms/${tenantId}/close-intake`),
+
   getModerationStatus: (tenantId: string, diagnosticId: string) =>
     apiGet<{
       totalTickets: number;
@@ -327,11 +331,11 @@ export const superadminApi = {
       pendingCount: number;
       allModerated: boolean;
     }>(`/tickets/${tenantId}/${diagnosticId}/status`),
-  
+
   // TM-2: Ticket Moderation APIs
   getDiagnosticTickets: (tenantId: string, diagnosticId: string) =>
     apiGet<{ tickets: any[]; status: any }>(`/tickets/${tenantId}/${diagnosticId}`),
-  
+
   getTicketModerationStatus: (tenantId: string, diagnosticId: string) =>
     apiGet<{
       total: number;
@@ -340,7 +344,7 @@ export const superadminApi = {
       pending: number;
       readyForRoadmap: boolean;
     }>(`/tickets/${tenantId}/${diagnosticId}/status`),
-  
+
   approveTickets: (params: {
     tenantId: string;
     diagnosticId: string;
@@ -348,7 +352,7 @@ export const superadminApi = {
     adminNotes?: string;
   }) =>
     apiPost<{ updated: number; status: any }>(`/tickets/approve`, params),
-  
+
   rejectTickets: (params: {
     tenantId: string;
     diagnosticId: string;
@@ -356,10 +360,10 @@ export const superadminApi = {
     adminNotes?: string;
   }) =>
     apiPost<{ updated: number; status: any }>(`/tickets/reject`, params),
-  
+
   generateFinalRoadmap: (tenantId: string) =>
     apiPost<{ ok: boolean }>(`/firms/${tenantId}/generate-final-roadmap`),
-  
+
   // SR-3: Roadmaps browser endpoints
   getRoadmaps: async (filters?: {
     cohort?: string;
@@ -372,14 +376,18 @@ export const superadminApi = {
     if (filters?.search) params.set('search', filters.search);
     return apiGet<{ roadmaps: any[] }>(`/roadmaps?${params.toString()}`);
   },
-  
+
   getRoadmapSections: (tenantId: string) =>
     apiGet<{
       tenant: { id: string; name: string; cohortLabel: string | null };
       sections: any[];
     }>(`/firms/${tenantId}/roadmap-sections`),
-  
+
   // V2: Comprehensive firm detail (single source of truth)
   getFirmDetailV2: (tenantId: string) =>
     apiGet<FirmDetailResponseV2>(`/firms/${tenantId}/detail`),
+
+  // CR-UX-8: Snapshots
+  getSnapshot: (tenantId: string) =>
+    apiGet<{ success: boolean; data: any }>(`/snapshot/${tenantId}`),
 };

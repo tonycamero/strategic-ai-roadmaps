@@ -14,12 +14,9 @@
  */
 
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.selectSynthesis = selectSynthesis;
-exports.getNextStep = getNextStep;
-exports.isValidAnswer = isValidAnswer;
-const canonical_1 = require("./canonical");
-function selectSynthesis(answers) {
+import { FETA_CANONICAL_TAXONOMY } from './canonical';
+
+export function selectSynthesis(answers: any) {
     const { Q1, Q2, Q3 } = answers;
     if (Q3 === 'A3_NONE') {
         return 'SB-02';
@@ -29,7 +26,7 @@ function selectSynthesis(answers) {
     }
     return 'SB-01';
 }
-function getNextStep(currentStep) {
+export function getNextStep(currentStep: string) {
     if (currentStep === 'H0')
         return 'Q1';
     if (currentStep === 'Q1')
@@ -40,9 +37,9 @@ function getNextStep(currentStep) {
         return 'R1_REVEAL';
     return 'DONE';
 }
-function isValidAnswer(step, answerId) {
-    const question = canonical_1.FETA_CANONICAL_TAXONOMY[step];
+export function isValidAnswer(step: string, answerId: string) {
+    const question = FETA_CANONICAL_TAXONOMY[step];
     if (!question)
         return false;
-    return question.options.some(opt => opt.id === answerId);
+    return question.options.some((opt: any) => opt.id === answerId);
 }

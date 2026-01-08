@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { User } from '@roadmap/shared';
+import type { User, UserRole } from '@roadmap/shared';
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (token: string, user: User) => void;
   logout: () => void;
+  simulateRole: (role: UserRole | null) => void;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
@@ -15,6 +16,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [simulatedRole, setSimulatedRole] = useState<UserRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -40,15 +42,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('user');
     setToken(null);
     setUser(null);
+    setSimulatedRole(null);
   };
+
+  const simulateRole = (role: UserRole | null) => {
+    setSimulatedRole(role);
+  };
+
+  // Compute effective user with simulated role
+  const effectiveUser = user && simulatedRole
+    ? { ...user, role: simulatedRole }
+    : user;
 
   return (
     <AuthContext.Provider
       value={{
-        user,
+        user: effectiveUser,
         token,
         login,
         logout,
+        simulateRole,
         isAuthenticated: !!token && !!user,
         isLoading,
       }}

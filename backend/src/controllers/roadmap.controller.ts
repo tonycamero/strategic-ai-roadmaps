@@ -7,6 +7,8 @@ import { TicketPackService } from '../services/ticketPack.service';
 import { RoadmapRefreshService } from '../services/roadmapRefresh.service';
 import { syncAgentsForRoadmap } from '../services/roadmapAgentSync.service';
 import { onboardingProgressService } from '../services/onboardingProgress.service';
+import { generateFinalRoadmapForTenant } from '../services/finalRoadmap.service';
+
 
 interface AuthRequest extends Request {
   user?: {
@@ -38,11 +40,11 @@ export async function getRoadmapSections(req: AuthRequest, res: Response) {
         const roadmap = await db.query.roadmaps.findFirst({
           where: eq(roadmaps.tenantId, resolvedTenantId),
         });
-        
+
         if (!roadmap) {
           return res.status(404).json({ error: 'Roadmap not found for this tenant' });
         }
-        
+
         roadmapId = roadmap.id;
       } else if (req.query.roadmapId) {
         roadmapId = req.query.roadmapId as string;
@@ -97,16 +99,16 @@ export async function getRoadmapSections(req: AuthRequest, res: Response) {
       if (ticketPack) {
         const { tickets } = await TicketPackService.getPackWithTickets(ticketPack.id);
         const systemCompletion = TicketPackService.computeSystemCompletion(tickets);
-        
+
         // Compute overall stats
         const totalTickets = tickets.length;
         const doneTickets = tickets.filter(t => t.status === 'done').length;
         const inProgressTickets = tickets.filter(t => t.status === 'in_progress').length;
-        
+
         const systemsImplemented = Object.entries(systemCompletion)
           .filter(([_, stats]) => stats.pct === 100)
           .map(([system]) => system);
-        
+
         const systemsInProgress = Object.entries(systemCompletion)
           .filter(([_, stats]) => stats.pct > 0 && stats.pct < 100)
           .map(([system]) => system);
@@ -173,19 +175,19 @@ export async function getRoadmapSection(req: AuthRequest, res: Response) {
         const tenant = await db.query.tenants.findFirst({
           where: eq(tenants.id, req.query.tenantId as string),
         });
-        
+
         if (!tenant) {
           return res.status(404).json({ error: 'Tenant not found' });
         }
-        
+
         const roadmap = await db.query.roadmaps.findFirst({
           where: eq(roadmaps.tenantId, req.query.tenantId as string),
         });
-        
+
         if (!roadmap) {
           return res.status(404).json({ error: 'Roadmap not found for this tenant' });
         }
-        
+
         roadmapId = roadmap.id;
       } else if (req.query.roadmapId) {
         roadmapId = req.query.roadmapId as string;
@@ -271,6 +273,15 @@ export async function upsertRoadmapSection(req: AuthRequest, res: Response) {
       roadmapId = roadmap.id;
     }
 
+    // CHECK IMMUTABILITY
+    const targetRoadmap = await db.query.roadmaps.findFirst({
+      where: eq(roadmaps.id, roadmapId)
+    });
+
+    if (targetRoadmap && targetRoadmap.status === 'finalized') {
+      return res.status(409).json({ error: 'Roadmap is FINALIZED and cannot be modified.' });
+    }
+
     const { sectionNumber, sectionName, contentMarkdown, status, agentCheatsheet, diagrams } = req.body;
 
     if (!sectionNumber || !sectionName || !contentMarkdown) {
@@ -329,6 +340,23 @@ export async function updateSectionStatus(req: AuthRequest, res: Response) {
       if (!roadmap || roadmap.tenantId !== tenantId) {
         return res.status(403).json({ error: 'Access denied' });
       }
+
+      if (roadmap.status === 'finalized') {
+        return res.status(409).json({ error: 'Roadmap is FINALIZED and cannot be modified.' });
+      }
+    } else {
+      // SuperAdmin case: still need to check finalized status
+      const section = await db.query.roadmapSections.findFirst({
+        where: eq(roadmapSections.id, sectionId),
+      });
+      if (section) {
+        const roadmap = await db.query.roadmaps.findFirst({
+          where: eq(roadmaps.id, section.roadmapId),
+        });
+        if (roadmap && roadmap.status === 'finalized') {
+          return res.status(409).json({ error: 'Roadmap is FINALIZED and cannot be modified.' });
+        }
+      }
     }
 
     const updatedSection = await RoadmapSectionService.updateStatus(sectionId, status);
@@ -384,6 +412,10 @@ export async function syncRoadmapStatus(req: AuthRequest, res: Response) {
 
     if (!roadmap) {
       return res.status(404).json({ error: 'Roadmap not found' });
+    }
+
+    if (roadmap.status === 'finalized') {
+      return res.status(409).json({ error: 'Roadmap is FINALIZED and cannot be modified.' });
     }
 
     // Get tenant for this roadmap
@@ -450,7 +482,7 @@ export async function refreshRoadmap(req: AuthRequest, res: Response) {
     // SuperAdmin can specify roadmapId via body
     if (user.role === 'superadmin' && req.body.roadmapId) {
       roadmapId = req.body.roadmapId;
-      
+
       const roadmap = await db.query.roadmaps.findFirst({
         where: eq(roadmaps.id, roadmapId),
       });
@@ -474,7 +506,7 @@ export async function refreshRoadmap(req: AuthRequest, res: Response) {
       if (!ownerTenantId) {
         return res.status(403).json({ error: 'Tenant not resolved' });
       }
-      
+
       const roadmap = await db.query.roadmaps.findFirst({
         where: eq(roadmaps.tenantId, ownerTenantId),
       });
@@ -493,6 +525,15 @@ export async function refreshRoadmap(req: AuthRequest, res: Response) {
 
       roadmapId = roadmap.id;
       tenantId = tenant.id;
+    }
+
+    // IMMUTABILITY CHECK
+    const targetRoadmap = await db.query.roadmaps.findFirst({
+      where: eq(roadmaps.id, roadmapId)
+    });
+
+    if (targetRoadmap && targetRoadmap.status === 'finalized') {
+      return res.status(409).json({ error: 'Roadmap is FINALIZED and cannot be refreshed.' });
     }
 
     const result = await RoadmapRefreshService.refreshRoadmap({
@@ -542,7 +583,7 @@ export async function getRoadmapTickets(req: AuthRequest, res: Response) {
     // SuperAdmin can specify roadmapId via query param
     if (user.role === 'superadmin' && req.query.roadmapId) {
       roadmapId = req.query.roadmapId as string;
-      
+
       const roadmap = await db.query.roadmaps.findFirst({
         where: eq(roadmaps.id, roadmapId),
       });
@@ -566,7 +607,7 @@ export async function getRoadmapTickets(req: AuthRequest, res: Response) {
       if (!ownerTenantId) {
         return res.status(403).json({ error: 'Tenant not resolved' });
       }
-      
+
       const roadmap = await db.query.roadmaps.findFirst({
         where: eq(roadmaps.tenantId, ownerTenantId),
       });
@@ -600,7 +641,7 @@ export async function getRoadmapTickets(req: AuthRequest, res: Response) {
 
     // Organize tickets by sprint
     const sprints = (ticketPack.sprintAssignments || []).map((sprint: any) => {
-      const sprintTickets = tickets.filter(t => 
+      const sprintTickets = tickets.filter(t =>
         sprint.ticket_instances?.includes(t.id)
       );
 
@@ -674,7 +715,7 @@ export async function exportRoadmap(req: AuthRequest, res: Response) {
       if (!user.tenantId) {
         return res.status(400).json({ error: 'User has no associated tenant' });
       }
-      
+
       const roadmap = await db.query.roadmaps.findFirst({
         where: eq(roadmaps.tenantId, user.tenantId),
       });
@@ -719,5 +760,85 @@ export async function exportRoadmap(req: AuthRequest, res: Response) {
   } catch (error) {
     console.error('[Roadmap] Error exporting roadmap:', error);
     return res.status(500).json({ error: 'Failed to export roadmap' });
+  }
+}
+
+/**
+ * Finalize Roadmap (CR-UX-7)
+ * POST /roadmap/:tenantId/finalize
+ * Strictly Executive Authority. Gated by Intake, Brief, Moderation.
+ */
+export async function finalizeRoadmap(req: AuthRequest, res: Response) {
+  try {
+    const { user } = req;
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { tenantId } = req.params;
+
+    // AUTHORITY GUARD: Owner or SuperAdmin ONLY
+    if (user.role !== 'owner' && user.role !== 'superadmin') {
+      console.warn(`[Roadmap] Unauthorized finalization attempt by ${user.role} (${user.userId})`);
+      return res.status(403).json({ error: 'Only Executives (Owners) can finalize the roadmap.' });
+    }
+
+    // Double check tenant ownership for Owners
+    if (user.role === 'owner' && user.tenantId !== tenantId) {
+      return res.status(403).json({ error: 'Access denied to this tenant.' });
+    }
+
+    // IDEMPOTENCY CHECK: Check if already finalized
+    const existingRoadmap = await db.query.roadmaps.findFirst({
+      where: eq(roadmaps.tenantId, tenantId),
+      orderBy: [desc(roadmaps.createdAt)] // Get latest
+    });
+
+    if (existingRoadmap && existingRoadmap.status === 'finalized') {
+      console.log(`[Roadmap] Roadmap already finalized for tenant ${tenantId}. Returning existing.`);
+      return res.json({
+        success: true,
+        message: 'Roadmap is already finalized.',
+        data: {
+          roadmapId: existingRoadmap.id,
+          alreadyFinalized: true
+        }
+      });
+    }
+
+    // Call service which enforces Gates (Intake, Brief, Moderation)
+    const result = await generateFinalRoadmapForTenant(tenantId);
+
+    return res.json({
+      success: true,
+      message: 'Roadmap finalized successfully.',
+      data: result
+    });
+
+  } catch (error: any) {
+    console.error('[Roadmap] Error finalizing roadmap:', error);
+
+    // Map service errors to appropriate status codes
+    if (error.message?.includes('Gating Failed')) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    if (error.message?.includes('Moderation incomplete')) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    if (error.message?.includes('Moderation incomplete')) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    if (error.message?.includes('No tickets found') || error.message?.includes('No approved tickets')) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    if (error.message?.includes('Tenant not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+
+    return res.status(500).json({ error: 'Failed to finalize roadmap.' });
   }
 }

@@ -1,0 +1,43 @@
+
+🔍 PHASE 1: DATA EXISTENCE CHECK
+
+============================================================
+
+
+1️⃣  TENANT ROWS:
+
+  ✓ Hayes Real Estate Group
+    ID: 4e2c6eb1-0767-43d6-b6a4-3fca8efd3f64
+    Created: Fri Oct 31 2025 03:57:04 GMT-0700 (Pacific Daylight Time)
+    Updated: Thu Dec 11 2025 07:06:14 GMT-0800 (Pacific Standard Time)
+    Business Type: default
+    Status: pilot_active
+
+
+2️⃣  DIAGNOSTIC SNAPSHOTS COUNT:
+
+  Hayes Real Estate Group: 0 diagnostic snapshots
+
+
+3️⃣  SOP TICKETS COUNT:
+
+  Hayes Real Estate Group: 0 SOP tickets
+
+
+4️⃣  ROADMAPS COUNT:
+
+  Hayes Real Estate Group: 1 roadmaps
+
+
+5️⃣  ROADMAP SECTIONS COUNT:
+
+  Hayes Real Estate Group: 0 roadmap sections
+
+
+6️⃣  ROADMAP STATUS BREAKDOWN:
+
+  Hayes Real Estate Group:
+    delivered: 1
+
+============================================================
+✅ PHASE 1 COMPLETE

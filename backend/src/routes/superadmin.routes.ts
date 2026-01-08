@@ -4,6 +4,8 @@ import { authenticate } from '../middleware/auth';
 import * as superadminController from '../controllers/superadmin.controller';
 import * as ticketModerationController from '../controllers/ticketModeration.controller';
 import * as finalRoadmapController from '../controllers/finalRoadmap.controller';
+import * as roadmapController from '../controllers/roadmap.controller';
+import * as snapshotController from '../controllers/snapshot.controller';
 
 const router = Router();
 
@@ -90,6 +92,10 @@ router.post('/firms/:tenantId/generate-tickets', superadminController.generateTi
 // POST /api/superadmin/firms/:tenantId/extract-metadata - Extract roadmap metadata
 router.post('/firms/:tenantId/extract-metadata', superadminController.extractMetadataForFirm);
 
+// POST /api/superadmin/firms/:tenantId/close-intake - CR-UX-3: Intake Closure Gate
+router.post('/firms/:tenantId/close-intake', superadminController.closeIntakeWindow);
+
+
 // EPIC 3: Metrics & Outcomes
 // GET /api/superadmin/firms/:tenantId/metrics - Get performance metrics
 router.get('/firms/:tenantId/metrics', superadminController.getMetricsForFirm);
@@ -122,6 +128,12 @@ router.post('/tickets/reject', ticketModerationController.rejectDiagnosticTicket
 // POST /api/superadmin/firms/:tenantId/generate-final-roadmap - Generate final roadmap from approved tickets
 router.post('/firms/:tenantId/generate-final-roadmap', finalRoadmapController.generateFinalRoadmap);
 
+// POST /api/superadmin/roadmap/:tenantId/finalize - Finalize Strategic Roadmap (CR-UX-7)
+router.post('/roadmap/:tenantId/finalize', roadmapController.finalizeRoadmap);
+
+// GET /api/superadmin/snapshot/:tenantId - Executive Snapshot (CR-UX-8)
+router.get('/snapshot/:tenantId', snapshotController.getTenantSnapshot);
+
 // Webinar Registration Management
 // GET /api/superadmin/webinar/registrations - View all webinar registrations
 router.get('/webinar/registrations', superadminController.getWebinarRegistrations);
@@ -134,5 +146,15 @@ router.get('/webinar/settings', superadminController.getWebinarSettings);
 
 // PATCH /api/superadmin/webinar/password - Update webinar password
 router.patch('/webinar/password', superadminController.updateWebinarPassword);
+
+// EXECUTIVE BRIEF (Ticket 3)
+// GET /api/superadmin/firms/:tenantId/exec-brief - Get brief
+router.get('/firms/:tenantId/exec-brief', superadminController.getExecutiveBrief);
+
+// POST /api/superadmin/firms/:tenantId/exec-brief - Upsert brief
+router.post('/firms/:tenantId/exec-brief', superadminController.upsertExecutiveBrief);
+
+// PATCH /api/superadmin/firms/:tenantId/exec-brief/status - Transition status
+router.patch('/firms/:tenantId/exec-brief/status', superadminController.transitionExecutiveBriefStatus);
 
 export default router;

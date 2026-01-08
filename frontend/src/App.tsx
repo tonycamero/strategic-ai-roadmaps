@@ -34,6 +34,7 @@ import ResetPassword from './pages/ResetPassword';
 import { OnboardingLayout } from './layouts/OnboardingLayout';
 import { TrustAgentShell as SmartShell } from './trustagent/TrustAgentShell';
 import { Webinar } from './pages/Webinar';
+import RoleEvidenceRender from './pages/render/RoleEvidenceRender';
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -90,6 +91,7 @@ function App() {
               <PortalTrustAgent />
               <Switch>
                 <Route path="/">{() => { return <TonyCameroLanding />; }}</Route>
+                <Route path="/__render/role-evidence" component={RoleEvidenceRender} />
 
                 {/* Strategic AI Roadmaps SaaS Homepage - Consolidated */}
                 <Route path="/ai" component={LandingPage} />
@@ -157,6 +159,7 @@ function App() {
                 <ProtectedRoute path="/superadmin" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/roadmaps" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/firms" component={SuperAdminLayout} />
+                <ProtectedRoute path="/superadmin/control-plane/firms/:tenantId" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/firms/:tenantId" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/leads" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/agent" component={SuperAdminLayout} />

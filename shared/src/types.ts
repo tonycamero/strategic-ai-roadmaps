@@ -11,7 +11,18 @@ export type BusinessType = z.infer<typeof BusinessType>;
 // USER ROLES
 // ============================================================================
 
-export const UserRole = z.enum(['owner', 'ops', 'sales', 'delivery', 'staff', 'superadmin']);
+export const UserRole = z.enum([
+  'owner',
+  'ops',
+  'sales',
+  'delivery',
+  'staff',
+  'superadmin',
+  'exec_sponsor',
+  'delegate',
+  'operator',
+  'agent'
+]);
 export type UserRole = z.infer<typeof UserRole>;
 
 // ============================================================================
@@ -214,3 +225,23 @@ export const TrainingProgress = z.object({
 });
 
 export type TrainingProgress = z.infer<typeof TrainingProgress>;
+
+// ============================================================================
+// EXECUTIVE BRIEF
+// ============================================================================
+
+export const ExecutiveBriefStatus = z.enum(['DRAFT', 'READY_FOR_EXEC', 'ACKNOWLEDGED', 'WAIVED']);
+export type ExecutiveBriefStatus = z.infer<typeof ExecutiveBriefStatus>;
+
+export const ExecutiveBrief = z.object({
+  id: z.string().uuid(),
+  firmId: z.string().uuid(),
+  status: ExecutiveBriefStatus,
+  content: z.string(),
+  createdBy: z.string().uuid(),
+  lastUpdatedBy: z.string().uuid(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+});
+
+export type ExecutiveBrief = z.infer<typeof ExecutiveBrief>;

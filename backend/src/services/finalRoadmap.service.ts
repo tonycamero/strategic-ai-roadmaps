@@ -6,23 +6,45 @@
  */
 
 import { db } from '../db';
-import { roadmaps, roadmapSections, sopTickets, tenants } from '../db/schema';
+import * as crypto from 'crypto';
+import { roadmaps, roadmapSections, sopTickets, tenants, executiveBriefs } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { assembleRoadmap } from './roadmapAssembly.service';
 import { RoadmapContext, DiagnosticMap } from '../types/diagnostic';
 
 export async function generateFinalRoadmapForTenant(tenantId: string) {
   console.log(`[FinalRoadmap] Starting final roadmap generation for tenant: ${tenantId}`);
-
-  // 1. Get tenant + latest diagnosticId
+  // 1. Get tenant + latest diagnosticId + Intake State
   const [tenant] = await db
     .select()
     .from(tenants)
     .where(eq(tenants.id, tenantId))
     .limit(1);
 
+  console.log('[FinalRoadmap] Fetched Tenant:', tenant);
+
   if (!tenant) {
     throw new Error(`[FinalRoadmap] Tenant not found: ${tenantId}`);
+  }
+
+  // GATE 1: Intake Window
+  if (tenant.intakeWindowState !== 'CLOSED') {
+    throw new Error(`[FinalRoadmap] Gating Failed: Intake Window must be CLOSED before finalization.`);
+  }
+
+  // GATE 2: Executive Brief
+  const [brief] = await db
+    .select()
+    .from(executiveBriefs) // Ensure this is imported
+    .where(eq(executiveBriefs.tenantId, tenantId))
+    .limit(1);
+
+  if (!brief) {
+    throw new Error(`[FinalRoadmap] Gating Failed: Executive Brief not found.`);
+  }
+
+  if (brief.status !== 'ACKNOWLEDGED' && brief.status !== 'WAIVED') {
+    throw new Error(`[FinalRoadmap] Gating Failed: Executive Brief must be ACKNOWLEDGED or WAIVED (Current: ${brief.status}).`);
   }
 
   if (!tenant.lastDiagnosticId) {
@@ -51,14 +73,13 @@ export async function generateFinalRoadmapForTenant(tenantId: string) {
     );
   }
 
-  console.log(`[FinalRoadmap] Found ${allTickets.length} total tickets`);
-
   // 3. Ensure moderation completed (all tickets must be moderated)
-  const unmoderatedTickets = allTickets.filter((t) => t.moderatedAt === null);
-  
-  if (unmoderatedTickets.length > 0) {
+  // CR-UX-7: Ensure NO pending tickets
+  const pendingTickets = allTickets.filter((t) => t.moderationStatus === 'pending');
+
+  if (pendingTickets.length > 0) {
     throw new Error(
-      `[FinalRoadmap] Moderation incomplete. ${unmoderatedTickets.length} tickets still pending moderation. All tickets must be approved or rejected before final roadmap generation.`
+      `[FinalRoadmap] Gating Failed: Moderation Incomplete. ${pendingTickets.length} tickets are still PENDING.`
     );
   }
 
@@ -202,8 +223,9 @@ export async function generateFinalRoadmapForTenant(tenantId: string) {
   await db
     .update(roadmaps)
     .set({
-      status: 'delivered',
-      deliveredAt: new Date()
+      status: 'finalized',   // CR-UX-7: Explicit finalized status
+      deliveredAt: new Date(),
+      finalizedAt: new Date() // Schema might need this or just use deliveredAt logic
     })
     .where(eq(roadmaps.id, roadmap.id));
 

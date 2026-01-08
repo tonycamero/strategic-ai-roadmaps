@@ -19,6 +19,9 @@ export const tenants = pgTable('tenants', {
   firmSizeTier: varchar('firm_size_tier', { length: 20 }).default('small'), // micro | small | mid | large
   discoveryComplete: boolean('discovery_complete').notNull().default(false),
   lastDiagnosticId: varchar('last_diagnostic_id', { length: 255 }),
+  intakeWindowState: varchar('intake_window_state', { length: 20 }).notNull().default('OPEN'), // OPEN | CLOSED
+  intakeSnapshotId: varchar('intake_snapshot_id', { length: 255 }),
+  intakeClosedAt: timestamp('intake_closed_at', { withTimezone: true }),
   notes: text('notes'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
@@ -382,8 +385,22 @@ export const tenantVectorStores = pgTable('tenant_vector_stores', {
 });
 
 // ============================================================================
-// TYPE EXPORTS
+// EXECUTIVE BRIEFS
 // ============================================================================
+
+export const executiveBriefs = pgTable('executive_briefs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().unique().references(() => tenants.id, { onDelete: 'cascade' }),
+  status: varchar('status', { length: 50 }).notNull().default('DRAFT'), // DRAFT | READY_FOR_EXEC_REVIEW | ACKNOWLEDGED | WAIVED
+  content: text('content').notNull().default(''),
+  createdBy: uuid('created_by').notNull().references(() => users.id),
+  lastUpdatedBy: uuid('last_updated_by').notNull().references(() => users.id),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export type ExecutiveBrief = typeof executiveBriefs.$inferSelect;
+export type NewExecutiveBrief = typeof executiveBriefs.$inferInsert;
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -786,3 +803,43 @@ export const diagnosticSnapshots = pgTable('diagnostic_snapshots', {
 
 export type DiagnosticSnapshot = typeof diagnosticSnapshots.$inferSelect;
 export type NewDiagnosticSnapshot = typeof diagnosticSnapshots.$inferInsert;
+
+// ============================================================================
+// EVIDENCE ARTIFACTS (Real Systemic Evidence)
+// ============================================================================
+
+export const evidenceArtifacts = pgTable('evidence_artifacts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  kind: varchar('kind', { length: 50 }).notNull().default('image'), // image | pdf_excerpt | text_excerpt
+  storageProvider: varchar('storage_provider', { length: 50 }).notNull(), // vercel_blob | local | s3
+  storageKey: text('storage_key').notNull(),
+  publicUrl: text('public_url'),
+  mimeType: varchar('mime_type', { length: 100 }),
+  bytes: integer('bytes'),
+  width: integer('width'),
+  height: integer('height'),
+  caption: text('caption'),
+  source: varchar('source', { length: 100 }), // manual_upload
+  createdBy: text('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const evidenceBindings = pgTable('evidence_bindings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  teamSessionId: varchar('team_session_id', { length: 128 }).notNull(), // FE Token or Team ID
+  role: varchar('role', { length: 50 }).notNull(),
+  slotKey: varchar('slot_key', { length: 100 }).notNull(),
+  artifactId: uuid('artifact_id').notNull().references(() => evidenceArtifacts.id, { onDelete: 'cascade' }),
+  strength: integer('strength').default(1),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type EvidenceArtifact = typeof evidenceArtifacts.$inferSelect;
+export type NewEvidenceArtifact = typeof evidenceArtifacts.$inferInsert;
+
+export type EvidenceBinding = typeof evidenceBindings.$inferSelect;
+export type NewEvidenceBinding = typeof evidenceBindings.$inferInsert;
+
+// ============================================================================
+
+

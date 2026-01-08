@@ -1,6 +1,7 @@
 import 'dotenv/config';
 
 import express from 'express';
+import path from 'path';
 import cors from 'cors';
 
 import authRoutes from './routes/auth.routes';
@@ -24,7 +25,9 @@ import trustagentRoutes from './routes/trustagent.routes';
 import diagnosticRoutes from './routes/diagnostic.routes'; // formerly webinar.routes
 import diagnosticGenerationRoutes from './routes/diagnostic_generation.routes'; // formerly diagnostic.routes
 import onboardingRoutes from './routes/onboarding.routes';
+
 import tenantsRoutes from './routes/tenants.routes';
+import internalEvidenceRoutes from './routes/internalEvidence.routes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -35,6 +38,9 @@ app.set('trust proxy', 1);
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Serve uploads locally in dev/non-blob mode
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Request logging in development
 if (process.env.NODE_ENV !== 'production') {
@@ -76,6 +82,9 @@ app.use('/api/public/diagnostic', diagnosticRoutes); // Team Execution Diagnosti
 app.use('/api/tenants', tenantsRoutes); // Tenant business profile
 app.use('/api/tenants', onboardingRoutes); // Tenant onboarding progress
 app.use('/api', leadRequestRoutes); // Public routes
+if (process.env.INTERNAL_EVIDENCE_TOKEN) {
+  app.use('/api/internal/evidence', internalEvidenceRoutes);
+}
 
 // 404 handler
 app.use((req, res) => {
