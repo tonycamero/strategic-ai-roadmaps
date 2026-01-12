@@ -1,30 +1,36 @@
 import { Response } from 'express';
 import { nanoid } from 'nanoid';
 import { db } from '../db';
-import { users, intakes, tenants, roadmaps, auditEvents, tenantDocuments, discoveryCallNotes, roadmapSections, ticketPacks, ticketInstances, tenantMetricsDaily, webinarRegistrations, onboardingStates, implementationSnapshots, roadmapOutcomes, agentConfigs, agentThreads, webinarSettings, executiveBriefs } from '../db/schema';
+import { users, intakes, tenants, roadmaps, auditEvents, tenantDocuments, discoveryCallNotes, roadmapSections, ticketPacks, ticketInstances, tenantMetricsDaily, webinarRegistrations, implementationSnapshots, roadmapOutcomes, agentConfigs, agentThreads, webinarSettings, diagnostics } from '../db/schema';
 import { eq, and, sql, count, desc, asc } from 'drizzle-orm';
 import { AuthRequest } from '../middleware/auth';
 import path from 'path';
 import fs from 'fs/promises';
-import { buildNormalizedIntakeContext } from '../services/intakeNormalizer';
-import { generateSop01Outputs } from '../services/sop01Engine';
-import { persistSop01OutputsForTenant } from '../services/sop01Persistence';
-import { getLatestDiscoveryCallNotes, saveDiscoveryCallNotes } from '../services/discoveryCallService';
-import { ingestDiagnostic } from '../services/diagnosticIngestion.service';
-import type { DiagnosticMap } from '../types/diagnostic';
 import { generateTicketPackForRoadmap } from '../services/ticketPackGenerator.service';
 import { extractRoadmapMetadata } from '../services/roadmapMetadataExtractor.service';
 import { ImplementationMetricsService } from '../services/implementationMetrics.service';
-import { saveCaseStudy } from '../services/caseStudyExport.service';
 import { getOrCreateRoadmapForTenant } from '../services/roadmapOs.service';
 import { refreshVectorStoreContent } from '../services/tenantVectorStore.service';
 import { getModerationStatus } from '../services/ticketModeration.service';
-
+import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
+import { AuthorityCategory } from '@roadmap/shared';
 const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 
 // ============================================================================
 // HELPER: Check SuperAdmin Permission
 // ============================================================================
+
+/**
+ * Helper to ensure the user is part of the Consulting Team (SuperAdmin or Delegate)
+ */
+function requireConsultant(req: AuthRequest, res: Response): boolean {
+  const allowedRoles = ['superadmin', 'delegate', 'exec_sponsor'];
+  if (!req.user || !req.user.isInternal || !allowedRoles.includes(req.user.role as string)) {
+    res.status(403).json({ error: 'Consulting Team access required' });
+    return false;
+  }
+  return true;
+}
 
 function requireSuperAdmin(req: AuthRequest, res: Response): boolean {
   if (!req.user || (req.user.role as string) !== 'superadmin') {
@@ -52,7 +58,7 @@ function requireExecutiveAuthority(req: AuthRequest, res: Response): boolean {
 // GET /api/superadmin/overview - Global Dashboard Stats
 // ============================================================================
 
-export async function getOverview(req: AuthRequest, res: Response) {
+export async function getOverview(req: AuthRequest<any, any, any, { cohortLabel?: string }>, res: Response) {
   try {
     if (!requireSuperAdmin(req, res)) return;
 
@@ -119,10 +125,175 @@ export async function getOverview(req: AuthRequest, res: Response) {
 }
 
 // ============================================================================
+// GET ACTIVITY FEED
+// ============================================================================
+
+export async function getActivityFeed(req: AuthRequest<any, any, any, { limit?: string }>, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+
+    const limit = parseInt(req.query.limit || '50', 10);
+
+    // Fetch recent audit events with actor and tenant information
+    const events = await db
+      .select({
+        id: auditEvents.id,
+        eventType: auditEvents.eventType,
+        entityType: auditEvents.entityType,
+        metadata: auditEvents.metadata,
+        createdAt: auditEvents.createdAt,
+        actorName: users.name,
+        actorRole: auditEvents.actorRole,
+        tenantId: tenants.id,
+        tenantName: tenants.name,
+      })
+      .from(auditEvents)
+      .leftJoin(users, eq(auditEvents.actorUserId, users.id))
+      .leftJoin(tenants, eq(auditEvents.tenantId, tenants.id))
+      .orderBy(desc(auditEvents.createdAt))
+      .limit(limit);
+
+    // Transform events into activity feed format
+    const activities = events.map((event) => {
+      const actor = event.actorName || 'System';
+      const action = formatEventAction(event.eventType, event.metadata);
+      const target = event.tenantName || 'System';
+
+      return {
+        id: event.id,
+        actor,
+        action,
+        target,
+        tenantId: event.tenantId,
+        timestamp: event.createdAt,
+        type: event.entityType || 'system',
+      };
+    });
+
+    return res.json({ activities });
+  } catch (error) {
+    console.error('Get activity feed error:', error);
+    return res.status(500).json({ error: 'Failed to fetch activity feed' });
+  }
+}
+
+// Helper function to format event types into readable actions
+function formatEventAction(eventType: string, metadata: any): string {
+  const metadataObj = metadata as Record<string, any> || {};
+
+  switch (eventType) {
+    case 'intake_completed':
+      return 'completed Intake';
+    case 'intake_reopened':
+      return 'reopened Intake';
+    case 'diagnostic_generated':
+      return 'generated SOP-01 Diagnostic';
+    case 'roadmap_created':
+      return 'created Roadmap';
+    case 'roadmap_status_changed':
+      return `updated Roadmap to ${metadataObj.newStatus || 'new status'}`;
+    case 'discovery_acknowledged':
+      return 'acknowledged Discovery';
+    case 'intake_window_closed':
+      return 'closed Intake Window';
+    case 'intake_window_reopened':
+      return 'reopened Intake Window';
+    case 'exec_ready_approved':
+      return 'approved for Execution';
+    case 'ticket_pack_generated':
+      return 'generated Ticket Pack';
+    default:
+      return eventType.replace(/_/g, ' ');
+  }
+}
+
+
+export async function updateIntakeCoaching(req: AuthRequest<{ intakeId: string }, any, { coachingFeedback: any }>, res: Response) {
+  try {
+    if (!requireConsultant(req, res)) return;
+
+    const { intakeId } = req.params;
+    const { coachingFeedback } = req.body;
+
+    const [intake] = await db
+      .select({
+        id: intakes.id,
+        tenantId: intakes.tenantId,
+      })
+      .from(intakes)
+      .where(eq(intakes.id, intakeId))
+      .limit(1);
+
+    if (!intake) {
+      return res.status(404).json({ error: 'Intake not found' });
+    }
+
+    await db
+      .update(intakes)
+      .set({
+        coachingFeedback,
+      })
+      .where(eq(intakes.id, intakeId));
+
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error('Update intake coaching error:', error);
+    return res.status(500).json({ error: 'Failed to update coaching feedback' });
+  }
+}
+
+export async function reopenIntake(req: AuthRequest<{ intakeId: string }>, res: Response) {
+  try {
+    if (!requireConsultant(req, res)) return;
+    if (!requireExecutiveAuthority(req, res)) return;
+
+    const { intakeId } = req.params;
+
+    const [intake] = await db
+      .select({
+        id: intakes.id,
+        tenantId: intakes.tenantId,
+      })
+      .from(intakes)
+      .where(eq(intakes.id, intakeId))
+      .limit(1);
+
+    if (!intake) {
+      return res.status(404).json({ error: 'Intake not found' });
+    }
+
+    await db
+      .update(intakes)
+      .set({
+        status: 'in_progress',
+        completedAt: null,
+      })
+      .where(eq(intakes.id, intakeId));
+
+    // Audit Log
+    await db.insert(auditEvents).values({
+      tenantId: intake.tenantId,
+      actorUserId: req.user?.userId,
+      actorRole: req.user?.role as string,
+      eventType: 'INTAKE_REOPENED',
+      entityType: 'intake',
+      entityId: intakeId,
+      metadata: { reopenedAt: new Date() },
+    });
+
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error('Re-open intake error:', error);
+    return res.status(500).json({ error: 'Failed to re-open intake' });
+  }
+}
+
+
+// ============================================================================
 // GET /api/superadmin/tenants - Simple List for Dropdowns
 // ============================================================================
 
-export async function getTenants(req: AuthRequest, res: Response) {
+export async function getTenants(req: AuthRequest<any, any, any, { search?: string }>, res: Response) {
   try {
     if (!requireSuperAdmin(req, res)) return;
 
@@ -145,7 +316,7 @@ export async function getTenants(req: AuthRequest, res: Response) {
 // GET /api/superadmin/roadmaps - List All Client Roadmaps
 // ============================================================================
 
-export async function getAllRoadmaps(req: AuthRequest, res: Response) {
+export async function getAllRoadmaps(req: AuthRequest<any, any, any, { cohort?: string; status?: string; search?: string }>, res: Response) {
   try {
     if (!requireSuperAdmin(req, res)) return;
 
@@ -191,7 +362,7 @@ export async function getAllRoadmaps(req: AuthRequest, res: Response) {
 // GET /api/superadmin/firms - List All Firms with Lifecycle Data
 // ============================================================================
 
-export async function getFirms(req: AuthRequest, res: Response) {
+export async function getFirms(req: AuthRequest<any, any, any, { cohortLabel?: string }>, res: Response) {
   try {
     if (!requireSuperAdmin(req, res)) return;
 
@@ -356,7 +527,7 @@ export async function getRoadmapSectionsForFirm(req: AuthRequest, res: Response)
 // POST /api/superadmin/firms/:tenantId/close-intake
 // ============================================================================
 
-export async function closeIntakeWindow(req: AuthRequest, res: Response) {
+export async function closeIntakeWindow(req: AuthRequest<{ tenantId: string }>, res: Response) {
   try {
     if (!requireSuperAdmin(req, res)) return;
     if (!requireExecutiveAuthority(req, res)) return;
@@ -380,7 +551,7 @@ export async function closeIntakeWindow(req: AuthRequest, res: Response) {
     // 2. Audit Log (Critical for Authority Contract)
     await db.insert(auditEvents).values({
       tenantId,
-      actorUserId: req.user?.id,
+      actorUserId: req.user?.userId,
       actorRole: req.user?.role as string,
       eventType: 'intake_window_closed',
       entityType: 'tenant',
@@ -400,7 +571,7 @@ export async function closeIntakeWindow(req: AuthRequest, res: Response) {
 // GET /api/superadmin/firms/:tenantId - Firm Detail
 // ============================================================================
 
-export async function getFirmDetail(req: AuthRequest, res: Response) {
+export async function getFirmDetail(req: AuthRequest<{ tenantId: string }>, res: Response) {
   try {
     if (!requireSuperAdmin(req, res)) return;
 
@@ -482,12 +653,7 @@ export async function getFirmDetail(req: AuthRequest, res: Response) {
 
     const latestRoadmap = firmRoadmaps[0] || null;
 
-    // Get onboarding state
-    const [onboarding] = await db
-      .select()
-      .from(onboardingStates)
-      .where(eq(onboardingStates.tenantId, tenantId))
-      .limit(1);
+
 
     // Get aggregate metrics (last 30 days)
     const metricsRows = await db
@@ -571,7 +737,6 @@ export async function getFirmDetail(req: AuthRequest, res: Response) {
         firmSizeTier: tenantData.firmSizeTier,
         createdAt: tenantData.tenantCreatedAt,
         notes: tenantData.notes,
-        notes: tenantData.notes,
         lastDiagnosticId: tenantData.lastDiagnosticId,
         intakeWindowState: tenantData.intakeWindowState,
         intakeSnapshotId: tenantData.intakeSnapshotId,
@@ -586,11 +751,7 @@ export async function getFirmDetail(req: AuthRequest, res: Response) {
         createdAt: owner.createdAt,
       } : null,
       teamMembers: team,
-      onboardingSummary: onboarding ? {
-        percentComplete: onboarding.percentComplete,
-        totalPoints: onboarding.totalPoints,
-        maxPoints: onboarding.maxPoints,
-      } : null,
+
       activitySummary: {
         intakeStarted: Number(aggregateMetrics.intakeStarted) || 0,
         intakeCompleted: Number(aggregateMetrics.intakeCompleted) || 0,
@@ -615,7 +776,7 @@ export async function getFirmDetail(req: AuthRequest, res: Response) {
 // GET /api/superadmin/firms/:tenantId/detail - Firm Detail V2 (Single Source of Truth)
 // ============================================================================
 
-export async function getFirmDetailV2(req: AuthRequest, res: Response) {
+export async function getFirmDetailV2(req: AuthRequest<{ tenantId: string }>, res: Response) {
   try {
     if (!requireSuperAdmin(req, res)) return;
 
@@ -635,10 +796,12 @@ export async function getFirmDetailV2(req: AuthRequest, res: Response) {
         businessType: tenants.businessType,
         teamHeadcount: tenants.teamHeadcount,
         baselineMonthlyLeads: tenants.baselineMonthlyLeads,
+        baselineMonthlyLeads: tenants.baselineMonthlyLeads,
         firmSizeTier: tenants.firmSizeTier,
         notes: tenants.notes,
         lastDiagnosticId: tenants.lastDiagnosticId,
         discoveryComplete: tenants.discoveryComplete,
+        discoveryAcknowledgedAt: tenants.discoveryAcknowledgedAt,
         tenantCreatedAt: tenants.createdAt,
         tenantUpdatedAt: tenants.updatedAt,
         ownerUserId: tenants.ownerUserId,
@@ -663,12 +826,7 @@ export async function getFirmDetailV2(req: AuthRequest, res: Response) {
       .where(eq(users.id, tenantRow.ownerUserId))
       .limit(1);
 
-    // 2. ONBOARDING
-    const [onboardingData] = await db
-      .select()
-      .from(onboardingStates)
-      .where(eq(onboardingStates.tenantId, tenantId))
-      .limit(1);
+
 
     // 3. ENGAGEMENT SUMMARY (last 30 days + lifetime)
     const thirtyDaysAgo = new Date();
@@ -881,24 +1039,8 @@ export async function getFirmDetailV2(req: AuthRequest, res: Response) {
         updatedAt: tenantRow.tenantUpdatedAt,
         ownerUserId: tenantRow.ownerUserId,
       },
-      // 12. EXECUTIVE BRIEF SIGNAL (STRUCTURAL ONLY)
-      execBrief: await (async () => {
-        const [brief] = await db
-          .select({ status: executiveBriefs.status, id: executiveBriefs.id })
-          .from(executiveBriefs)
-          .where(sql`${executiveBriefs.tenantId} = ${tenantId}`)
-          .limit(1);
-        return brief ? { exists: true, status: brief.status } : { exists: false, status: null };
-      })(),
-      onboarding: onboardingData
-        ? {
-          percentComplete: onboardingData.percentComplete,
-          totalPoints: onboardingData.totalPoints,
-          maxPoints: onboardingData.maxPoints,
-          steps: onboardingData.steps as any,
-          badges: onboardingData.badges as any,
-        }
-        : null,
+
+
       engagementSummary: {
         last30d: {
           intakeCompleted: Number(metricsLast30d[0]?.intakeCompleted || 0),
@@ -1634,218 +1776,9 @@ export async function getFirmWorkflowStatus(req: AuthRequest, res: Response) {
   }
 }
 
-// ============================================================================
-// POST /api/superadmin/firms/:tenantId/generate-sop01 - Generate SOP-01 Diagnostic
-// ============================================================================
 
-export async function generateSop01ForFirm(req: AuthRequest, res: Response) {
-  try {
-    // SECURITY: This is an Executive Authority action (Ticket 4)
-    if (!requireExecutiveAuthority(req, res)) return;
 
-    const { tenantId } = req.params;
 
-    // GATING: Finalization is BLOCKED unless Brief is ACKNOWLEDGED or WAIVED
-    const [brief] = await db
-      .select()
-      .from(executiveBriefs)
-      .where(eq(executiveBriefs.tenantId, tenantId))
-      .limit(1);
-
-    if (!brief || !(['ACKNOWLEDGED', 'WAIVED'].includes(brief.status))) {
-      return res.status(403).json({
-        error: 'Gated Action',
-        details: 'Leadership alignment required. Executive Brief must be ACKNOWLEDGED or WAIVED before executing diagnostic synthesis.'
-      });
-    }
-
-    // Build normalized intake context
-    const normalized = await buildNormalizedIntakeContext(tenantId);
-
-    // Generate SOP-01 outputs via AI
-    const outputs = await generateSop01Outputs(normalized);
-
-    // Persist to filesystem and database
-    await persistSop01OutputsForTenant(tenantId, outputs);
-
-    // 🎯 Onboarding Hook: Mark DIAGNOSTIC_GENERATED complete
-    try {
-      const { onboardingProgressService } = await import('../services/onboardingProgress.service');
-      await onboardingProgressService.markStep(
-        tenantId,
-        'DIAGNOSTIC_GENERATED',
-        'COMPLETED'
-      );
-    } catch (error) {
-      console.error('Failed to update onboarding progress:', error);
-    }
-
-    // 🎯 NEW: Trigger inventory-driven ticket engine (BLOCKING - must complete before response)
-    console.log('[SOP-01] Triggering inventory-driven ticket engine for tenant:', tenantId);
-
-    // Fetch tenant data for DiagnosticMap
-    const [tenant] = await db
-      .select()
-      .from(tenants)
-      .where(eq(tenants.id, tenantId))
-      .limit(1);
-
-    if (!tenant) {
-      console.warn('[SOP-01] Tenant not found, skipping ticket generation');
-      return res.status(404).json({ error: 'Tenant not found' });
-    }
-
-    // Get discovery notes if available
-    const discoveryNote = await getLatestDiscoveryCallNotes(tenantId);
-
-    // Build minimal DiagnosticMap from intake data
-    const diagnosticMap: DiagnosticMap = {
-      tenantId,
-      firmName: tenant.name,
-      diagnosticDate: new Date().toISOString(),
-      painClusters: [
-        {
-          category: 'Operations',
-          description: 'Derived from intake data',
-          severity: 3,
-          affectedRoles: ['Owner', 'Sales', 'Ops'],
-          estimatedTimeLostHoursWeekly: 10
-        }
-      ],
-      workflowBottlenecks: [
-        {
-          process: 'Lead Follow-Up',
-          currentState: 'Manual tracking',
-          targetState: 'Automated workflow',
-          impactScore: 4
-        }
-      ],
-      systemsFragmentation: {
-        currentTools: ['CRM', 'Spreadsheets'],
-        redundancies: ['Manual data entry'],
-        gapsIdentified: ['Automated follow-up']
-      },
-      aiOpportunityZones: [
-        {
-          zone: 'Lead Management',
-          aiCapability: 'Automated routing and follow-up',
-          estimatedImpact: 'High'
-        }
-      ],
-      readinessScore: 70,
-      implementationTier: tenant.firmSizeTier === 'micro' ? 'starter' :
-        tenant.firmSizeTier === 'large' ? 'scale' : 'growth'
-    };
-
-    // Pass SOP-01 content to inventory engine
-    const sop01Content = {
-      sop01DiagnosticMarkdown: outputs.companyDiagnosticMap,
-      sop01AiLeverageMarkdown: outputs.aiLeverageMap,
-      sop01RoadmapSkeleton: outputs.roadmapSkeleton,
-      discoveryNotesMarkdown: discoveryNote?.notes
-    };
-
-    // Run inventory-driven pipeline (BLOCKING)
-    const result = await ingestDiagnostic(diagnosticMap, sop01Content);
-
-    console.log(`[SOP-01] ✅ Inventory engine complete: ${result.ticketCount} tickets, ${result.roadmapSectionCount} sections`);
-
-    // Auto-refresh vector store after everything is done (non-blocking)
-    console.log('[SOP-01] Triggering vector store refresh for tenant:', tenantId);
-    refreshVectorStoreContent(tenantId)
-      .then(() => console.log('[SOP-01] Vector store refreshed successfully'))
-      .catch((error: any) => console.warn('[SOP-01] Vector store refresh failed:', error.message));
-
-    return res.json({ ok: true });
-  } catch (error: any) {
-    console.error('Generate SOP-01 for firm error:', error);
-    return res.status(500).json({ error: error.message || 'Failed to generate SOP-01' });
-  }
-}
-
-// ============================================================================
-// GET /api/superadmin/firms/:tenantId/discovery-notes - Get Discovery Notes
-// ============================================================================
-
-export async function getDiscoveryNotesForFirm(req: AuthRequest, res: Response) {
-  try {
-    if (!requireSuperAdmin(req, res)) return;
-
-    const { tenantId } = req.params;
-    const note = await getLatestDiscoveryCallNotes(tenantId);
-
-    return res.json({
-      notes: note?.notes ?? '',
-      updatedAt: note?.updatedAt ?? null,
-    });
-  } catch (error) {
-    console.error('Get discovery notes for firm error:', error);
-    return res.status(500).json({ error: 'Failed to get discovery notes' });
-  }
-}
-
-// ============================================================================
-// POST /api/superadmin/firms/:tenantId/discovery-notes - Save Discovery Notes
-// ============================================================================
-
-export async function saveDiscoveryNotesForFirm(req: AuthRequest, res: Response) {
-  try {
-    if (!requireSuperAdmin(req, res)) return;
-
-    const { tenantId } = req.params;
-    const { notes } = req.body;
-
-    const [tenant] = await db
-      .select()
-      .from(tenants)
-      .where(eq(tenants.id, tenantId))
-      .limit(1);
-
-    if (!tenant) {
-      return res.status(404).json({ error: 'Tenant not found' });
-    }
-
-    await saveDiscoveryCallNotes({
-      tenantId,
-      ownerUserId: tenant.ownerUserId,
-      notes,
-    });
-
-    // Mark discovery as complete in tenant
-    await db
-      .update(tenants)
-      .set({ discoveryComplete: true })
-      .where(eq(tenants.id, tenantId));
-
-    // 🎯 Onboarding Hook: Mark DISCOVERY_CALL complete
-    try {
-      const { onboardingProgressService } = await import('../services/onboardingProgress.service');
-      await onboardingProgressService.markStep(
-        tenantId,
-        'DISCOVERY_CALL',
-        'COMPLETED'
-      );
-    } catch (error) {
-      console.error('Failed to update onboarding progress:', error);
-    }
-
-    // Auto-refresh vector store after saving discovery notes
-    // Note: Discovery notes aren't in tenant_documents, but we refresh
-    // to pick up any other docs that might have been added
-    try {
-      console.log('[Discovery] Auto-refreshing vector store for tenant:', tenantId);
-      await refreshVectorStoreContent(tenantId);
-      console.log('[Discovery] Vector store refreshed successfully');
-    } catch (error: any) {
-      console.warn('[Discovery] Vector store refresh failed:', error.message);
-    }
-
-    return res.json({ ok: true });
-  } catch (error) {
-    console.error('Save discovery notes for firm error:', error);
-    return res.status(500).json({ error: 'Failed to save discovery notes' });
-  }
-}
 
 // ============================================================================
 // POST /api/superadmin/firms/:tenantId/generate-roadmap - Generate Roadmap (SOP-03)
@@ -2147,40 +2080,10 @@ export async function computeOutcomeForFirm(req: AuthRequest, res: Response) {
 // POST /api/superadmin/firms/:tenantId/export/case-study - Export Case Study (T3.10)
 // ============================================================================
 
-export async function exportCaseStudyForFirm(req: AuthRequest, res: Response) {
-  try {
-    if (!requireSuperAdmin(req, res)) return;
 
-    const { tenantId } = req.params;
 
-    // Get tenant info
-    const [tenant] = await db
-      .select()
-      .from(tenants)
-      .where(eq(tenants.id, tenantId));
 
-    if (!tenant) {
-      return res.status(404).json({ error: 'Tenant not found' });
-    }
 
-    // Generate and save case study
-    const result = await saveCaseStudy(
-      tenantId,
-      tenant.ownerUserId,
-      tenant.name,
-      req.user!.userId
-    );
-
-    return res.json({
-      ok: true,
-      documentId: result.documentId,
-      markdown: result.markdown,
-    });
-  } catch (error: any) {
-    console.error('Export case study error:', error);
-    return res.status(500).json({ error: error.message || 'Failed to export case study' });
-  }
-}
 
 // ============================================================================
 // POST /api/superadmin/tenants/:tenantId/refresh-vector-store - Manually Refresh Vector Store (V2)
@@ -2224,178 +2127,6 @@ export async function refreshVectorStoreForTenant(req: AuthRequest, res: Respons
 
 // ============================================================================
 // POST /api/superadmin/firms/:tenantId/generate-roadmap - Generate Roadmap via Diagnostic Ingestion
-// ============================================================================
-
-export async function generateRoadmapForFirm(req: AuthRequest, res: Response) {
-  try {
-    if (!requireSuperAdmin(req, res)) return;
-
-    const { tenantId } = req.params;
-
-    console.log(`[SuperAdmin] Generating roadmap for tenant: ${tenantId}`);
-
-    // Get tenant info
-    const [tenant] = await db
-      .select()
-      .from(tenants)
-      .where(eq(tenants.id, tenantId))
-      .limit(1);
-
-    if (!tenant) {
-      return res.status(404).json({ error: 'Tenant not found' });
-    }
-
-    // Load ALL SOP-01 documents for rich context
-    const sop01Docs = await db
-      .select()
-      .from(tenantDocuments)
-      .where(and(
-        eq(tenantDocuments.tenantId, tenantId),
-        eq(tenantDocuments.sopNumber, 'SOP-01')
-      ));
-
-    // Find each output
-    const diagnosticDoc = sop01Docs.find(d => d.outputNumber === 'Output-1');
-    const aiLeverageDoc = sop01Docs.find(d => d.outputNumber === 'Output-2');
-    const roadmapSkeletonDoc = sop01Docs.find(d => d.outputNumber === 'Output-4');
-
-    if (!diagnosticDoc) {
-      return res.status(400).json({
-        error: 'SOP-01 diagnostic not found',
-        message: 'Please generate SOP-01 first using the "Generate SOP-01" button'
-      });
-    }
-
-    // Read all SOP-01 content from files
-    const sop01DiagnosticMarkdown = await fs.readFile(diagnosticDoc.filePath, 'utf-8');
-    const sop01AiLeverageMarkdown = aiLeverageDoc
-      ? await fs.readFile(aiLeverageDoc.filePath, 'utf-8')
-      : '';
-    const sop01RoadmapSkeleton = roadmapSkeletonDoc
-      ? await fs.readFile(roadmapSkeletonDoc.filePath, 'utf-8')
-      : '';
-
-    // Load discovery notes if available
-    const [discoveryNote] = await db
-      .select()
-      .from(discoveryCallNotes)
-      .where(eq(discoveryCallNotes.tenantId, tenantId))
-      .orderBy(desc(discoveryCallNotes.createdAt))
-      .limit(1);
-
-    const discoveryNotesMarkdown = discoveryNote?.notes || undefined;
-
-    console.log(`[SuperAdmin] Loaded SOP-01 documents:`);
-    console.log(`  - Diagnostic Map: ${sop01DiagnosticMarkdown.length} chars`);
-    console.log(`  - AI Leverage Map: ${sop01AiLeverageMarkdown.length} chars`);
-    console.log(`  - Roadmap Skeleton: ${sop01RoadmapSkeleton.length} chars`);
-    console.log(`  - Discovery Notes: ${discoveryNotesMarkdown?.length || 0} chars`);
-
-    // Gating Check: Ensure Intake is CLOSED and Executive Brief is ACKNOWLEDGED or WAIVED
-    const [brief] = await db
-      .select()
-      .from(executiveBriefs)
-      .where(eq(executiveBriefs.tenantId, tenantId))
-      .limit(1);
-
-    const isIntakeClosed = tenant.intakeWindowState === 'CLOSED';
-    const isBriefResolved = brief && ['ACKNOWLEDGED', 'WAIVED'].includes(brief.status);
-
-    if (!isIntakeClosed) {
-      return res.status(400).json({
-        error: 'Intake window is not closed.',
-        message: 'You must close the Intake Window before generating diagnostics.'
-      });
-    }
-
-    if (!isBriefResolved) {
-      return res.status(400).json({
-        error: 'Executive Brief not resolved.',
-        message: 'Executive Brief must be ACKNOWLEDGED or WAIVED before synthesis can proceed.'
-      });
-    }
-
-    // Build simplified DiagnosticMap structure
-    // Note: We pass both structured data + raw SOP-01 markdown to the pipeline
-    const diagnosticMap: DiagnosticMap = {
-      tenantId,
-      firmName: tenant.name,
-      diagnosticDate: new Date().toISOString(),
-      painClusters: [
-        {
-          category: 'Operations',
-          description: 'Manual processes and workflow bottlenecks',
-          severity: 4,
-          affectedRoles: ['owner', 'ops'],
-          estimatedTimeLostHoursWeekly: 10
-        }
-      ],
-      workflowBottlenecks: [
-        {
-          process: 'Lead Management',
-          currentState: 'Manual tracking and delayed follow-ups',
-          targetState: 'Automated capture and instant response',
-          impactScore: 5
-        }
-      ],
-      systemsFragmentation: {
-        currentTools: ['Email', 'Spreadsheets', 'Basic CRM'],
-        redundancies: ['Multiple data entry', 'Duplicate records'],
-        gapsIdentified: ['No automation', 'Limited reporting']
-      },
-      aiOpportunityZones: [
-        {
-          zone: 'Lead Management',
-          aiCapability: 'Automated lead capture and routing',
-          estimatedImpact: 'Reduce response time from hours to minutes'
-        }
-      ],
-      readinessScore: 70,
-      implementationTier: 'growth'
-    };
-
-    console.log(`[SuperAdmin] Built DiagnosticMap for: ${tenant.name}`);
-
-    // Pass rich context to diagnostic ingestion:
-    // - DiagnosticMap (structured)
-    // - SOP-01 markdown content (narrative)
-    // - Discovery notes (additional context)
-    const result = await ingestDiagnostic(
-      diagnosticMap,
-      {
-        sop01DiagnosticMarkdown,
-        sop01AiLeverageMarkdown,
-        sop01RoadmapSkeleton,
-        discoveryNotesMarkdown
-      }
-    );
-
-    console.log(`[SuperAdmin] ✅ Roadmap generated successfully`);
-    console.log(`[SuperAdmin] Diagnostic ID: ${result.diagnosticId}`);
-    console.log(`[SuperAdmin] Tickets: ${result.ticketCount}`);
-    console.log(`[SuperAdmin] Sections: ${result.roadmapSectionCount}`);
-
-    // Auto-refresh vector store after roadmap generation (non-blocking)
-    console.log('[Roadmap] Triggering vector store refresh for tenant:', tenantId);
-    refreshVectorStoreContent(tenantId)
-      .then(() => console.log('[Roadmap] Vector store refreshed successfully'))
-      .catch((error: any) => console.warn('[Roadmap] Vector store refresh failed:', error.message));
-
-    return res.json({
-      ok: true,
-      diagnosticId: result.diagnosticId,
-      ticketCount: result.ticketCount,
-      roadmapSectionCount: result.roadmapSectionCount,
-      assistantProvisioned: result.assistantProvisioned
-    });
-  } catch (error: any) {
-    console.error('[SuperAdmin] Generate roadmap error:', error);
-    return res.status(500).json({
-      error: error.message || 'Failed to generate roadmap',
-      details: error.stack
-    });
-  }
-}
 
 // ============================================================================
 // GET /api/superadmin/metrics/daily-rollup - 30-Day Trends (F3.3)
@@ -2675,178 +2406,4 @@ export async function updateWebinarPassword(req: AuthRequest, res: Response) {
 
 
 
-// ============================================================================
-// EXECUTIVE BRIEF CRUD (EXECUTIVE AUTHORITY ONLY)
-// ============================================================================
 
-export async function getExecutiveBrief(req: AuthRequest, res: Response) {
-  try {
-    if (!requireExecutiveAuthority(req, res)) return;
-    const { tenantId } = req.params;
-
-    const [brief] = await db
-      .select()
-      .from(executiveBriefs)
-      .where(eq(executiveBriefs.tenantId, tenantId))
-      .limit(1);
-
-    return res.json({ brief: brief || null });
-  } catch (error) {
-    console.error('Get exec brief error:', error);
-    return res.status(500).json({ error: 'Failed to fetch executive brief' });
-  }
-}
-
-export async function upsertExecutiveBrief(req: AuthRequest, res: Response) {
-  try {
-    if (!requireExecutiveAuthority(req, res)) return;
-    const { tenantId } = req.params;
-    const { content } = req.body;
-    const userId = req.user!.userId;
-
-    if (!tenantId || !userId) {
-      return res.status(400).json({ error: 'Missing tenantId or userId' });
-    }
-
-    // Check if it exists using explicit SQL cast for safety if needed
-    const [existing] = await db
-      .select()
-      .from(executiveBriefs)
-      .where(eq(executiveBriefs.tenantId, tenantId))
-      .limit(1);
-
-    if (existing) {
-      // Logic constraint: Cannot edit if ACKNOWLEDGED or WAIVED
-      if (['ACKNOWLEDGED', 'WAIVED'].includes(existing.status)) {
-        return res.status(403).json({ error: 'Cannot edit locked brief' });
-      }
-
-      const [updated] = await db
-        .update(executiveBriefs)
-        .set({
-          content: content || '',
-          lastUpdatedBy: userId,
-          updatedAt: new Date(),
-        })
-        .where(eq(executiveBriefs.id, existing.id))
-        .returning();
-
-      // Audit Log: Update
-      await db.insert(auditEvents).values({
-        tenantId,
-        actorUserId: userId,
-        actorRole: req.user?.role as string,
-        eventType: 'brief_updated',
-        entityType: 'executive_brief',
-        entityId: updated.id,
-        metadata: { status: updated.status }
-      });
-
-      return res.json({ brief: updated });
-    } else {
-      const [created] = await db
-        .insert(executiveBriefs)
-        .values({
-          tenantId: tenantId,
-          content: content || '',
-          status: 'DRAFT',
-          createdBy: userId,
-          lastUpdatedBy: userId,
-        })
-        .returning();
-
-      // Audit Log: Create
-      await db.insert(auditEvents).values({
-        tenantId,
-        actorUserId: userId,
-        actorRole: req.user?.role as string,
-        eventType: 'brief_created',
-        entityType: 'executive_brief',
-        entityId: created.id,
-        metadata: { status: 'DRAFT' }
-      });
-
-      return res.json({ brief: created });
-    }
-  } catch (error: any) {
-    console.error('Upsert exec brief error:', error);
-    return res.status(500).json({
-      error: 'Failed to save executive brief',
-      details: error?.message || 'Unknown database error'
-    });
-  }
-}
-
-export async function transitionExecutiveBriefStatus(req: AuthRequest, res: Response) {
-  try {
-    if (!requireExecutiveAuthority(req, res)) return;
-    const { tenantId } = req.params;
-    const { status, reason } = req.body; // Added reason
-    const userId = req.user!.userId;
-
-    const [existing] = await db
-      .select()
-      .from(executiveBriefs)
-      .where(eq(executiveBriefs.tenantId, tenantId))
-      .limit(1);
-
-    if (!existing) {
-      return res.status(404).json({ error: 'Brief not found' });
-    }
-
-    // Get Tenant for Snapshot ID
-    const [tenant] = await db
-      .select({ intakeSnapshotId: tenants.intakeSnapshotId })
-      .from(tenants)
-      .where(eq(tenants.id, tenantId))
-      .limit(1);
-
-    // Valid transitions logic
-    const current = existing.status;
-    let allowed = false;
-
-    if (current === 'DRAFT' && status === 'READY_FOR_EXEC_REVIEW') allowed = true;
-    if (current === 'READY_FOR_EXEC_REVIEW' && (status === 'ACKNOWLEDGED' || status === 'WAIVED')) allowed = true;
-
-    if (!allowed) {
-      return res.status(400).json({ error: `Transition from ${current} to ${status} not permitted` });
-    }
-
-    const [updated] = await db
-      .update(executiveBriefs)
-      .set({
-        status,
-        lastUpdatedBy: userId,
-        updatedAt: new Date(),
-      })
-      .where(eq(executiveBriefs.id, existing.id))
-      .returning();
-
-    // Map status to audit event type
-    let auditEventType = 'brief_updated';
-    if (status === 'READY_FOR_EXEC_REVIEW') auditEventType = 'brief_submitted_for_exec';
-    if (status === 'ACKNOWLEDGED') auditEventType = 'brief_acknowledged';
-    if (status === 'WAIVED') auditEventType = 'brief_waived';
-
-    // Audit Log
-    await db.insert(auditEvents).values({
-      tenantId,
-      actorUserId: userId,
-      actorRole: req.user?.role as string,
-      eventType: auditEventType,
-      entityType: 'executive_brief',
-      entityId: updated.id,
-      metadata: {
-        previousStatus: current,
-        newStatus: status,
-        intakeSnapshotId: tenant?.intakeSnapshotId,
-        reason: status === 'WAIVED' ? reason : undefined
-      }
-    });
-
-    return res.json({ brief: updated });
-  } catch (error) {
-    console.error('Transition exec brief error:', error);
-    return res.status(500).json({ error: 'Failed to transition brief status' });
-  }
-}

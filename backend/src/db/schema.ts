@@ -10,8 +10,8 @@ export const tenants = pgTable('tenants', {
   ownerUserId: uuid('owner_user_id').unique(),
   name: varchar('name', { length: 255 }).notNull(),
   cohortLabel: varchar('cohort_label', { length: 50 }),
-  segment: varchar('segment', { length: 50 }),
-  region: varchar('region', { length: 50 }),
+  segment: varchar('segment', { length: 255 }),
+  region: varchar('region', { length: 255 }),
   status: varchar('status', { length: 20 }).notNull().default('prospect'), // prospect | active | paused | churned
   businessType: text('business_type').notNull().default('default'), // default | chamber
   teamHeadcount: integer('team_headcount').default(5),
@@ -23,6 +23,13 @@ export const tenants = pgTable('tenants', {
   intakeSnapshotId: varchar('intake_snapshot_id', { length: 255 }),
   intakeClosedAt: timestamp('intake_closed_at', { withTimezone: true }),
   notes: text('notes'),
+
+
+
+
+
+  readinessNotes: text('readiness_notes'),
+
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
@@ -37,6 +44,7 @@ export const users = pgTable('users', {
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   role: varchar('role', { length: 20 }).$type<UserRole>().notNull(),
   name: varchar('name', { length: 255 }).notNull(),
+  isInternal: boolean('is_internal').notNull().default(false),
   tenantId: uuid('tenant_id').references(() => tenants.id, { onDelete: 'set null' }),
   resetToken: varchar('reset_token', { length: 255 }).unique(),
   resetTokenExpiry: timestamp('reset_token_expiry'),
@@ -66,6 +74,7 @@ export const intakes = pgTable('intakes', {
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   role: varchar('role', { length: 20 }).notNull(),
   answers: json('answers').notNull(), // JSONB storage
+  coachingFeedback: json('coaching_feedback').default({}), // questionKey -> { comment, isFlagged }
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   status: varchar('status', { length: 20 }).notNull().default('in_progress'), // in_progress | completed
   completedAt: timestamp('completed_at'),
@@ -189,27 +198,7 @@ export const impersonationSessions = pgTable('impersonation_sessions', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
-// ============================================================================
-// ONBOARDING STATES (Gamified onboarding progress tracking)
-// ============================================================================
 
-export const onboardingStates = pgTable('onboarding_states', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  tenantId: uuid('tenant_id').notNull().unique().references(() => tenants.id, { onDelete: 'cascade' }),
-
-  // Overall progress snapshot
-  percentComplete: integer('percent_complete').notNull().default(0),
-  totalPoints: integer('total_points').notNull().default(0),
-  maxPoints: integer('max_points').notNull().default(120),
-
-  // JSON arrays for steps and badges
-  steps: json('steps').notNull().default([]),
-  badges: json('badges').notNull().default([]),
-
-  // System audit
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
 
 // ============================================================================
 // WEBINAR REGISTRATIONS (Webinar participant registrations)
@@ -266,13 +255,7 @@ export const tenantDocuments = pgTable('tenant_documents', {
   title: varchar('title', { length: 255 }).notNull(),
   description: text('description'),
 
-  // SOP-specific metadata
-  sopNumber: varchar('sop_number', { length: 20 }),
-  outputNumber: varchar('output_number', { length: 20 }),
 
-  // Roadmap-specific metadata
-  section: varchar('section', { length: 50 }), // 'executive', 'diagnostic', 'architecture', etc.
-  tags: json('tags').$type<string[]>().default([]),
 
   // Access control
   uploadedBy: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }),
@@ -384,23 +367,7 @@ export const tenantVectorStores = pgTable('tenant_vector_stores', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-// ============================================================================
-// EXECUTIVE BRIEFS
-// ============================================================================
 
-export const executiveBriefs = pgTable('executive_briefs', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  tenantId: uuid('tenant_id').notNull().unique().references(() => tenants.id, { onDelete: 'cascade' }),
-  status: varchar('status', { length: 50 }).notNull().default('DRAFT'), // DRAFT | READY_FOR_EXEC_REVIEW | ACKNOWLEDGED | WAIVED
-  content: text('content').notNull().default(''),
-  createdBy: uuid('created_by').notNull().references(() => users.id),
-  lastUpdatedBy: uuid('last_updated_by').notNull().references(() => users.id),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
-
-export type ExecutiveBrief = typeof executiveBriefs.$inferSelect;
-export type NewExecutiveBrief = typeof executiveBriefs.$inferInsert;
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -444,8 +411,7 @@ export type NewTenantFeatureFlag = typeof tenantFeatureFlags.$inferInsert;
 export type ImpersonationSession = typeof impersonationSessions.$inferSelect;
 export type NewImpersonationSession = typeof impersonationSessions.$inferInsert;
 
-export type OnboardingState = typeof onboardingStates.$inferSelect;
-export type NewOnboardingState = typeof onboardingStates.$inferInsert;
+
 
 export type TenantDocument = typeof tenantDocuments.$inferSelect;
 export type NewTenantDocument = typeof tenantDocuments.$inferInsert;
@@ -723,66 +689,7 @@ export type NewPublicAgentSession = typeof publicAgentSessions.$inferInsert;
 export type PublicAgentEvent = typeof publicAgentEvents.$inferSelect;
 export type NewPublicAgentEvent = typeof publicAgentEvents.$inferInsert;
 
-// ============================================================================
-// SOP TICKETS (Diagnostic-generated structured tickets)
-// ============================================================================
 
-export const sopTickets = pgTable('sop_tickets', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  diagnosticId: varchar('diagnostic_id', { length: 255 }).notNull(),
-  ticketId: varchar('ticket_id', { length: 10 }).notNull(),
-
-  // Inventory tracking
-  inventoryId: varchar('inventory_id', { length: 64 }),
-  isSidecar: boolean('is_sidecar').notNull().default(false),
-
-  // Core ticket content
-  title: text('title').notNull(),
-  category: varchar('category', { length: 50 }).notNull(),
-  valueCategory: varchar('value_category', { length: 100 }).notNull().default('General'),
-  tier: varchar('tier', { length: 20 }).notNull().default('recommended'),
-  painSource: text('pain_source').notNull(),
-
-  // Moderation fields
-  approved: boolean('approved').notNull().default(false),
-  moderationStatus: varchar('moderation_status', { length: 20 }).notNull().default('pending'),
-  adminNotes: text('admin_notes'),
-  moderatedAt: timestamp('moderated_at', { withTimezone: true }),
-  moderatedBy: uuid('moderated_by').references(() => users.id),
-  description: text('description').notNull(),
-  currentState: text('current_state').notNull(),
-  targetState: text('target_state').notNull(),
-
-  // Technical implementation
-  aiDesign: text('ai_design').notNull(),
-  ghlImplementation: text('ghl_implementation').notNull(),
-  implementationSteps: json('implementation_steps').$type<string[]>().notNull().default([]),
-
-  // Ownership and dependencies
-  owner: varchar('owner', { length: 100 }).notNull(),
-  dependencies: json('dependencies').$type<string[]>().notNull().default([]),
-
-  // Cost modeling
-  timeEstimateHours: integer('time_estimate_hours').notNull(),
-  costEstimate: integer('cost_estimate').notNull(),
-  successMetric: text('success_metric').notNull(),
-
-  // Roadmap integration
-  roadmapSection: varchar('roadmap_section', { length: 50 }).notNull(),
-  priority: varchar('priority', { length: 20 }).notNull(),
-  sprint: integer('sprint').notNull(),
-
-  // ROI projections
-  projectedHoursSavedWeekly: integer('projected_hours_saved_weekly').notNull().default(0),
-  projectedLeadsRecoveredMonthly: integer('projected_leads_recovered_monthly').notNull().default(0),
-  roiNotes: text('roi_notes'),
-
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
-
-export type SopTicket = typeof sopTickets.$inferSelect;
 
 // ============================================================================
 // DIAGNOSTIC SNAPSHOTS
@@ -803,6 +710,34 @@ export const diagnosticSnapshots = pgTable('diagnostic_snapshots', {
 
 export type DiagnosticSnapshot = typeof diagnosticSnapshots.$inferSelect;
 export type NewDiagnosticSnapshot = typeof diagnosticSnapshots.$inferInsert;
+
+// ============================================================================
+// DIAGNOSTICS (System of Record for SOP-01)
+// ============================================================================
+
+export const diagnostics = pgTable('diagnostics', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  sopVersion: varchar('sop_version', { length: 20 }).notNull().default('SOP-01'),
+  status: varchar('status', { length: 20 }).notNull().default('generated'), // generated | approved | superseded
+
+  // Artifacts (Storing simplified payloads for easy UI rendering)
+  overview: json('overview').$type<Record<string, any>>().notNull(),
+  aiOpportunities: json('ai_opportunities').$type<Record<string, any>>().notNull(),
+  roadmapSkeleton: json('roadmap_skeleton').$type<Record<string, any>>().notNull(),
+  discoveryQuestions: json('discovery_questions').$type<Record<string, any>>().notNull(),
+
+  // Metadata
+  generatedByUserId: uuid('generated_by_user_id').references(() => users.id),
+  approvedByUserId: uuid('approved_by_user_id').references(() => users.id),
+  approvedAt: timestamp('approved_at', { withTimezone: true }),
+
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type Diagnostic = typeof diagnostics.$inferSelect;
+export type NewDiagnostic = typeof diagnostics.$inferInsert;
 
 // ============================================================================
 // EVIDENCE ARTIFACTS (Real Systemic Evidence)
