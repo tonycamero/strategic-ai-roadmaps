@@ -7,6 +7,7 @@ export interface AuthUser {
   id: string;
   tenantId: string | null;
   role: string;
+  isInternal: boolean;
   email?: string;
   name?: string;
 }

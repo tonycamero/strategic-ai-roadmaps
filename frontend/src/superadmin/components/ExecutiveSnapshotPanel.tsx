@@ -39,7 +39,7 @@ export function ExecutiveSnapshotPanel({ data, loading }: ExecutiveSnapshotPanel
             {/* Header */}
             <div className="px-6 py-4 border-b border-slate-900 bg-slate-900/30 flex items-center justify-between">
                 <div>
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">Operational Snapshot & ROI</h3>
+                    <h3 className="text-sm font-bold text-white tracking-wider">Strategic Context & Capacity ROI</h3>
                     <p className="text-[10px] text-slate-500 font-mono mt-1">
                         NON-FINANCIAL METRICS • CAPACITY & FRICTION ONLY
                     </p>
@@ -53,7 +53,7 @@ export function ExecutiveSnapshotPanel({ data, loading }: ExecutiveSnapshotPanel
 
                 {/* ZONE 1: Coverage */}
                 <div className="p-6 space-y-4">
-                    <h4 className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Organization Input</h4>
+                    <h4 className="text-[10px] tracking-widest text-slate-500 font-bold">Organizational Readiness Context</h4>
 
                     <div className="space-y-2">
                         <div className="flex justify-between items-end">
@@ -75,7 +75,7 @@ export function ExecutiveSnapshotPanel({ data, loading }: ExecutiveSnapshotPanel
 
                 {/* ZONE 2: Friction Map */}
                 <div className="p-6 space-y-4">
-                    <h4 className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Friction signals</h4>
+                    <h4 className="text-[10px] tracking-widest text-slate-500 font-bold">Execution Friction Context</h4>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -97,7 +97,7 @@ export function ExecutiveSnapshotPanel({ data, loading }: ExecutiveSnapshotPanel
 
                 {/* ZONE 3: Capacity ROI */}
                 <div className="p-6 space-y-4 bg-slate-900/10">
-                    <h4 className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Projected Capacity ROI</h4>
+                    <h4 className="text-[10px] tracking-widest text-slate-500 font-bold">Strategic Capacity Projections</h4>
 
                     <div className="space-y-4">
                         <div>
@@ -109,8 +109,8 @@ export function ExecutiveSnapshotPanel({ data, loading }: ExecutiveSnapshotPanel
                             <div className="flex justify-between items-center">
                                 <span className="text-xs text-slate-400">Speed to Value</span>
                                 <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${data.capacityROI.speedToValue === 'HIGH' ? 'bg-green-900/20 text-green-400 border-green-500/30' :
-                                        data.capacityROI.speedToValue === 'MEDIUM' ? 'bg-yellow-900/20 text-yellow-400 border-yellow-500/30' :
-                                            'bg-slate-800 text-slate-400 border-slate-700'
+                                    data.capacityROI.speedToValue === 'MEDIUM' ? 'bg-yellow-900/20 text-yellow-400 border-yellow-500/30' :
+                                        'bg-slate-800 text-slate-400 border-slate-700'
                                     }`}>
                                     {data.capacityROI.speedToValue}
                                 </span>

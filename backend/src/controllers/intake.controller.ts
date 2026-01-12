@@ -159,8 +159,11 @@ export async function getOwnerIntakes(req: AuthRequest, res: Response) {
     }
 
     const userRole: string = req.user.role;
-    if (userRole !== 'owner' && userRole !== 'superadmin') {
-      return res.status(403).json({ error: 'Only owners and superadmins can view intakes' });
+    const isSuperAdmin = req.user.isInternal && userRole === 'superadmin';
+    const isOwner = !req.user.isInternal && userRole === 'owner';
+
+    if (!isSuperAdmin && !isOwner) {
+      return res.status(403).json({ error: 'Only Owners and Internal Consultants can view all intakes' });
     }
 
     // Both superadmin and owner see only their own tenant's intakes when viewing dashboard

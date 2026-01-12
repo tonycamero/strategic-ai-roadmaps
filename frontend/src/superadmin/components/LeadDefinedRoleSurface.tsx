@@ -39,13 +39,10 @@ export function LeadDefinedRoleSurface({ roles, onAddRole, onInvite, readOnly = 
             {/* Header */}
             <div className="flex items-center justify-between border-b border-indigo-900/30 pb-2">
                 <div>
-                    <div className="text-[10px] uppercase tracking-[0.2em] font-extrabold text-indigo-400 mb-1">
-                        Zone 1.5 // Operational Context
-                    </div>
-                    <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                        Lead-Defined Intake Roles
-                        <span className="px-1.5 py-0.5 rounded bg-indigo-900/30 text-[9px] text-indigo-300 border border-indigo-500/30">
-                            {roles.length} Vectors
+                    <h3 className="text-lg font-bold text-slate-100 flex items-center gap-3">
+                        Intake Vectors
+                        <span className="text-[10px] text-slate-500 font-normal lowercase tracking-normal">
+                            ({roles.length} roles defined)
                         </span>
                     </h3>
                 </div>
@@ -53,113 +50,131 @@ export function LeadDefinedRoleSurface({ roles, onAddRole, onInvite, readOnly = 
                     <button
                         onClick={() => setIsAdding(!isAdding)}
                         disabled={isAdding}
-                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold rounded shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
-                        + Add Role Vector
+                        + Add Vector
                     </button>
                 )}
             </div>
 
-            {/* Framing Context */}
-            <div className="bg-indigo-900/10 border border-indigo-500/20 rounded p-3 text-xs text-indigo-200/80 mb-4">
-                <strong>Protocol:</strong> Define roles as vector lenses, not job titles. Capture leadership perception (hypotheses) to contrast with operational reality.
-            </div>
 
             {/* Add Role Form (Inline) */}
             {isAdding && (
-                <div className="bg-slate-900/50 border border-indigo-500/50 rounded-lg p-5 animate-in fade-in slide-in-from-top-2">
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="flex justify-between items-center mb-2">
-                            <h4 className="text-sm font-bold text-white">Define New Role Context</h4>
-                            <button type="button" onClick={() => setIsAdding(false)} className="text-slate-500 hover:text-white text-xs underline">Cancel</button>
+                <div className="bg-slate-900 border border-indigo-500/30 rounded-2xl p-8 animate-in fade-in slide-in-from-top-2 shadow-2xl overflow-hidden max-w-4xl mx-auto border-t-4 border-t-indigo-500">
+                    <form onSubmit={handleSubmit} className="space-y-8">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h4 className="text-xl font-bold text-white mb-2">Define a Role Vector</h4>
+                                <details className="group">
+                                    <summary className="text-[10px] font-bold text-indigo-400 cursor-pointer list-none flex items-center gap-1 hover:text-indigo-300 transition-colors">
+                                        [Learn how this works]
+                                    </summary>
+                                    <div className="mt-3 bg-indigo-500/5 border border-indigo-500/10 rounded-lg p-4 text-xs text-indigo-200/70 leading-relaxed font-mono">
+                                        <strong className="text-indigo-400">Protocol:</strong> Define roles as vector lenses, not job titles.
+                                        Capture leadership perception (hypotheses) to contrast with operational reality.
+                                        This framing will be shared with the participant as their operational mandate.
+                                    </div>
+                                </details>
+                            </div>
+                            <button type="button" onClick={() => setIsAdding(false)} className="text-slate-500 hover:text-white transition-colors">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Role Label (Semantic)</label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="e.g. Manufacturing Facilitator"
-                                    className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-sm text-white focus:border-indigo-500 outline-none"
-                                    value={formData.roleLabel}
-                                    onChange={e => setFormData({ ...formData, roleLabel: e.target.value })}
-                                />
-                                <p className="text-[10px] text-slate-600 mt-1">Avoid generic titles like "Manager". Use "Owner" or "Facilitator".</p>
-                            </div>
-                            <div>
-                                <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Role Archetype</label>
-                                <select
-                                    className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-sm text-white focus:border-indigo-500 outline-none"
-                                    value={formData.roleType}
-                                    onChange={e => setFormData({ ...formData, roleType: e.target.value })}
-                                >
-                                    <option value="OPERATIONAL_LEAD">Operational Lead (Owner)</option>
-                                    <option value="FACILITATOR">Facilitator / Enabler</option>
-                                    <option value="EXECUTIVE">Executive / Oversight</option>
-                                    <option value="OTHER">Other / Hybrid</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        {/* Leadership Hypotheses */}
-                        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-800/50">
-                            <div>
-                                <label className="block text-[10px] uppercase font-bold text-purple-400 mb-1">
-                                    Perceived Constraints (Hypothesis)
-                                </label>
-                                <textarea
-                                    rows={3}
-                                    required
-                                    className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-white focus:border-purple-500 outline-none resize-none"
-                                    placeholder="What do you believe is frustrating this role?"
-                                    value={formData.perceivedConstraints}
-                                    onChange={e => setFormData({ ...formData, perceivedConstraints: e.target.value })}
-                                />
-                                <p className="text-[10px] text-slate-600 mt-1">This framing will be shared with the participant.</p>
-                            </div>
-                            <div>
-                                <label className="block text-[10px] uppercase font-bold text-purple-400 mb-1">
-                                    Anticipated Blind Spots
-                                </label>
-                                <textarea
-                                    rows={3}
-                                    className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-white focus:border-purple-500 outline-none resize-none"
-                                    placeholder="What should they be worried about but aren't?"
-                                    value={formData.anticipatedBlindSpots}
-                                    onChange={e => setFormData({ ...formData, anticipatedBlindSpots: e.target.value })}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Recipient */}
-                        <div className="space-y-2 pt-2 border-t border-slate-800/50">
-                            <div className="grid grid-cols-2 gap-4">
+                        <div className="flex gap-12">
+                            {/* Left Column: Semantic Role + Archetype */}
+                            <div className="flex-1 space-y-6">
                                 <div>
-                                    <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Recipient Name</label>
+                                    <label className="block text-[10px] uppercase font-black tracking-widest text-slate-500 mb-2">Role Label (Semantic)</label>
                                     <input
                                         type="text"
-                                        className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-sm text-white focus:border-indigo-500 outline-none"
-                                        value={formData.recipientName}
-                                        onChange={e => setFormData({ ...formData, recipientName: e.target.value })}
+                                        required
+                                        placeholder="e.g. Manufacturing Facilitator"
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none transition-all"
+                                        value={formData.roleLabel}
+                                        onChange={e => setFormData({ ...formData, roleLabel: e.target.value })}
                                     />
+                                    <p className="text-[10px] text-slate-600 mt-2 italic">Avoid generic titles. Use functional owners.</p>
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Recipient Email</label>
-                                    <input
-                                        type="email"
+                                    <label className="block text-[10px] uppercase font-black tracking-widest text-slate-500 mb-2">Role Archetype</label>
+                                    <select
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none transition-all"
+                                        value={formData.roleType}
+                                        onChange={e => setFormData({ ...formData, roleType: e.target.value })}
+                                    >
+                                        <option value="OPERATIONAL_LEAD">Operational Lead (Owner)</option>
+                                        <option value="FACILITATOR">Facilitator / Enabler</option>
+                                        <option value="EXECUTIVE">Executive / Oversight</option>
+                                        <option value="OTHER">Other / Hybrid</option>
+                                    </select>
+                                </div>
+                                <div className="pt-4 space-y-4 border-t border-slate-800/50">
+                                    <div>
+                                        <label className="block text-[10px] uppercase font-black tracking-widest text-slate-500 mb-2">Recipient Name</label>
+                                        <input
+                                            type="text"
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-all"
+                                            value={formData.recipientName}
+                                            onChange={e => setFormData({ ...formData, recipientName: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] uppercase font-black tracking-widest text-slate-500 mb-2">Recipient Email</label>
+                                        <input
+                                            type="email"
+                                            required
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-all"
+                                            value={formData.recipientEmail}
+                                            onChange={e => setFormData({ ...formData, recipientEmail: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Right Column: Constraints + Blind Spots */}
+                            <div className="flex-1 space-y-6">
+                                <div>
+                                    <label className="block text-[10px] uppercase font-black tracking-widest text-purple-400 mb-2">
+                                        Perceived Constraints (Hypothesis)
+                                    </label>
+                                    <textarea
+                                        rows={5}
                                         required
-                                        className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-sm text-white focus:border-indigo-500 outline-none"
-                                        value={formData.recipientEmail}
-                                        onChange={e => setFormData({ ...formData, recipientEmail: e.target.value })}
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-xs text-white focus:border-purple-500 outline-none resize-none transition-all font-serif italic"
+                                        placeholder="What do you believe is frustrating this role?"
+                                        value={formData.perceivedConstraints}
+                                        onChange={e => setFormData({ ...formData, perceivedConstraints: e.target.value })}
+                                    />
+                                    <p className="text-[10px] text-slate-600 mt-2 lowercase">This will be shared with the participant as the primary vector.</p>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] uppercase font-black tracking-widest text-purple-400 mb-2">
+                                        Anticipated Blind Spots
+                                    </label>
+                                    <textarea
+                                        rows={5}
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-xs text-white focus:border-purple-500 outline-none resize-none transition-all font-serif italic"
+                                        placeholder="What should they be worried about but aren't?"
+                                        value={formData.anticipatedBlindSpots}
+                                        onChange={e => setFormData({ ...formData, anticipatedBlindSpots: e.target.value })}
                                     />
                                 </div>
                             </div>
                         </div>
 
-                        <div className="pt-2 flex justify-end gap-2">
-                            <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded shadow-lg">
-                                Create Role & Prepare Invite
+                        <div className="pt-8 border-t border-slate-800 flex justify-end gap-4">
+                            <button
+                                type="button"
+                                onClick={() => setIsAdding(false)}
+                                className="px-6 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button type="submit" className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black rounded-xl shadow-xl shadow-indigo-500/20 transition-all uppercase tracking-[0.2em]">
+                                Create Vector & Prepare Invite
                             </button>
                         </div>
                     </form>
@@ -224,13 +239,6 @@ function RoleCard({ role, onInvite, readOnly }: { role: IntakeRoleDefinition, on
                 </div>
             </div>
 
-            {/* Perceived Constraints (Collapsed/Visible) */}
-            <div className="mt-3 pl-4 border-l-2 border-purple-500/20">
-                <div className="text-[9px] uppercase font-bold text-slate-600 mb-0.5">Focus Hypothesis</div>
-                <p className="text-xs text-slate-400 italic font-serif leading-relaxed">
-                    "{role.perceivedConstraints}"
-                </p>
-            </div>
         </div>
     );
 }

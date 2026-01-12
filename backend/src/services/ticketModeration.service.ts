@@ -26,6 +26,7 @@ export interface ModerationTicketDTO {
   projectedHoursSavedWeekly: number;
   projectedLeadsRecoveredMonthly: number;
   approved: boolean;
+  description: string;
   adminNotes: string | null;
   moderatedAt: Date | null;
   moderatedBy: string | null;
@@ -70,6 +71,7 @@ export async function getTicketsForDiagnostic(
     projectedHoursSavedWeekly: t.projectedHoursSavedWeekly,
     projectedLeadsRecoveredMonthly: t.projectedLeadsRecoveredMonthly,
     approved: t.approved,
+    description: t.description,
     adminNotes: t.adminNotes ?? null,
     moderatedAt: t.moderatedAt ?? null,
     moderatedBy: t.moderatedBy ?? null,
@@ -138,11 +140,11 @@ export async function rejectTickets(
  */
 export async function getModerationStatus(tenantId: string, diagnosticId: string) {
   const tickets = await getTicketsForDiagnostic(tenantId, diagnosticId);
-  
+
   const approved = tickets.filter(t => t.approved);
   const rejected = tickets.filter(t => !t.approved && t.moderatedAt !== null);
   const pending = tickets.filter(t => t.moderatedAt === null);
-  
+
   return {
     total: tickets.length,
     approved: approved.length,

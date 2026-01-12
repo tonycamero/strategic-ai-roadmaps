@@ -49,8 +49,8 @@ async function verifyTicketModeration() {
                 id: delegateId,
                 tenantId,
                 email: `delegate_${tenantId}@modtest.com`,
-                role: 'ops', // Delegate
-                name: 'Danny Delegate',
+                role: 'ops', // Client Team Member
+                name: 'Chris Client',
                 passwordHash: 'dummy_hash'
             },
             {
@@ -142,20 +142,20 @@ async function verifyTicketModeration() {
 
         console.log('✅ Test data created.\n');
 
-        // 2. Test Delegate Visibility (Before Moderation)
-        console.log('2. Testing Delegate Visibility (Pre-Moderation)...');
-        const reqDelegate = {
+        // 2. Test Client Team Member Visibility (Before Moderation)
+        console.log('2. Testing Client Team Visibility (Pre-Moderation)...');
+        const reqClientTeamMember = {
             params: { tenantId, diagnosticId },
             user: { role: 'ops', tenantId, userId: delegateId }
         } as unknown as AuthRequest;
 
-        const resDelegate1 = mockRes();
-        await getDiagnosticTickets(reqDelegate, resDelegate1);
+        const resClientTeamMember1 = mockRes();
+        await getDiagnosticTickets(reqClientTeamMember, resClientTeamMember1);
 
-        if (resDelegate1.body.tickets.length === 3) {
-            console.log('✅ Delegate sees all 3 pending tickets.');
+        if (resClientTeamMember1.body.tickets.length === 3) {
+            console.log('✅ Client Team Member sees all 3 pending tickets.');
         } else {
-            console.error('❌ Delegate failed to see tickets:', resDelegate1.body);
+            console.error('❌ Client Team Member failed to see tickets:', resClientTeamMember1.body);
         }
 
         // 3. Exec Moderating Tickets (Owner Auths)...
@@ -193,13 +193,13 @@ async function verifyTicketModeration() {
 
         console.log('✅ Tickets moderated by Owner (1 Approved, 1 Rejected).');
 
-        // 4. Test Delegate Visibility (Post-Moderation & Payload Safety)
-        console.log('\n4. Testing Delegate Visibility (Post-Moderation)...');
+        // 4. Test Client Team Visibility (Post-Moderation & Payload Safety)
+        console.log('\n4. Testing Client Team Visibility (Post-Moderation)...');
 
-        const resDelegate2 = mockRes();
-        await getDiagnosticTickets(reqDelegate, resDelegate2);
+        const resClientTeamMember2 = mockRes();
+        await getDiagnosticTickets(reqClientTeamMember, resClientTeamMember2);
 
-        const visibleTickets = resDelegate2.body.tickets;
+        const visibleTickets = resClientTeamMember2.body.tickets;
 
         // CR-UX-6A: Payload Check
         const firstTicket = visibleTickets[0];
@@ -207,7 +207,7 @@ async function verifyTicketModeration() {
             if ('adminNotes' in firstTicket) {
                 throw new Error('❌ FAIL: adminNotes key leaked to delegate!');
             } else {
-                console.log('✅ adminNotes key explicitly absent for Delegate.');
+                console.log('✅ adminNotes key explicitly absent for Client Team Member.');
             }
 
             if ('costEstimate' in firstTicket) {
@@ -228,9 +228,9 @@ async function verifyTicketModeration() {
         // Should NOT see: Ticket 2 (Rejected).
         const hasRejected = visibleTickets.find((t: any) => t.id === ticket2Id);
         if (!hasRejected) {
-            console.log('✅ Rejected ticket is HIDDEN from Delegate.');
+            console.log('✅ Rejected ticket is HIDDEN from Client Team Member.');
         } else {
-            throw new Error('❌ FAIL: Rejected ticket is visible to Delegate.');
+            throw new Error('❌ FAIL: Rejected ticket is visible to Client Team Member.');
         }
 
         const approvedTicket = visibleTickets.find((t: any) => t.id === ticket1Id);

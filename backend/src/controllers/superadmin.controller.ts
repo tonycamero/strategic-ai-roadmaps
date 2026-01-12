@@ -1607,8 +1607,7 @@ export async function uploadDocumentForTenant(req: AuthRequest, res: Response) {
         category,
         title,
         description: description || null,
-        sopNumber: sopNumber || null,
-        outputNumber: outputNumber || null,
+
         uploadedBy: req.user!.userId,
         isPublic: isPublic === 'true' || isPublic === true,
       })

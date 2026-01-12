@@ -9,6 +9,11 @@ interface RoadmapReadinessPanelProps {
         pending: number;
         approved: number;
     } | null;
+    readinessFlags: {
+        knowledgeBaseReady: boolean;
+        rolesValidated: boolean;
+        execReady: boolean;
+    };
     roadmapStatus: string | null;
     onFinalize: () => Promise<void>;
     isGenerating: boolean;
@@ -18,6 +23,7 @@ export function RoadmapReadinessPanel({
     intakeWindowState,
     briefStatus,
     moderationStatus,
+    readinessFlags,
     roadmapStatus,
     onFinalize,
     isGenerating
@@ -35,8 +41,17 @@ export function RoadmapReadinessPanel({
     const pendingCount = moderationStatus?.pending || 0;
     const approvedCount = moderationStatus?.approved || 0;
 
+    // Gate 4: Knowledge Base
+    const isKBReady = readinessFlags.knowledgeBaseReady;
+
+    // Gate 5: Roles Validated
+    const isRolesReady = readinessFlags.rolesValidated;
+
+    // Gate 6: Executive Ready
+    const isExecReady = readinessFlags.execReady;
+
     // Overall Readiness
-    const isReady = isIntakeReady && isBriefReady && isModerationReady;
+    const isReady = isIntakeReady && isBriefReady && isModerationReady && isKBReady && isRolesReady && isExecReady;
 
     const handleClick = () => {
         if (isReady) {
@@ -58,9 +73,9 @@ export function RoadmapReadinessPanel({
                     </svg>
                 </div>
 
-                <h4 className="text-[10px] uppercase tracking-widest text-emerald-500/80 font-inter font-extrabold mb-4 flex items-center gap-2">
+                <h4 className="text-[10px] tracking-widest text-emerald-500/80 font-inter font-extrabold mb-4 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Roadmap Finalized
+                    Roadmap Executed
                 </h4>
 
                 <div className="flex-1 flex flex-col justify-center items-center text-center space-y-4 z-10">
@@ -70,7 +85,7 @@ export function RoadmapReadinessPanel({
                         </svg>
                     </div>
                     <div>
-                        <div className="text-emerald-400 font-bold text-sm">Strategic Roadmap Locked</div>
+                        <div className="text-emerald-400 font-bold text-sm">Strategic Context Locked</div>
                         <div className="text-slate-500 text-xs mt-1 max-w-[200px]">
                             This roadmap has been finalized and is now ready for execution distribution.
                         </div>
@@ -92,7 +107,7 @@ export function RoadmapReadinessPanel({
     return (
         <div className="bg-slate-950 border border-slate-900 rounded-xl p-5 shadow-sm hover:border-slate-800 transition-colors h-full flex flex-col">
             <h4 className="text-[10px] uppercase tracking-widest text-slate-600 font-inter font-extrabold mb-4">
-                Roadmap Finalization Control
+                EXECUTION AUTHORITY
             </h4>
 
             <div className="flex-1 space-y-6">
@@ -115,6 +130,21 @@ export function RoadmapReadinessPanel({
                             ? `${approvedCount} Approved`
                             : `${pendingCount} Pending`}
                     />
+                    <GateCheck
+                        label="Knowledge Base Ready"
+                        isReady={isKBReady}
+                        detail={isKBReady ? 'READY' : 'PENDING'}
+                    />
+                    <GateCheck
+                        label="Team Roles Validated"
+                        isReady={isRolesReady}
+                        detail={isRolesReady ? 'VALIDATED' : 'PENDING'}
+                    />
+                    <GateCheck
+                        label="Authority Overide Ready"
+                        isReady={isExecReady}
+                        detail={isExecReady ? 'SIGNALED' : 'PENDING'}
+                    />
                 </div>
 
                 {/* Status Summary */}
@@ -125,7 +155,7 @@ export function RoadmapReadinessPanel({
                     <div className={`w-2 h-2 rounded-full ${isReady ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600'}`} />
                     <div>
                         <div className={`text-xs font-bold ${isReady ? 'text-emerald-400' : 'text-slate-400'}`}>
-                            {isReady ? 'READY FOR FINALIZATION' : 'PREREQUISITES NOT MET'}
+                            {isReady ? 'READY FOR EXECUTION' : 'EXECUTION BLOCKED'}
                         </div>
                         <div className="text-[10px] text-slate-500 mt-0.5">
                             {isReady
@@ -147,7 +177,7 @@ export function RoadmapReadinessPanel({
                             : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                             }`}
                     >
-                        {isGenerating ? 'Processing...' : 'Finalize Strategic Roadmap'}
+                        {isGenerating ? 'Processing...' : 'Execute Final Roadmap'}
                     </button>
                 ) : (
                     <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-200">

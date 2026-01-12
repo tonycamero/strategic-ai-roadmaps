@@ -1,0 +1,230 @@
+🔒 Verifying Phase 3: Readiness Signals & Onboarding State...
+
+========== DRIZZLE SQL ==========
+insert into "tenants" ("id", "owner_user_id", "name", "cohort_label", "segment", "region", "status", "business_type", "team_headcount", "baseline_monthly_leads", "firm_size_tier", "discovery_complete", "last_diagnostic_id", "intake_window_state", "intake_snapshot_id", "intake_closed_at", "notes", "knowledge_base_ready_at", "roles_validated_at", "exec_ready_at", "exec_ready_by_user_id", "readiness_notes", "created_at", "updated_at") values ($1, default, $2, default, default, default, $3, default, default, default, default, default, default, $4, default, default, default, default, default, default, default, default, $5, $6)
+PARAMS: [
+  '49a64536-b151-4abc-9575-73a787ec3e5f',
+  'Readiness Test Tenant 713e4816',
+  'active',
+  'CLOSED',
+  '2026-01-11T21:38:28.900Z',
+  '2026-01-11T21:38:28.900Z'
+]
+=================================
+
+
+========== DRIZZLE SQL ==========
+insert into "users" ("id", "email", "password_hash", "role", "name", "is_internal", "tenant_id", "reset_token", "reset_token_expiry", "created_at") values ($1, $2, $3, $4, $5, $6, default, default, default, $7)
+PARAMS: [
+  '54b73701-66c6-4b3f-9be7-d73d0d8dd427',
+  'admin_713e4816@test.com',
+  'hash',
+  'superadmin',
+  'Admin User',
+  true,
+  '2026-01-11T21:38:30.055Z'
+]
+=================================
+
+✅ Setup complete.
+
+2. Checking Initial Onboarding State...
+
+========== DRIZZLE SQL ==========
+select "id", "owner_user_id", "name", "cohort_label", "segment", "region", "status", "business_type", "team_headcount", "baseline_monthly_leads", "firm_size_tier", "discovery_complete", "last_diagnostic_id", "intake_window_state", "intake_snapshot_id", "intake_closed_at", "notes", "knowledge_base_ready_at", "roles_validated_at", "exec_ready_at", "exec_ready_by_user_id", "readiness_notes", "created_at", "updated_at" from "tenants" where "tenants"."id" = $1 limit $2
+PARAMS: [ '49a64536-b151-4abc-9575-73a787ec3e5f', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "user_id", "role", "answers", "coaching_feedback", "tenant_id", "status", "completed_at", "created_at" from "intakes" where "intakes"."tenant_id" = $1
+PARAMS: [ '49a64536-b151-4abc-9575-73a787ec3e5f' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "owner_user_id", "filename", "original_filename", "file_path", "file_size", "mime_type", "content", "storage_provider", "category", "title", "description", "sop_number", "output_number", "section", "tags", "uploaded_by", "is_public", "created_at", "updated_at" from "tenant_documents" where ("tenant_documents"."tenant_id" = $1 and "tenant_documents"."sop_number" = $2)
+PARAMS: [ '49a64536-b151-4abc-9575-73a787ec3e5f', 'SOP-01' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "notes", "created_at", "updated_at" from "discovery_call_notes" where "discovery_call_notes"."tenant_id" = $1 order by "discovery_call_notes"."created_at" desc limit $2
+PARAMS: [ '49a64536-b151-4abc-9575-73a787ec3e5f', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "owner_user_id", "filename", "original_filename", "file_path", "file_size", "mime_type", "content", "storage_provider", "category", "title", "description", "sop_number", "output_number", "section", "tags", "uploaded_by", "is_public", "created_at", "updated_at" from "tenant_documents" where ("tenant_documents"."tenant_id" = $1 and "tenant_documents"."category" = $2)
+PARAMS: [ '49a64536-b151-4abc-9575-73a787ec3e5f', 'roadmap' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "owner_user_id", "name", "cohort_label", "segment", "region", "status", "business_type", "team_headcount", "baseline_monthly_leads", "firm_size_tier", "discovery_complete", "last_diagnostic_id", "intake_window_state", "intake_snapshot_id", "intake_closed_at", "notes", "knowledge_base_ready_at", "roles_validated_at", "exec_ready_at", "exec_ready_by_user_id", "readiness_notes", "created_at", "updated_at" from "tenants" where "tenants"."id" = $1 limit $2
+PARAMS: [ '49a64536-b151-4abc-9575-73a787ec3e5f', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "status", "content", "created_by", "last_updated_by", "created_at", "updated_at" from "executive_briefs" where "executive_briefs"."tenant_id" = $1 limit $2
+PARAMS: [ '49a64536-b151-4abc-9575-73a787ec3e5f', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where "roadmaps"."tenant_id" = $1 order by "roadmaps"."created_at" desc limit $2
+PARAMS: [ '49a64536-b151-4abc-9575-73a787ec3e5f', 1 ]
+=================================
+
+   State: diagnostic_ready
+   Reasons: Ready for diagnostic synthesis
+
+3. Signaling Knowledge Base Ready...
+
+========== DRIZZLE SQL ==========
+update "tenants" set "knowledge_base_ready_at" = $1, "readiness_notes" = $2, "updated_at" = $3 where "tenants"."id" = $4
+PARAMS: [
+  'Sun, 11 Jan 2026 21:38:32 GMT',
+  'KB is good',
+  '2026-01-11T21:38:32.273Z',
+  '49a64536-b151-4abc-9575-73a787ec3e5f'
+]
+=================================
+
+
+========== DRIZZLE SQL ==========
+insert into "audit_events" ("id", "tenant_id", "actor_user_id", "actor_role", "event_type", "entity_type", "entity_id", "metadata", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, default)
+PARAMS: [
+  '49a64536-b151-4abc-9575-73a787ec3e5f',
+  '54b73701-66c6-4b3f-9be7-d73d0d8dd427',
+  'superadmin',
+  'READINESS_FLAG_SET',
+  'tenant',
+  '49a64536-b151-4abc-9575-73a787ec3e5f',
+  '{"flag":"knowledge_base_ready","value":true,"notes":"KB is good","authorityCategory":"DELEGATE_FACILITATOR"}'
+]
+=================================
+
+   ✅ Knowledge Base signal successful.
+
+========== DRIZZLE SQL ==========
+select "id", "owner_user_id", "name", "cohort_label", "segment", "region", "status", "business_type", "team_headcount", "baseline_monthly_leads", "firm_size_tier", "discovery_complete", "last_diagnostic_id", "intake_window_state", "intake_snapshot_id", "intake_closed_at", "notes", "knowledge_base_ready_at", "roles_validated_at", "exec_ready_at", "exec_ready_by_user_id", "readiness_notes", "created_at", "updated_at" from "tenants" where "tenants"."id" = $1
+PARAMS: [ '49a64536-b151-4abc-9575-73a787ec3e5f' ]
+=================================
+
+   ✅ DB updated with knowledgeBaseReadyAt.
+
+4. Testing Override Authority (Delegate)...
+   ✅ Blocked override as Delegate.
+
+5. Testing Override Authority (Executive)...
+
+========== DRIZZLE SQL ==========
+update "tenants" set "roles_validated_at" = $1, "readiness_notes" = $2, "updated_at" = $3 where "tenants"."id" = $4
+PARAMS: [
+  'Sun, 11 Jan 2026 21:38:32 GMT',
+  null,
+  '2026-01-11T21:38:32.816Z',
+  '49a64536-b151-4abc-9575-73a787ec3e5f'
+]
+=================================
+
+
+========== DRIZZLE SQL ==========
+insert into "audit_events" ("id", "tenant_id", "actor_user_id", "actor_role", "event_type", "entity_type", "entity_id", "metadata", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, default)
+PARAMS: [
+  '49a64536-b151-4abc-9575-73a787ec3e5f',
+  '54b73701-66c6-4b3f-9be7-d73d0d8dd427',
+  'superadmin',
+  'READINESS_FLAG_OVERRIDE',
+  'tenant',
+  '49a64536-b151-4abc-9575-73a787ec3e5f',
+  '{"flag":"roles_validated","value":true,"overrideReason":"Executive override","authorityCategory":"EXECUTIVE_SPONSOR"}'
+]
+=================================
+
+   ✅ Override successful as Executive.
+
+6. Signaling Exec Ready...
+
+========== DRIZZLE SQL ==========
+update "tenants" set "exec_ready_at" = $1, "readiness_notes" = $2, "exec_ready_by_user_id" = $3, "updated_at" = $4 where "tenants"."id" = $5
+PARAMS: [
+  'Sun, 11 Jan 2026 21:38:33 GMT',
+  null,
+  '54b73701-66c6-4b3f-9be7-d73d0d8dd427',
+  '2026-01-11T21:38:33.170Z',
+  '49a64536-b151-4abc-9575-73a787ec3e5f'
+]
+=================================
+
+
+========== DRIZZLE SQL ==========
+insert into "audit_events" ("id", "tenant_id", "actor_user_id", "actor_role", "event_type", "entity_type", "entity_id", "metadata", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, default)
+PARAMS: [
+  '49a64536-b151-4abc-9575-73a787ec3e5f',
+  '54b73701-66c6-4b3f-9be7-d73d0d8dd427',
+  'superadmin',
+  'READINESS_FLAG_SET',
+  'tenant',
+  '49a64536-b151-4abc-9575-73a787ec3e5f',
+  '{"flag":"exec_ready","value":true,"authorityCategory":"DELEGATE_FACILITATOR"}'
+]
+=================================
+
+   ✅ Exec Ready signal successful.
+
+7. Checking Final Onboarding State...
+
+========== DRIZZLE SQL ==========
+select "id", "owner_user_id", "name", "cohort_label", "segment", "region", "status", "business_type", "team_headcount", "baseline_monthly_leads", "firm_size_tier", "discovery_complete", "last_diagnostic_id", "intake_window_state", "intake_snapshot_id", "intake_closed_at", "notes", "knowledge_base_ready_at", "roles_validated_at", "exec_ready_at", "exec_ready_by_user_id", "readiness_notes", "created_at", "updated_at" from "tenants" where "tenants"."id" = $1 limit $2
+PARAMS: [ '49a64536-b151-4abc-9575-73a787ec3e5f', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "user_id", "role", "answers", "coaching_feedback", "tenant_id", "status", "completed_at", "created_at" from "intakes" where "intakes"."tenant_id" = $1
+PARAMS: [ '49a64536-b151-4abc-9575-73a787ec3e5f' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "owner_user_id", "filename", "original_filename", "file_path", "file_size", "mime_type", "content", "storage_provider", "category", "title", "description", "sop_number", "output_number", "section", "tags", "uploaded_by", "is_public", "created_at", "updated_at" from "tenant_documents" where ("tenant_documents"."tenant_id" = $1 and "tenant_documents"."sop_number" = $2)
+PARAMS: [ '49a64536-b151-4abc-9575-73a787ec3e5f', 'SOP-01' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "notes", "created_at", "updated_at" from "discovery_call_notes" where "discovery_call_notes"."tenant_id" = $1 order by "discovery_call_notes"."created_at" desc limit $2
+PARAMS: [ '49a64536-b151-4abc-9575-73a787ec3e5f', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "owner_user_id", "filename", "original_filename", "file_path", "file_size", "mime_type", "content", "storage_provider", "category", "title", "description", "sop_number", "output_number", "section", "tags", "uploaded_by", "is_public", "created_at", "updated_at" from "tenant_documents" where ("tenant_documents"."tenant_id" = $1 and "tenant_documents"."category" = $2)
+PARAMS: [ '49a64536-b151-4abc-9575-73a787ec3e5f', 'roadmap' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "owner_user_id", "name", "cohort_label", "segment", "region", "status", "business_type", "team_headcount", "baseline_monthly_leads", "firm_size_tier", "discovery_complete", "last_diagnostic_id", "intake_window_state", "intake_snapshot_id", "intake_closed_at", "notes", "knowledge_base_ready_at", "roles_validated_at", "exec_ready_at", "exec_ready_by_user_id", "readiness_notes", "created_at", "updated_at" from "tenants" where "tenants"."id" = $1 limit $2
+PARAMS: [ '49a64536-b151-4abc-9575-73a787ec3e5f', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "status", "content", "created_by", "last_updated_by", "created_at", "updated_at" from "executive_briefs" where "executive_briefs"."tenant_id" = $1 limit $2
+PARAMS: [ '49a64536-b151-4abc-9575-73a787ec3e5f', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where "roadmaps"."tenant_id" = $1 order by "roadmaps"."created_at" desc limit $2
+PARAMS: [ '49a64536-b151-4abc-9575-73a787ec3e5f', 1 ]
+=================================
+
+   Final State: diagnostic_ready
+   Flags: {"intakeWindowClosed":true,"briefResolved":false,"ticketsModerated":false,"knowledgeBaseReady":true,"rolesValidated":true,"execReady":true,"roadmapFinalized":false}
+
+✅ Phase 3 Verification Complete: Readiness Signals & Onboarding State logic holds.

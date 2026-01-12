@@ -11,7 +11,7 @@ export async function getTenant(req: AuthRequest, res: Response) {
   try {
     console.log('[Tenant] getTenant called, user:', req.user);
     console.log('[Tenant] tenantId from middleware:', (req as any).tenantId);
-    
+
     // Ensure user is authenticated
     if (!req.user) {
       console.log('[Tenant] No user in request, returning 401');
@@ -197,6 +197,17 @@ export async function updateBusinessProfile(req: AuthRequest, res: Response) {
     });
   } catch (error) {
     console.error('[BusinessProfile] Update error:', error);
-    return res.status(500).json({ error: 'Failed to update business profile' });
+    console.error('[BusinessProfile] Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
+      tenantId: (req as any).tenantId,
+      userId: req.user?.id,
+      requestBody: req.body,
+    });
+    return res.status(500).json({
+      error: 'Failed to update business profile',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 }

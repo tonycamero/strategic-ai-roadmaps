@@ -15,9 +15,9 @@ async function main() {
     await db.insert(users).values({
         id: userId,
         email: `test_freeze_${testId}@example.com`,
-        role: 'ops', // Delegate role
+        role: 'ops', // Client Team Member
         passwordHash: 'mock',
-        name: 'Test Delegate'
+        name: 'Test Client User'
     });
 
     await db.insert(tenants).values({

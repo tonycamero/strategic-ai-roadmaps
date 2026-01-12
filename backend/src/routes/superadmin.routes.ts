@@ -1,10 +1,10 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireRole, AuthRequest } from '../middleware/auth';
+import { requireExecutive, requireDelegateOrHigher } from '../middleware/authority';
+import { AuthorityCategory, RoleToAuthorityMap } from '@roadmap/shared';
 import * as superadminController from '../controllers/superadmin.controller';
-import * as ticketModerationController from '../controllers/ticketModeration.controller';
-import * as finalRoadmapController from '../controllers/finalRoadmap.controller';
-import * as roadmapController from '../controllers/roadmap.controller';
+
 import * as snapshotController from '../controllers/snapshot.controller';
 
 const router = Router();
@@ -17,11 +17,40 @@ const upload = multer({
   },
 });
 
-// All superadmin routes require authentication
+// PHASE 1: Baseline protection for all /api/superadmin/* routes
+// 1. Authenticate user
+// 2. Require internal user (not client-facing)
+// 3. Require valid authority category (block AGENT, allow EXECUTIVE/DELEGATE/OPERATOR)
+// 4. Derive authority category from role
 router.use(authenticate);
+
+// Lock to internal users only
+router.use((req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!req.user?.isInternal) {
+    return res.status(403).json({ error: 'Internal access required' });
+  }
+  next();
+});
+
+// Allow any role that maps to a real authority category (block AGENT)
+router.use((req: AuthRequest, res: Response, next: NextFunction) => {
+  const role = req.user?.role;
+  const category = role ? RoleToAuthorityMap[role] : null;
+
+  // Block unknown roles or AGENT category
+  if (!category || category === AuthorityCategory.AGENT) {
+    return res.status(403).json({ error: 'SuperAdmin access required' });
+  }
+
+  // Attach category for downstream middleware
+  req.authorityCategory = category;
+
+  next();
+});
 
 // GET /api/superadmin/overview - Global dashboard stats
 router.get('/overview', superadminController.getOverview);
+router.get('/activity-feed', superadminController.getActivityFeed);
 
 // GET /api/superadmin/metrics/daily-rollup - 30-day trends
 router.get('/metrics/daily-rollup', superadminController.getDailyMetricsRollup);
@@ -65,14 +94,11 @@ router.get('/firms/:tenantId/documents', superadminController.listTenantDocument
 // GET /api/superadmin/firms/:tenantId/workflow-status - Get workflow status
 router.get('/firms/:tenantId/workflow-status', superadminController.getFirmWorkflowStatus);
 
-// POST /api/superadmin/firms/:tenantId/generate-sop01 - Generate SOP-01 Diagnostic
-router.post('/firms/:tenantId/generate-sop01', superadminController.generateSop01ForFirm);
+// POST /api/superadmin/firms/:tenantId/generate-sop01 - REMOVED (Legacy)
 
-// GET /api/superadmin/firms/:tenantId/discovery-notes - Get discovery notes
-router.get('/firms/:tenantId/discovery-notes', superadminController.getDiscoveryNotesForFirm);
+// GET/POST discovery notes - REMOVED
 
-// POST /api/superadmin/firms/:tenantId/discovery-notes - Save discovery notes
-router.post('/firms/:tenantId/discovery-notes', superadminController.saveDiscoveryNotesForFirm);
+// POST /api/superadmin/firms/:tenantId/discovery/acknowledge - REMOVED (Legacy)
 
 // GET /api/superadmin/firms/:tenantId/roadmap-os - Get Roadmap OS view
 router.get('/firms/:tenantId/roadmap-os', superadminController.getRoadmapOsForFirm);
@@ -80,8 +106,7 @@ router.get('/firms/:tenantId/roadmap-os', superadminController.getRoadmapOsForFi
 // POST /api/superadmin/tenants/:tenantId/refresh-vector-store - Refresh vector store (V2)
 router.post('/tenants/:tenantId/refresh-vector-store', superadminController.refreshVectorStoreForTenant);
 
-// POST /api/superadmin/firms/:tenantId/generate-roadmap - Generate roadmap
-router.post('/firms/:tenantId/generate-roadmap', superadminController.generateRoadmapForFirm);
+// POST /api/superadmin/firms/:tenantId/generate-roadmap - REMOVED (Legacy)
 
 // GET /api/superadmin/firms/:tenantId/tickets - Get tickets grouped by section
 router.get('/firms/:tenantId/tickets', superadminController.getTicketsForFirm);
@@ -92,8 +117,7 @@ router.post('/firms/:tenantId/generate-tickets', superadminController.generateTi
 // POST /api/superadmin/firms/:tenantId/extract-metadata - Extract roadmap metadata
 router.post('/firms/:tenantId/extract-metadata', superadminController.extractMetadataForFirm);
 
-// POST /api/superadmin/firms/:tenantId/close-intake - CR-UX-3: Intake Closure Gate
-router.post('/firms/:tenantId/close-intake', superadminController.closeIntakeWindow);
+// POST /api/superadmin/firms/:tenantId/close-intake - REMOVED (Legacy)
 
 
 // EPIC 3: Metrics & Outcomes
@@ -109,30 +133,42 @@ router.post('/firms/:tenantId/metrics/snapshot', superadminController.createSnap
 // POST /api/superadmin/firms/:tenantId/metrics/compute-outcome - Compute deltas + ROI
 router.post('/firms/:tenantId/metrics/compute-outcome', superadminController.computeOutcomeForFirm);
 
-// POST /api/superadmin/firms/:tenantId/export/case-study - Export case study
-router.post('/firms/:tenantId/export/case-study', superadminController.exportCaseStudyForFirm);
+// POST /api/superadmin/firms/:tenantId/readiness/signal - REMOVED (Legacy)
+// POST /api/superadmin/firms/:tenantId/export/case-study - REMOVED (Legacy)
 
-// Ticket Moderation Endpoints
+// Ticket Moderation Endpoints - REMOVED (Stubbed)
 // GET /api/superadmin/tickets/:tenantId/:diagnosticId - Get tickets for moderation
-router.get('/tickets/:tenantId/:diagnosticId', ticketModerationController.getDiagnosticTickets);
+// router.get('/tickets/:tenantId/:diagnosticId', ticketModerationController.getDiagnosticTickets);
 
 // GET /api/superadmin/tickets/:tenantId/:diagnosticId/status - Get moderation status
-router.get('/tickets/:tenantId/:diagnosticId/status', ticketModerationController.getModerationStatusEndpoint);
+// router.get('/tickets/:tenantId/:diagnosticId/status', ticketModerationController.getModerationStatusEndpoint);
 
-// POST /api/superadmin/tickets/approve - Approve tickets
-router.post('/tickets/approve', ticketModerationController.approveDiagnosticTickets);
+// POST /api/superadmin/tickets/approve - Approve tickets — PHASE 1: DELEGATE OR HIGHER
+// router.post('/tickets/approve', requireDelegateOrHigher(), ticketModerationController.approveDiagnosticTickets);
 
-// POST /api/superadmin/tickets/reject - Reject tickets
-router.post('/tickets/reject', ticketModerationController.rejectDiagnosticTickets);
+// POST /api/superadmin/tickets/reject - Reject tickets — PHASE 1: DELEGATE OR HIGHER
+// router.post('/tickets/reject', requireDelegateOrHigher(), ticketModerationController.rejectDiagnosticTickets);
 
-// POST /api/superadmin/firms/:tenantId/generate-final-roadmap - Generate final roadmap from approved tickets
-router.post('/firms/:tenantId/generate-final-roadmap', finalRoadmapController.generateFinalRoadmap);
+/*
+import { getDeprecationPhase, DeprecationPhase, getDeprecationWarning } from '../services/sunset.service';
 
-// POST /api/superadmin/roadmap/:tenantId/finalize - Finalize Strategic Roadmap (CR-UX-7)
-router.post('/roadmap/:tenantId/finalize', roadmapController.finalizeRoadmap);
+function wrapLegacyFinalize(handler: any) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    // Stubbed
+    return handler(req, res, next);
+  };
+}
+*/
 
-// GET /api/superadmin/snapshot/:tenantId - Executive Snapshot (CR-UX-8)
-router.get('/snapshot/:tenantId', snapshotController.getTenantSnapshot);
+// Canonical Roadmap Finalization Endpoint (CR-UX-8 v2) - REMOVED (Stubbed)
+// router.post('/firms/:tenantId/roadmap/finalize', requireExecutive(), roadmapController.finalizeRoadmap);
+
+// Legacy Wrappers (90-day sunset) - REMOVED (Stubbed)
+// router.post('/firms/:tenantId/generate-final-roadmap', requireExecutive(), wrapLegacyFinalize(finalRoadmapController.generateFinalRoadmap));
+// router.post('/roadmap/:tenantId/finalize', requireExecutive(), wrapLegacyFinalize(roadmapController.finalizeRoadmap));
+
+// GET /api/superadmin/snapshot/:tenantId - Executive Snapshot (CR-UX-8) — PHASE 1: EXECUTIVE ONLY
+router.get('/snapshot/:tenantId', requireExecutive(), snapshotController.getTenantSnapshot);
 
 // Webinar Registration Management
 // GET /api/superadmin/webinar/registrations - View all webinar registrations
@@ -147,14 +183,14 @@ router.get('/webinar/settings', superadminController.getWebinarSettings);
 // PATCH /api/superadmin/webinar/password - Update webinar password
 router.patch('/webinar/password', superadminController.updateWebinarPassword);
 
-// EXECUTIVE BRIEF (Ticket 3)
-// GET /api/superadmin/firms/:tenantId/exec-brief - Get brief
-router.get('/firms/:tenantId/exec-brief', superadminController.getExecutiveBrief);
+// Executive Brief Routes - REMOVED
 
-// POST /api/superadmin/firms/:tenantId/exec-brief - Upsert brief
-router.post('/firms/:tenantId/exec-brief', superadminController.upsertExecutiveBrief);
+// PATCH /api/superadmin/intakes/:intakeId/coaching - Update coaching feedback
+router.patch('/intakes/:intakeId/coaching', superadminController.updateIntakeCoaching);
 
-// PATCH /api/superadmin/firms/:tenantId/exec-brief/status - Transition status
-router.patch('/firms/:tenantId/exec-brief/status', superadminController.transitionExecutiveBriefStatus);
+// POST /api/superadmin/intakes/:intakeId/reopen - Re-open completed intake
+router.post('/intakes/:intakeId/reopen', requireExecutive(), superadminController.reopenIntake);
+
+// PHASE 7: Diagnostic Artifacts - REMOVED
 
 export default router;

@@ -30,7 +30,7 @@ export default function SuperAdminFirmsPage() {
         <div>
           <div className="text-[10px] text-indigo-400 font-extrabold uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></div>
-            Control Plane Authority
+            Portfolio Readiness Authority
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Portfolio Readiness</h1>
           <p className="text-sm text-slate-400 max-w-2xl font-light">
@@ -46,7 +46,7 @@ export default function SuperAdminFirmsPage() {
       <div className="space-y-4">
         {firms.length === 0 ? (
           <div className="p-16 text-center border border-dashed border-slate-800 rounded-xl text-slate-500 font-mono text-sm bg-slate-900/20">
-            No active tenants in control plane scope.
+            No active tenants in readiness scope.
           </div>
         ) : (
           <div className="bg-slate-950 border border-slate-900 rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/5">
@@ -72,7 +72,7 @@ export default function SuperAdminFirmsPage() {
                   key={firm.tenantId}
                   firm={firm}
                   isExecutive={isExecutive}
-                  onClick={() => setLocation(`/superadmin/control-plane/firms/${firm.tenantId}`)}
+                  onClick={() => setLocation(`/superadmin/execute/firms/${firm.tenantId}`)}
                 />
               ))}
             </div>

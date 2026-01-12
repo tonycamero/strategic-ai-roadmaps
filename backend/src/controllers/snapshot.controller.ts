@@ -9,6 +9,7 @@ interface AuthRequest extends Request {
     user?: {
         userId: string;
         role: string;
+        isInternal: boolean;
         tenantId?: string;
     };
 }
@@ -27,10 +28,13 @@ export const getTenantSnapshot = async (req: AuthRequest, res: Response) => {
             return res.status(400).json({ error: 'Tenant ID is required' });
         }
 
-        // 1. Authority Check: Executive Only
-        // Delegates (ops, etc.) must NOT see this panel.
-        if (!currentUser || !['superadmin', 'owner'].includes(currentUser.role)) {
-            console.warn(`[Snapshot] Unauthorized access attempt by ${currentUser?.role} (${currentUser?.userId})`);
+        // 1. Authority Check: Executive/Consultant Only (CR-FIX-RBAC-2)
+        // ALLOW: SuperAdmin (internal), Consulting Delegate (internal), OR Owner (tenant)
+        const isInternalConsultant = currentUser?.isInternal && ['superadmin', 'delegate'].includes(currentUser.role);
+        const isTenantOwner = !currentUser?.isInternal && currentUser?.role === 'owner';
+
+        if (!isInternalConsultant && !isTenantOwner) {
+            console.warn(`[Snapshot] Unauthorized access attempt by ${currentUser?.role} (${currentUser?.userId}, isInternal: ${currentUser?.isInternal})`);
             return res.status(403).json({ error: 'Snapshot access restricted to Executives.' });
         }
 

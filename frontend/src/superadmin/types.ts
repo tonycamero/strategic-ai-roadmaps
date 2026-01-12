@@ -61,6 +61,25 @@ export interface SuperAdminTenantDetail {
     intakeWindowState: 'OPEN' | 'CLOSED';
     intakeSnapshotId?: string | null;
     intakeClosedAt?: string | null;
+    knowledgeBaseReadyAt?: string | null;
+    rolesValidatedAt?: string | null;
+    execReadyAt?: string | null;
+    execReadyByUserId?: string | null;
+    readinessNotes?: string | null;
+  };
+  onboarding?: {
+    onboardingState: 'PRE_INTAKE' | 'INTAKE_ACTIVE' | 'DIAGNOSTIC_READY' | 'ROADMAP_READY' | 'COMPLETED' | 'STALLED';
+    percentComplete: number;
+    reasons: string[];
+    flags: {
+      intakeWindowClosed: boolean;
+      briefResolved: boolean;
+      ticketsModerated: boolean;
+      knowledgeBaseReady: boolean;
+      rolesValidated: boolean;
+      execReady: boolean;
+      roadmapFinalized: boolean;
+    };
   };
   owner: {
     id: string;
@@ -120,5 +139,19 @@ export interface SuperAdminTenantDetail {
     approved: number;
     rejected: number;
     readyForRoadmap: boolean;
+  };
+}
+
+export interface CommandCenterTenant {
+  id: string;
+  name: string;
+  onboardingState: string;
+  percentComplete: number;
+  owner: { name: string; email: string } | null;
+  cohortLabel: string | null;
+  readiness: {
+    knowledgeBaseReadyAt: string | null;
+    rolesValidatedAt: string | null;
+    execReadyAt: string | null;
   };
 }

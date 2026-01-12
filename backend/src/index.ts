@@ -25,6 +25,7 @@ import trustagentRoutes from './routes/trustagent.routes';
 import diagnosticRoutes from './routes/diagnostic.routes'; // formerly webinar.routes
 import diagnosticGenerationRoutes from './routes/diagnostic_generation.routes'; // formerly diagnostic.routes
 import onboardingRoutes from './routes/onboarding.routes';
+import commandCenterRoutes from './routes/command_center.routes';
 
 import tenantsRoutes from './routes/tenants.routes';
 import internalEvidenceRoutes from './routes/internalEvidence.routes';
@@ -74,6 +75,7 @@ app.use('/api/agent', agentRoutes);              // Legacy chat completions
 app.use('/api/assistant', assistantAgentRoutes); // NEW: Assistants API for owner/team
 app.use('/api/agents', agentConfigRoutes);
 app.use('/api/superadmin/assistant', superadminAssistantRoutes); // SuperAdmin tap-in
+app.use('/api/superadmin/command-center', commandCenterRoutes);
 app.use('/api/superadmin', superadminRoutes);
 app.use('/api/diagnostics', diagnosticGenerationRoutes); // Diagnostic ticket+roadmap generation (PRESERVED)
 app.use('/api/public/pulseagent', pulseagentRoutes); // Public PulseAgent API

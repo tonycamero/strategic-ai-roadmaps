@@ -55,3 +55,20 @@ export function isExecutiveRole(role: UserRole): boolean {
 export function isDelegateRole(role: UserRole): boolean {
     return RoleToAuthorityMap[role] === AuthorityCategory.DELEGATE;
 }
+
+/**
+ * Check if an authority category meets or exceeds a required level.
+ * Implements hierarchical authority: EXECUTIVE >= DELEGATE >= OPERATOR >= AGENT
+ */
+export function hasAuthority(
+    actual: AuthorityCategory,
+    required: AuthorityCategory
+): boolean {
+    const hierarchy = {
+        [AuthorityCategory.EXECUTIVE]: 3,
+        [AuthorityCategory.DELEGATE]: 2,
+        [AuthorityCategory.OPERATOR]: 1,
+        [AuthorityCategory.AGENT]: 0,
+    };
+    return hierarchy[actual] >= hierarchy[required];
+}

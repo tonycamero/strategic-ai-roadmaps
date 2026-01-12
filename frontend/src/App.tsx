@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Router, Route, Switch, useLocation } from 'wouter';
+import { Router, Route, Switch, useLocation, Redirect } from 'wouter';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { TenantProvider } from './context/TenantContext';
 import { OnboardingProvider } from './context/OnboardingContext';
@@ -156,17 +156,27 @@ function App() {
                 <ProtectedRoute path="/agents/inbox" component={AgentInbox} />
                 <ProtectedRoute path="/case-study/:docId" component={CaseStudyViewer} />
 
+                <ProtectedRoute path="/superadmin/firms/:tenantId/case-study/:docId" component={CaseStudyViewer} />
+                <ProtectedRoute path="/superadmin/tickets/:tenantId/:diagnosticId" component={TicketModeration} />
                 <ProtectedRoute path="/superadmin" component={SuperAdminLayout} />
+                <ProtectedRoute path="/superadmin/execute" component={SuperAdminLayout} />
+
+                {/* Redirects for legacy semantic names */}
+                <Route path="/superadmin/command-center">
+                  <Redirect to="/superadmin/execute" />
+                </Route>
+                <Route path="/superadmin/strategy-center">
+                  <Redirect to="/superadmin" />
+                </Route>
+
                 <ProtectedRoute path="/superadmin/roadmaps" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/firms" component={SuperAdminLayout} />
-                <ProtectedRoute path="/superadmin/control-plane/firms/:tenantId" component={SuperAdminLayout} />
+                <ProtectedRoute path="/superadmin/execute/firms/:tenantId" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/firms/:tenantId" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/leads" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/agent" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/tenant/:tenantId/roadmap" component={SuperAdminLayout} />
-                <ProtectedRoute path="/superadmin/pipeline" component={SuperAdminLayout} />
-                <ProtectedRoute path="/superadmin/firms/:tenantId/case-study/:docId" component={CaseStudyViewer} />
-                <ProtectedRoute path="/superadmin/tickets/:tenantId/:diagnosticId" component={TicketModeration} />
+                <ProtectedRoute path="/superadmin/pipeline/:cohortLabel?" component={SuperAdminLayout} />
 
                 <Route>
                   <div className="min-h-screen flex items-center justify-center bg-gray-50">

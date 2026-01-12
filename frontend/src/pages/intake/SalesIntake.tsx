@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { useAuth } from '../../context/AuthContext';
@@ -38,6 +38,8 @@ export default function SalesIntake() {
     queryFn: () => api.getMyIntake(),
   });
 
+  const coachingFeedback = intakeData?.intake?.coachingFeedback || {};
+
   useEffect(() => {
     if (intakeData?.intake) {
       setIsUpdate(true);
@@ -63,7 +65,7 @@ export default function SalesIntake() {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const payload = {
       ...formData,
@@ -129,6 +131,7 @@ export default function SalesIntake() {
                   placeholder="Describe your membership acquisition process from first contact to activation..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.sales_process} />
               </div>
 
               <div>
@@ -143,6 +146,7 @@ export default function SalesIntake() {
                   placeholder="What are your primary member acquisition channels (events, referrals, cold outreach, digital, partners)?..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.lead_generation} />
               </div>
 
               <div>
@@ -157,6 +161,7 @@ export default function SalesIntake() {
                   placeholder="Where do new members drop off or go quiet in the first 90 days?..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.conversion_challenges} />
               </div>
 
               <div>
@@ -171,6 +176,7 @@ export default function SalesIntake() {
                   placeholder="What tools do you use to track member activity and engagement?..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.crm_tools} />
               </div>
 
               <div>
@@ -185,6 +191,7 @@ export default function SalesIntake() {
                   placeholder="What are your biggest challenges with renewals and sponsorships?..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.customer_insights} />
               </div>
 
               <div>
@@ -199,6 +206,7 @@ export default function SalesIntake() {
                   placeholder="Where would you most like to apply automation (welcome journeys, renewal reminders, sponsor follow-up, reporting)?..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.automation_opportunities} />
               </div>
             </>
           ) : (
@@ -216,6 +224,7 @@ export default function SalesIntake() {
                   placeholder="Describe your current sales process from lead to close..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.sales_process} />
               </div>
 
               <div>
@@ -230,6 +239,7 @@ export default function SalesIntake() {
                   placeholder="What are your primary lead generation channels and their effectiveness?..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.lead_generation} />
               </div>
 
               <div>
@@ -244,6 +254,7 @@ export default function SalesIntake() {
                   placeholder="What CRM and sales tools does your team currently use?..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.crm_tools} />
               </div>
 
               <div>
@@ -258,6 +269,7 @@ export default function SalesIntake() {
                   placeholder="What are your biggest challenges in converting leads to customers?..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.conversion_challenges} />
               </div>
 
               <div>
@@ -272,6 +284,7 @@ export default function SalesIntake() {
                   placeholder="How do you currently gather and use customer insights? What data do you wish you had?..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.customer_insights} />
               </div>
 
               <div>
@@ -286,60 +299,93 @@ export default function SalesIntake() {
                   placeholder="Where do you see the biggest opportunities for AI or automation in your sales process?..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.automation_opportunities} />
               </div>
             </>
           )}
 
-            {isChamber && chamberQuestions.length > 0 && (
-              <div className="border-t border-slate-700 pt-6 mt-4 space-y-4">
-                <h3 className="text-lg font-semibold text-slate-100">
-                  Chamber-Specific Questions (Community & Sponsorship)
-                </h3>
-                <p className="text-sm text-slate-400">
-                  These help us understand your community partnerships and sponsorship engine.
-                </p>
+          {isChamber && chamberQuestions.length > 0 && (
+            <div className="border-t border-slate-700 pt-6 mt-4 space-y-4">
+              <h3 className="text-lg font-semibold text-slate-100">
+                Chamber-Specific Questions (Community & Sponsorship)
+              </h3>
+              <p className="text-sm text-slate-400">
+                These help us understand your community partnerships and sponsorship engine.
+              </p>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-200 mb-2">
-                    {chamberQuestions[0]?.label}
-                  </label>
-                  <textarea
-                    value={formData.ce_partnerships}
-                    onChange={(e) => handleChange('ce_partnerships', e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={3}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-200 mb-2">
-                    {chamberQuestions[1]?.label}
-                  </label>
-                  <textarea
-                    value={formData.ce_community_gaps}
-                    onChange={(e) => handleChange('ce_community_gaps', e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={3}
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-200 mb-2">
+                  {chamberQuestions[0]?.label}
+                </label>
+                <textarea
+                  value={formData.ce_partnerships}
+                  onChange={(e) => handleChange('ce_partnerships', e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={3}
+                />
+                <ConsultantFeedback feedback={coachingFeedback.ce_partnerships} />
               </div>
-            )}
 
-            {submitMutation.isError && (
-              <div className="bg-red-900/20 border border-red-800 text-red-300 px-4 py-3 rounded-lg text-sm">
-                Failed to submit form. Please try again.
+              <div>
+                <label className="block text-sm font-medium text-slate-200 mb-2">
+                  {chamberQuestions[1]?.label}
+                </label>
+                <textarea
+                  value={formData.ce_community_gaps}
+                  onChange={(e) => handleChange('ce_community_gaps', e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={3}
+                />
+                <ConsultantFeedback feedback={coachingFeedback.ce_community_gaps} />
               </div>
-            )}
+            </div>
+          )}
 
-            <button
-              type="submit"
-              disabled={submitMutation.isPending}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {submitMutation.isPending ? (isUpdate ? 'Updating...' : 'Submitting...') : (isUpdate ? 'Update Intake Form' : 'Submit Intake Form')}
-            </button>
-          </form>
+          {submitMutation.isError && (
+            <div className="bg-red-900/20 border border-red-800 text-red-300 px-4 py-3 rounded-lg text-sm">
+              Failed to submit form. Please try again.
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={submitMutation.isPending}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitMutation.isPending ? (isUpdate ? 'Updating...' : 'Submitting...') : (isUpdate ? 'Update Intake Form' : 'Submit Intake Form')}
+          </button>
+        </form>
       </div>
+    </div>
+  );
+}
+
+function ConsultantFeedback({ feedback }: { feedback?: { comment: string; isFlagged: boolean } }) {
+  if (!feedback || (!feedback.comment && !feedback.isFlagged)) return null;
+
+  return (
+    <div className={`mt-2 p-3 rounded-lg border text-sm transition-all ${feedback.isFlagged ? 'bg-red-900/10 border-red-800/50 ring-1 ring-red-500/20' : 'bg-slate-800/40 border-slate-800'}`}>
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+            Consultant Coaching
+          </span>
+        </div>
+        {feedback.isFlagged && (
+          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-500/10 border border-red-500/20 rounded-full">
+            <span className="w-1 h-1 rounded-full bg-red-400 animate-ping" />
+            <span className="text-[9px] font-bold uppercase tracking-tight text-red-400">
+              Needs Revision
+            </span>
+          </div>
+        )}
+      </div>
+      {feedback.comment && (
+        <p className="text-slate-300 italic leading-relaxed pl-3 border-l border-slate-700/50">
+          "{feedback.comment}"
+        </p>
+      )}
     </div>
   );
 }

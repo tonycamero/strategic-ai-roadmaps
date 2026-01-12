@@ -60,7 +60,7 @@ export default function BusinessProfile() {
         queryClient.invalidateQueries({ queryKey: ['tenant'], refetchType: 'all' }),
         refreshOnboarding(),
       ]);
-      
+
       setLocation('/dashboard');
     },
   });
@@ -190,6 +190,7 @@ export default function BusinessProfile() {
               id="segment"
               value={formData.segment}
               onChange={(e) => setFormData({ ...formData, segment: e.target.value })}
+              maxLength={255}
               className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="e.g., Real Estate, Professional Services, SaaS"
             />
@@ -208,6 +209,7 @@ export default function BusinessProfile() {
               id="region"
               value={formData.region}
               onChange={(e) => setFormData({ ...formData, region: e.target.value })}
+              maxLength={255}
               className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="e.g., Pacific Northwest, Northeast, California"
             />

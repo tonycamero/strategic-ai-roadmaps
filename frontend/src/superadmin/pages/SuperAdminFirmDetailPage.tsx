@@ -53,7 +53,7 @@ export default function SuperAdminFirmDetailPage() {
   const [documents, setDocuments] = useState<any[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [documentsOpen, setDocumentsOpen] = useState(false);
-  
+
   // Workflow status state
   const [workflowStatus, setWorkflowStatus] = useState<any | null>(null);
   const [, setLoadingStatus] = useState(false);
@@ -92,7 +92,7 @@ export default function SuperAdminFirmDetailPage() {
         });
       })
       .catch((err) => setError(err.message));
-    
+
     // Fetch documents and workflow status
     fetchDocuments();
     fetchWorkflowStatus();
@@ -130,40 +130,15 @@ export default function SuperAdminFirmDetailPage() {
     }
   }
 
-  async function handleGenerateSop01() {
+  // Phase 2: Redirect to Control Plane
+  function goControlPlane(hash: string) {
     if (!params?.tenantId) return;
-    setRunningSop01(true);
-    try {
-      await superadminApi.generateSop01(params.tenantId);
-      await fetchDocuments();
-      await fetchWorkflowStatus();
-      // Refresh firm detail to get updated lastDiagnosticId
-      const response = await superadminApi.getFirmDetail(params.tenantId) as unknown as FirmDetailResponse;
-      setData({
-        tenant: {
-          id: response.tenantSummary.id,
-          name: response.tenantSummary.name,
-          cohortLabel: response.tenantSummary.cohortLabel,
-          segment: response.tenantSummary.segment,
-          region: response.tenantSummary.region,
-          status: response.tenantSummary.status,
-          notes: response.tenantSummary.notes,
-          createdAt: response.tenantSummary.createdAt,
-          ownerEmail: response.owner?.email || '',
-          ownerName: response.owner?.name || '',
-          lastDiagnosticId: response.tenantSummary.lastDiagnosticId,
-        },
-        owner: response.owner,
-        teamMembers: response.teamMembers,
-        intakes: response.intakes,
-        roadmaps: response.roadmaps,
-        recentActivity: response.recentActivity,
-      });
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setRunningSop01(false);
-    }
+    navigate(`/superadmin/control-plane/firms/${params.tenantId}#${hash}`);
+  }
+
+  // PHASE 2: DISABLED - Mutations moved to Control Plane
+  async function handleGenerateSop01() {
+    goControlPlane('diagnostic');
   }
 
   async function openDiscoveryModal() {
@@ -191,18 +166,9 @@ export default function SuperAdminFirmDetailPage() {
     }
   }
 
+  // PHASE 2: DISABLED - Mutations moved to Control Plane
   async function handleGenerateRoadmap() {
-    if (!params?.tenantId) return;
-    setRunningRoadmap(true);
-    try {
-      await superadminApi.generateRoadmap(params.tenantId);
-      await fetchDocuments();
-      await fetchWorkflowStatus();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setRunningRoadmap(false);
-    }
+    goControlPlane('roadmap');
   }
 
   async function handleExport(format: 'csv' | 'json') {
@@ -546,35 +512,50 @@ export default function SuperAdminFirmDetailPage() {
                   status={`${workflowStatus.roadmap.sectionsCount}/9 sections`}
                 />
 
-                {/* Action Buttons */}
+                {/* Action Buttons - PHASE 2: Disabled, redirect to Control Plane */}
                 <div className="pt-3 border-t border-slate-800 space-y-2">
-                  <button
-                    onClick={handleGenerateSop01}
-                    disabled={!workflowStatus.intakes.complete || runningSop01}
-                    className="w-full px-3 py-2 text-xs font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-slate-800 disabled:text-slate-600 text-white rounded-lg transition-colors"
-                  >
-                    {runningSop01 ? 'Generating SOP-01...' : 'Generate SOP-01 Diagnostic'}
-                  </button>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => goControlPlane('diagnostic')}
+                      className="w-full px-3 py-2 text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg transition-colors flex items-center justify-between"
+                      title="This action moved to Control Plane"
+                    >
+                      <span>Generate SOP-01 Diagnostic</span>
+                      <span className="text-[10px] opacity-60">→ Control Plane</span>
+                    </button>
+                    <div className="text-[10px] text-slate-500 italic px-2">
+                      Diagnostic generation moved to Control Plane for authority enforcement
+                    </div>
+                  </div>
+
                   <button
                     onClick={openDiscoveryModal}
                     className="w-full px-3 py-2 text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg transition-colors"
                   >
-                    Edit Discovery Notes
+                    Edit Discovery Call Questions
                   </button>
-                  {/* Old Generate Roadmap button - only show if no diagnostic/tickets yet */}
+
+                  {/* Roadmap generation - redirect to Control Plane */}
                   {!data?.tenant?.lastDiagnosticId && (
-                    <button
-                      onClick={handleGenerateRoadmap}
-                      disabled={!workflowStatus.discovery.complete || runningRoadmap}
-                      className="w-full px-3 py-2 text-xs font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-slate-800 disabled:text-slate-600 text-white rounded-lg transition-colors"
-                    >
-                      {runningRoadmap ? 'Generating Roadmap...' : 'Generate Roadmap (Legacy)'}
-                    </button>
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => goControlPlane('roadmap')}
+                        className="w-full px-3 py-2 text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg transition-colors flex items-center justify-between"
+                        title="This action moved to Control Plane"
+                      >
+                        <span>Generate Roadmap (Legacy)</span>
+                        <span className="text-[10px] opacity-60">→ Control Plane</span>
+                      </button>
+                      <div className="text-[10px] text-slate-500 italic px-2">
+                        Roadmap generation moved to Control Plane for authority enforcement
+                      </div>
+                    </div>
                   )}
+
                   {/* Show instruction if tickets exist */}
                   {data?.tenant?.lastDiagnosticId && (
                     <div className="w-full px-3 py-2 text-xs text-slate-400 bg-slate-900/40 border border-slate-800 rounded-lg">
-                      📋 Moderate tickets above, then use "Generate Final Roadmap" button
+                      📋 Use Control Plane for ticket moderation and roadmap finalization
                     </div>
                   )}
                 </div>
@@ -583,28 +564,28 @@ export default function SuperAdminFirmDetailPage() {
           )}
 
           <Card title="Recent Activity">
-          {recentActivity.length === 0 ? (
-            <div className="text-slate-500 text-sm">No events logged.</div>
-          ) : (
-            <div className="space-y-2">
-              {recentActivity.map((ev) => (
-                <div key={ev.id} className="border-b border-slate-800 pb-2">
-                  <div className="flex justify-between">
-                    <div className="text-xs font-medium text-slate-200">
-                      {ev.eventType}
+            {recentActivity.length === 0 ? (
+              <div className="text-slate-500 text-sm">No events logged.</div>
+            ) : (
+              <div className="space-y-2">
+                {recentActivity.map((ev) => (
+                  <div key={ev.id} className="border-b border-slate-800 pb-2">
+                    <div className="flex justify-between">
+                      <div className="text-xs font-medium text-slate-200">
+                        {ev.eventType}
+                      </div>
+                      <div className="text-[10px] text-slate-500">
+                        {new Date(ev.createdAt).toLocaleString()}
+                      </div>
                     </div>
-                    <div className="text-[10px] text-slate-500">
-                      {new Date(ev.createdAt).toLocaleString()}
+                    <div className="text-[11px] text-slate-400">
+                      {ev.actorName} ({ev.actorRole || 'system'})
                     </div>
                   </div>
-                  <div className="text-[11px] text-slate-400">
-                    {ev.actorName} ({ev.actorRole || 'system'})
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
+                ))}
+              </div>
+            )}
+          </Card>
         </div>
       </section>
 
@@ -634,7 +615,7 @@ export default function SuperAdminFirmDetailPage() {
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
           <div className="bg-slate-950 border border-slate-800 rounded-xl max-w-3xl w-full p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-slate-100">Discovery Call Notes</h2>
+              <h2 className="text-xl font-semibold text-slate-100">Discovery Call Questions</h2>
               <button
                 onClick={() => setDiscoveryModalOpen(false)}
                 className="text-slate-400 hover:text-slate-200 text-2xl leading-none transition-colors"
@@ -642,7 +623,7 @@ export default function SuperAdminFirmDetailPage() {
                 ×
               </button>
             </div>
-            
+
             <textarea
               value={discoveryDraft}
               onChange={(e) => setDiscoveryDraft(e.target.value)}
@@ -689,7 +670,7 @@ function StatusRow({ label, complete, status }: { label: string; complete: boole
 function DocumentRow({ doc }: { doc: any }) {
   const [, params] = useRoute<{ tenantId: string }>('/superadmin/firms/:tenantId');
   const [, setLocation] = useLocation();
-  
+
   const handleOpen = () => {
     if (params?.tenantId) {
       setLocation(`/superadmin/firms/${params.tenantId}/case-study/${doc.id}`);
@@ -722,7 +703,7 @@ function DocumentRow({ doc }: { doc: any }) {
         </button>
       </div>
       <div className="text-[10px] text-slate-500 mt-2">
-        {(doc.fileSize / 1024).toFixed(1)} KB • 
+        {(doc.fileSize / 1024).toFixed(1)} KB •
         Uploaded {new Date(doc.createdAt).toLocaleDateString()}
       </div>
     </div>
