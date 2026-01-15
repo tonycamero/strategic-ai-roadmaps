@@ -29,6 +29,7 @@ export const ExecutiveBriefSurface: React.FC<ExecutiveBriefSurfaceProps> = ({ on
             });
             if (res.status === 404) {
                 setBrief(null);
+                onStatusChange?.('NOT_CREATED');
                 return;
             }
             const data = await res.json();
