@@ -163,9 +163,15 @@ export async function acceptInvite(req: Request, res: Response) {
 
     const authToken = generateToken({
       userId: newUser.id,
+      id: newUser.id,
       email: newUser.email,
+<<<<<<< HEAD
       role: newUser.role as any,
       isInternal: false,
+=======
+      role: newUser.role,
+      isInternal: newUser.isInternal,
+>>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
       tenantId: newUser.tenantId,
     });
 

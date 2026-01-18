@@ -30,24 +30,6 @@ export const ExecutionContextPanel: React.FC<ExecutionContextPanelProps> = ({
         );
     }
 
-    const nextAction = () => {
-        const { onboardingState, readiness } = tenant;
-
-        if (onboardingState === 'intake_open') return "Await Intake completion";
-        if (onboardingState === 'diagnostic_ready') return "Ready to generate Strategic Synthesis";
-        if (onboardingState === 'diagnostic_complete') {
-            if (!readiness.rolesValidatedAt) return "Validate role signals for moderation";
-            return "Finalize synthesis for Executive review";
-        }
-        if (onboardingState === 'delegate_ready') {
-            if (!readiness.execReadyAt) return "Await Executive Review readiness";
-            return "Perform Executive moderation and finalization";
-        }
-        if (onboardingState === 'exec_review') return "Review final Strategic Roadmap";
-        if (onboardingState === 'roadmap_finalized') return "Strategy execution is active";
-
-        return "System standby";
-    };
 
     return (
         <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in duration-500">
@@ -60,10 +42,10 @@ export const ExecutionContextPanel: React.FC<ExecutionContextPanelProps> = ({
                         </h2>
                         <div className="flex items-center gap-2">
                             <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                                {tenant.onboardingState.replace(/_/g, ' ')}
+                                {tenant.onboardingState?.replace(/_/g, ' ') || 'UNKNOWN'}
                             </span>
                             <span className="text-[9px] font-mono text-slate-500 font-bold">
-                                {Math.round(tenant.percentComplete)}% Processed
+                                {Math.round(tenant.percentComplete || 0)}% Processed
                             </span>
                         </div>
                     </div>
@@ -78,67 +60,6 @@ export const ExecutionContextPanel: React.FC<ExecutionContextPanelProps> = ({
             </header>
 
             <div className="flex-1 overflow-y-auto p-8 space-y-12">
-                {/* 1. Next Recommended Action */}
-                <section>
-                    <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 mb-6">Next Recommended Action</h3>
-                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-6 flex items-start gap-4 ring-4 ring-emerald-500/5">
-                        <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
-                            <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                            </svg>
-                        </div>
-                        <div className="flex-1">
-                            <p className="text-sm font-black text-emerald-400 tracking-tight leading-tight">
-                                {nextAction()}
-                            </p>
-                        </div>
-                    </div>
-                </section>
-
-                {/* 2. Readiness Matrix */}
-                <section>
-                    <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 mb-6">Readiness Matrix</h3>
-                    <div className="grid grid-cols-1 gap-3">
-                        {[
-                            { label: 'Knowledge Base', status: tenant.readiness.knowledgeBaseReadyAt, color: 'emerald' },
-                            { label: 'Role Validation', status: tenant.readiness.rolesValidatedAt, color: 'blue' },
-                            { label: 'Executive Review', status: tenant.readiness.execReadyAt, color: 'purple' }
-                        ].map(gate => (
-                            <div key={gate.label} className="flex items-center justify-between p-4 bg-slate-900/40 border border-slate-800/50 rounded-xl">
-                                <span className="text-xs font-bold text-slate-300">{gate.label}</span>
-                                <div className="flex items-center gap-3">
-                                    <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${gate.status ? 'text-emerald-500' : 'text-slate-600'}`}>
-                                        {gate.status ? 'Ready' : 'Incomplete'}
-                                    </span>
-                                    {gate.label === 'Knowledge Base' && (
-                                        <svg
-                                            className={`w-4 h-4 ${gate.status ? 'text-green-500 filter drop-shadow-[0_0_5px_rgba(34,197,94,0.4)]' : 'text-slate-800 opacity-40'}`}
-                                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                        >
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                                        </svg>
-                                    )}
-                                    {gate.label === 'Role Validation' && (
-                                        <svg
-                                            className={`w-4 h-4 ${gate.status ? 'text-blue-500 filter drop-shadow-[0_0_5px_rgba(59,130,246,0.4)]' : 'text-slate-800 opacity-40'}`}
-                                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                        >
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                        </svg>
-                                    )}
-                                    {gate.label === 'Executive Review' && (
-                                        <svg
-                                            className={`w-4 h-4 ${gate.status ? 'text-purple-500 filter drop-shadow-[0_0_5px_rgba(168,85,247,0.4)]' : 'text-slate-800 opacity-40'}`}
-                                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                        >
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m5.618-4.016A3.323 3.323 0 0010.605 2.152a3.323 3.323 0 00-4.638 3.376 3.323 3.323 0 002.152 4.987 3.323 3.323 0 002.152 4.987 3.323 3.323 0 003.376 4.638 3.323 3.323 0 004.987-2.152 3.323 3.323 0 003.376-4.638 3.323 3.323 0 00-2.152-4.987zM5 2c0 .656-.126 1.283-.356 1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                        </svg>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
 
                 {/* 3. Operational Access */}
                 <section>

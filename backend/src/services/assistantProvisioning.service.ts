@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /**
  * Assistant Provisioning Service
  * 
@@ -240,5 +241,14 @@ export async function provisionAssistantForConfig(
     return {
         assistantId: assistant.id,
         vectorStoreId: vectorStoreId || undefined,
+=======
+export async function provisionAssistantForConfig(configId: string, actorUserId?: string): Promise<{
+    assistantId: string;
+    vectorStoreId: string;
+}> {
+    return {
+        assistantId: "stub-asst-id",
+        vectorStoreId: "stub-vs-id"
+>>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
     };
 }

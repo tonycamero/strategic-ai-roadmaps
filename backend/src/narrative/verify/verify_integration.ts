@@ -39,7 +39,7 @@ async function verifyIntegration() {
     try {
         // 1. Calculate Board-Ready Packet
         console.log("Step 1: Calculating Board-Ready Packet...");
-        const packet = calculateBoardReadyPacket("test-session-id", MOCK_PAYLOADS);
+        const packet = await calculateBoardReadyPacket("test-session-id", MOCK_PAYLOADS);
 
         if (!packet) {
             throw new Error("Failed to calculate packet");

@@ -485,7 +485,7 @@ function InviteModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    createInviteMutation.mutate({ email, role: role as 'ops' | 'sales' | 'delivery' });
+    createInviteMutation.mutate({ email, role: role as 'ops' | 'sales' | 'delivery', name: '', perceptionPulse: '' });
   };
 
   return (

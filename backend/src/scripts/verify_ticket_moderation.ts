@@ -8,6 +8,11 @@ import { AuthRequest } from '../middleware/auth';
 import { Response } from 'express';
 
 // Mock Response object
+interface MockResponse extends Response {
+    statusCode: number;
+    body: any;
+}
+
 const mockRes = () => {
     const res: any = {};
     res.status = (code: number) => {
@@ -18,7 +23,7 @@ const mockRes = () => {
         res.body = data;
         return res;
     };
-    return res as Response;
+    return res as MockResponse;
 };
 
 async function verifyTicketModeration() {
@@ -29,7 +34,7 @@ async function verifyTicketModeration() {
         const tenantId = randomUUID();
         const delegateId = randomUUID();
         const execId = randomUUID();
-        const diagnosticId = 'diag_' + Date.now();
+        const diagnosticId = randomUUID();
 
         console.log('1. Setting up test data...');
 
@@ -38,10 +43,10 @@ async function verifyTicketModeration() {
             id: tenantId,
             name: 'Moderation Test Corp',
             domain: 'modtest.com',
-            subscriptionStatus: 'active',
+            status: 'active',
             intakeWindowState: 'CLOSED', // Relevant for context, though moderation happens after
             lastDiagnosticId: diagnosticId
-        });
+        } as any);
 
         // Create Users
         await db.insert(users).values([
@@ -138,7 +143,7 @@ async function verifyTicketModeration() {
                 successMetric: 'Test Metric',
                 roadmapSection: 'Test Section'
             }
-        ]);
+        ] as any);
 
         console.log('✅ Test data created.\n');
 

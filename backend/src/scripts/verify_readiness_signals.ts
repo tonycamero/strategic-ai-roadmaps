@@ -13,8 +13,8 @@ const uuidv4 = randomUUID;
 interface MockResponse extends Response {
     statusCode: number;
     body: any;
-    status: (code: number) => MockResponse;
-    json: (body: any) => MockResponse;
+    status: (code: number) => any;
+    json: (body: any) => any;
 }
 
 const mockRes = (): MockResponse => {
@@ -36,9 +36,12 @@ const mockRes = (): MockResponse => {
 // Types
 interface AuthRequest extends Request {
     user?: {
+        id: string;
         userId: string;
-        role: string;
-        tenantId?: string;
+        email: string;
+        role: any;
+        tenantId: string;
+        isInternal: boolean;
     };
     authorityCategory?: AuthorityCategory;
 }
@@ -81,7 +84,7 @@ async function runVerification() {
         console.log('\n2. Checking Initial Onboarding State...');
         const reqStatus = {
             params: { tenantId },
-            user: { role: 'superadmin', isInternal: true, id: adminId }
+            user: { id: adminId, userId: adminId, email: 'admin@test.com', role: 'superadmin', isInternal: true, tenantId }
         } as unknown as AuthRequest;
         const resStatus = mockRes();
         await getFirmWorkflowStatus(reqStatus, resStatus);
@@ -99,7 +102,7 @@ async function runVerification() {
         console.log('\n3. Signaling Knowledge Base Ready...');
         const reqKB = {
             params: { tenantId },
-            user: { role: 'superadmin', userId: adminId, isInternal: true },
+            user: { id: adminId, userId: adminId, email: 'admin@test.com', role: 'superadmin', isInternal: true, tenantId },
             authorityCategory: AuthorityCategory.DELEGATE,
             body: { flag: 'knowledge_base_ready', value: true, notes: 'KB is good' }
         } as unknown as AuthRequest;
@@ -114,7 +117,7 @@ async function runVerification() {
 
         // Verify DB update
         const [tenantKB] = await db.select().from(tenants).where(eq(tenants.id, tenantId));
-        if (tenantKB.knowledgeBaseReadyAt) {
+        if (tenantKB?.knowledgeBaseReadyAt) { // Added optional chaining for tenantKB
             console.log('   ✅ DB updated with knowledgeBaseReadyAt.');
         } else {
             throw new Error('❌ DB NOT updated with knowledgeBaseReadyAt.');
@@ -124,7 +127,7 @@ async function runVerification() {
         console.log('\n4. Testing Override Authority (Delegate)...');
         const reqOverrideFail = {
             params: { tenantId },
-            user: { role: 'superadmin', userId: adminId, isInternal: true },
+            user: { id: adminId, userId: adminId, email: 'admin@test.com', role: 'superadmin', isInternal: true, tenantId },
             authorityCategory: AuthorityCategory.DELEGATE,
             body: { flag: 'roles_validated', value: true, overrideReason: 'Manger said so' }
         } as unknown as AuthRequest;
@@ -141,7 +144,7 @@ async function runVerification() {
         console.log('\n5. Testing Override Authority (Executive)...');
         const reqOverrideSuccess = {
             params: { tenantId },
-            user: { role: 'superadmin', userId: adminId, isInternal: true },
+            user: { id: adminId, userId: adminId, email: 'admin@test.com', role: 'superadmin', isInternal: true, tenantId },
             authorityCategory: AuthorityCategory.EXECUTIVE,
             body: { flag: 'roles_validated', value: true, overrideReason: 'Executive override' }
         } as unknown as AuthRequest;
@@ -158,7 +161,7 @@ async function runVerification() {
         console.log('\n6. Signaling Exec Ready...');
         const reqExec = {
             params: { tenantId },
-            user: { role: 'superadmin', userId: adminId, isInternal: true },
+            user: { id: adminId, userId: adminId, email: 'admin@test.com', role: 'superadmin', isInternal: true, tenantId },
             authorityCategory: AuthorityCategory.DELEGATE,
             body: { flag: 'exec_ready', value: true }
         } as unknown as AuthRequest;

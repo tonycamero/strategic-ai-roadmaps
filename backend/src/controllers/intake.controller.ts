@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { db } from '../db';
-import { intakes, users, tenants } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { intakes, users, tenants, intakeVectors } from '../db/schema';
+import { eq, and } from 'drizzle-orm';
 import { AuthRequest } from '../middleware/auth';
 import { SubmitIntakeRequest } from '@roadmap/shared';
 import { ZodError } from 'zod';
@@ -110,14 +110,20 @@ export async function submitIntake(req: AuthRequest, res: Response) {
       }
     }
 
-    // 🎯 Onboarding Hook: Check if all team intakes are complete
-    if (['ops', 'sales', 'delivery'].includes(role)) {
-      try {
-        const tenantId = (req as any).tenantId;
-        const tenant = tenantId ? await db.query.tenants.findFirst({
-          where: eq(tenants.id, tenantId),
-        }) : null;
+    // 🔗 Intake Vector Auto-Link (Contract v1: Fail-closed on ambiguity)
+    const currentTenantId = (req as any).tenantId;
+    if (currentTenantId && req.user && req.user.role !== 'superadmin') {
+      const matchingVectors = await db
+        .select()
+        .from(intakeVectors)
+        .where(
+          and(
+            eq(intakeVectors.tenantId, currentTenantId),
+            eq(intakeVectors.recipientEmail, req.user.email)
+          )
+        );
 
+<<<<<<< HEAD
         if (tenant) {
           // Check if all three team roles have completed intakes
           const allIntakes = await db
@@ -139,7 +145,34 @@ export async function submitIntake(req: AuthRequest, res: Response) {
         }
       } catch (error) {
         console.error('Failed to update team intakes onboarding progress:', error);
+=======
+      // Contract v1: Fail-closed if multiple matches exist
+      if (matchingVectors.length > 1) {
+        return res.status(409).json({
+          error: 'Multiple intake vectors found',
+          message: 'Multiple stakeholder definitions exist for this email. Please contact your administrator to resolve this ambiguity before submitting your intake.',
+          vectorIds: matchingVectors.map(v => v.id)
+        });
+>>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
       }
+
+      // Link if exactly one match
+      if (matchingVectors.length === 1) {
+        await db
+          .update(intakeVectors)
+          .set({
+            intakeId: intake.id,
+            updatedAt: new Date()
+          })
+          .where(eq(intakeVectors.id, matchingVectors[0].id));
+      }
+
+      // If 0 matches: proceed without linking (no error - user may not be part of vector system)
+    }
+
+    // 🎯 Onboarding Hook: Mark Owner Intake complete
+    if (role === 'owner' && currentTenantId) {
+      await onboardingProgressService.markStep(currentTenantId, 'OWNER_INTAKE', 'COMPLETED');
     }
 
     return res.json({ intake });
@@ -151,6 +184,7 @@ export async function submitIntake(req: AuthRequest, res: Response) {
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
+
 
 export async function getOwnerIntakes(req: AuthRequest, res: Response) {
   try {

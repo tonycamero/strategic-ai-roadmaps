@@ -34,24 +34,13 @@ export function RoadmapReadinessPanel({
     const isIntakeReady = intakeWindowState === 'CLOSED';
 
     // Gate 2: Executive Brief
-    const isBriefReady = ['ACKNOWLEDGED', 'WAIVED'].includes(briefStatus || '');
+    const isBriefReady = briefStatus === 'APPROVED';
 
     // Gate 3: Moderation
     const isModerationReady = moderationStatus?.readyForRoadmap || false;
-    const pendingCount = moderationStatus?.pending || 0;
-    const approvedCount = moderationStatus?.approved || 0;
-
-    // Gate 4: Knowledge Base
-    const isKBReady = readinessFlags.knowledgeBaseReady;
-
-    // Gate 5: Roles Validated
-    const isRolesReady = readinessFlags.rolesValidated;
-
-    // Gate 6: Executive Ready
-    const isExecReady = readinessFlags.execReady;
 
     // Overall Readiness
-    const isReady = isIntakeReady && isBriefReady && isModerationReady && isKBReady && isRolesReady && isExecReady;
+    const isReady = isIntakeReady && isBriefReady && isModerationReady;
 
     const handleClick = () => {
         if (isReady) {
@@ -114,36 +103,22 @@ export function RoadmapReadinessPanel({
                 {/* Readiness Checklist */}
                 <div className="space-y-3">
                     <GateCheck
-                        label="Intake Window Closed"
+                        label="Intake Window"
                         isReady={isIntakeReady}
-                        detail={isIntakeReady ? 'Snapshot Locked' : 'Window Open'}
+                        detail={isIntakeReady ? 'COMPLETE' : 'READY'}
+                        status={isIntakeReady ? 'COMPLETE' : 'READY'}
                     />
                     <GateCheck
-                        label="Executive Brief Resolved"
+                        label="Executive Brief"
                         isReady={isBriefReady}
-                        detail={briefStatus || 'PENDING'}
+                        detail={isBriefReady ? 'COMPLETE' : isIntakeReady ? 'READY' : 'LOCKED'}
+                        status={isBriefReady ? 'COMPLETE' : isIntakeReady ? 'READY' : 'LOCKED'}
                     />
                     <GateCheck
-                        label="Ticket Moderation Complete"
+                        label="Ticket Moderation"
                         isReady={isModerationReady}
-                        detail={isModerationReady
-                            ? `${approvedCount} Approved`
-                            : `${pendingCount} Pending`}
-                    />
-                    <GateCheck
-                        label="Knowledge Base Ready"
-                        isReady={isKBReady}
-                        detail={isKBReady ? 'READY' : 'PENDING'}
-                    />
-                    <GateCheck
-                        label="Team Roles Validated"
-                        isReady={isRolesReady}
-                        detail={isRolesReady ? 'VALIDATED' : 'PENDING'}
-                    />
-                    <GateCheck
-                        label="Authority Overide Ready"
-                        isReady={isExecReady}
-                        detail={isExecReady ? 'SIGNALED' : 'PENDING'}
+                        detail={isModerationReady ? 'COMPLETE' : isBriefReady ? 'READY' : 'LOCKED'}
+                        status={isModerationReady ? 'COMPLETE' : isBriefReady ? 'READY' : 'LOCKED'}
                     />
                 </div>
 
@@ -208,7 +183,13 @@ export function RoadmapReadinessPanel({
     );
 }
 
-function GateCheck({ label, isReady, detail }: { label: string; isReady: boolean; detail: string }) {
+function GateCheck({ label, isReady, detail, status }: { label: string; isReady: boolean; detail: string; status: 'LOCKED' | 'READY' | 'COMPLETE' }) {
+    const statusStyles = {
+        COMPLETE: 'bg-emerald-900/10 border-emerald-900/30 text-emerald-500',
+        READY: 'bg-yellow-900/10 border-yellow-900/30 text-yellow-500',
+        LOCKED: 'bg-red-900/10 border-red-900/30 text-red-500'
+    };
+
     return (
         <div className="flex items-center justify-between group">
             <div className="flex items-center gap-2">
@@ -216,8 +197,6 @@ function GateCheck({ label, isReady, detail }: { label: string; isReady: boolean
                     }`}>
                     {isReady ? (
                         <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 130l4 4L19 7" />
-                            {/* Simple checkmark */}
                             <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
                         </svg>
                     ) : (
@@ -228,10 +207,7 @@ function GateCheck({ label, isReady, detail }: { label: string; isReady: boolean
                     {label}
                 </span>
             </div>
-            <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${isReady
-                ? 'bg-emerald-900/10 border-emerald-900/30 text-emerald-500/80'
-                : 'bg-slate-800 border-slate-700 text-slate-500'
-                }`}>
+            <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${statusStyles[status]}`}>
                 {detail}
             </span>
         </div>

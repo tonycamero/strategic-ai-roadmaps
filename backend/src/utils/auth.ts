@@ -7,7 +7,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'development-secret-change-in-produ
 
 export interface TokenPayload {
   userId: string;
+<<<<<<< HEAD
   id?: string; // backward compatibility
+=======
+  id: string; // Alias for userId to satisfy legacy code
+>>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
   email: string;
   role: UserRole;
   isInternal: boolean;

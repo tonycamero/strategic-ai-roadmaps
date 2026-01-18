@@ -15,6 +15,16 @@ const OPTIONS: Array<{ id: BusinessType; title: string; description: string }> =
     description: 'CPAs, agencies, insurance, real estate, and similar service businesses.',
   },
   {
+    id: 'manufacturing',
+    title: 'Manufacturing / Industrial',
+    description: 'Manufacturing facilities, industrial operations, and production companies.',
+  },
+  {
+    id: 'enterprise',
+    title: 'Enterprise',
+    description: 'Large-scale organizations with complex operations and multiple departments.',
+  },
+  {
     id: 'chamber',
     title: 'Chamber of Commerce / Business Association',
     description: 'Regional chambers, business alliances, and industry associations.',

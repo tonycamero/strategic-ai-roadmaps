@@ -1,5 +1,6 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import { api } from '../lib/api';
 import { useAuth } from './AuthContext';
 import { getBusinessTypeProfile, type BusinessTypeProfile, type BusinessType } from '@roadmap/shared';
@@ -47,11 +48,18 @@ export interface TenantProviderProps {
 
 export const TenantProvider: React.FC<TenantProviderProps> = ({ children }) => {
   const { isAuthenticated } = useAuth();
+<<<<<<< HEAD
+=======
+  const [location] = useLocation();
+
+  // Don't fetch tenant data on superadmin routes (prevents 403 errors)
+  const isSuperAdminRoute = location.startsWith('/superadmin');
+>>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
 
   const { data: tenantData, isLoading } = useQuery({
     queryKey: ['tenant'],
     queryFn: () => api.getTenant(),
-    enabled: isAuthenticated, // Only fetch when user is logged in
+    enabled: isAuthenticated && !isSuperAdminRoute, // Only fetch on tenant routes
     retry: false, // Don't retry 401s
     staleTime: 30000, // 30 seconds
   });
@@ -61,7 +69,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({ children }) => {
     (tenant?.businessType as BusinessType) || 'default';
 
   return (
-    <TenantContext.Provider value={{ tenant, businessType, isLoading: isAuthenticated && isLoading }}>
+    <TenantContext.Provider value={{ tenant, businessType, isLoading: isAuthenticated && !isSuperAdminRoute && isLoading }}>
       {children}
     </TenantContext.Provider>
   );

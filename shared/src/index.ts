@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 export * from './types';
 export * from './authority';
 export {
@@ -41,3 +42,20 @@ export type {
   TicketClass,
   RoadmapSectionType
 } from './canon';
+=======
+export * from './types';
+export * from './authority';
+export {
+  BUSINESS_TYPE_PROFILES,
+  DEFAULT_BUSINESS_TYPE,
+  getBusinessTypeProfile,
+  type BusinessTypeProfile,
+} from './config/businessTypeProfiles';
+
+// FETA (Founder Evidence Taxonomy Assessment)
+export { FETA_REGISTRY, isValidRole, type RoleId, type RoleConfig } from './feta/registry';
+export { FETA_CANONICAL_TAXONOMY, FETA_CANONICAL_SYNTHESIS } from './feta/canonical';
+export { getNextStep, selectSynthesis, isValidAnswer } from './feta/logic';
+export * from './feta/team';
+export * from './executiveBrief';
+>>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
