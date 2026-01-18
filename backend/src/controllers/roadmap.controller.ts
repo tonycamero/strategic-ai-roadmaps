@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { Response } from 'express';
 import { db } from '../db';
 import {
@@ -266,4 +267,38 @@ export async function exportRoadmap(req: AuthRequest, res: Response) {
         console.error('exportRoadmap error:', error);
         return res.status(500).json({ error: error.message || 'Internal server error' });
     }
+=======
+import { Request, Response } from 'express';
+
+export async function getRoadmapSections(req: Request, res: Response) {
+    return res.json([]);
+}
+
+export async function getRoadmapSection(req: Request, res: Response) {
+    return res.json({ ok: true });
+}
+
+export async function upsertRoadmapSection(req: Request, res: Response) {
+    return res.json({ ok: true });
+}
+
+export async function updateSectionStatus(req: Request, res: Response) {
+    return res.json({ ok: true });
+}
+
+export async function syncRoadmapStatus(req: Request, res: Response) {
+    return res.json({ ok: true });
+}
+
+export async function refreshRoadmap(req: Request, res: Response) {
+    return res.json({ ok: true });
+}
+
+export async function getRoadmapTickets(req: Request, res: Response) {
+    return res.json([]);
+}
+
+export async function exportRoadmap(req: Request, res: Response) {
+    return res.json({ ok: true });
+>>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
 }

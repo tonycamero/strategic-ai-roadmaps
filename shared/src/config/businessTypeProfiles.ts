@@ -4,7 +4,7 @@
 // Single source of truth for multi-vertical customization.
 // Controls labels, intakes, KPIs, and other business-type-specific UX.
 
-export type BusinessType = 'default' | 'chamber';
+export type BusinessType = 'default' | 'chamber' | 'manufacturing' | 'enterprise';
 
 export interface BusinessTypeProfile {
   id: BusinessType;
@@ -30,6 +30,54 @@ export const BUSINESS_TYPE_PROFILES: Record<BusinessType, BusinessTypeProfile> =
     id: 'default',
     label: 'Professional Services Firm',
     description: 'CPAs, agencies, insurance, real estate, and similar service businesses.',
+    roleLabels: {
+      sales: 'Sales',
+      ops: 'Operations',
+      delivery: 'Delivery / Fulfillment',
+      owner: 'Owner / Leadership',
+    },
+    intakeCopy: {
+      salesIntro: 'This intake covers how you attract, qualify, and close new business.',
+      opsIntro: 'This intake covers your internal processes, tools, and data quality.',
+      deliveryIntro: 'This intake covers how you deliver your product or service to clients.',
+      ownerIntro: 'This intake covers your goals, constraints, and priorities as the owner.',
+    },
+    kpis: [
+      'New leads per month',
+      'Lead-to-opportunity conversion rate',
+      'Opportunity-to-close conversion rate',
+      'Average response time to new leads',
+      'Revenue per full-time employee',
+    ],
+  },
+  manufacturing: {
+    id: 'manufacturing',
+    label: 'Manufacturing / Industrial',
+    description: 'Manufacturing facilities, industrial operations, and production companies.',
+    roleLabels: {
+      sales: 'Sales',
+      ops: 'Operations',
+      delivery: 'Delivery / Fulfillment',
+      owner: 'Owner / Leadership',
+    },
+    intakeCopy: {
+      salesIntro: 'This intake covers how you attract, qualify, and close new business.',
+      opsIntro: 'This intake covers your internal processes, tools, and data quality.',
+      deliveryIntro: 'This intake covers how you deliver your product or service to clients.',
+      ownerIntro: 'This intake covers your goals, constraints, and priorities as the owner.',
+    },
+    kpis: [
+      'New leads per month',
+      'Lead-to-opportunity conversion rate',
+      'Opportunity-to-close conversion rate',
+      'Average response time to new leads',
+      'Revenue per full-time employee',
+    ],
+  },
+  enterprise: {
+    id: 'enterprise',
+    label: 'Enterprise',
+    description: 'Large-scale organizations with complex operations and multiple departments.',
     roleLabels: {
       sales: 'Sales',
       ops: 'Operations',
@@ -86,5 +134,7 @@ export const DEFAULT_BUSINESS_TYPE: BusinessType = 'default';
  */
 export function getBusinessTypeProfile(businessType?: string | null): BusinessTypeProfile {
   if (businessType === 'chamber') return BUSINESS_TYPE_PROFILES.chamber;
+  if (businessType === 'manufacturing') return BUSINESS_TYPE_PROFILES.manufacturing;
+  if (businessType === 'enterprise') return BUSINESS_TYPE_PROFILES.enterprise;
   return BUSINESS_TYPE_PROFILES.default;
 }

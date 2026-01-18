@@ -1,239 +1,252 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { useBusinessTypeProfile } from '../context/TenantContext';
-
-type RoleId = 'ops' | 'sales' | 'delivery';
+import { useOnboarding } from '../context/OnboardingContext';
+import { StakeholderModal } from '../components/onboarding/StakeholderModal';
+import { IntakeVectorCard } from '../components/onboarding/IntakeVectorCard';
+import { Plus, Send, AlertCircle, X, Lock } from 'lucide-react';
 
 export default function InviteTeam() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const profile = useBusinessTypeProfile();
+  const { state: onboardingState, refresh: refreshOnboarding } = useOnboarding();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingVector, setEditingVector] = useState<any>(null);
+  const [isLocked, setIsLocked] = useState(false);
 
-  // Dynamic roles based on business type
-  const ROLES = useMemo(() => [
-    { id: 'ops' as const, label: profile.roleLabels.ops, icon: '⚙️', description: 'Maps workflow friction and internal process bottlenecks' },
-    { id: 'sales' as const, label: profile.roleLabels.sales, icon: '📈', description: 'Reveals follow-up gaps and pipeline inefficiencies' },
-    { id: 'delivery' as const, label: profile.roleLabels.delivery, icon: '🚀', description: 'Surfaces handoff breakdowns and customer experience friction' },
-  ], [profile]);
+  const tenantId = onboardingState?.tenantId;
 
-  // Fetch existing invites
-  const { data: invitesData } = useQuery({
-    queryKey: ['invites'],
-    queryFn: () => api.listInvites(),
-    refetchInterval: 3000,
+  // Fetch intake vectors
+  const { data: vectorsData, isLoading, error } = useQuery({
+    queryKey: ['intake-vectors', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return { vectors: [] };
+      const result = await api.listIntakeVectors(tenantId);
+      return result;
+    },
+    enabled: !!tenantId,
   });
 
-  const [emails, setEmails] = useState<Record<RoleId, string>>({
-    ops: '',
-    sales: '',
-    delivery: '',
-  });
+  const vectors = vectorsData?.vectors || [];
 
-  const [errors, setErrors] = useState<Record<RoleId, string>>({
-    ops: '',
-    sales: '',
-    delivery: '',
-  });
-
-  // Populate existing invites
-  useEffect(() => {
-    if (invitesData?.invites) {
-      const newEmails = { ...emails };
-      invitesData.invites.forEach((invite: any) => {
-        if (invite.role in newEmails) {
-          newEmails[invite.role as RoleId] = invite.email;
-        }
-      });
-      setEmails(newEmails);
+  const createVectorMutation = useMutation({
+    mutationFn: (data: any) => tenantId ? api.createIntakeVector(tenantId, data) : Promise.reject('No tenant ID'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['intake-vectors'] });
+      setIsModalOpen(false);
+      setEditingVector(null);
+    },
+    onError: (error: any) => {
+      if (error?.status === 403) {
+        setIsLocked(true);
+      }
     }
-  }, [invitesData]);
+  });
+
+  const updateVectorMutation = useMutation({
+    mutationFn: ({ vectorId, data }: { vectorId: string; data: any }) =>
+      api.updateIntakeVector(vectorId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['intake-vectors'] });
+      setIsModalOpen(false);
+      setEditingVector(null);
+    },
+    onError: (error: any) => {
+      if (error?.status === 403) {
+        setIsLocked(true);
+      }
+    }
+  });
 
   const sendInviteMutation = useMutation({
-    mutationFn: ({ role, email }: { role: RoleId; email: string }) => api.createInvite({ role, email }),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['invites'] });
-      queryClient.invalidateQueries({ queryKey: ['onboarding-progress'] });
-      setErrors(prev => ({ ...prev, [variables.role]: '' }));
+    mutationFn: (vectorId: string) => api.sendIntakeVectorInvite(vectorId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['intake-vectors'] });
     },
-    onError: (error: any, variables) => {
-      setErrors(prev => ({ ...prev, [variables.role]: error.message || 'Failed to send invite' }));
-    },
+    onError: (error: any) => {
+      if (error?.status === 403) {
+        setIsLocked(true);
+      }
+    }
   });
 
-  const handleInvite = (role: RoleId) => {
-    const email = emails[role].trim();
-    
-    if (!email) {
-      setErrors(prev => ({ ...prev, [role]: 'Email is required' }));
-      return;
+  const handleAddStakeholder = async (data: any) => {
+    if (editingVector) {
+      await updateVectorMutation.mutateAsync({ vectorId: editingVector.id, data });
+    } else {
+      await createVectorMutation.mutateAsync(data);
     }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setErrors(prev => ({ ...prev, [role]: 'Invalid email format' }));
-      return;
-    }
-
-    sendInviteMutation.mutate({ role, email });
   };
 
-  // Check if all invites are sent
-  const allInvitesSent = invitesData?.invites && 
-    ROLES.every(role => invitesData.invites.some((inv: any) => inv.role === role.id));
-
-  const getInviteStatus = (roleId: RoleId) => {
-    const invite = invitesData?.invites?.find((inv: any) => inv.role === roleId);
-    if (!invite) return 'not_sent';
-    if (invite.accepted) return 'accepted';
-    return 'pending';
+  const handleEditVector = (vector: any) => {
+    setEditingVector(vector);
+    setIsModalOpen(true);
   };
+
+  const handleSendInvite = (vectorId: string) => {
+    sendInviteMutation.mutate(vectorId);
+  };
+
+  // D3: Split gating semantics (define vs invite)
+  const hasDefinedVectors = vectors.length >= 1;
+  const allInvitedOrCompleted = vectors.length > 0 && vectors.every((v: any) => v.inviteStatus === 'SENT' || v.intakeStatus === 'COMPLETED');
+  const canContinue = hasDefinedVectors && allInvitedOrCompleted;
+
+  const remainingToContinue = Math.max(0, 1 - vectors.length);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       {/* Header */}
       <div className="border-b border-slate-800 bg-slate-950/95 backdrop-blur">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-6 py-5 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-slate-100">Invite Your Team</h1>
-            <p className="text-sm text-slate-400 mt-0.5">
-              Send intakes to your leadership team
+            <h1 className="text-xl font-bold tracking-tight text-white uppercase">Define Strategic Vectors</h1>
+            <p className="text-xs text-slate-500 mt-1 font-medium">
+              Map your leadership core and share your operational hypothesis
             </p>
           </div>
-          <button
-            onClick={() => setLocation('/dashboard')}
-            className="text-slate-400 hover:text-slate-200 transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => {
+                setEditingVector(null);
+                setIsModalOpen(true);
+              }}
+              disabled={isLocked}
+              className={`flex items-center gap-2 px-4 py-2 text-white text-xs font-bold rounded-lg transition-all shadow-lg uppercase tracking-widest ${isLocked
+                ? 'bg-slate-700 cursor-not-allowed opacity-50'
+                : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-900/20'
+                }`}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add Stakeholder
+            </button>
+            <button
+              onClick={() => setLocation('/dashboard')}
+              className="text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        {/* Info Card */}
-        <div className="mb-8 bg-blue-900/20 border border-blue-800 rounded-xl p-6">
-          <div className="flex items-start gap-3">
-            <span className="text-2xl">👥</span>
-            <div className="flex-1">
-              <h3 className="text-sm font-semibold text-blue-200 mb-2">
-                Why Your Team's Input Matters
-              </h3>
-              <p className="text-xs text-blue-300/80 mb-3">
-                To build an accurate AI Roadmap, we need perspectives from three key roles in your organization.
-                Each team member will complete a brief 10-minute intake focused on their area of expertise.
-              </p>
-              <p className="text-xs text-blue-300/60">
-                <strong>Required:</strong> All three roles must be invited to continue. They'll receive an email
-                with a secure link to complete their intake.
+      <div className="max-w-5xl mx-auto px-6 py-10">
+        {/* Lock Banner */}
+        {isLocked && (
+          <div className="mb-6 p-4 bg-amber-900/20 border border-amber-700 rounded-xl flex items-center gap-3">
+            <Lock className="w-5 h-5 text-amber-500" />
+            <div>
+              <h3 className="text-sm font-bold text-amber-200">Intake Window Closed</h3>
+              <p className="text-xs text-amber-300/70 mt-0.5">
+                Stakeholders cannot be edited or invited. Contact your administrator if changes are needed.
               </p>
             </div>
           </div>
+        )}
+
+        {/* Architecture Note */}
+        <div className="mb-10 p-6 bg-slate-900/50 border border-slate-800 rounded-2xl flex gap-5 items-start">
+          <div className="p-3 bg-blue-600/10 border border-blue-500/20 rounded-xl">
+            <Send className="w-5 h-5 text-blue-400" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-200 mb-2 uppercase tracking-wide">The Vector Lens Protocol</h3>
+            <p className="text-xs text-slate-400 leading-relaxed max-w-2xl">
+              Don't just invite users—define their strategic vector. By capturing your <span className="text-blue-400 font-semibold italic">Perceived Constraints</span> for each role, we create the synthesis anchor for the AI roadmap. Your team will be asked to confirm or refute these hypotheses.
+            </p>
+          </div>
         </div>
 
-        {/* Invite Cards */}
-        <div className="space-y-4">
-          {ROLES.map((role) => {
-            const status = getInviteStatus(role.id);
-            const invite = invitesData?.invites?.find((inv: any) => inv.role === role.id);
-
-            return (
-              <div
-                key={role.id}
-                className={`border rounded-xl p-6 transition-all ${
-                  status === 'accepted'
-                    ? 'bg-green-900/10 border-green-800'
-                    : status === 'pending'
-                    ? 'bg-yellow-900/10 border-yellow-800'
-                    : 'bg-slate-900/40 border-slate-800'
-                }`}
-              >
-                <div className="flex items-start gap-4">
-                  <div className="text-3xl">{role.icon}</div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-semibold text-slate-200 mb-1">
-                      {role.label}
-                    </h3>
-                    <p className="text-xs text-slate-400 mb-4">{role.description}</p>
-
-                    {status === 'not_sent' ? (
-                      <div className="space-y-3">
-                        <div>
-                          <input
-                            type="email"
-                            value={emails[role.id]}
-                            onChange={(e) => setEmails(prev => ({ ...prev, [role.id]: e.target.value }))}
-                            placeholder="team.member@company.com"
-                            className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                          {errors[role.id] && (
-                            <p className="mt-1 text-xs text-red-400">{errors[role.id]}</p>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => handleInvite(role.id)}
-                          disabled={sendInviteMutation.isPending}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                        >
-                          {sendInviteMutation.isPending ? 'Sending...' : 'Send Invite'}
-                        </button>
-                      </div>
-                    ) : status === 'pending' ? (
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1">
-                          <div className="text-sm text-slate-300 mb-1">{invite?.email}</div>
-                          <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-900/40 border border-yellow-800 rounded-full">
-                            <span className="text-xs text-yellow-300">⏳ Invitation sent - awaiting response</span>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1">
-                          <div className="text-sm text-slate-300 mb-1">{invite?.email}</div>
-                          <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-900/40 border border-green-800 rounded-full">
-                            <span className="text-xs text-green-300">✓ Accepted - intake in progress</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+        {/* Dynamic Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {isLoading ? (
+            Array(3).fill(0).map((_, i) => (
+              <div key={i} className="h-32 bg-slate-900/50 border border-slate-800 rounded-xl animate-pulse" />
+            ))
+          ) : vectors.length === 0 ? (
+            <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-3xl">
+              <div className="max-w-xs mx-auto space-y-4">
+                <div className="p-4 bg-slate-900 rounded-full w-fit mx-auto">
+                  <AlertCircle className="w-6 h-6 text-slate-700" />
                 </div>
+                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest">No Stakeholders Defined</h4>
+                <p className="text-xs text-slate-600">Define at least 1 strategic vector to proceed. We recommend 3-5 for comprehensive synthesis (e.g. Ops, Sales, Delivery).</p>
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  disabled={isLocked}
+                  className={`mt-4 px-6 py-2 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg transition-all ${isLocked
+                    ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                    }`}
+                >
+                  Define First Vector
+                </button>
               </div>
-            );
-          })}
-        </div>
-
-        {/* Continue Button */}
-        <div className="mt-8 flex gap-3">
-          <button
-            onClick={() => setLocation('/dashboard')}
-            className="flex-1 px-6 py-3 border border-slate-700 rounded-lg font-medium text-slate-300 hover:bg-slate-900 transition-colors"
-          >
-            Back to Dashboard
-          </button>
-          {allInvitesSent && (
-            <button
-              onClick={async () => {
-                // Refresh onboarding progress before navigating
-                await queryClient.invalidateQueries({ queryKey: ['onboarding-progress'] });
-                setLocation('/dashboard');
-              }}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors"
-            >
-              Continue →
-            </button>
+            </div>
+          ) : (
+            vectors.map((vector: any) => (
+              <IntakeVectorCard
+                key={vector.id}
+                vector={vector}
+                onEdit={handleEditVector}
+                onSendInvite={handleSendInvite}
+                isSendingInvite={sendInviteMutation.isPending}
+                isLocked={isLocked}
+              />
+            ))
           )}
         </div>
 
-        {!allInvitesSent && (
-          <p className="mt-4 text-center text-xs text-slate-500">
-            Send all three invites to continue to the next step
-          </p>
-        )}
+        {/* Actions */}
+        <div className="mt-12 flex items-center justify-between pt-8 border-t border-slate-800">
+          <button
+            onClick={() => setLocation('/dashboard')}
+            className="px-6 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-slate-300 transition-colors"
+          >
+            ← Return to Control
+          </button>
+
+          <div className="flex items-center gap-6">
+            {!canContinue && vectors.length > 0 && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-amber-900/10 border border-amber-500/20 rounded-lg">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
+                <span className="text-[10px] text-amber-200/70 font-bold uppercase tracking-wider">
+                  {remainingToContinue > 0 ? `${remainingToContinue} more vector + ` : ''}all invited
+                </span>
+              </div>
+            )}
+
+            <button
+              onClick={async () => {
+                await refreshOnboarding();
+                setLocation('/dashboard');
+              }}
+              disabled={!canContinue}
+              className={`
+                 px-10 py-3 rounded-full text-xs font-black uppercase tracking-[0.25em] transition-all
+                 ${canContinue
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-xl shadow-emerald-900/30'
+                  : 'bg-slate-800 text-slate-600 cursor-not-allowed opacity-50'
+                }
+              `}
+            >
+              Continue Onboarding →
+            </button>
+          </div>
+        </div>
       </div>
+
+      <StakeholderModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingVector(null);
+        }}
+        onSubmit={handleAddStakeholder}
+        loading={createVectorMutation.isPending || updateVectorMutation.isPending}
+        initialData={editingVector}
+      />
     </div>
   );
 }

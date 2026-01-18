@@ -11,7 +11,12 @@ import type {
   Intake,
 } from "@roadmap/shared";
 
+<<<<<<< HEAD
 const API_URL = import.meta.env.VITE_API_URL || "";
+=======
+const API_URL = import.meta.env.VITE_API_URL ||
+  (import.meta.env.MODE === 'production' ? '' : 'http://localhost:3001');
+>>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
 
 class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -20,8 +25,16 @@ class ApiError extends Error {
   }
 }
 
+<<<<<<< HEAD
 async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem("token");
+=======
+async function fetchAPI<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const token = localStorage.getItem('token');
+>>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -217,9 +230,30 @@ export const api: ApiClient = {
   getFirmWorkflowStatus: ({ tenantId }) => fetchAPI(`/api/superadmin/firms/${tenantId}/workflow-status`),
   getDiagnosticArtifacts: ({ diagnosticId }) => fetchAPI(`/api/superadmin/diagnostics/${diagnosticId}/artifacts`),
 
+<<<<<<< HEAD
   getDiscoveryNotes: ({ tenantId }) => fetchAPI(`/api/superadmin/firms/${tenantId}/discovery-notes`),
   ingestDiscoveryNotes: ({ tenantId, notes }) =>
     fetchAPI(`/api/superadmin/firms/${tenantId}/ingest-discovery`, {
+=======
+  getThreadMessages: (threadId: string) =>
+    fetchAPI<{ messages: any[] }>(`/api/agents/threads/${threadId}/messages`),
+
+  // Roadmap Tickets endpoint
+  getRoadmapTickets: () =>
+    fetchAPI<{ tickets: any[] }>('/api/roadmap/tickets'),
+
+  // Roadmap Q&A endpoint
+  askRoadmapQuestion: (payload: {
+    question: string;
+    sectionKey?: string;
+    currentSection?: {
+      slug: string;
+      title: string;
+      content: string;
+    };
+  }) =>
+    fetchAPI<{ answer: string }>('/api/roadmap/qna', {
+>>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
       method: 'POST',
       body: JSON.stringify({ notes }),
     }),
@@ -359,8 +393,35 @@ export const api: ApiClient = {
       method: "POST",
     }),
 
+<<<<<<< HEAD
   getOverview: () => fetchAPI("/api/superadmin/overview"),
   getActivityFeed: (args) => fetchAPI(`/api/superadmin/activity-feed${args?.limit ? `?limit=${args.limit}` : ""}`),
+=======
+  // Intake Vector endpoints (Tenant scope)
+  createIntakeVector: (tenantId: string, data: any) =>
+    fetchAPI<{ vector: any }>(`/api/tenants/${tenantId}/intake-vectors`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  listIntakeVectors: (tenantId: string) =>
+    fetchAPI<{ vectors: any[] }>(`/api/tenants/${tenantId}/intake-vectors`),
+
+  updateIntakeVector: (vectorId: string, data: any) =>
+    fetchAPI<{ vector: any }>(`/api/tenants/intake-vectors/${vectorId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  sendIntakeVectorInvite: (vectorId: string) =>
+    fetchAPI<{ vector: any }>(`/api/tenants/intake-vectors/${vectorId}/send-invite`, {
+      method: 'POST',
+    }),
+
+  // Tenant endpoints
+  getTenant: () =>
+    fetchAPI<{ tenant: any }>('/api/tenants/me'),
+>>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
 
   getMetricsForFirm: ({ tenantId }) =>
     fetchAPI(`/api/superadmin/firms/${tenantId}/metrics`),

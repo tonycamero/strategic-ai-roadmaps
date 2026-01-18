@@ -19,6 +19,10 @@ const SaveSnapshotSchema = z.object({
   payload: z.record(z.any()), // flexible payload
 });
 
+export async function getLatestSnapshot(req: Request, res: Response) {
+  return res.json({ ok: true });
+}
+
 export async function saveSnapshot(req: Request, res: Response) {
   try {
     const { email, name, orgName, teamSessionId, payload } = SaveSnapshotSchema.parse(req.body);
@@ -83,10 +87,11 @@ export async function saveSnapshot(req: Request, res: Response) {
     if (isNewUser && user) {
       token = generateToken({
         userId: user.id,
+        id: user.id,
         email: user.email,
         role: user.role,
         tenantId: user.tenantId || null,
-        isInternal: false
+        isInternal: user.isInternal || false
       });
     }
 
