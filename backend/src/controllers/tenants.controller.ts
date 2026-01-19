@@ -1,12 +1,21 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { db } from '../db';
 import { tenants } from '../db/schema';
 import { eq } from 'drizzle-orm';
+<<<<<<< HEAD
 import { onboardingProgressService } from '../services/onboardingProgress.service';
 
 const onboardingService = onboardingProgressService;
+=======
+import { OnboardingProgressService } from '../services/onboardingProgress.service';
+
+const onboardingService = new OnboardingProgressService();
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 
 export async function getTenant(req: AuthRequest, res: Response) {
   try {
@@ -21,6 +30,7 @@ export async function getTenant(req: AuthRequest, res: Response) {
 
     // Get tenant from middleware
     const tenantId = (req as any).tenantId;
+<<<<<<< HEAD
     const isSuperAdmin = req.user?.role === 'superadmin';
 
     // @ANCHOR:backend_tenants_getTenant_superadmin_bypass
@@ -35,6 +45,11 @@ export async function getTenant(req: AuthRequest, res: Response) {
       return res.json({ tenant: null });
     }
 
+=======
+    if (!tenantId) {
+      return res.status(403).json({ error: 'Tenant not resolved' });
+    }
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
     const tenant = await db.query.tenants.findFirst({
       where: eq(tenants.id, tenantId),
     });
@@ -102,7 +117,11 @@ export async function updateBusinessType(req: AuthRequest, res: Response) {
 
     // Mark onboarding step as complete if applicable
     try {
+<<<<<<< HEAD
       await onboardingService.markStep(tenant.id, 'ORGANIZATION_TYPE', 'completed');
+=======
+      await onboardingService.markStep(tenant.id, 'ORGANIZATION_TYPE', 'COMPLETED');
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
       console.log(`[BusinessType] Marked ORGANIZATION_TYPE step as completed for tenant ${tenant.id}`);
     } catch (onboardingError) {
       console.error('[BusinessType] Failed to update onboarding progress:', onboardingError);
@@ -188,7 +207,11 @@ export async function updateBusinessProfile(req: AuthRequest, res: Response) {
 
     // Mark onboarding step as complete
     try {
+<<<<<<< HEAD
       await onboardingService.markStep(tenant.id, 'BUSINESS_PROFILE', 'completed');
+=======
+      await onboardingService.markStep(tenant.id, 'BUSINESS_PROFILE', 'COMPLETED');
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
       console.log(`[BusinessProfile] Marked BUSINESS_PROFILE step as completed for tenant ${tenant.id}`);
     } catch (onboardingError) {
       console.error('[BusinessProfile] Failed to update onboarding progress:', onboardingError);
@@ -223,6 +246,7 @@ export async function updateBusinessProfile(req: AuthRequest, res: Response) {
     });
   }
 }
+<<<<<<< HEAD
 =======
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
@@ -438,3 +462,5 @@ export async function updateBusinessProfile(req: AuthRequest, res: Response) {
   }
 }
 >>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)

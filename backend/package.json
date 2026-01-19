@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {
   "name": "@roadmap/backend",
   "version": "1.0.0",
@@ -65,3 +66,72 @@
     "typescript": "^5.3.3"
   }
 }
+=======
+{
+  "name": "@roadmap/backend",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "dotenv -e .env -- tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "db:generate": "drizzle-kit generate:pg",
+    "db:push": "drizzle-kit push:pg",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:studio": "drizzle-kit studio",
+    "openai:capabilities": "dotenv -e .env -- tsx src/scripts/openai_capabilities.ts",
+    "provision:assistants": "dotenv -e .env -- tsx src/scripts/provision_all_assistants.ts",
+    "metrics:capture": "dotenv -e .env -- tsx src/scripts/metricsCapture.ts",
+    "metrics:outcome": "dotenv -e .env -- tsx src/scripts/metricsOutcome.ts",
+    "metrics:aggregate": "dotenv -e .env -- tsx src/scripts/metricsAggregate.ts",
+    "roadmap:refresh": "dotenv -e .env -- tsx src/scripts/roadmapRefresh.ts",
+    "sop01:run": "dotenv -e .env -- tsx src/scripts/runSop01.ts",
+    "discovery:save": "dotenv -e .env -- tsx src/scripts/saveDiscoveryNotes.ts",
+    "agents:provision": "dotenv -e .env -- tsx src/scripts/agentsProvision.ts",
+    "provision:homepage-trustagent": "dotenv -e .env -- tsx src/scripts/provision_homepage_trustagent.ts",
+    "homepage:upload-knowledge": "dotenv -e .env -- tsx src/scripts/upload_homepage_knowledge.ts",
+    "openai:dump-trustagent": "dotenv -e .env -- tsx src/scripts/dump_trustagent.ts",
+    "test:diagnostic": "dotenv -e .env -- tsx src/scripts/testHayesDiagnostic.ts",
+    "fix:orphans": "dotenv -e .env -- tsx src/scripts/fix_orphaned_data_v2.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.675.0",
+    "@aws-sdk/s3-request-presigner": "^3.675.0",
+    "@react-pdf/renderer": "^4.3.2",
+    "@roadmap/shared": "workspace:*",
+    "@sparticuz/chromium": "^143.0.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "drizzle-orm": "^0.29.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^8.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
+    "nanoid": "^5.0.4",
+    "openai": "^4.104.0",
+    "pg": "^8.16.3",
+    "postgres": "^3.4.3",
+    "puppeteer-core": "^23.10.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "resend": "^3.0.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/minimist": "^1.2.5",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^20.10.5",
+    "dotenv-cli": "^11.0.0",
+    "drizzle-kit": "^0.20.6",
+    "minimist": "^1.2.8",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)

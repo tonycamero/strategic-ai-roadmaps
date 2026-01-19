@@ -1,4 +1,7 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 import {
   SuperAdminOverview,
   SuperAdminFirmRow,
@@ -328,9 +331,12 @@ export const superadminApi = {
 
 
   // TM-2: Ticket Moderation APIs
+<<<<<<< HEAD
   generateTickets: (params: { tenantId: string; diagnosticId: string }) =>
     apiPost<{ ticketCount: number }>(`/tickets/generate/${params.tenantId}/${params.diagnosticId}`),
 
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
   getDiagnosticTickets: (tenantId: string, diagnosticId: string) =>
     apiGet<{ tickets: any[]; status: any }>(`/tickets/${tenantId}/${diagnosticId}`),
 
@@ -362,6 +368,12 @@ export const superadminApi = {
   generateFinalRoadmap: (tenantId: string) =>
     apiPost<{ ok: boolean }>(`/firms/${tenantId}/generate-final-roadmap`),
 
+<<<<<<< HEAD
+=======
+  generateSop01: (tenantId: string) =>
+    apiPost<{ ok: boolean }>(`/firms/${tenantId}/generate-sop01`),
+
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
   // SR-3: Roadmaps browser endpoints
   getRoadmaps: async (filters?: {
     cohort?: string;
@@ -409,12 +421,20 @@ export const superadminApi = {
 
 
 
+<<<<<<< HEAD
+=======
+  // Final Roadmap Assembly (Waterfall Step 5)
+  assembleRoadmap: (tenantId: string) =>
+    apiPost<{ success: boolean; roadmap: any }>(`/firms/${tenantId}/assemble-roadmap`),
+
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
   previewFinalizeBatch: (tenantIds: string[]) =>
     apiPost<{ eligible: any[]; ineligible: any[] }>(`/command-center/batch/roadmap/finalize/preview`, { tenantIds }),
 
   executeFinalizeBatch: (params: { tenantIds: string[]; override?: boolean; overrideReason?: string }) =>
     apiPost<{ results: any[] }>(`/command-center/batch/roadmap/finalize/execute`, params),
 
+<<<<<<< HEAD
   previewReadinessBatch: (params: { tenantIds: string[]; flag: string; value: boolean }) =>
     apiPost<{ eligible: any[]; ineligible: any[] }>(`/command-center/batch/readiness/preview`, params),
 
@@ -427,21 +447,41 @@ export const superadminApi = {
   }) =>
     apiPost<{ results: any[] }>(`/command-center/batch/readiness/execute`, params),
 
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
   // Phase 7: SNAPSHOT (Ticket 8)
   getSnapshot: (tenantId: string) =>
     apiGet<{ data: any }>(`/snapshot/${tenantId}`),
 
+<<<<<<< HEAD
+=======
+  // Executive Brief v0
+  getExecutiveBrief: (tenantId: string) =>
+    apiGet<{ brief: any }>(`/tenants/${tenantId}/executive-brief`),
+
+  generateExecutiveBrief: (tenantId: string) =>
+    apiPost<{ brief: any }>(`/tenants/${tenantId}/executive-brief/generate`, {}),
+
+  approveExecutiveBrief: (tenantId: string) =>
+    apiPost<{ brief: any; intakeWindowState: string }>(`/tenants/${tenantId}/executive-brief/approve`, {}),
+
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
   closeIntakeWindow: (tenantId: string) =>
     apiPost<{ ok: boolean }>(`/firms/${tenantId}/close-intake`),
 
 
 
+<<<<<<< HEAD
   updateIntakeCoaching: (intakeId: string, coachingFeedback: string) =>
+=======
+  updateIntakeCoaching: (intakeId: string, coachingFeedback: Record<string, any>) =>
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
     apiPatch<{ ok: boolean }>(`/intakes/${intakeId}/coaching`, { coachingFeedback }),
 
   reopenIntake: (intakeId: string) =>
     apiPost<{ ok: boolean }>(`/intakes/${intakeId}/reopen`),
 
+<<<<<<< HEAD
 
 };
 =======
@@ -928,3 +968,42 @@ export const superadminApi = {
     apiPost<{ vector: any }>(`/intake-vectors/${vectorId}/send-invite`),
 };
 >>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
+=======
+  // SR-4: Readiness Batching
+  previewReadinessBatch: (tenantIds: string[]) =>
+    apiPost<{ eligible: any[]; ineligible: any[] }>(`/command-center/batch/readiness/preview`, { tenantIds }),
+
+  executeReadinessBatch: (params: { tenantIds: string[]; override?: boolean; overrideReason?: string }) =>
+    apiPost<{ results: any[] }>(`/command-center/batch/readiness/execute`, params),
+
+  signalReadiness: (tenantId: string, flags: any) =>
+    apiPatch<{ ok: boolean }>(`/firms/${tenantId}/readiness`, { flags }),
+
+  // Intake Vector Management (Unified Stakeholder System)
+  createIntakeVector: (tenantId: string, vector: {
+    roleLabel: string;
+    roleType: string;
+    perceivedConstraints: string;
+    anticipatedBlindSpots?: string;
+    recipientEmail?: string;
+    recipientName?: string;
+  }) =>
+    apiPost<{ vector: any }>(`/tenants/${tenantId}/intake-vectors`, vector),
+
+  getIntakeVectors: (tenantId: string) =>
+    apiGet<{ vectors: any[] }>(`/tenants/${tenantId}/intake-vectors`),
+
+  updateIntakeVector: (vectorId: string, updates: Partial<{
+    roleLabel: string;
+    roleType: string;
+    perceivedConstraints: string;
+    anticipatedBlindSpots: string;
+    recipientEmail: string;
+    recipientName: string;
+  }>) =>
+    apiPatch<{ vector: any }>(`/intake-vectors/${vectorId}`, updates),
+
+  sendIntakeVectorInvite: (vectorId: string) =>
+    apiPost<{ vector: any }>(`/intake-vectors/${vectorId}/send-invite`),
+};
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)

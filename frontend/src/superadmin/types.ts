@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 export interface IntakeRoleDefinition {
   id: string;
   roleLabel: string; // e.g. "Manufacturing Facilitator"
@@ -19,6 +20,23 @@ export interface IntakeRoleDefinition {
   inviteStatus: 'NOT_SENT' | 'SENT' | 'FAILED';
   intakeStatus: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
   completedAt?: string;
+=======
+export interface IntakeRoleDefinition {
+  id: string;
+  vectorId?: string;
+  intakeId?: string;
+  roleLabel: string;
+  roleType: 'FACILITATOR' | 'OPERATIONAL_LEAD' | 'EXECUTIVE' | 'OTHER';
+  description?: string;
+  perceivedConstraints: string;
+  anticipatedBlindSpots: string;
+  recipientEmail?: string;
+  recipientName?: string;
+  inviteStatus: 'NOT_SENT' | 'SENT' | 'FAILED';
+  intakeStatus: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+  completedAt?: string;
+  isAccepted?: boolean;
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 }
 
 export interface SuperAdminOverview {
@@ -43,7 +61,11 @@ export interface SuperAdminFirmRow {
   roadmapCount: number;
   createdAt: string;
   // Executive-Reflected Signals (may be null for delegates at API level, but UI must handle)
+<<<<<<< HEAD
   executiveBriefStatus?: 'NOT_CREATED' | 'DRAFT' | 'READY' | 'ACKNOWLEDGED' | 'WAIVED' | null;
+=======
+  executiveBriefStatus?: 'NOT_CREATED' | 'DRAFT' | 'APPROVED' | 'READY' | 'ACKNOWLEDGED' | 'WAIVED' | null;
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
   roadmapStatus?: 'LOCKED' | 'READY' | 'DELIVERED' | null;
   diagnosticStatus?: 'NOT_STARTED' | 'IN_REVIEW' | 'FINALIZED' | null;
 }
@@ -61,9 +83,15 @@ export interface SuperAdminTenantDetail {
     ownerEmail: string;
     ownerName: string;
     lastDiagnosticId?: string | null;
+<<<<<<< HEAD
     executiveBriefStatus?: 'DRAFT' | 'APPROVED' | 'ACKNOWLEDGED' | 'WAIVED' | null;
     executionPhase?: 'INTAKE_OPEN' | 'EXEC_BRIEF_DRAFT' | 'EXEC_BRIEF_APPROVED' | 'INTAKE_CLOSED';
     intakeWindowState: 'OPEN' | 'CLOSED';
+=======
+    intakeWindowState: 'OPEN' | 'CLOSED';
+    executiveBriefStatus?: 'DRAFT' | 'APPROVED' | null;
+    executionPhase?: 'INTAKE_OPEN' | 'EXEC_BRIEF_DRAFT' | 'EXEC_BRIEF_APPROVED' | 'INTAKE_CLOSED';
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
     intakeSnapshotId?: string | null;
     intakeClosedAt?: string | null;
     knowledgeBaseReadyAt?: string | null;
@@ -112,6 +140,22 @@ export interface SuperAdminTenantDetail {
     // Expanded Metadata
     domain?: string;
     perceivedConstraints?: string[];
+<<<<<<< HEAD
+=======
+    coachingFeedback?: Record<string, any>;
+  }[];
+  intakeVectors?: {
+    id: string;
+    roleLabel: string;
+    roleType: 'FACILITATOR' | 'OPERATIONAL_LEAD' | 'EXECUTIVE' | 'OTHER';
+    recipientEmail: string | null;
+    recipientName: string | null;
+    inviteStatus: 'NOT_SENT' | 'SENT' | 'FAILED';
+    intakeId: string | null;
+    intakeStatus: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+    perceivedConstraints: string;
+    anticipatedBlindSpots: string;
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
   }[];
   roadmaps: {
     id: string;
@@ -145,6 +189,7 @@ export interface SuperAdminTenantDetail {
     rejected: number;
     readyForRoadmap: boolean;
   };
+<<<<<<< HEAD
   intakeVectors: any[];
   latestDiagnostic?: {
     id: string;
@@ -152,6 +197,8 @@ export interface SuperAdminTenantDetail {
     createdAt: string;
     updatedAt: string;
   } | null;
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 }
 
 export interface CommandCenterTenant {
@@ -167,6 +214,7 @@ export interface CommandCenterTenant {
     execReadyAt: string | null;
   };
 }
+<<<<<<< HEAD
 =======
 export interface IntakeRoleDefinition {
   id: string;
@@ -338,3 +386,5 @@ export interface CommandCenterTenant {
   };
 }
 >>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)

@@ -4,7 +4,8 @@ import {
     splitSentences,
     normalizeToMetric,
     isMeaningfulValue,
-    validateSection,
+    mapSynthesisToSections,
+    projectSections,
     type ExecutiveBriefSection,
     type MetricBlock
 } from '@roadmap/shared';
@@ -122,64 +123,7 @@ const styles = StyleSheet.create({
     }
 });
 
-/**
- * Synthesis Mapper (Zero Drift with UI)
- * NOTE: Hallucinated structure (Cause/Effect/Risk) explicitly removed per Contract v4.
- */
-function mapSynthesisToSections(synthesis: any, signals: any): ExecutiveBriefSection[] {
-    const rawLandscape = Array.isArray(synthesis.constraintLandscape)
-        ? synthesis.constraintLandscape
-        : [synthesis.constraintLandscape];
 
-    const sections: ExecutiveBriefSection[] = [
-        {
-            id: 'operating-reality',
-            title: "Leadership Perception vs Operational Reality",
-            content: synthesis.operatingReality,
-            renderMode: 'PATTERN_LIST',
-            intro: "This section surfaces recurring execution patterns where leadership intent and day-to-day operations diverge, based on cross-role intake synthesis."
-        },
-        {
-            id: 'constraint-landscape',
-            title: "Awareness Gaps (Unseen or Normalized)",
-            content: rawLandscape.filter(x => isMeaningfulValue(x)),
-            renderMode: 'BULLET_LIST'
-        },
-        {
-            id: 'alignment-signals',
-            title: "Trust & Signal Flow",
-            content: synthesis.alignmentSignals,
-            renderMode: 'PROSE_NARRATIVE',
-            sublabel: "Future-state signal mapping and desired operational transparency."
-        },
-        {
-            id: 'blind-spot-risks',
-            title: "Decision Latency & Risk",
-            content: synthesis.blindSpotRisks,
-            renderMode: 'PROSE_NARRATIVE'
-        },
-        {
-            id: 'risk-signals',
-            title: "Executive Risk Language",
-            content: normalizeToMetric(synthesis.riskSignals, "RISK"),
-            renderMode: 'METRIC_CALLOUT'
-        },
-        {
-            id: 'readiness-signals',
-            title: "Implementation Readiness",
-            content: normalizeToMetric(synthesis.readinessSignals, "READINESS"),
-            renderMode: 'METRIC_CALLOUT'
-        },
-        {
-            id: 'executive-summary',
-            title: "Executive Summary (For Reference Only)",
-            content: synthesis.executiveSummary,
-            renderMode: 'PROSE_NARRATIVE'
-        }
-    ];
-
-    return sections.filter(validateSection);
-}
 
 // PDF Document Component
 export function PrivateLeadershipBriefPDF({
@@ -193,7 +137,8 @@ export function PrivateLeadershipBriefPDF({
 }) {
     const synthesis = brief.synthesis || {};
     const signals = brief.signals || {};
-    const sections = mapSynthesisToSections(synthesis, signals);
+    const rawSections = mapSynthesisToSections(synthesis, signals);
+    const sections = projectSections(rawSections, 'PRIVATE');
 
     return (
         <Document>

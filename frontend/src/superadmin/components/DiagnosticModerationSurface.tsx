@@ -1,5 +1,9 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { useEffect, useState } from 'react';
+=======
+import React, { useEffect, useState } from 'react';
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 import { useSuperAdminAuthority } from '../../hooks/useSuperAdminAuthority';
 import { superadminApi } from '../api';
 
@@ -37,7 +41,10 @@ export function DiagnosticModerationSurface({ tenantId, diagnosticId, onStatusCh
     const { isExecutive } = useSuperAdminAuthority();
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [status, setStatus] = useState<ModerationStatus | null>(null);
+<<<<<<< HEAD
     const [error, setError] = useState<string | null>(null);
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
     const [loading, setLoading] = useState(true);
     const [processingId, setProcessingId] = useState<string | null>(null);
 
@@ -47,12 +54,16 @@ export function DiagnosticModerationSurface({ tenantId, diagnosticId, onStatusCh
 
     const loadTickets = async () => {
         setLoading(true);
+<<<<<<< HEAD
         setError(null);
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
         try {
             const res = await superadminApi.getDiagnosticTickets(tenantId, diagnosticId);
             setTickets(res.tickets);
             setStatus(res.status);
             if (onStatusChange) onStatusChange(res.status);
+<<<<<<< HEAD
         } catch (err: any) {
             console.error('Failed to load tickets', err);
             // Extract detailed message if available (from our patched apiGet)
@@ -60,6 +71,10 @@ export function DiagnosticModerationSurface({ tenantId, diagnosticId, onStatusCh
             const code = err.errorCode ? ` [${err.errorCode}]` : '';
             const details = err.details ? ` (${err.details})` : '';
             setError(`${msg}${code}${details}`);
+=======
+        } catch (err) {
+            console.error('Failed to load tickets', err);
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
         } finally {
             setLoading(false);
         }
@@ -100,6 +115,7 @@ export function DiagnosticModerationSurface({ tenantId, diagnosticId, onStatusCh
         }
     };
 
+<<<<<<< HEAD
     if (error) {
         return (
             <div className="p-4 bg-red-900/10 border border-red-500/30 rounded-lg flex items-center gap-3 text-red-400 text-xs font-mono">
@@ -112,6 +128,8 @@ export function DiagnosticModerationSurface({ tenantId, diagnosticId, onStatusCh
         );
     }
 
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
     if (loading) return <div className="text-slate-500 text-xs animate-pulse">Loading diagnostic tickets...</div>;
 
     if (tickets.length === 0) return <div className="text-slate-500 text-xs italic">No findings generated yet.</div>;
@@ -156,9 +174,13 @@ export function DiagnosticModerationSurface({ tenantId, diagnosticId, onStatusCh
                         <div className="flex justify-between items-start gap-3">
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
+<<<<<<< HEAD
                                     <span className="text-[10px] font-mono text-slate-500 bg-slate-900 px-1.5 rounded">
                                         {ticket.ticketId.startsWith('ai-gen-') ? 'DRAFT' : ticket.ticketId}
                                     </span>
+=======
+                                    <span className="text-[10px] font-mono text-slate-500 bg-slate-900 px-1.5 rounded">{ticket.ticketId}</span>
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
                                     {ticket.tier && (
                                         <span className={`text-[9px] uppercase font-bold px-1.5 rounded border ${ticket.tier === 'critical' ? 'text-red-400 border-red-900/30 bg-red-900/10' :
                                             ticket.tier === 'recommended' ? 'text-emerald-400 border-emerald-900/30 bg-emerald-900/10' :
@@ -205,6 +227,7 @@ export function DiagnosticModerationSurface({ tenantId, diagnosticId, onStatusCh
         </div>
     );
 }
+<<<<<<< HEAD
 =======
 import React, { useEffect, useState } from 'react';
 import { useSuperAdminAuthority } from '../../hooks/useSuperAdminAuthority';
@@ -392,3 +415,5 @@ export function DiagnosticModerationSurface({ tenantId, diagnosticId, onStatusCh
     );
 }
 >>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
