@@ -2,14 +2,11 @@ import React from 'react';
 import {
     renderOrientation,
     renderMetadata,
-    renderOperatingReality,
-    renderConstraintLandscape,
-    renderAlignmentSignals,
-    renderBlindSpotRisks,
-    renderRiskSignals,
-    renderReadinessSignals,
-    renderExecutiveSummary,
-    renderClosing
+    renderClosing,
+    mapSynthesisToSections,
+    projectSections,
+    NarrativeSection,
+    ExecutiveBriefSection
 } from '../renderers/mapBriefToPrivateNarrative';
 
 export function PrivateLeadershipBriefView({ synthesis, signals, verification }: {
@@ -17,6 +14,9 @@ export function PrivateLeadershipBriefView({ synthesis, signals, verification }:
     signals: any;
     verification: any;
 }) {
+    const rawSections = mapSynthesisToSections(synthesis, signals);
+    const sections = projectSections(rawSections, 'PRIVATE');
+
     return (
         <div className="max-w-4xl mx-auto p-12 bg-white/[0.02] border-x border-slate-800/40 space-y-16">
             {/* 1. Orientation */}
@@ -27,38 +27,15 @@ export function PrivateLeadershipBriefView({ synthesis, signals, verification }:
 
             <div className="w-12 h-px bg-slate-800/60 mx-auto" />
 
-            {/* 3. Leadership Perception vs Operational Reality */}
-            {renderOperatingReality(synthesis, 'PRIVATE')}
-
-            <div className="w-full h-px bg-slate-800/30" />
-
-            {/* 4. Awareness Gaps */}
-            {renderConstraintLandscape(synthesis, 'PRIVATE')}
-
-            <div className="w-full h-px bg-slate-800/30" />
-
-            {/* 5. Trust & Signal Flow */}
-            {renderAlignmentSignals(synthesis, 'PRIVATE')}
-
-            <div className="w-full h-px bg-slate-800/30" />
-
-            {/* 6. Decision Latency & Risk */}
-            {renderBlindSpotRisks(synthesis, 'PRIVATE')}
-
-            <div className="w-full h-px bg-slate-800/30" />
-
-            {/* 7. Executive Risk Language */}
-            {renderRiskSignals(synthesis, 'PRIVATE')}
-
-            <div className="w-full h-px bg-slate-800/30" />
-
-            {/* 8. Implementation Readiness */}
-            {renderReadinessSignals(synthesis, 'PRIVATE')}
+            {/* Canonical Sections */}
+            {sections.map((section: ExecutiveBriefSection, idx: number) => (
+                <React.Fragment key={section.id}>
+                    <NarrativeSection section={section} view="PRIVATE" />
+                    {idx < sections.length - 1 && <div className="w-full h-px bg-slate-800/30" />}
+                </React.Fragment>
+            ))}
 
             <div className="w-12 h-px bg-slate-800/60 mx-auto" />
-
-            {/* 9. Executive Summary (For Reference) */}
-            {renderExecutiveSummary(synthesis, 'PRIVATE')}
 
             {/* 10. End of Private Brief */}
             {renderClosing()}
@@ -75,6 +52,9 @@ export function SystemExecutiveBriefView({ synthesis, signals, verification, onA
     onRequestVerification: () => void;
     actionLoading: boolean;
 }) {
+    const rawSections = mapSynthesisToSections(synthesis, signals);
+    const sections = projectSections(rawSections, 'SYSTEM');
+
     return (
         <>
             {/* Verification Request Loop */}
@@ -131,32 +111,12 @@ export function SystemExecutiveBriefView({ synthesis, signals, verification, onA
 
             {/* Synthesis Sections */}
             <div className="p-6 space-y-16">
-                {renderOperatingReality(synthesis, 'SYSTEM')}
-
-                <div className="h-px bg-slate-800/30" />
-
-                {renderConstraintLandscape(synthesis, 'SYSTEM')}
-
-                <div className="h-px bg-slate-800/30" />
-
-                {renderBlindSpotRisks(synthesis, 'SYSTEM')}
-
-                <div className="h-px bg-slate-800/30" />
-
-                {renderAlignmentSignals(synthesis, 'SYSTEM')}
-
-                <div className="h-px bg-slate-800/30" />
-
-                {renderRiskSignals(synthesis, 'SYSTEM')}
-
-                <div className="h-px bg-slate-800/30" />
-
-                {renderReadinessSignals(synthesis, 'SYSTEM')}
-
-                <div className="h-px bg-slate-800/30" />
-
-                {/* 9. Executive Summary (Always Last) */}
-                {renderExecutiveSummary(synthesis, 'SYSTEM')}
+                {sections.map((section: ExecutiveBriefSection, idx: number) => (
+                    <React.Fragment key={section.id}>
+                        <NarrativeSection section={section} view="SYSTEM" />
+                        {idx < sections.length - 1 && <div className="h-px bg-slate-800/30" />}
+                    </React.Fragment>
+                ))}
 
                 {/* Approve Action */}
                 <div className="pt-4 border-t border-slate-800">
@@ -176,13 +136,14 @@ export function SystemExecutiveBriefView({ synthesis, signals, verification, onA
     );
 }
 
-// (Removed redundant SynthesisSection)
-
 // Approved System View Component (Read-Only)
 export function ApprovedSystemView({ synthesis, signals }: {
     synthesis: any;
     signals: any;
 }) {
+    const rawSections = mapSynthesisToSections(synthesis, signals);
+    const sections = projectSections(rawSections, 'SYSTEM');
+
     return (
         <>
             {/* Signals */}
@@ -215,33 +176,15 @@ export function ApprovedSystemView({ synthesis, signals }: {
 
             {/* Synthesis Sections (Read-Only) */}
             <div className="p-6 space-y-16">
-                {renderOperatingReality(synthesis, 'SYSTEM')}
-
-                <div className="h-px bg-slate-800/30" />
-
-                {renderConstraintLandscape(synthesis, 'SYSTEM')}
-
-                <div className="h-px bg-slate-800/30" />
-
-                {renderBlindSpotRisks(synthesis, 'SYSTEM')}
-
-                <div className="h-px bg-slate-800/30" />
-
-                {renderAlignmentSignals(synthesis, 'SYSTEM')}
-
-                <div className="h-px bg-slate-800/30" />
-
-                {renderRiskSignals(synthesis, 'SYSTEM')}
-
-                <div className="h-px bg-slate-800/30" />
-
-                {renderReadinessSignals(synthesis, 'SYSTEM')}
-
-                <div className="h-px bg-slate-800/30" />
-
-                {/* 9. Executive Summary (Always Last) */}
-                {renderExecutiveSummary(synthesis, 'SYSTEM')}
+                {sections.map((section: ExecutiveBriefSection, idx: number) => (
+                    <React.Fragment key={section.id}>
+                        <NarrativeSection section={section} view="SYSTEM" />
+                        {idx < sections.length - 1 && <div className="h-px bg-slate-800/30" />}
+                    </React.Fragment>
+                ))}
             </div>
         </>
     );
 }
+
+

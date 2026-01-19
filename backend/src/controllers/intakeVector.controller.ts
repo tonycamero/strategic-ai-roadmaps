@@ -1,4 +1,7 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 import { Response } from 'express';
 import { db } from '../db';
 import { intakeVectors, intakes, users, tenants } from '../db/schema';
@@ -281,6 +284,7 @@ export async function sendIntakeVectorInvite(req: AuthRequest, res: Response) {
         return res.status(500).json({ error: 'Internal server error' });
     }
 }
+<<<<<<< HEAD
 =======
 import { Response } from 'express';
 import { db } from '../db';
@@ -565,3 +569,5 @@ export async function sendIntakeVectorInvite(req: AuthRequest, res: Response) {
     }
 }
 >>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)

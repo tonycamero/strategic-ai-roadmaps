@@ -1,9 +1,24 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { CONTRACT_LIMITS, getSectionTitle, VISIBILITY_RULES } from "./executiveBrief.contract";
+=======
+import {
+    ExecutiveBriefSection,
+    MetricBlock,
+    CONTRACT_LIMITS,
+    SectionId,
+    getSectionTitle,
+    ViewProjection,
+    VISIBILITY_RULES
+} from './executiveBrief.contract';
+
+export * from './executiveBrief.contract';
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 
 /**
  * Pure helper for text normalization
  */
+<<<<<<< HEAD
 export function normalizeText(s: any): string {
     if (!s)
         return "";
@@ -13,6 +28,16 @@ export function normalizeText(s: any): string {
     const cleanLines = lines.filter(line => {
         if (!line)
             return true; // keep blank lines for paragraph splitting
+=======
+export function normalizeText(s: unknown): string {
+    if (!s) return "";
+    let text = String(s).replace(/\r\n/g, '\n').trim();
+    text = text.replace(/[ \t]+/g, ' ');
+
+    const lines = text.split('\n').map(l => l.trim());
+    const cleanLines = lines.filter(line => {
+        if (!line) return true; // keep blank lines for paragraph splitting
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
         const junk = /^(,|,,|;|—|-)$/;
         return !junk.test(line);
     });
@@ -22,6 +47,7 @@ export function normalizeText(s: any): string {
 /**
  * Pure helper for signal meaningfulness
  */
+<<<<<<< HEAD
 export function isMeaningfulValue(x: any): boolean {
     if (x === null || x === undefined)
         return false;
@@ -33,15 +59,34 @@ export function isMeaningfulValue(x: any): boolean {
     // Standalone punctuation/operators
     if (/^[.,;!?\- ]+$/.test(s))
         return false;
+=======
+export function isMeaningfulValue(x: unknown): boolean {
+    if (x === null || x === undefined) return false;
+    const s = String(x).trim();
+    const lower = s.toLowerCase();
+
+    // List of garbage/placeholder tokens
+    if (lower === "" || lower === "," || lower === ",," || lower === ";" || lower === "unknown" || lower === "n/a") return false;
+
+    // Standalone punctuation/operators
+    if (/^[.,;!?\- ]+$/.test(s)) return false;
+
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
     return true;
 }
 
 /**
  * Cognitive Paragraph Splitting
  */
+<<<<<<< HEAD
 export function splitSentences(text: string, every = CONTRACT_LIMITS.SENTENCES_PER_PARAGRAPH): string[] {
     const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
     const groups = [];
+=======
+export function splitSentences(text: string, every: number = CONTRACT_LIMITS.SENTENCES_PER_PARAGRAPH): string[] {
+    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+    const groups: string[] = [];
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
     for (let i = 0; i < sentences.length; i += every) {
         groups.push(sentences.slice(i, i + every).join(" ").trim());
     }
@@ -51,6 +96,7 @@ export function splitSentences(text: string, every = CONTRACT_LIMITS.SENTENCES_P
 /**
  * Signal Normalization for METRIC mode
  */
+<<<<<<< HEAD
 export function normalizeToMetric(input: any, type: string) {
     const rawValues = Array.isArray(input) ? input : [String(input)];
     const interpretation: string[] = [];
@@ -60,29 +106,62 @@ export function normalizeToMetric(input: any, type: string) {
         let s = String(v).trim();
         if (!isMeaningfulValue(s))
             return;
+=======
+export function normalizeToMetric(input: any, type: "RISK" | "READINESS"): MetricBlock {
+    const rawValues = Array.isArray(input) ? input : [String(input)];
+    const interpretation: string[] = [];
+    let level: "Low" | "Medium" | "High" = "Medium";
+    let capacityScore: number | undefined;
+
+    rawValues.forEach(v => {
+        let s = String(v).trim();
+        if (!isMeaningfulValue(s)) return;
+
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
         const levelPrefixReg = /^(low|medium|high)\b[\s,:]*/i;
         while (levelPrefixReg.test(s)) {
             const match = s.match(levelPrefixReg);
             if (match) {
+<<<<<<< HEAD
                 level = (match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase());
                 s = s.replace(levelPrefixReg, "").trim();
             }
         }
         if (!s)
             return;
+=======
+                level = (match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase()) as any;
+                s = s.replace(levelPrefixReg, "").trim();
+            }
+        }
+
+        if (!s) return;
+
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
         if (type === "READINESS") {
             const scoreMatch = s.match(/^(\d+)(?:\s*\/10)?\b/);
             if (scoreMatch) {
                 capacityScore = parseInt(scoreMatch[1]);
+<<<<<<< HEAD
                 if (s.replace(/^(\d+)(?:\s*\/10)?[\s,.]*/, "").trim().length === 0)
                     return;
             }
         }
+=======
+                if (s.replace(/^(\d+)(?:\s*\/10)?[\s,.]*/, "").trim().length === 0) return;
+            }
+        }
+
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
         const cleanVal = s.replace(/[,;]+$/, "").trim();
         if (cleanVal && !interpretation.includes(cleanVal)) {
             interpretation.push(cleanVal);
         }
     });
+<<<<<<< HEAD
+=======
+
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
     return {
         level,
         capacityScore,
@@ -105,6 +184,7 @@ export function projectToSystem(text: string): string {
 /**
  * Contract Validation (Fail-Closed)
  */
+<<<<<<< HEAD
 export function validateSection(section: any): boolean {
     if (!section.content)
         return false;
@@ -132,6 +212,32 @@ export function validateSection(section: any): boolean {
         if (!section.intro)
             return false;
     }
+=======
+export function validateSection(section: ExecutiveBriefSection): boolean {
+    if (!section.content) return false;
+
+    if (section.renderMode === 'BULLET_LIST') {
+        if (!Array.isArray(section.content)) return false;
+        const validBullets = section.content.filter(s => String(s).trim().length >= CONTRACT_LIMITS.MIN_BULLET_LENGTH);
+        if (validBullets.length < 2) return false;
+    }
+
+    if (section.renderMode === 'METRIC_CALLOUT') {
+        const m = section.content as MetricBlock;
+        if (!m.level || !m.interpretation || m.interpretation.length < CONTRACT_LIMITS.MIN_INTERPRETATION_LENGTH) return false;
+    }
+
+    if (section.renderMode === 'PROSE_NARRATIVE') {
+        if (typeof section.content !== 'string') return false;
+        if (section.content.trim().length < CONTRACT_LIMITS.MIN_PROSE_LENGTH) return false;
+    }
+
+    if (section.renderMode === 'PATTERN_LIST') {
+        if (typeof section.content !== 'string' && !Array.isArray(section.content)) return false;
+        if (!section.intro) return false;
+    }
+
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
     return true;
 }
 
@@ -140,6 +246,7 @@ export function validateSection(section: any): boolean {
  */
 export function missingSignalsToHuman(missing: string[]): string {
     return missing.map((m) => {
+<<<<<<< HEAD
         if (m === "constraints")
             return "Constraints not explicitly articulated";
         if (m === "blind_spots" || m === "blindSpots")
@@ -148,6 +255,12 @@ export function missingSignalsToHuman(missing: string[]): string {
             return "Operational reality context missing";
         if (m === "alignment")
             return "Alignment/Conflict signals missing";
+=======
+        if (m === "constraints") return "Constraints not explicitly articulated";
+        if (m === "blind_spots" || m === "blindSpots") return "Blind spots not explicitly articulated";
+        if (m === "operating_reality") return "Operational reality context missing";
+        if (m === "alignment") return "Alignment/Conflict signals missing";
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
         return `Missing signal: ${m}`;
     }).join(", ");
 }
@@ -156,11 +269,20 @@ export function missingSignalsToHuman(missing: string[]): string {
  * Synthesis Mapper (Zero Drift)
  * Maps raw synthesis and signals to the canonical section model.
  */
+<<<<<<< HEAD
 export function mapSynthesisToSections(synthesis: any, signals?: any) {
     const rawLandscape = Array.isArray(synthesis.constraintLandscape)
         ? synthesis.constraintLandscape
         : [synthesis.constraintLandscape];
     const sections = [
+=======
+export function mapSynthesisToSections(synthesis: any, signals: any): ExecutiveBriefSection[] {
+    const rawLandscape = Array.isArray(synthesis.constraintLandscape)
+        ? synthesis.constraintLandscape
+        : [synthesis.constraintLandscape];
+
+    const sections: ExecutiveBriefSection[] = [
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
         {
             id: 'operating-reality',
             title: getSectionTitle('operating-reality'),
@@ -206,6 +328,10 @@ export function mapSynthesisToSections(synthesis: any, signals?: any) {
             renderMode: 'PROSE_NARRATIVE'
         }
     ];
+<<<<<<< HEAD
+=======
+
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
     return sections.filter(validateSection);
 }
 
@@ -213,6 +339,7 @@ export function mapSynthesisToSections(synthesis: any, signals?: any) {
  * projectSections
  * Applies visibility rules and semantic reduction to a list of sections.
  */
+<<<<<<< HEAD
 export function projectSections(sections: any[], view: 'SYSTEM' | 'PRIVATE') {
     const rules = VISIBILITY_RULES[view];
     return sections
@@ -229,6 +356,24 @@ export function projectSections(sections: any[], view: 'SYSTEM' | 'PRIVATE') {
                 }
                 else {
                     const m = { ...s.content };
+=======
+export function projectSections(sections: ExecutiveBriefSection[], view: ViewProjection): ExecutiveBriefSection[] {
+    const rules = VISIBILITY_RULES[view];
+
+    return sections
+        .filter(s => !rules.excludeIds.includes(s.id))
+        .map(section => {
+            const s = { ...section };
+            const isSystem = view === 'SYSTEM';
+
+            if (isSystem) {
+                if (typeof s.content === 'string') {
+                    s.content = projectToSystem(s.content);
+                } else if (Array.isArray(s.content)) {
+                    s.content = s.content.map(c => projectToSystem(c));
+                } else {
+                    const m = { ...s.content as MetricBlock };
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
                     m.interpretation = projectToSystem(m.interpretation);
                     s.content = m;
                 }
@@ -236,6 +381,7 @@ export function projectSections(sections: any[], view: 'SYSTEM' | 'PRIVATE') {
             return s;
         });
 }
+<<<<<<< HEAD
 =======
 export type RenderMode = 'PROSE_NARRATIVE' | 'PATTERN_LIST' | 'METRIC_CALLOUT' | 'BULLET_LIST';
 
@@ -383,3 +529,7 @@ export function validateSection(section: ExecutiveBriefSection): boolean {
     return true;
 }
 >>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
+=======
+
+
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)

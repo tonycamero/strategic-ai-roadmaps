@@ -1,4 +1,7 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 import { db } from '../db';
 import { sopTickets } from '../db/schema';
 import { nanoid } from 'nanoid';
@@ -6,14 +9,21 @@ import { OpenAI } from 'openai';
 import { buildDiagnosticToTicketsPrompt, SelectedInventoryTicket } from '../trustagent/prompts/diagnosticToTickets';
 import { eq, and } from 'drizzle-orm';
 import { Sop01Outputs } from './sop01Engine';
+<<<<<<< HEAD
 import { AUTHORITY_VERSION_STAGE6 } from '../config/authorityVersions';
 import { createHash } from 'crypto';
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
 
+<<<<<<< HEAD
 export interface ParsedTicket {
+=======
+interface ParsedTicket {
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
     title: string;
     description: string;
     category: string;
@@ -23,7 +33,10 @@ export interface ParsedTicket {
     success_metric?: string;
     roi_notes?: string;
     time_estimate_hours?: number;
+<<<<<<< HEAD
     sprint?: number;
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 }
 
 export class ArtifactNotFoundError extends Error {
@@ -38,6 +51,7 @@ export class ArtifactNotFoundError extends Error {
     }
 }
 
+<<<<<<< HEAD
 export class InventoryEmptyError extends Error {
     constructor(public debug: {
         artifactIds: string[];
@@ -66,12 +80,15 @@ export class InventoryEmptyError extends Error {
  * 2. Be retrofitted to use canonical inventory selection
  * 3. Fail with CANONICAL_REQUIRED error
  */
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 export async function ingestDiagnostic(diagnosticMap: any, sop01Content: Sop01Outputs): Promise<{
     ticketCount: number;
     roadmapSectionCount: number;
     diagnosticId?: string;
     assistantProvisioned?: boolean;
 }> {
+<<<<<<< HEAD
     // HARD BLOCK: Prevent non-canonical ticket generation in production
     const allowLegacy = process.env.ALLOW_LEGACY_INGEST === 'true';
     let tickets: ParsedTicket[] = [];
@@ -88,16 +105,96 @@ export async function ingestDiagnostic(diagnosticMap: any, sop01Content: Sop01Ou
     }
 
     console.warn('[DEPRECATED] ingestDiagnostic() called - this generates non-canonical tickets. Use generateTicketsFromDiscovery() instead.');
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
     const start = Date.now();
     const tenantId = diagnosticMap.tenantId; // Expected to be present
     const diagnosticId = `diag_${nanoid()}`;
 
+<<<<<<< HEAD
     // 3. Delegate to shared logic
     try {
         tickets = await generateRawTickets(diagnosticMap.tenantId, diagnosticMap, sop01Content);
     } catch (error) {
         console.error('[DiagnosticIngestion] Key failure:', error);
         throw error;
+=======
+    // 1. Locate Truth Source / Strict Validation
+    const hasDiagnosticMap = !!sop01Content.sop01DiagnosticMarkdown;
+    const hasAiLeverageMap = !!sop01Content.sop01AiLeverageMarkdown;
+    const hasRoadmapSkeleton = !!sop01Content.sop01RoadmapSkeletonMarkdown;
+    const hasDiscoveryQuestions = !!sop01Content.sop01DiscoveryQuestionsMarkdown;
+
+    if (!hasDiagnosticMap || !hasAiLeverageMap || !hasRoadmapSkeleton || !hasDiscoveryQuestions) {
+        console.error(`[DiagnosticIngestion] Missing required SOP-01 artifacts for tenant ${tenantId}`);
+        throw new ArtifactNotFoundError({
+            hasDiagnosticMap,
+            hasAiLeverageMap,
+            hasRoadmapSkeleton,
+            hasDiscoveryQuestions
+        });
+    }
+
+    let tickets: ParsedTicket[] = [];
+
+    // 2. Prompt Construction (Strictly derived from artifacts)
+    // Map canonical fields to prompt expectations
+    const promptArtifacts = {
+        diagnosticMarkdown: sop01Content.sop01DiagnosticMarkdown,
+        aiLeverageMarkdown: sop01Content.sop01AiLeverageMarkdown,
+        roadmapSkeletonMarkdown: sop01Content.sop01RoadmapSkeletonMarkdown,
+        discoveryQuestionsMarkdown: sop01Content.sop01DiscoveryQuestionsMarkdown,
+    };
+
+    const derivedInventory: SelectedInventoryTicket[] = extractInventoryFromArtifacts(promptArtifacts);
+
+    if (derivedInventory.length === 0) {
+        console.warn(`[DiagnosticIngestion] No inventory items extracted from artifacts for tenant ${tenantId}.`);
+    }
+
+    const systemPrompt = buildDiagnosticToTicketsPrompt(
+        diagnosticMap,
+        promptArtifacts,
+        diagnosticMap.firmName || 'Tenant Firm',
+        diagnosticMap.firmSize || 'Small',
+        diagnosticMap.employeeCount || 10,
+        new Date(),
+        derivedInventory
+    );
+
+    // 3. Model Call (gpt-4-turbo-preview)
+    try {
+        const response = await openai.chat.completions.create({
+            model: 'gpt-4-turbo-preview',
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: "Generate the ticket pack JSON." }
+            ],
+            response_format: { type: 'json_object' }
+        });
+
+        const content = response.choices[0]?.message?.content;
+        if (!content) throw new Error("No content from OpenAI Ticket Architect");
+
+        // 4. Parse + Validate
+        const parsed = JSON.parse(content);
+        if (!parsed.tickets || !Array.isArray(parsed.tickets)) {
+            throw new Error('TICKET_ARCHITECT_INVALID_OUTPUT: Response missing "tickets" array');
+        }
+
+        // Strict Field Validation
+        tickets = parsed.tickets.map((t: any, idx: number) => {
+            if (!t.title || !t.description || !t.ghl_implementation || !t.roi_notes) {
+                throw new Error(`TICKET_ARCHITECT_INVALID_OUTPUT: Ticket validation failed at index ${idx}. Missing required fields.`);
+            }
+            return t; // Valid
+        });
+
+    } catch (error) {
+        // Fail-closed
+        console.error('[DiagnosticIngestion] Ticket Architect Failure:', error);
+        throw error; // Re-throw to ensure 500/422 propagates
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
     }
 
     // 5. Persist Atomically (Delete + Insert)
@@ -129,6 +226,10 @@ export async function ingestDiagnostic(diagnosticMap: any, sop01Content: Sop01Ou
                 tier: t.tier as any,
                 sprint: 1,
                 timeEstimateHours: t.time_estimate_hours || 4,
+<<<<<<< HEAD
+=======
+                ticketOrigin: 'agentic',
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 
                 // Rich Fields (Validated)
                 ghlImplementation: t.ghl_implementation,
@@ -159,6 +260,7 @@ export async function ingestDiagnostic(diagnosticMap: any, sop01Content: Sop01Ou
 }
 
 /**
+<<<<<<< HEAD
  * Core Ticket Generation Logic (Reuse for Stage 6)
  * Generates tickets from SOP-01 artifacts using the legacy prompt.
  * Does NOT persist to DB.
@@ -430,10 +532,34 @@ export function extractInventoryFromArtifacts(sop01Content: Sop01Outputs): Selec
 
         const pMatch = line.match(phaseRegex);
         if (pMatch) {
+=======
+ * Extracts implied inventory items from the SOP-01 "Roadmap Skeleton" or "AI Leverage Map"
+ * to serve as the ground truth "Selected Inventory" for the prompt.
+ */
+function extractInventoryFromArtifacts(sop01Content: any): SelectedInventoryTicket[] {
+    const inventory: SelectedInventoryTicket[] = [];
+
+    // Naive Extraction Strategy:
+    // Look for Headers in Roadmap Skeleton that look like "Phase X: [System Name]"
+    // Or bullet points in AI Leverage Map.
+
+    const raw = sop01Content.sop01RoadmapSkeletonMarkdown || '';
+    const lines = raw.split('\n');
+    let currentSprint = 30;
+
+    const phaseRegex = /Phase (\d+): (.*)/i;
+    const systemRegex = /\*\*System\*\*: (.*)/i;
+
+    for (const line of lines) {
+        const pMatch = line.match(phaseRegex);
+        if (pMatch) {
+            // infer sprint from phase? Phase 1 = 30, Phase 2 = 60
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
             const phaseNum = parseInt(pMatch[1], 10);
             currentSprint = (phaseNum * 30) as any;
         }
 
+<<<<<<< HEAD
         if (cleanTitle && cleanTitle.length >= 5) {
             rawInventory.push({
                 inventoryId: `INV-DERIVED-${createHash('sha1').update(cleanTitle.toLowerCase().trim()).digest('hex').substring(0, 4)}`,
@@ -442,6 +568,19 @@ export function extractInventoryFromArtifacts(sop01Content: Sop01Outputs): Selec
                 valueCategory: 'Efficiency',
                 ghlComponents: [],
                 description: `Implementation of ${cleanTitle} as defined in roadmap.`,
+=======
+        const sMatch = line.match(systemRegex);
+        if (sMatch) {
+            const sysName = sMatch[1].trim();
+            // Add as inventory item
+            inventory.push({
+                inventoryId: `INV-DERIVED-${nanoid(4)}`,
+                titleTemplate: sysName,
+                category: 'Implied',
+                valueCategory: 'Efficiency',
+                ghlComponents: [],
+                description: `Implementation of ${sysName} as defined in roadmap.`,
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
                 implementationStatus: 'production-ready',
                 tier: 'core',
                 sprint: currentSprint as any
@@ -449,6 +588,7 @@ export function extractInventoryFromArtifacts(sop01Content: Sop01Outputs): Selec
         }
     }
 
+<<<<<<< HEAD
     // Deterministic Ordering & Case-Insensitive Deduplication
     const seen = new Set<string>();
     const inventory: SelectedInventoryTicket[] = [];
@@ -720,3 +860,31 @@ function extractInventoryFromArtifacts(sop01Content: any): SelectedInventoryTick
     return inventory.slice(0, 15);
 }
 >>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
+=======
+    // Fallback: If roadmap skeleton didn't parse well, try AI Leverage Map simple bullets
+    if (inventory.length === 0 && sop01Content.sop01AiLeverageMarkdown) {
+        const levLines = sop01Content.sop01AiLeverageMarkdown.split('\n');
+        const bulletRegex = /^\s*-\s*\*\*(.*?)\*\*/;
+
+        for (const l of levLines) {
+            const bMatch = l.match(bulletRegex);
+            if (bMatch) {
+                inventory.push({
+                    inventoryId: `INV-DERIVED-${nanoid(4)}`,
+                    titleTemplate: bMatch[1].trim(),
+                    category: 'Growth',
+                    valueCategory: 'Revenue',
+                    ghlComponents: [],
+                    description: 'Derived opportunity from AI Leverage Map',
+                    implementationStatus: 'production-ready',
+                    tier: 'recommended',
+                    sprint: 30
+                });
+            }
+        }
+    }
+
+    // Limit to reasonable pack size to avoid token overflow
+    return inventory.slice(0, 15);
+}
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)

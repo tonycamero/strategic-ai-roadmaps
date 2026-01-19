@@ -230,7 +230,7 @@ export type TrainingProgress = z.infer<typeof TrainingProgress>;
 // EXECUTIVE BRIEF
 // ============================================================================
 
-export const ExecutiveBriefStatus = z.enum(['DRAFT', 'READY_FOR_EXEC', 'ACKNOWLEDGED', 'WAIVED']);
+export const ExecutiveBriefStatus = z.enum(['DRAFT', 'READY_FOR_EXEC', 'READY_FOR_EXEC_REVIEW', 'ACKNOWLEDGED', 'WAIVED', 'NOT_CREATED']);
 export type ExecutiveBriefStatus = z.infer<typeof ExecutiveBriefStatus>;
 
 export const ExecutiveBrief = z.object({

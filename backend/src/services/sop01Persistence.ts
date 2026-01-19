@@ -1,4 +1,7 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 import { db } from '../db';
 import { tenantDocuments, tenants } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -15,6 +18,7 @@ export async function persistSop01OutputsForTenant(tenantId: string, outputs: So
 
     // 1. Strict Validation: All 4 must exist
     const requiredKeys: (keyof Sop01Outputs)[] = [
+<<<<<<< HEAD
         'companyDiagnosticMap',
         'aiLeverageMap',
         'discoveryCallQuestions',
@@ -24,6 +28,16 @@ export async function persistSop01OutputsForTenant(tenantId: string, outputs: So
     for (const key of requiredKeys) {
         const val = outputs[key];
         if (!val || (Array.isArray(val) && val.length === 0) || (typeof val === 'string' && val.trim() === '')) {
+=======
+        'sop01DiagnosticMarkdown',
+        'sop01AiLeverageMarkdown',
+        'sop01DiscoveryQuestionsMarkdown',
+        'sop01RoadmapSkeletonMarkdown'
+    ];
+
+    for (const key of requiredKeys) {
+        if (!outputs[key] || typeof outputs[key] !== 'string' || outputs[key].trim() === '') {
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
             throw new Error(`SOP01_PERSIST_FAILED: Missing mandatory artifact: ${key}`);
         }
     }
@@ -38,28 +52,48 @@ export async function persistSop01OutputsForTenant(tenantId: string, outputs: So
     const artifacts = [
         {
             type: 'DIAGNOSTIC_MAP',
+<<<<<<< HEAD
             title: 'Company Diagnostic Map',
             content: outputs.companyDiagnosticMap,
+=======
+            title: 'SOP-01: Company Diagnostic Map',
+            content: outputs.sop01DiagnosticMarkdown,
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
             filename: 'sop01_diagnostic_map.md'
         },
         {
             type: 'AI_LEVERAGE_MAP',
+<<<<<<< HEAD
             title: 'AI Leverage & Opportunity Map',
             content: outputs.aiLeverageMap,
+=======
+            title: 'SOP-01: AI Leverage Map',
+            content: outputs.sop01AiLeverageMarkdown,
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
             filename: 'sop01_ai_leverage_map.md'
         },
         {
             type: 'ROADMAP_SKELETON',
+<<<<<<< HEAD
             title: 'Strategic Roadmap Skeleton',
             content: outputs.roadmapSkeleton,
+=======
+            title: 'SOP-01: Roadmap Skeleton',
+            content: outputs.sop01RoadmapSkeletonMarkdown,
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
             filename: 'sop01_roadmap_skeleton.md'
         },
         {
             type: 'DISCOVERY_QUESTIONS',
+<<<<<<< HEAD
             title: 'Discovery Call Preparation Questions',
             content: Array.isArray(outputs.discoveryCallQuestions)
                 ? outputs.discoveryCallQuestions.join('\n\n')
                 : outputs.discoveryCallQuestions,
+=======
+            title: 'SOP-01: Discovery Call Questions',
+            content: outputs.sop01DiscoveryQuestionsMarkdown,
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
             filename: 'sop01_discovery_questions.md'
         }
     ];
@@ -81,7 +115,10 @@ export async function persistSop01OutputsForTenant(tenantId: string, outputs: So
                     filePath: `db://sop01/${artifact.type.toLowerCase()}.md`,
                     fileSize: Buffer.byteLength(artifact.content, 'utf-8'),
                     mimeType: 'text/markdown',
+<<<<<<< HEAD
                     isPublic: true,
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
                     updatedAt: new Date()
                 };
 
@@ -106,6 +143,7 @@ export async function persistSop01OutputsForTenant(tenantId: string, outputs: So
 
     console.log('[SOP-01 Persistence] Completed successfully.');
 }
+<<<<<<< HEAD
 =======
 import { db } from '../db';
 import { tenantDocuments, tenants } from '../db/schema';
@@ -211,3 +249,5 @@ export async function persistSop01OutputsForTenant(tenantId: string, outputs: So
     console.log('[SOP-01 Persistence] Completed successfully.');
 }
 >>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)

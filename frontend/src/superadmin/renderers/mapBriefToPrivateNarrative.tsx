@@ -1,119 +1,13 @@
-import React from 'react';
 import {
     ExecutiveBriefSection,
-    RenderMode,
     ViewProjection,
     MetricBlock,
-    projectToSystem,
-    validateSection,
-    splitSentences
-} from './ExecutiveBriefSchema';
-
-/**
- * Pure Render Functions for Executive Brief Rendering Contract
- *
- * INVARIANTS:
- * - No inferred bullets (bullets require STRUCTURED_LIST + Array input)
- * - Explicit Render Modes only
- * - View-dependent semantic projections (Private vs System)
- */
-
-// Pure helpers
-
-// Section C: Paragraph Normalization
-export function normalizeText(s: unknown): string {
-    if (!s) return "";
-    let text = String(s).replace(/\r\n/g, '\n').trim();
-
-    // Collapse multiple spaces
-    text = text.replace(/[ \t]+/g, ' ');
-
-    const lines = text.split('\n').map(l => l.trim());
-
-    // Section D: Junk Token Removal
-    const cleanLines = lines.filter(line => {
-        if (!line) return true; // keep blank lines for paragraph splitting
-        const junk = /^(,|,,|;|—|-)$/;
-        return !junk.test(line);
-    });
-
-    return cleanLines.join('\n');
-}
-
-export function isMeaningfulValue(x: unknown): boolean {
-    if (x === null || x === undefined) return false;
-    const s = String(x).trim();
-    const lower = s.toLowerCase();
-
-    // List of garbage/placeholder tokens
-    if (lower === "" || lower === "," || lower === ",," || lower === ";" || lower === "unknown" || lower === "n/a") return false;
-
-    // Standalone punctuation/operators
-    if (/^[.,;!?\- ]+$/.test(s)) return false;
-
-    return true;
-}
-
-export function missingSignalsToHuman(missing: string[]): string {
-    return missing.map((m) => {
-        if (m === "constraints") return "Constraints not explicitly articulated";
-        if (m === "blind_spots" || m === "blindSpots") return "Blind spots not explicitly articulated";
-        if (m === "operating_reality") return "Operational reality context missing";
-        if (m === "alignment") return "Alignment/Conflict signals missing";
-        return `Missing signal: ${m}`;
-    }).join(", ");
-}
-
-
-/**
- * Signal Normalization for METRIC mode
- * HARDENED: Recursively strips redundant level-word prefixes to eliminate "junk" tokens.
- */
-export function normalizeToMetric(input: any, type: "RISK" | "READINESS"): MetricBlock {
-    const rawValues = Array.isArray(input) ? input : [String(input)];
-    const interpretation: string[] = [];
-    let level: "Low" | "Medium" | "High" = "Medium";
-    let capacityScore: number | undefined;
-
-    rawValues.forEach(v => {
-        let s = String(v).trim();
-        if (!isMeaningfulValue(s)) return;
-
-        // 1. Recursive Strip Level Prefix
-        const levelPrefixReg = /^(low|medium|high)\b[\s,:]*/i;
-        while (levelPrefixReg.test(s)) {
-            const match = s.match(levelPrefixReg);
-            if (match) {
-                level = (match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase()) as any;
-                s = s.replace(levelPrefixReg, "").trim();
-            }
-        }
-
-        if (!s) return;
-
-        // 2. Score extraction (Readiness Only)
-        if (type === "READINESS") {
-            const scoreMatch = s.match(/^(\d+)(?:\s*\/10)?\b/);
-            if (scoreMatch) {
-                capacityScore = parseInt(scoreMatch[1]);
-                // If it was just a score, don't add to narrative
-                if (s.replace(/^(\d+)(?:\s*\/10)?[\s,.]*/, "").trim().length === 0) return;
-            }
-        }
-
-        // 3. Clean trailing punctuation from individual tokens
-        const cleanVal = s.replace(/[,;]+$/, "").trim();
-        if (cleanVal && !interpretation.includes(cleanVal)) {
-            interpretation.push(cleanVal);
-        }
-    });
-
-    return {
-        level,
-        capacityScore,
-        interpretation: interpretation.join(". ").replace(/\.\s+\./g, ".").trim()
-    };
-}
+    splitSentences,
+    normalizeText,
+    missingSignalsToHuman,
+    mapSynthesisToSections,
+    projectSections
+} from '@roadmap/shared';
 
 // Orientation (Static Boilerplate)
 export function renderOrientation(): any {
@@ -194,34 +88,11 @@ export function renderMetadata(signals: any, verification: any): any {
 }
 
 /**
- * Canonical Executive Narrative Renderer
+ * Standard Narrative Section Component
  * Enforces SA-EXEC-BRIEF-RENDERING-CONTRACT-LOCK-1
  */
-export function renderNarrativeBlock(section: ExecutiveBriefSection, view: ViewProjection = 'PRIVATE') {
-    // 1. View-Specific Filters (Rule: UI MUST NOT DUPLICATE CONTENT ACROSS VIEWS)
-    if (view === 'SYSTEM' && section.id === 'constraint-landscape') return null;
-
-    // 2. Validate Contract (FAIL-CLOSED)
-    if (!validateSection(section)) {
-        console.warn(`[CONTRACT VIOLATION] Suppressed: ${section.title}`);
-        return null;
-    }
-
-    // 3. Apply Semantic Reduction for System View
-    let displayContent = section.content;
+export function NarrativeSection({ section, view = 'PRIVATE' }: { section: ExecutiveBriefSection, view?: ViewProjection }) {
     const isSystem = view === 'SYSTEM';
-
-    if (isSystem) {
-        if (typeof displayContent === 'string') {
-            displayContent = projectToSystem(displayContent);
-        } else if (Array.isArray(displayContent)) {
-            displayContent = displayContent.map(s => projectToSystem(s));
-        } else {
-            const m = { ...displayContent as MetricBlock };
-            m.interpretation = projectToSystem(m.interpretation);
-            displayContent = m;
-        }
-    }
 
     return (
         <section className="space-y-6">
@@ -237,17 +108,19 @@ export function renderNarrativeBlock(section: ExecutiveBriefSection, view: ViewP
             </div>
 
             <div className="space-y-6">
-                {/* PATTERN_LIST Mode: Required Intro + Narrative Grouping with Explicit Bullets */}
+                {/* PATTERN_LIST Mode */}
                 {section.renderMode === 'PATTERN_LIST' && (
                     <div className="space-y-6">
-                        <p className="text-[12px] text-slate-400 leading-[1.7] italic mb-2">
-                            {section.intro}
-                        </p>
+                        {section.intro && (
+                            <p className="text-[12px] text-slate-400 leading-[1.7] italic mb-2">
+                                {section.intro}
+                            </p>
+                        )}
                         {(() => {
-                            const lines = (displayContent as string).split(/\n/);
+                            const lines = (section.content as string).split(/\n/);
                             const blocks: { type: 'PROSE' | 'BULLET', content: string }[] = [];
 
-                            lines.forEach(line => {
+                            lines.forEach((line: string) => {
                                 const trimmed = line.trim();
                                 if (!trimmed) return;
 
@@ -274,8 +147,7 @@ export function renderNarrativeBlock(section: ExecutiveBriefSection, view: ViewP
                                         </div>
                                     );
                                 }
-                                // Prose: Apply cognitive splitting
-                                return splitSentences(block.content, isSystem ? 3 : 4).map((para, pIdx) => (
+                                return splitSentences(block.content, isSystem ? 3 : 4).map((para: string, pIdx: number) => (
                                     <p key={`${bIdx}-${pIdx}`} className="text-[13px] text-slate-200 leading-[1.45] max-w-3xl font-normal mb-[10pt] last:mb-0 break-inside-avoid">
                                         {para}
                                     </p>
@@ -285,10 +157,10 @@ export function renderNarrativeBlock(section: ExecutiveBriefSection, view: ViewP
                     </div>
                 )}
 
-                {/* PROSE_NARRATIVE Mode: Cohesive Blocks Only, Strictly No Bullets */}
+                {/* PROSE_NARRATIVE Mode */}
                 {section.renderMode === 'PROSE_NARRATIVE' && (
                     <div className="space-y-[10pt]">
-                        {splitSentences(displayContent as string, isSystem ? 3 : 4).map((para, pIdx) => (
+                        {splitSentences(section.content as string, isSystem ? 3 : 4).map((para: string, pIdx: number) => (
                             <p key={pIdx} className="text-[13px] text-slate-200 leading-[1.45] max-w-3xl font-normal break-inside-avoid">
                                 {para}
                             </p>
@@ -296,10 +168,10 @@ export function renderNarrativeBlock(section: ExecutiveBriefSection, view: ViewP
                     </div>
                 )}
 
-                {/* BULLET_LIST Mode: Pure Enumeration */}
+                {/* BULLET_LIST Mode */}
                 {section.renderMode === 'BULLET_LIST' && (
                     <ul className="list-disc pl-5 space-y-[6pt]">
-                        {(displayContent as string[]).map((item, idx) => (
+                        {(section.content as string[]).map((item, idx) => (
                             <li key={idx} className="text-[13px] text-slate-300 leading-[1.45] font-normal break-inside-avoid">
                                 {String(item).replace(/^[•\-\*]\s+/, '').trim()}
                             </li>
@@ -307,23 +179,23 @@ export function renderNarrativeBlock(section: ExecutiveBriefSection, view: ViewP
                     </ul>
                 )}
 
-                {/* METRIC_CALLOUT Mode: Narrative Interpretation + Muted Scalar Footer */}
+                {/* METRIC_CALLOUT Mode */}
                 {section.renderMode === 'METRIC_CALLOUT' && (
                     <div className="space-y-6">
                         <div className="p-4 bg-slate-900/30 border border-slate-800 rounded-lg break-inside-avoid">
                             <div className="text-[14px] text-slate-200 leading-[1.45] font-normal italic">
-                                {normalizeText((displayContent as MetricBlock).interpretation)}
+                                {normalizeText((section.content as MetricBlock).interpretation)}
                             </div>
                         </div>
                         <div className="flex gap-10 pl-1">
                             <div>
                                 <div className="text-[9px] text-slate-600 uppercase font-bold tracking-widest">Calculated Level</div>
-                                <div className="text-[13px] font-bold text-slate-400 mt-1">{(displayContent as MetricBlock).level}</div>
+                                <div className="text-[13px] font-bold text-slate-400 mt-1">{(section.content as MetricBlock).level}</div>
                             </div>
-                            {(displayContent as MetricBlock).capacityScore !== undefined && (
+                            {(section.content as MetricBlock).capacityScore !== undefined && (
                                 <div>
                                     <div className="text-[9px] text-slate-600 uppercase font-bold tracking-widest">Capacity Score</div>
-                                    <div className="text-[13px] font-bold text-slate-400 mt-1">{(displayContent as MetricBlock).capacityScore}/10</div>
+                                    <div className="text-[13px] font-bold text-slate-400 mt-1">{(section.content as MetricBlock).capacityScore}/10</div>
                                 </div>
                             )}
                         </div>
@@ -332,75 +204,6 @@ export function renderNarrativeBlock(section: ExecutiveBriefSection, view: ViewP
             </div>
         </section>
     );
-}
-
-// Section Renderers
-export function renderOperatingReality(synthesis: any, view: ViewProjection = 'PRIVATE'): any {
-    return renderNarrativeBlock({
-        id: 'operating-reality',
-        title: "Leadership Perception vs Operational Reality",
-        content: synthesis.operatingReality,
-        renderMode: 'PATTERN_LIST',
-        intro: "This section surfaces recurring execution patterns where leadership intent and day-to-day operations diverge, based on cross-role intake synthesis."
-    }, view);
-}
-
-export function renderConstraintLandscape(synthesis: any, view: ViewProjection = 'PRIVATE'): any {
-    const raw = Array.isArray(synthesis.constraintLandscape) ? synthesis.constraintLandscape : [synthesis.constraintLandscape];
-    return renderNarrativeBlock({
-        id: 'constraint-landscape',
-        title: "Awareness Gaps (Unseen or Normalized)",
-        content: raw.filter(x => isMeaningfulValue(x)),
-        renderMode: 'BULLET_LIST'
-    }, view);
-}
-
-export function renderAlignmentSignals(synthesis: any, view: ViewProjection = 'PRIVATE'): any {
-    return renderNarrativeBlock({
-        id: 'alignment-signals',
-        title: "Trust & Signal Flow",
-        content: synthesis.alignmentSignals,
-        renderMode: 'PROSE_NARRATIVE',
-        sublabel: "Future-state signal mapping and desired operational transparency."
-    }, view);
-}
-
-export function renderBlindSpotRisks(synthesis: any, view: ViewProjection = 'PRIVATE'): any {
-    return renderNarrativeBlock({
-        id: 'blind-spot-risks',
-        title: "Decision Latency & Risk",
-        content: synthesis.blindSpotRisks,
-        renderMode: 'PROSE_NARRATIVE'
-    }, view);
-}
-
-export function renderRiskSignals(synthesis: any, view: ViewProjection = 'PRIVATE'): any {
-    const metric = normalizeToMetric(synthesis.riskSignals, "RISK");
-    return renderNarrativeBlock({
-        id: 'risk-signals',
-        title: "Executive Risk Language",
-        content: metric,
-        renderMode: 'METRIC_CALLOUT'
-    }, view);
-}
-
-export function renderReadinessSignals(synthesis: any, view: ViewProjection = 'PRIVATE'): any {
-    const metric = normalizeToMetric(synthesis.readinessSignals, "READINESS");
-    return renderNarrativeBlock({
-        id: 'readiness-signals',
-        title: "Implementation Readiness",
-        content: metric,
-        renderMode: 'METRIC_CALLOUT'
-    }, view);
-}
-
-export function renderExecutiveSummary(synthesis: any, view: ViewProjection = 'PRIVATE'): any {
-    return renderNarrativeBlock({
-        id: 'executive-summary',
-        title: "Executive Summary (For Reference Only)",
-        content: synthesis.executiveSummary,
-        renderMode: 'PROSE_NARRATIVE'
-    }, view);
 }
 
 // Closing (Static)
@@ -413,3 +216,6 @@ export function renderClosing(): any {
         </div>
     );
 }
+
+// Re-export common orientation/metadata/closing for views
+export { mapSynthesisToSections, projectSections, type ExecutiveBriefSection };

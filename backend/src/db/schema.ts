@@ -1,4 +1,7 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 import { pgTable, uuid, varchar, timestamp, boolean, json, jsonb, serial, text, integer, date, unique, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import type { UserRole } from '@roadmap/shared';
 
@@ -23,11 +26,14 @@ export const tenants = pgTable('tenants', {
   intakeWindowState: varchar('intake_window_state', { length: 20 }).notNull().default('OPEN'), // OPEN | CLOSED
   intakeSnapshotId: varchar('intake_snapshot_id', { length: 255 }),
   intakeClosedAt: timestamp('intake_closed_at', { withTimezone: true }),
+<<<<<<< HEAD
 
   // META-TICKET v2: Intake Lock (Gate 1)
   intakeLockedAt: timestamp('intake_locked_at', { withTimezone: true }),
   intakeLockedByUserId: uuid('intake_locked_by_user_id').references(() => users.id),
 
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
   notes: text('notes'),
 
 
@@ -129,6 +135,7 @@ export const intakeVectors = pgTable('intake_vectors', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+<<<<<<< HEAD
 // ============================================================================
 // FIRM BASELINE INTAKE (Owner-provided starting state)
 // ============================================================================
@@ -157,6 +164,8 @@ export const firmBaselineIntake = pgTable('firm_baseline_intake', {
 }));
 
 
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 
 // ============================================================================
 // EXECUTIVE BRIEFS TABLE (v0)
@@ -191,7 +200,11 @@ export const executiveBriefs = pgTable('executive_briefs', {
   }>(),
 
   // Authority
+<<<<<<< HEAD
   status: varchar('status', { length: 20 }).notNull().default('DRAFT'), // DRAFT | GENERATED | REVIEWED
+=======
+  status: varchar('status', { length: 20 }).notNull().default('DRAFT'), // DRAFT | APPROVED
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
   approvedBy: uuid('approved_by').references(() => users.id, { onDelete: 'set null' }),
   approvedAt: timestamp('approved_at', { withTimezone: true }),
 
@@ -246,6 +259,7 @@ export const roadmaps = pgTable('roadmaps', {
   id: uuid('id').primaryKey().defaultRandom(),
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   createdByUserId: uuid('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+<<<<<<< HEAD
   status: varchar('status', { length: 30 }).notNull().default('draft'), // locked | generated | delivered
   version: varchar('version', { length: 50 }).notNull().default('v1.0'),
   modelJson: jsonb('model_json').notNull(), // RoadmapModel
@@ -255,6 +269,13 @@ export const roadmaps = pgTable('roadmaps', {
   metadata: jsonb('metadata'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+=======
+  pdfUrl: varchar('pdf_url', { length: 500 }),
+  status: varchar('status', { length: 30 }).notNull().default('draft'), // draft | in_progress | delivered
+  pilotStage: varchar('pilot_stage', { length: 30 }), // null | pilot_proposed | pilot_active | pilot_completed
+  deliveredAt: timestamp('delivered_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 });
 
 // ============================================================================
@@ -412,9 +433,15 @@ export const tenantDocuments = pgTable('tenant_documents', {
   storageProvider: varchar('storage_provider', { length: 50 }),
 
   // Extended metadata for SOPs and Roadmaps
+<<<<<<< HEAD
   section: text('section'),
   sopNumber: text('sop_number'),
   outputNumber: text('output_number'),
+=======
+  section: varchar('section', { length: 50 }),
+  sopNumber: varchar('sop_number', { length: 50 }),
+  outputNumber: varchar('output_number', { length: 50 }),
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 
   // Document classification
   category: varchar('category', { length: 50 }).notNull(), // 'sop_output', 'roadmap', 'report', 'other'
@@ -711,7 +738,10 @@ export const sopTickets = pgTable('sop_tickets', {
   implementationSteps: json('implementation_steps'),
   dependencies: json('dependencies').$type<string[]>(),
   moderationStatus: varchar('moderation_status', { length: 30 }).default('pending'),
+<<<<<<< HEAD
   status: varchar('status', { length: 20 }).notNull().default('generated'), // generated|pending|approved|rejected|locked
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
   successMetric: text('success_metric'),
   roiNotes: text('roi_notes'),
   moderatedAt: timestamp('moderated_at', { withTimezone: true }),
@@ -847,7 +877,10 @@ export const discoveryCallNotes = pgTable('discovery_call_notes', {
   id: uuid('id').primaryKey().defaultRandom(),
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   createdByUserId: uuid('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+<<<<<<< HEAD
   status: varchar('status', { length: 20 }).notNull().default('draft'), // draft | ingested
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
   notes: text('notes').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -939,7 +972,11 @@ export const diagnostics = pgTable('diagnostics', {
   id: uuid('id').primaryKey().defaultRandom(),
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   sopVersion: varchar('sop_version', { length: 20 }).notNull().default('SOP-01'),
+<<<<<<< HEAD
   status: varchar('status', { length: 20 }).notNull().default('generated'), // not_generated | generated | locked | published
+=======
+  status: varchar('status', { length: 20 }).notNull().default('generated'), // generated | approved | superseded
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 
   // Artifacts (Storing simplified payloads for easy UI rendering)
   overview: json('overview').$type<Record<string, any>>().notNull(),
@@ -1023,6 +1060,7 @@ export type NewSopTicket = typeof sopTickets.$inferInsert;
 
 export type ExecutiveBrief = typeof executiveBriefs.$inferSelect;
 export type NewExecutiveBrief = typeof executiveBriefs.$inferInsert;
+<<<<<<< HEAD
 
 export type FirmBaselineIntake = typeof firmBaselineIntake.$inferSelect;
 export type NewFirmBaselineIntake = typeof firmBaselineIntake.$inferInsert;
@@ -2106,3 +2144,5 @@ export type NewSopTicket = typeof sopTickets.$inferInsert;
 export type ExecutiveBrief = typeof executiveBriefs.$inferSelect;
 export type NewExecutiveBrief = typeof executiveBriefs.$inferInsert;
 >>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)

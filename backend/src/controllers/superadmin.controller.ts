@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { Response } from 'express';
 import { nanoid } from 'nanoid';
 import { db } from '../db';
@@ -12,6 +13,13 @@ import {
 } from '../db/schema';
 import { eq, and, sql, count, desc, asc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+=======
+import { Response } from 'express';
+import { nanoid } from 'nanoid';
+import { db } from '../db';
+import { users, intakes, tenants, roadmaps, auditEvents, tenantDocuments, discoveryCallNotes, roadmapSections, ticketPacks, ticketInstances, tenantMetricsDaily, webinarRegistrations, implementationSnapshots, roadmapOutcomes, agentConfigs, agentThreads, webinarSettings, diagnostics, executiveBriefs } from '../db/schema';
+import { eq, and, sql, count, desc, asc } from 'drizzle-orm';
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 import { AuthRequest } from '../middleware/auth';
 import path from 'path';
 import fs from 'fs/promises';
@@ -22,6 +30,7 @@ import { getOrCreateRoadmapForTenant } from '../services/roadmapOs.service';
 import { refreshVectorStoreContent } from '../services/tenantVectorStore.service';
 import { getModerationStatus } from '../services/ticketModeration.service';
 import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
+<<<<<<< HEAD
 import { AuthorityCategory, CanonicalDiscoveryNotes } from '@roadmap/shared';
 import { generateRawTickets, ParsedTicket, InventoryEmptyError } from '../services/diagnosticIngestion.service';
 import { Sop01Outputs } from '../services/sop01Engine';
@@ -44,6 +53,13 @@ const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 
 // ============================================================================
 // HELPER: Permissions & Authority
+=======
+import { AuthorityCategory } from '@roadmap/shared';
+const UPLOADS_DIR = path.join(__dirname, '../../uploads');
+
+// ============================================================================
+// HELPER: Check SuperAdmin Permission
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 // ============================================================================
 
 /**
@@ -84,6 +100,7 @@ function requireExecutiveAuthority(req: AuthRequest, res: Response): boolean {
 // GET /api/superadmin/overview - Global Dashboard Stats
 // ============================================================================
 
+<<<<<<< HEAD
 export async function getOverview(
   req: AuthRequest<any, any, any, { cohortLabel?: string }>,
   res: Response
@@ -110,6 +127,21 @@ export async function getOverview(
     // Count intake completions
     const intakeRes = await db.select({ totalIntakes: count() }).from(intakes);
     const totalIntakes = intakeRes?.[0]?.totalIntakes ?? 0;
+=======
+export async function getOverview(req: AuthRequest<any, any, any, { cohortLabel?: string }>, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+
+    // Count total tenants
+    const [{ totalFirms }] = await db
+      .select({ totalFirms: count() })
+      .from(tenants);
+
+    // Count intake completions
+    const [{ totalIntakes }] = await db
+      .select({ totalIntakes: count() })
+      .from(intakes);
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 
     // Count tenants by status
     const statusStats = await db
@@ -129,6 +161,7 @@ export async function getOverview(
       .from(roadmaps)
       .groupBy(roadmaps.status);
 
+<<<<<<< HEAD
     // Drizzle will throw if any selected field is undefined.
     // These columns may not exist in some schema snapshots, so guard them.
     const pilotStageCol = (roadmaps as any).pilotStage;
@@ -161,11 +194,37 @@ export async function getOverview(
     return res.json({
       totalFirms,
       totalIntakes,
+=======
+    // Count roadmaps by pilot stage (exclude nulls)
+    const pilotStats = await db
+      .select({
+        pilotStage: roadmaps.pilotStage,
+        count: count(),
+      })
+      .from(roadmaps)
+      .where(sql`${roadmaps.pilotStage} IS NOT NULL`)
+      .groupBy(roadmaps.pilotStage);
+
+    // Count by cohort
+    const cohortStats = await db
+      .select({
+        cohortLabel: tenants.cohortLabel,
+        count: count(),
+      })
+      .from(tenants)
+      .where(sql`${tenants.cohortLabel} IS NOT NULL`)
+      .groupBy(tenants.cohortLabel);
+
+    return res.json({
+      totalFirms: totalFirms || 0,
+      totalIntakes: totalIntakes || 0,
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
       statusStats,
       roadmapStats,
       pilotStats,
       cohortStats,
     });
+<<<<<<< HEAD
   } catch (error: any) {
     console.error('Get overview error:', error?.message ?? error, error?.stack);
     return res
@@ -175,6 +234,14 @@ export async function getOverview(
 }
 
 
+=======
+  } catch (error) {
+    console.error('Get overview error:', error);
+    return res.status(500).json({ error: 'Failed to fetch overview' });
+  }
+}
+
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 // ============================================================================
 // GET ACTIVITY FEED
 // ============================================================================
@@ -650,15 +717,19 @@ export async function closeIntakeWindow(req: AuthRequest<{ tenantId: string }>, 
 // GET /api/superadmin/firms/:tenantId - Firm Detail
 // ============================================================================
 
+<<<<<<< HEAD
 // Import artifact type constant if available, or hardcode string to avoid circular deps if needed
 // const DISCOVERY_SYNTHESIS_ARTIFACT_TYPE = 'DISCOVERY_SYNTHESIS_V1';
 
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 export async function getFirmDetail(req: AuthRequest<{ tenantId: string }>, res: Response) {
   try {
     if (!requireSuperAdmin(req, res)) return;
 
     const { tenantId } = req.params;
 
+<<<<<<< HEAD
     // Fetch Executive Brief Status & Derive Phase
     const [execBrief] = await db
       .select({ status: executiveBriefs.status })
@@ -675,6 +746,8 @@ export async function getFirmDetail(req: AuthRequest<{ tenantId: string }>, res:
       executionPhase = 'EXEC_BRIEF_DRAFT';
     }
 
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
     // Get tenant info with owner
     const [tenantData] = await db
       .select({
@@ -700,7 +773,11 @@ export async function getFirmDetail(req: AuthRequest<{ tenantId: string }>, res:
         ownerRole: users.role,
       })
       .from(tenants)
+<<<<<<< HEAD
       .leftJoin(users, eq(tenants.ownerUserId, users.id))
+=======
+      .innerJoin(users, eq(tenants.ownerUserId, users.id))
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
       .where(eq(tenants.id, tenantId))
       .limit(1);
 
@@ -745,6 +822,7 @@ export async function getFirmDetail(req: AuthRequest<{ tenantId: string }>, res:
 
     // Get roadmaps for this firm
     const firmRoadmaps = await db
+<<<<<<< HEAD
       .select({
         id: roadmaps.id,
         status: roadmaps.status,
@@ -752,6 +830,9 @@ export async function getFirmDetail(req: AuthRequest<{ tenantId: string }>, res:
         createdAt: roadmaps.createdAt,
         updatedAt: roadmaps.updatedAt
       })
+=======
+      .select()
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
       .from(roadmaps)
       .where(eq(roadmaps.tenantId, tenantId))
       .orderBy(desc(roadmaps.createdAt));
@@ -783,8 +864,13 @@ export async function getFirmDetail(req: AuthRequest<{ tenantId: string }>, res:
     // Roadmap stats
     const roadmapStats = {
       total: firmRoadmaps.length,
+<<<<<<< HEAD
       delivered: firmRoadmaps.filter((r) => r.status === 'published').length,
       draft: firmRoadmaps.filter((r) => r.status === 'draft').length,
+=======
+      delivered: firmRoadmaps.filter((r) => r.status === 'delivered').length,
+      draft: firmRoadmaps.filter((r) => r.status !== 'delivered').length,
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
     };
 
     // Documents summary by category
@@ -828,6 +914,7 @@ export async function getFirmDetail(req: AuthRequest<{ tenantId: string }>, res:
       diagnosticStatus = await getModerationStatus(tenantId, tenantData.lastDiagnosticId);
     }
 
+<<<<<<< HEAD
     // CANONICAL DIAGNOSTIC STATE: Query diagnostics table
     const [latestDiagnostic] = await db
       .select({
@@ -853,6 +940,8 @@ export async function getFirmDetail(req: AuthRequest<{ tenantId: string }>, res:
 
     const discoveryComplete = !!discoveryDoc;
 
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
     return res.json({
       tenantSummary: {
         id: tenantData.tenantId,
@@ -861,8 +950,11 @@ export async function getFirmDetail(req: AuthRequest<{ tenantId: string }>, res:
         segment: tenantData.segment,
         region: tenantData.region,
         status: tenantData.status,
+<<<<<<< HEAD
         executiveBriefStatus: briefStatus,
         executionPhase,
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
         businessType: tenantData.businessType,
         teamHeadcount: tenantData.teamHeadcount,
         baselineMonthlyLeads: tenantData.baselineMonthlyLeads,
@@ -874,10 +966,13 @@ export async function getFirmDetail(req: AuthRequest<{ tenantId: string }>, res:
         intakeSnapshotId: tenantData.intakeSnapshotId,
       },
       diagnosticStatus, // Added for Ticket 5 gating
+<<<<<<< HEAD
       latestDiagnostic: latestDiagnostic || null, // CANONICAL: diagnostics table source of truth
       discoveryStatus: {
         complete: discoveryComplete
       },
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
       owner: owner ? {
         id: owner.id,
         name: owner.name,
@@ -1065,6 +1160,7 @@ export async function getFirmDetailV2(req: AuthRequest<{ tenantId: string }>, re
 
     // 7. ROADMAPS
     const roadmapsData = await db
+<<<<<<< HEAD
       .select({
         id: roadmaps.id,
         status: roadmaps.status,
@@ -1073,6 +1169,9 @@ export async function getFirmDetailV2(req: AuthRequest<{ tenantId: string }>, re
         updatedAt: roadmaps.updatedAt,
         modelJson: roadmaps.modelJson
       })
+=======
+      .select()
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
       .from(roadmaps)
       .where(eq(roadmaps.tenantId, tenantId))
       .orderBy(desc(roadmaps.createdAt));
@@ -1210,7 +1309,11 @@ export async function getFirmDetailV2(req: AuthRequest<{ tenantId: string }>, re
       engagementSummary: {
         last30d: {
           intakeCompleted: Number(metricsLast30d[0]?.intakeCompleted || 0),
+<<<<<<< HEAD
           roadmapsPublished: Number(metricsLast30d[0]?.roadmapsDelivered || 0),
+=======
+          roadmapsDelivered: Number(metricsLast30d[0]?.roadmapsDelivered || 0),
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
         },
         lifetime: {
           intakeCompleted: Number(metricsLifetime[0]?.intakeCompleted || 0),
@@ -1234,7 +1337,11 @@ export async function getFirmDetailV2(req: AuthRequest<{ tenantId: string }>, re
           ? {
             id: lastRoadmap.id,
             status: lastRoadmap.status,
+<<<<<<< HEAD
             deliveredAt: lastRoadmap.status === 'delivered' ? lastRoadmap.updatedAt : null,
+=======
+            deliveredAt: lastRoadmap.deliveredAt,
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
             createdAt: lastRoadmap.createdAt,
           }
           : null,
@@ -2596,6 +2703,7 @@ export async function signalReadiness(req: AuthRequest, res: Response) {
 
 
 
+<<<<<<< HEAD
 
 // ============================================================================
 // TRUTH PROBE (Lifecycle State)
@@ -6437,3 +6545,5 @@ export async function signalReadiness(req: AuthRequest, res: Response) {
 
 
 >>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)

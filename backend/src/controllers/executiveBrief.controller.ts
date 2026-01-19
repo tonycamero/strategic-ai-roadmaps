@@ -1,4 +1,7 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 import { Request, Response } from 'express';
 import { db } from '../db';
 import { eq, and, sql } from 'drizzle-orm';
@@ -168,7 +171,14 @@ export const generateExecutiveBrief = async (req: AuthRequest, res: Response) =>
                 tenantId,
                 version: 'v0',
                 synthesis: synthesis.synthesis,
+<<<<<<< HEAD
                 signals: synthesis.signals,
+=======
+                signals: {
+                    ...synthesis.signals,
+                    verification: synthesis.verification
+                },
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
                 sources: synthesis.sources,
                 status: 'DRAFT'
             })
@@ -413,6 +423,7 @@ function stableSortVectors(vectors: any[]): any[] {
 }
 
 // --- (Removed legacy generators to prevent re-introduction of bridge text) ---
+<<<<<<< HEAD
 =======
 import { Request, Response } from 'express';
 import { db } from '../db';
@@ -832,3 +843,5 @@ function stableSortVectors(vectors: any[]): any[] {
 
 // --- (Removed legacy generators to prevent re-introduction of bridge text) ---
 >>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)

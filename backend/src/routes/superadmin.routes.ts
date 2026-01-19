@@ -1,5 +1,8 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { authenticate, requireRole, AuthRequest } from '../middleware/auth';
@@ -8,12 +11,17 @@ import { AuthorityCategory, RoleToAuthorityMap } from '@roadmap/shared';
 import * as superadminController from '../controllers/superadmin.controller';
 import * as intakeVectorController from '../controllers/intakeVector.controller';
 import * as executiveBriefController from '../controllers/executiveBrief.controller';
+<<<<<<< HEAD
 import * as stakeholderRepairController from '../controllers/stakeholderRepair.controller';
 import * as stakeholderMetadataUpdateController from '../controllers/stakeholderMetadataUpdate.controller';
 import * as ticketModerationController from '../controllers/ticketModeration.controller';
 
 import * as snapshotController from '../controllers/snapshot.controller';
 import * as executionStateController from '../controllers/executionState.controller';
+=======
+
+import * as snapshotController from '../controllers/snapshot.controller';
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 
 const router = Router();
 
@@ -32,9 +40,12 @@ const upload = multer({
 // 4. Derive authority category from role
 router.use(authenticate);
 
+<<<<<<< HEAD
 // GET /api/superadmin/truth-probe - Operator Lifecycle Truth Probe
 router.get('/truth-probe', superadminController.getTruthProbe);
 
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 // Lock to internal users only
 router.use((req: AuthRequest, res: Response, next: NextFunction) => {
   if (!req.user?.isInternal) {
@@ -81,9 +92,12 @@ router.get('/firms/:tenantId', superadminController.getFirmDetail);
 // GET /api/superadmin/firms/:tenantId/detail - Firm detail V2 (Single Source of Truth)
 router.get('/firms/:tenantId/detail', superadminController.getFirmDetailV2);
 
+<<<<<<< HEAD
 // GET /api/superadmin/execution/:tenantId/:diagnosticId - Execution state aggregator
 router.get('/execution/:tenantId/:diagnosticId', executionStateController.getExecutionStateController);
 
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 // GET /api/superadmin/firms/:tenantId/client-context - Get client preview context
 router.get('/firms/:tenantId/client-context', superadminController.getClientContextForFirm);
 
@@ -115,12 +129,15 @@ router.post('/firms/:tenantId/generate-sop01', async (req, res, next) => {
   return generateSop01ForFirm(req, res, next);
 });
 
+<<<<<<< HEAD
 // POST /api/superadmin/diagnostic/rerun-sop01/:tenantId - Re-run SOP-01 (zero-ticket recovery)
 router.post('/diagnostic/rerun-sop01/:tenantId', async (req, res, next) => {
   const { rerunSop01ForFirm } = require('../controllers/diagnosticRerun.controller');
   return rerunSop01ForFirm(req, res, next);
 });
 
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 // GET/POST discovery notes - REMOVED
 
 // POST /api/superadmin/firms/:tenantId/discovery/acknowledge - REMOVED (Legacy)
@@ -148,12 +165,15 @@ router.post('/firms/:tenantId/extract-metadata', superadminController.extractMet
 
 // POST /api/superadmin/firms/:tenantId/close-intake - REMOVED (Legacy)
 
+<<<<<<< HEAD
 // POST /api/superadmin/tickets/generate/:tenantId/:diagnosticId - Generate tickets from Discovery Synthesis (Discovery Gated)
 router.post('/tickets/generate/:tenantId/:diagnosticId', async (req, res, next) => {
   const { handleGenerateTicketsFromDiscovery } = await import('../controllers/ticketGeneration.controller');
   return handleGenerateTicketsFromDiscovery(req, res, next);
 });
 
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 
 // EPIC 3: Metrics & Outcomes
 // GET /api/superadmin/firms/:tenantId/metrics - Get performance metrics
@@ -172,6 +192,7 @@ router.post('/firms/:tenantId/metrics/compute-outcome', superadminController.com
 // POST /api/superadmin/firms/:tenantId/export/case-study - REMOVED (Legacy)
 
 // Ticket Moderation Endpoints - REMOVED (Stubbed)
+<<<<<<< HEAD
 import { validateTicketSchema } from '../middleware/schemaValidation';
 
 // POST /api/superadmin/tickets/approve - Approve tickets — PHASE 1: DELEGATE OR HIGHER
@@ -213,6 +234,19 @@ router.get('/tickets/:tenantId/:diagnosticId', async (req, res) => {
   }
 });
 
+=======
+// GET /api/superadmin/tickets/:tenantId/:diagnosticId - Get tickets for moderation
+// router.get('/tickets/:tenantId/:diagnosticId', ticketModerationController.getDiagnosticTickets);
+
+// GET /api/superadmin/tickets/:tenantId/:diagnosticId/status - Get moderation status
+// router.get('/tickets/:tenantId/:diagnosticId/status', ticketModerationController.getModerationStatusEndpoint);
+
+// POST /api/superadmin/tickets/approve - Approve tickets — PHASE 1: DELEGATE OR HIGHER
+// router.post('/tickets/approve', requireDelegateOrHigher(), ticketModerationController.approveDiagnosticTickets);
+
+// POST /api/superadmin/tickets/reject - Reject tickets — PHASE 1: DELEGATE OR HIGHER
+// router.post('/tickets/reject', requireDelegateOrHigher(), ticketModerationController.rejectDiagnosticTickets);
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 
 /*
 import { getDeprecationPhase, DeprecationPhase, getDeprecationWarning } from '../services/sunset.service';
@@ -239,6 +273,7 @@ router.get('/snapshot/:tenantId', requireExecutive(), snapshotController.getTena
 // EXECUTIVE BRIEF ROUTES (v0)
 // ============================================================================
 
+<<<<<<< HEAD
 // GET /api/superadmin/firms/:tenantId/executive-brief - Get existing brief
 router.get('/firms/:tenantId/executive-brief', requireExecutive(), executiveBriefController.getExecutiveBrief);
 
@@ -247,6 +282,16 @@ router.post('/firms/:tenantId/executive-brief/generate', requireExecutive(), exe
 
 // POST /api/superadmin/firms/:tenantId/executive-brief/approve - Approve brief + close intake
 router.post('/firms/:tenantId/executive-brief/approve', requireExecutive(), executiveBriefController.approveExecutiveBrief);
+=======
+// GET /api/superadmin/tenants/:tenantId/executive-brief - Get existing brief
+router.get('/tenants/:tenantId/executive-brief', requireExecutive(), executiveBriefController.getExecutiveBrief);
+
+// POST /api/superadmin/tenants/:tenantId/executive-brief/generate - Generate new brief
+router.post('/tenants/:tenantId/executive-brief/generate', requireExecutive(), executiveBriefController.generateExecutiveBrief);
+
+// POST /api/superadmin/tenants/:tenantId/executive-brief/approve - Approve brief + close intake
+router.post('/tenants/:tenantId/executive-brief/approve', requireExecutive(), executiveBriefController.approveExecutiveBrief);
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 
 // Webinar Registration Management
 // GET /api/superadmin/webinar/registrations - View all webinar registrations
@@ -282,6 +327,7 @@ router.post('/intake-vectors/:id/send-invite', intakeVectorController.sendIntake
 // POST /api/superadmin/intakes/:intakeId/reopen - Re-open completed intake
 router.post('/intakes/:intakeId/reopen', requireExecutive(), superadminController.reopenIntake);
 
+<<<<<<< HEAD
 // POST /api/superadmin/tenants/:tenantId/repair-stakeholders - Backfill intake_vectors from legacy intakes (EXECUTIVE ONLY)
 router.post('/tenants/:tenantId/repair-stakeholders', requireExecutive(), stakeholderRepairController.repairStakeholdersForTenant);
 
@@ -568,3 +614,8 @@ router.post('/intakes/:intakeId/reopen', requireExecutive(), superadminControlle
 
 export default router;
 >>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
+=======
+// PHASE 7: Diagnostic Artifacts - REMOVED
+
+export default router;
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)

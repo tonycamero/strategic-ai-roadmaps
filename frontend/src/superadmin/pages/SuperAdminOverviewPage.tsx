@@ -1,4 +1,7 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { superadminApi } from '../api';
@@ -27,22 +30,38 @@ export default function SuperAdminOverviewPage() {
     );
   if (!data) return <div className="text-slate-400">No data available yet.</div>;
 
+<<<<<<< HEAD
   const tenantStatusCounts = (data.statusStats || []).reduce((acc, s) => {
+=======
+  const tenantStatusCounts = data.statusStats.reduce((acc, s) => {
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
     acc[s.status || 'unknown'] = s.count;
     return acc;
   }, {} as Record<string, number>);
 
+<<<<<<< HEAD
   const roadmapStatusCounts = (data.roadmapStats || []).reduce((acc, s) => {
+=======
+  const roadmapStatusCounts = data.roadmapStats.reduce((acc, s) => {
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
     acc[s.status || 'unknown'] = s.count;
     return acc;
   }, {} as Record<string, number>);
 
+<<<<<<< HEAD
   const pilotStageCounts = (data.pilotStats || []).reduce((acc, s) => {
+=======
+  const pilotStageCounts = data.pilotStats.reduce((acc, s) => {
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
     acc[s.pilotStage || 'none'] = s.count;
     return acc;
   }, {} as Record<string, number>);
 
+<<<<<<< HEAD
   const activeCohorts = (data.cohortStats || []).filter((c) => c.cohortLabel != null).length;
+=======
+  const activeCohorts = data.cohortStats.filter((c) => c.cohortLabel).length;
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
   const activeFirms = tenantStatusCounts['active'] || 0;
   const draftRoadmaps = roadmapStatusCounts['draft'] || 0;
   const deliveredRoadmaps = roadmapStatusCounts['delivered'] || 0;
@@ -98,7 +117,11 @@ export default function SuperAdminOverviewPage() {
               items={pilotStageCounts}
               tooltip="Pilot funnel across your cohorts."
               emptyMessage="No pilots currently progressing"
+<<<<<<< HEAD
               onClick={(_stage) => setLocation('/superadmin/pipeline')}
+=======
+              onClick={(stage) => setLocation('/superadmin/pipeline')}
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
             />
           </section>
 
@@ -153,12 +176,17 @@ export default function SuperAdminOverviewPage() {
                 </div>
               </div>
 
+<<<<<<< HEAD
               {(data.cohortStats || []).length === 0 ? (
+=======
+              {data.cohortStats.length === 0 ? (
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
                 <div className="text-xs text-slate-500 py-4">
                   No active cohorts yet.
                 </div>
               ) : (
                 <div className="space-y-2">
+<<<<<<< HEAD
                   {(data.cohortStats || [])
                     .filter((c) => c.cohortLabel != null) // Filter out nulls first
                     .map(c => ({ ...c, cohortLabel: c.cohortLabel ?? 'Unlabeled' })) // Normalize
@@ -166,6 +194,14 @@ export default function SuperAdminOverviewPage() {
                     .filter((cohort, index, self) =>
                       index === self.findIndex(c =>
                         c.cohortLabel.toLowerCase() === cohort.cohortLabel.toLowerCase()
+=======
+                  {data.cohortStats
+                    .filter((c) => c.cohortLabel)
+                    // Deduplicate by cohort label (case-insensitive)
+                    .filter((cohort, index, self) =>
+                      index === self.findIndex(c =>
+                        (c.cohortLabel?.toLowerCase() || '') === (cohort.cohortLabel?.toLowerCase() || '')
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
                       )
                     )
                     .map((cohort) => (
@@ -207,8 +243,13 @@ export default function SuperAdminOverviewPage() {
             <StrategyActivityFeed />
           </div>
         </div>
+<<<<<<< HEAD
       </div >
     </div >
+=======
+      </div>
+    </div>
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
   );
 }
 
@@ -315,6 +356,7 @@ function QuickAction({
   );
 }
 
+<<<<<<< HEAD
 =======
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
@@ -632,3 +674,5 @@ function QuickAction({
 }
 
 >>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)

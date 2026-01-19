@@ -1152,7 +1152,7 @@ export async function exportIntakes(req: AuthRequest, res: Response) {
           const val = answers[key];
           if (val === null || val === undefined) return '';
           const strVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
-          return `"${strVal.replace(/" / g, '""')}"`;
+          return `"${strVal.replace(/"/g, '""')}"`;
         });
 
         csvRows.push([

@@ -1,4 +1,7 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 export * from './types';
 export * from './authority';
 export {
@@ -13,6 +16,7 @@ export { FETA_REGISTRY, isValidRole, type RoleId, type RoleConfig } from './feta
 export { FETA_CANONICAL_TAXONOMY, FETA_CANONICAL_SYNTHESIS } from './feta/canonical';
 export { getNextStep, selectSynthesis, isValidAnswer } from './feta/logic';
 export * from './feta/team';
+<<<<<<< HEAD
 // Executive Brief Exports
 export {
   normalizeText,
@@ -59,3 +63,6 @@ export { getNextStep, selectSynthesis, isValidAnswer } from './feta/logic';
 export * from './feta/team';
 export * from './executiveBrief';
 >>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
+=======
+export * from './executiveBrief';
+>>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
