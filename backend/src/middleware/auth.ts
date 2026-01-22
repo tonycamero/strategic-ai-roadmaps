@@ -5,8 +5,17 @@ import { db } from '../db';
 import { auditEvents, tenants } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
-export interface AuthRequest extends Request {
+import { AuthorityCategory } from '@roadmap/shared';
+
+export interface AuthRequest<
+  P = any,
+  ResBody = any,
+  ReqBody = any,
+  ReqQuery = any,
+  Locals extends Record<string, any> = Record<string, any>
+> extends Request<P, ResBody, ReqBody, ReqQuery, Locals> {
   user?: TokenPayload;
+  authorityCategory?: AuthorityCategory;
 }
 
 const TENANT_ROLES: UserRole[] = ['owner', 'ops', 'sales', 'delivery', 'staff'];
@@ -14,16 +23,16 @@ const TENANT_ROLES: UserRole[] = ['owner', 'ops', 'sales', 'delivery', 'staff'];
 export function authenticate(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'No token provided' });
     }
 
     const token = authHeader.substring(7);
     const payload = verifyToken(token);
-    
+
     console.log('[Auth] Token verified. User:', payload.email, 'tenantId:', payload.tenantId, 'role:', payload.role);
-    
+
     req.user = payload;
     next();
   } catch (error) {

@@ -1,4 +1,5 @@
 export * from './types';
+export * from './authority';
 export {
   BUSINESS_TYPE_PROFILES,
   DEFAULT_BUSINESS_TYPE,

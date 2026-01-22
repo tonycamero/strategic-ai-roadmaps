@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { superadminApi, FirmDetailResponseV2 } from '../api';
 import { SuperAdminFirmRow } from '../types';
+import { useRoute } from 'wouter';
 import { FirmDrawer } from '../components/FirmDrawer';
 import {
   DndContext,
@@ -60,6 +61,9 @@ const STATUS_CONFIG: Record<
 };
 
 export default function EugeneCohortPage() {
+  const [, params] = useRoute<{ cohortLabel?: string }>('/superadmin/pipeline/:cohortLabel?');
+  const cohortLabel = params?.cohortLabel || EUGENE_COHORT;
+
   const [firms, setFirms] = useState<SuperAdminFirmRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedFirm, setSelectedFirm] = useState<SuperAdminFirmRow | null>(
@@ -77,17 +81,13 @@ export default function EugeneCohortPage() {
 
   useEffect(() => {
     loadCohort();
-  }, []);
+  }, [cohortLabel]);
 
   async function loadCohort() {
+    setLoading(true);
     try {
-      const res = await fetch(`/api/superadmin/firms?cohortLabel=${EUGENE_COHORT}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      const data = await res.json();
-      setFirms(data.firms);
+      const { firms } = await superadminApi.getFirms(cohortLabel);
+      setFirms(firms);
     } catch (err) {
       console.error('Failed to load cohort:', err);
     } finally {
@@ -183,7 +183,7 @@ export default function EugeneCohortPage() {
       {/* Header */}
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">
-          Eugene – Q1 2026 Cohort Pipeline
+          {cohortLabel.replace(/_/g, ' ')} Pipeline
         </h1>
         <p className="text-sm text-slate-400 mt-1">
           {counts.total} selected firms → target 10 pilot clients
@@ -246,9 +246,8 @@ function CohortStat({
 }) {
   return (
     <div
-      className={`border rounded-lg px-4 py-2.5 ${
-        highlight ? 'border-green-500 bg-green-900/20' : 'border-slate-800'
-      }`}
+      className={`border rounded-lg px-4 py-2.5 ${highlight ? 'border-green-500 bg-green-900/20' : 'border-slate-800'
+        }`}
     >
       <div className="text-xs uppercase tracking-wide text-slate-400 font-medium">
         {label}
@@ -287,11 +286,10 @@ function KanbanColumn({
       </div>
       <div
         ref={setNodeRef}
-        className={`border-x border-b rounded-b-xl p-3 space-y-2.5 min-h-[500px] transition-colors ${
-          isOver
+        className={`border-x border-b rounded-b-xl p-3 space-y-2.5 min-h-[500px] transition-colors ${isOver
             ? 'border-blue-500 bg-slate-900/60'
             : 'border-slate-800 bg-slate-950/30'
-        }`}
+          }`}
       >
         <div className="text-[10px] text-slate-500 mb-3">{config.description}</div>
         {firms.map((firm) => (

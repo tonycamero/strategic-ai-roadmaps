@@ -9,6 +9,7 @@ export interface TokenPayload {
   userId: string;
   email: string;
   role: UserRole;
+  isInternal: boolean;
   tenantId: string | null; // Multi-tenant: tenant key
 }
 

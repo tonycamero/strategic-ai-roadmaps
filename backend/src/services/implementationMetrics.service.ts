@@ -63,6 +63,9 @@ export class ImplementationMetricsService {
         .where(eq(roadmapOutcomes.id, outcome.id));
     }
 
+    // Trigger ROI computation automatically
+    await this.createOutcomeForRoadmap({ tenantId, roadmapId });
+
     return { snapshotId: snapshot.id, metrics };
   }
 
@@ -105,7 +108,7 @@ export class ImplementationMetricsService {
 
     // Update the appropriate snapshot ID field
     const updates: any = { updatedAt: new Date() };
-    
+
     if (label === '30d') {
       updates.at30dSnapshotId = snapshot.id;
     } else if (label === '60d') {
@@ -120,6 +123,9 @@ export class ImplementationMetricsService {
         .set(updates)
         .where(eq(roadmapOutcomes.id, outcome.id));
     }
+
+    // Trigger ROI computation automatically
+    await this.createOutcomeForRoadmap({ tenantId, roadmapId });
 
     return { snapshotId: snapshot.id, metrics };
   }
@@ -202,7 +208,7 @@ export class ImplementationMetricsService {
     }
 
     // Find latest snapshot (prefer 90d > 60d > 30d in that order)
-    const latest = 
+    const latest =
       snapshots.find((s) => s.label === '90d') ||
       snapshots.find((s) => s.label === '60d') ||
       snapshots.find((s) => s.label === '30d') ||
@@ -234,15 +240,15 @@ export class ImplementationMetricsService {
     const closeRateImprovement = deltas.close_rate / 100; // Convert % to decimal
     const baselineCloseRate = (baseline.metrics.close_rate ?? 15) / 100;
     const latestCloseRate = (latest.metrics.close_rate ?? 15) / 100;
-    
+
     // Revenue from more appointments converting
     const additionalAppts = annualLeadVolume * leadToApptImprovement;
     const revenueFromAppts = additionalAppts * avgDealValue * latestCloseRate;
-    
+
     // Revenue from better close rate on existing appointments
     const baseAppts = annualLeadVolume * ((baseline.metrics.lead_to_appt_rate ?? 30) / 100);
     const revenueFromCloseRate = baseAppts * avgDealValue * closeRateImprovement;
-    
+
     const revenueImpact = revenueFromAppts + revenueFromCloseRate;
 
     // Cost avoidance from CRM adoption (less manual work)

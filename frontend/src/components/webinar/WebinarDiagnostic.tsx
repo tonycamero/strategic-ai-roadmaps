@@ -10,6 +10,7 @@ import { SaveResultsCTA } from "./SaveResultsCTA";
 import { webinarApi } from "./webinarApi";
 import { shapeOnepager } from "../../lib/onepagerShaper";
 import { useRoadmap } from "../../context/RoadmapContext";
+import { RoleEvidenceCard } from "./RoleEvidenceCard";
 
 // Placeholder for API_BASE_URL, adjust as needed for your environment
 const API_BASE_URL = "";
@@ -290,8 +291,8 @@ export function WebinarDiagnostic({
   };
 
   const randomDelay = () => {
-    const min = 3000;
-    const max = 9000;
+    const min = 1000;
+    const max = 3000;
     return Math.floor(Math.random() * (max - min + 1)) + min;
   };
 
@@ -857,7 +858,7 @@ export function WebinarDiagnostic({
                   const isDone = completedRoles.includes(roleId);
                   const payload = rolePayloads[roleId];
                   return (
-                    <div key={roleId} className={`p - 6 rounded - xl border ${isDone ? 'bg-slate-900/50 border-emerald-500/30' : 'bg-slate-900/30 border-slate-800'} `}>
+                    <div key={roleId} className={`p-6 rounded-xl border ${isDone ? 'bg-slate-900/50 border-emerald-500/30' : 'bg-slate-900/30 border-slate-800'} `}>
                       <div className="flex justify-between items-center mb-3">
                         <h4 className="font-bold text-slate-200">{ROLE_LABELS[roleId]}</h4>
                         {isDone ? <span className="text-xs text-emerald-400 font-bold">READY</span> : <span className="text-xs text-slate-500">PENDING</span>}
@@ -982,35 +983,16 @@ export function WebinarDiagnostic({
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {/* Ensure we render 4 items safe */}
-                  {(teamResults.roleSummaries || []).map((role: any, idx: number) => {
-                    const verdicts: any = {
-                      owner: "You are absorbing system failures instead of enforcing structure.",
-                      sales: "Revenue depends on heroics instead of enforced follow-up.",
-                      ops: "Execution speed exceeds system control.",
-                      delivery: "Momentum decays after handoff due to unclear ownership."
-                    };
-                    return (
-                      <div key={idx} className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-colors">
-                        <h4 className="text-sm font-black text-white uppercase tracking-wide mb-3">{role.roleName}</h4>
-                        <p className="text-xs font-bold text-white mb-3 bg-white/5 p-2 rounded border-l-2 border-emerald-500">
-                          {verdicts[role.roleId]}
-                        </p>
-                        <div className="min-h-[60px] mb-4">
-                          <p className="text-sm font-bold text-blue-400 leading-snug">{role.headline}</p>
-                        </div>
-                        <div className="space-y-3 mb-4">
-                          {(role.signals || []).slice(0, 2).map((s: string, si: number) => (
-                            <div key={si} className="text-[10px] py-1 px-2 bg-slate-950 rounded border border-slate-800 text-slate-400">
-                              {s}
-                            </div>
-                          ))}
-                        </div>
-                        <p className="text-xs text-slate-500 italic border-t border-slate-800 pt-3">
-                          "{role.diagnosis}"
-                        </p>
-                      </div>
-                    );
-                  })}
+                  {(teamResults.roleSummaries || []).map((role: any, idx: number) => (
+                    <RoleEvidenceCard
+                      key={idx}
+                      roleId={role.roleId}
+                      roleName={role.roleName}
+                      headline={role.headline}
+                      signals={role.signals}
+                      diagnosis={role.diagnosis}
+                    />
+                  ))}
                 </div>
               </div>
 
@@ -1251,12 +1233,12 @@ export function WebinarDiagnostic({
           <div className="flex items-center gap-4">
             <button
               onClick={() => setShowDebug(!showDebug)}
-              className={`text - [10px] uppercase font - bold tracking - widest px - 2 py - 1 rounded border ${showDebug ? 'bg-green-900/20 text-green-400 border-green-900' : 'bg-transparent text-slate-700 border-slate-800 hover:border-slate-600'} `}
+              className={`text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded border ${showDebug ? 'bg-green-900/20 text-green-400 border-green-900' : 'bg-transparent text-slate-700 border-slate-800 hover:border-slate-600'} `}
             >
               Lattice Debug
             </button>
             <div className="flex items-center gap-2">
-              <div className={`w - 3 h - 3 rounded - full ${completedRoles.length === 4 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-amber-500'} `}></div>
+              <div className={`w-3 h-3 rounded-full ${completedRoles.length === 4 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-amber-500'} `}></div>
               <span className="text-sm font-bold text-white tracking-wide">
                 {completedRoles.length}/4 Roles Complete
               </span>
@@ -1273,12 +1255,12 @@ export function WebinarDiagnostic({
             onClick={teamResults ? handleGeneratePdf : handleGenerateStrategy}
             disabled={completedRoles.length < 4 || isGeneratingStrategy || isPdfGenerating}
             className={`
-px - 8 py - 3 rounded - xl font - bold text - sm transition - all shadow - lg flex items - center gap - 3
+px-8 py-3 rounded-xl font-bold text-sm transition-all shadow-lg flex items-center gap-3
                    ${teamResults
                 ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/30'
                 : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/30'
               }
-disabled: bg - slate - 800 disabled: text - slate - 500 disabled: cursor - not - allowed
+disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed
   `}
           >
             {isGeneratingStrategy || isPdfGenerating ? (
@@ -1444,7 +1426,7 @@ disabled: bg - slate - 800 disabled: text - slate - 500 disabled: cursor - not -
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} `}
             >
               <div
-                className={`max - w - [85 %] rounded - lg p - 4 ${msg.role === "user"
+                className={`max-w-[85%] rounded-lg p-8 ${msg.role === "user"
                   ? "bg-blue-600 text-white"
                   : "bg-slate-950 text-slate-200"
                   } `}

@@ -1,0 +1,9 @@
+{
+  "tenant_id": "883a5307-6354-49ad-b8e3-765ff64dc1af",
+  "tenant_name": "Northshore Logistics Solutions",
+  "timestamp": "2026-01-22T22:35:27.527Z",
+  "model_id": "gpt-4o",
+  "authority_version": "1.0.0",
+  "ticket_count": 15,
+  "status": "LOCKED"
+}

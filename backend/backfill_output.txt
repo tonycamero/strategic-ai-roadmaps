@@ -1,0 +1,294 @@
+--- Starting Readiness Flag Backfill ---
+
+========== DRIZZLE SQL ==========
+select "id", "owner_user_id", "name", "cohort_label", "segment", "region", "status", "business_type", "team_headcount", "baseline_monthly_leads", "firm_size_tier", "discovery_complete", "last_diagnostic_id", "intake_window_state", "intake_snapshot_id", "intake_closed_at", "notes", "knowledge_base_ready_at", "roles_validated_at", "exec_ready_at", "exec_ready_by_user_id", "readiness_notes", "created_at", "updated_at" from "tenants"
+=================================
+
+Found 25 tenants.
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ 'ca9af26e-7979-45b4-97ec-1fe4f41275c9', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select count(*) filter (where moderation_status = 'pending'), count(*) filter (where approved = true), count(*) from "sop_tickets" where ("sop_tickets"."tenant_id" = $1 and "sop_tickets"."diagnostic_id" = $2)
+PARAMS: [ 'ca9af26e-7979-45b4-97ec-1fe4f41275c9', 'diag_0b8f49be' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ '910d6ab6-d8cc-4575-9963-fcb8cf62ff72', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select count(*) filter (where moderation_status = 'pending'), count(*) filter (where approved = true), count(*) from "sop_tickets" where ("sop_tickets"."tenant_id" = $1 and "sop_tickets"."diagnostic_id" = $2)
+PARAMS: [ '910d6ab6-d8cc-4575-9963-fcb8cf62ff72', 'diag_c05f9510' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ 'b561a956-de71-4335-aa8c-9788c38e3102', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select count(*) filter (where moderation_status = 'pending'), count(*) filter (where approved = true), count(*) from "sop_tickets" where ("sop_tickets"."tenant_id" = $1 and "sop_tickets"."diagnostic_id" = $2)
+PARAMS: [ 'b561a956-de71-4335-aa8c-9788c38e3102', 'diag_ebf1d706' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ '1026273e-4ff1-4226-948e-d6eaa5ce8fb2', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select count(*) filter (where moderation_status = 'pending'), count(*) filter (where approved = true), count(*) from "sop_tickets" where ("sop_tickets"."tenant_id" = $1 and "sop_tickets"."diagnostic_id" = $2)
+PARAMS: [ '1026273e-4ff1-4226-948e-d6eaa5ce8fb2', 'diag_27d7646a' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ 'd980feb3-c1f6-4429-8aac-2d56ee53f0f5', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select count(*) filter (where moderation_status = 'pending'), count(*) filter (where approved = true), count(*) from "sop_tickets" where ("sop_tickets"."tenant_id" = $1 and "sop_tickets"."diagnostic_id" = $2)
+PARAMS: [ 'd980feb3-c1f6-4429-8aac-2d56ee53f0f5', 'diag_1767890538270' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ '0131f9d6-5c4e-47d4-bfd4-e51cb9aa0582', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select count(*) filter (where moderation_status = 'pending'), count(*) filter (where approved = true), count(*) from "sop_tickets" where ("sop_tickets"."tenant_id" = $1 and "sop_tickets"."diagnostic_id" = $2)
+PARAMS: [ '0131f9d6-5c4e-47d4-bfd4-e51cb9aa0582', 'diag_1767890577230' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ '95818b67-e8f4-4caf-93a9-c5370b79592b', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select count(*) filter (where moderation_status = 'pending'), count(*) filter (where approved = true), count(*) from "sop_tickets" where ("sop_tickets"."tenant_id" = $1 and "sop_tickets"."diagnostic_id" = $2)
+PARAMS: [ '95818b67-e8f4-4caf-93a9-c5370b79592b', 'diag_1767890621522' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ '5971204b-0716-49cc-86ba-2cbaa46fd62e', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select count(*) filter (where moderation_status = 'pending'), count(*) filter (where approved = true), count(*) from "sop_tickets" where ("sop_tickets"."tenant_id" = $1 and "sop_tickets"."diagnostic_id" = $2)
+PARAMS: [ '5971204b-0716-49cc-86ba-2cbaa46fd62e', 'diag_1767890666977' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ '1401ca82-9481-41e3-866d-d5ef39ace471', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select count(*) filter (where moderation_status = 'pending'), count(*) filter (where approved = true), count(*) from "sop_tickets" where ("sop_tickets"."tenant_id" = $1 and "sop_tickets"."diagnostic_id" = $2)
+PARAMS: [ '1401ca82-9481-41e3-866d-d5ef39ace471', 'diag_a5db6aae' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ '623a409b-919b-43d2-90e9-822e49099060', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select count(*) filter (where moderation_status = 'pending'), count(*) filter (where approved = true), count(*) from "sop_tickets" where ("sop_tickets"."tenant_id" = $1 and "sop_tickets"."diagnostic_id" = $2)
+PARAMS: [ '623a409b-919b-43d2-90e9-822e49099060', 'diag_1767890748144' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ 'c4248302-8944-4bf9-89d6-d66efb235905', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select count(*) filter (where moderation_status = 'pending'), count(*) filter (where approved = true), count(*) from "sop_tickets" where ("sop_tickets"."tenant_id" = $1 and "sop_tickets"."diagnostic_id" = $2)
+PARAMS: [ 'c4248302-8944-4bf9-89d6-d66efb235905', 'diag_829690a3' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ 'b65c293e-e122-480b-91f4-45f6a35a7c16', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select count(*) filter (where moderation_status = 'pending'), count(*) filter (where approved = true), count(*) from "sop_tickets" where ("sop_tickets"."tenant_id" = $1 and "sop_tickets"."diagnostic_id" = $2)
+PARAMS: [ 'b65c293e-e122-480b-91f4-45f6a35a7c16', 'diag_a22e5bc1' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ '5127e83f-7b36-46b8-94c9-8591d81834b5', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select count(*) filter (where moderation_status = 'pending'), count(*) filter (where approved = true), count(*) from "sop_tickets" where ("sop_tickets"."tenant_id" = $1 and "sop_tickets"."diagnostic_id" = $2)
+PARAMS: [ '5127e83f-7b36-46b8-94c9-8591d81834b5', 'diag_60f4f4eb' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ 'e003e3b0-76e4-4fa2-a3d9-044209b3b9df', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select count(*) filter (where moderation_status = 'pending'), count(*) filter (where approved = true), count(*) from "sop_tickets" where ("sop_tickets"."tenant_id" = $1 and "sop_tickets"."diagnostic_id" = $2)
+PARAMS: [ 'e003e3b0-76e4-4fa2-a3d9-044209b3b9df', 'diag_85e8ab87' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ 'da34665d-91a1-4f59-ba15-694d4417473c', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select count(*) filter (where moderation_status = 'pending'), count(*) filter (where approved = true), count(*) from "sop_tickets" where ("sop_tickets"."tenant_id" = $1 and "sop_tickets"."diagnostic_id" = $2)
+PARAMS: [ 'da34665d-91a1-4f59-ba15-694d4417473c', 'diag_a765fdc8' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ 'bcc92b9b-fb58-41d3-a6d4-8b34cbcb9274', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select count(*) filter (where moderation_status = 'pending'), count(*) filter (where approved = true), count(*) from "sop_tickets" where ("sop_tickets"."tenant_id" = $1 and "sop_tickets"."diagnostic_id" = $2)
+PARAMS: [ 'bcc92b9b-fb58-41d3-a6d4-8b34cbcb9274', 'diag_c797e6c0' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ '7e1ad86e-be33-4fbe-8b60-5f8e91fd2479', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select count(*) filter (where moderation_status = 'pending'), count(*) filter (where approved = true), count(*) from "sop_tickets" where ("sop_tickets"."tenant_id" = $1 and "sop_tickets"."diagnostic_id" = $2)
+PARAMS: [ '7e1ad86e-be33-4fbe-8b60-5f8e91fd2479', 'diag_763c3bad' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ 'bd10c700-6a06-4b41-80fe-346c6b48748b', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ 'bba7e41e-05ac-4761-88ec-92c904264862', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ '179b3014-7e34-4ca5-be56-dd6f32c5dd7d', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ '99c23d61-aa5b-4b49-80fc-7595db756e3a', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ '6795136c-fc5d-4b0f-95ec-47666279046f', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ '7cece7b2-9bd6-4151-a538-20aa5a7bf033', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ '49a64536-b151-4abc-9575-73a787ec3e5f', 'delivered', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "created_by_user_id", "pdf_url", "status", "pilot_stage", "delivered_at", "created_at" from "roadmaps" where ("roadmaps"."tenant_id" = $1 and "roadmaps"."status" = $2) limit $3
+PARAMS: [ 'bf472c81-f9d7-4fab-84b5-58cf9e1ebf06', 'delivered', 1 ]
+=================================
+
+[Tenant: BrightFocus Marketing] Roadmap DELIVERED. Setting all readiness flags.
+
+========== DRIZZLE SQL ==========
+update "tenants" set "knowledge_base_ready_at" = $1, "roles_validated_at" = $2, "exec_ready_at" = $3, "exec_ready_by_user_id" = $4 where "tenants"."id" = $5
+PARAMS: [
+  'Tue, 06 Jan 2026 06:27:00 GMT',
+  'Tue, 06 Jan 2026 06:27:00 GMT',
+  'Tue, 06 Jan 2026 06:27:00 GMT',
+  '41c4b42c-5597-41c2-933b-01d5f70a55b0',
+  'bf472c81-f9d7-4fab-84b5-58cf9e1ebf06'
+]
+=================================
+
+
+========== DRIZZLE SQL ==========
+
+                INSERT INTO audit_events (tenant_id, event_type, entity_type, entity_id, metadata, created_at)
+                VALUES (
+                    $1, 
+                    $2, 
+                    'tenant', 
+                    $3, 
+                    $4, 
+                    NOW()
+                )
+            
+PARAMS: [
+  'bf472c81-f9d7-4fab-84b5-58cf9e1ebf06',
+  'READINESS_BACKFILLED',
+  'bf472c81-f9d7-4fab-84b5-58cf9e1ebf06',
+  '{"updates":{"knowledgeBaseReadyAt":"2026-01-06T06:27:00.000Z","rolesValidatedAt":"2026-01-06T06:27:00.000Z","execReadyAt":"2026-01-06T06:27:00.000Z","execReadyByUserId":"41c4b42c-5597-41c2-933b-01d5f70a55b0"}}'
+]
+=================================
+
+--- Backfill Complete. Updated 1 tenants. ---

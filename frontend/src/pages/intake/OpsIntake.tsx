@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { useAuth } from '../../context/AuthContext';
@@ -38,6 +38,8 @@ export default function OpsIntake() {
     queryFn: () => api.getMyIntake(),
   });
 
+  const coachingFeedback = intakeData?.intake?.coachingFeedback || {};
+
   useEffect(() => {
     if (intakeData?.intake) {
       setIsUpdate(true);
@@ -63,7 +65,7 @@ export default function OpsIntake() {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const payload = {
       ...formData,
@@ -129,6 +131,7 @@ export default function OpsIntake() {
                   placeholder="Describe the systems and tools you use to coordinate membership, events, and executive operations..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.current_systems} />
               </div>
 
               <div>
@@ -143,6 +146,7 @@ export default function OpsIntake() {
                   placeholder="List your tech stack (GHL, spreadsheets, email tools, accounting systems, etc.)..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.tech_stack} />
               </div>
 
               <div>
@@ -161,6 +165,7 @@ export default function OpsIntake() {
                   <option value="moderate">Moderate - Many processes automated</option>
                   <option value="advanced">Advanced - Highly automated operations</option>
                 </select>
+                <ConsultantFeedback feedback={coachingFeedback.automation_level} />
               </div>
 
               <div>
@@ -175,6 +180,7 @@ export default function OpsIntake() {
                   placeholder="What manual admin work steals time from members and sponsors? Where is coordination between membership, events, and executive most difficult?..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.pain_points} />
               </div>
 
               <div>
@@ -189,6 +195,7 @@ export default function OpsIntake() {
                   placeholder="How fragmented is your data across systems? How difficult is it to produce board reports and KPIs?..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.data_quality} />
               </div>
 
               <div>
@@ -203,6 +210,7 @@ export default function OpsIntake() {
                   placeholder="What data fragmentation exists across GHL, spreadsheets, email, and accounting? What breaks or gets duplicated?..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.integration_challenges} />
               </div>
             </>
           ) : (
@@ -220,6 +228,7 @@ export default function OpsIntake() {
                   placeholder="Describe the current systems, tools, and platforms your operations team uses daily..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.current_systems} />
               </div>
 
               <div>
@@ -234,6 +243,7 @@ export default function OpsIntake() {
                   placeholder="List your tech stack (CRM, ERP, databases, cloud platforms, etc.)..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.tech_stack} />
               </div>
 
               <div>
@@ -252,6 +262,7 @@ export default function OpsIntake() {
                   <option value="moderate">Moderate - Many processes automated</option>
                   <option value="advanced">Advanced - Highly automated operations</option>
                 </select>
+                <ConsultantFeedback feedback={coachingFeedback.automation_level} />
               </div>
 
               <div>
@@ -266,6 +277,7 @@ export default function OpsIntake() {
                   placeholder="What are your biggest operational challenges? Where do you spend the most time on repetitive tasks?..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.pain_points} />
               </div>
 
               <div>
@@ -280,6 +292,7 @@ export default function OpsIntake() {
                   placeholder="How would you rate your data quality, organization, and accessibility?..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.data_quality} />
               </div>
 
               <div>
@@ -294,60 +307,93 @@ export default function OpsIntake() {
                   placeholder="What integration or data flow issues exist between your systems?..."
                   required
                 />
+                <ConsultantFeedback feedback={coachingFeedback.integration_challenges} />
               </div>
             </>
           )}
 
-            {isChamber && chamberQuestions.length > 0 && (
-              <div className="border-t border-slate-700 pt-6 mt-4 space-y-4">
-                <h3 className="text-lg font-semibold text-slate-100">
-                  Chamber-Specific Questions (Membership Operations)
-                </h3>
-                <p className="text-sm text-slate-400">
-                  These help us understand your membership acquisition, retention, and communication engine.
-                </p>
+          {isChamber && chamberQuestions.length > 0 && (
+            <div className="border-t border-slate-700 pt-6 mt-4 space-y-4">
+              <h3 className="text-lg font-semibold text-slate-100">
+                Chamber-Specific Questions (Membership Operations)
+              </h3>
+              <p className="text-sm text-slate-400">
+                These help us understand your membership acquisition, retention, and communication engine.
+              </p>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-200 mb-2">
-                    {chamberQuestions[0]?.label}
-                  </label>
-                  <textarea
-                    value={formData.md_member_retention}
-                    onChange={(e) => handleChange('md_member_retention', e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={3}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-200 mb-2">
-                    {chamberQuestions[1]?.label}
-                  </label>
-                  <textarea
-                    value={formData.md_member_value}
-                    onChange={(e) => handleChange('md_member_value', e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={3}
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-200 mb-2">
+                  {chamberQuestions[0]?.label}
+                </label>
+                <textarea
+                  value={formData.md_member_retention}
+                  onChange={(e) => handleChange('md_member_retention', e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={3}
+                />
+                <ConsultantFeedback feedback={coachingFeedback.md_member_retention} />
               </div>
-            )}
 
-            {submitMutation.isError && (
-              <div className="bg-red-900/20 border border-red-800 text-red-300 px-4 py-3 rounded-lg text-sm">
-                Failed to submit form. Please try again.
+              <div>
+                <label className="block text-sm font-medium text-slate-200 mb-2">
+                  {chamberQuestions[1]?.label}
+                </label>
+                <textarea
+                  value={formData.md_member_value}
+                  onChange={(e) => handleChange('md_member_value', e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={3}
+                />
+                <ConsultantFeedback feedback={coachingFeedback.md_member_value} />
               </div>
-            )}
+            </div>
+          )}
 
-            <button
-              type="submit"
-              disabled={submitMutation.isPending}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {submitMutation.isPending ? (isUpdate ? 'Updating...' : 'Submitting...') : (isUpdate ? 'Update Intake Form' : 'Submit Intake Form')}
-            </button>
-          </form>
+          {submitMutation.isError && (
+            <div className="bg-red-900/20 border border-red-800 text-red-300 px-4 py-3 rounded-lg text-sm">
+              Failed to submit form. Please try again.
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={submitMutation.isPending}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitMutation.isPending ? (isUpdate ? 'Updating...' : 'Submitting...') : (isUpdate ? 'Update Intake Form' : 'Submit Intake Form')}
+          </button>
+        </form>
       </div>
+    </div>
+  );
+}
+
+function ConsultantFeedback({ feedback }: { feedback?: { comment: string; isFlagged: boolean } }) {
+  if (!feedback || (!feedback.comment && !feedback.isFlagged)) return null;
+
+  return (
+    <div className={`mt-2 p-3 rounded-lg border text-sm transition-all ${feedback.isFlagged ? 'bg-red-900/10 border-red-800/50 ring-1 ring-red-500/20' : 'bg-slate-800/40 border-slate-800'}`}>
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+            Consultant Coaching
+          </span>
+        </div>
+        {feedback.isFlagged && (
+          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-500/10 border border-red-500/20 rounded-full">
+            <span className="w-1 h-1 rounded-full bg-red-400 animate-ping" />
+            <span className="text-[9px] font-bold uppercase tracking-tight text-red-400">
+              Needs Revision
+            </span>
+          </div>
+        )}
+      </div>
+      {feedback.comment && (
+        <p className="text-slate-300 italic leading-relaxed pl-3 border-l border-slate-700/50">
+          "{feedback.comment}"
+        </p>
+      )}
     </div>
   );
 }

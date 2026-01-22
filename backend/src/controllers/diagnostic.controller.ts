@@ -8,7 +8,7 @@ import crypto from 'crypto';
 import { generateToken, hashPassword } from '../utils/auth';
 
 // Legacy imports from original HEAD
-import { ingestDiagnostic } from '../services/diagnosticIngestion.service';
+
 import { DiagnosticMap } from '../types/diagnostic';
 
 const SaveSnapshotSchema = z.object({
@@ -78,13 +78,15 @@ export async function saveSnapshot(req: Request, res: Response) {
     // Auth intentionally uses existing system. Magic deferred to post-MVP pilot.
     // We return a standard JWT token for the widely-used existing auth mechanism.
 
+
     let token: string | undefined;
     if (isNewUser && user) {
       token = generateToken({
         userId: user.id,
         email: user.email,
         role: user.role,
-        tenantId: user.tenantId || null
+        tenantId: user.tenantId || null,
+        isInternal: false
       });
     }
 
@@ -105,71 +107,3 @@ export async function saveSnapshot(req: Request, res: Response) {
   }
 }
 
-export async function getLatestSnapshot(req: Request, res: Response) {
-  try {
-    const { teamSessionId } = req.query;
-    // If authenticated, we could use req.user.id
-    // For now, allow lookup by teamSessionId (assuming it's a secret-ish token)
-
-    if (!teamSessionId || typeof teamSessionId !== 'string') {
-      return res.status(400).json({ error: 'teamSessionId required' });
-    }
-
-    const snapshot = await db.query.diagnosticSnapshots.findFirst({
-      where: eq(diagnosticSnapshots.teamSessionId, teamSessionId),
-      orderBy: [desc(diagnosticSnapshots.createdAt)],
-    });
-
-    if (!snapshot) {
-      return res.status(404).json({ error: 'Not found' });
-    }
-
-    return res.json(snapshot);
-  } catch (error) {
-    console.error('Get Snapshot Error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-}
-
-// Restored from Production (HEAD)
-export async function generateFromDiagnostic(req: Request, res: Response) {
-  try {
-    const diagnosticMap: DiagnosticMap = req.body;
-
-    // Validate required fields
-    if (!diagnosticMap.tenantId) {
-      return res.status(400).json({ error: 'tenantId is required' });
-    }
-    if (!diagnosticMap.firmName) {
-      return res.status(400).json({ error: 'firmName is required' });
-    }
-    if (!diagnosticMap.diagnosticDate) {
-      return res.status(400).json({ error: 'diagnosticDate is required' });
-    }
-    if (!diagnosticMap.painClusters || !Array.isArray(diagnosticMap.painClusters)) {
-      return res.status(400).json({ error: 'painClusters array is required' });
-    }
-
-    console.log('[Diagnostic Controller] Received diagnostic for:', diagnosticMap.firmName);
-
-    // Trigger full pipeline
-    const result = await ingestDiagnostic(diagnosticMap);
-
-    console.log('[Diagnostic Controller] Pipeline complete:', result);
-
-    return res.status(200).json({
-      success: true,
-      diagnostic_id: result.diagnosticId,
-      tenant_id: result.tenantId,
-      ticket_count: result.ticketCount,
-      roadmap_section_count: result.roadmapSectionCount,
-      assistant_provisioned: result.assistantProvisioned
-    });
-  } catch (error) {
-    console.error('[Diagnostic Controller] Error:', error);
-    return res.status(500).json({
-      error: 'Failed to process diagnostic',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-}

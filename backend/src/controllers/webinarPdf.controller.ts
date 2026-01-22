@@ -225,14 +225,24 @@ const HTML_TEMPLATE = `<!doctype html>
       <div class="h1">Systemic Evidence</div>
       <p style="margin-bottom: 32px;">Patterns detected across your leadership structure.</p>
 
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px;">
       {{#each roles}}
-      <div class="evidence-card">
-        <div class="h2" style="font-size: 14px; border:none; margin:0; text-transform:uppercase; letter-spacing:0.05em;">{{this.roleName}}</div>
-        <div style="font-weight: 700; color: var(--text); margin-top: 4px;">{{this.headline}}</div>
-        <p style="margin-top: 8px;">{{this.verdict}}</p>
-        <div style="margin-top: 16px;">{{this.evidenceHtml}}</div>
+      <div style="{{this.cardStyle}} display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 12px; align-items: start; border-radius: 8px; padding: 14px; page-break-inside: avoid;">
+        <div>
+            <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: {{this.roleColor}}; margin-bottom: 6px;">{{this.roleName}}</div>
+            <div style="font-weight: 800; font-size: 13px; color: #1e293b; line-height: 1.3; margin-bottom: 4px;">{{this.verdict}}</div>
+            <div style="font-size: 11px; color: #64748b; line-height: 1.3; margin-bottom: 8px;">{{this.headline}}</div>
+            {{this.signalsHtml}}
+            <div style="margin-top: 8px; font-size: 10px; font-style: italic; color: #94a3b8; border-left: 2px solid #e2e8f0; padding-left: 8px;">
+              "{{this.diagnosis}}"
+            </div>
+        </div>
+        <div>
+            {{this.artifactHtml}}
+        </div>
       </div>
       {{/each}}
+      </div>
       
     </div>
 
@@ -382,35 +392,81 @@ function renderTemplate(template: string, data: any): string {
   }
 
   // ROLES LOOP
-  // Custom simple regex replacer for role array
   const rolesRegex = /{{#each roles}}([\s\S]*?){{\/each}}/gm;
   output = output.replace(rolesRegex, (match, content) => {
     const roles = data.roles || [];
     if (!roles.length) return "";
     return roles.map((role: any) => {
-      let item = content;
-      item = item.replace(/{{this.roleName}}/g, role.roleName);
-      item = item.replace(/{{this.headline}}/g, role.headline);
-      item = item.replace(/{{this.verdict}}/g, role.verdict || "");
+      // 1. STYLE & COLOR LOGIC (Proven vs Inferred)
+      const isReal = role.evidenceArtifact?.isRealArtifact === true;
+      const roleColors: Record<string, string> = { owner: '#0ea5e9', sales: '#3b82f6', ops: '#f59e0b', delivery: '#10b981' }; // Diagnostic UI Palette
+      const accent = roleColors[role.roleId] || '#64748b';
 
-      // Evidence HTML Generation
-      let evidenceHtml = "";
-      if (role.evidenceArtifact?.type === 'snapshot') {
-        evidenceHtml = `
-          <div style="border: 1px solid var(--border); border-radius: 4px; overflow: hidden; position: relative;">
-            <img src="${role.evidenceArtifact.imageUrl}" style="width: 100%; display: block;" />
-            <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.8); color: white; padding: 8px 12px; font-size: 11px; font-weight: 600;">
-              ${role.evidenceArtifact.caption}
-            </div>
-          </div>`;
-      } else {
-        // Fallback
-        evidenceHtml = `
-          <div style="background: var(--panel); padding: 12px; border-radius: 4px; border: 1px dashed var(--border); color: var(--text-faint); font-style: italic; font-size: 10px; text-align: center;">
-            Pattern derived from cross-role intake responses.
-          </div>`;
+      const cardStyle = isReal
+        ? `border: 1px solid ${accent}; box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08);` // Available/Proven (Active)
+        : `border: 1px solid #e2e8f0;`; // Inferred (Passive)
+
+      const roleColor = isReal ? accent : '#9ca3af';
+
+      let item = content;
+      item = item.replace(/{{this.cardStyle}}/g, cardStyle);
+      item = item.replace(/{{this.roleColor}}/g, roleColor);
+      item = item.replace(/{{this.roleName}}/g, role.roleName);
+
+      // De-duplication: Hide Headline if redundant with Verdict
+      const v = (role.verdict || "").trim().toLowerCase();
+      const h = (role.headline || "").trim().toLowerCase();
+      const showHeadline = (h && !v.includes(h) && h !== v);
+
+      item = item.replace(/{{this.verdict}}/g, role.verdict || "");
+      item = item.replace(/{{this.headline}}/g, showHeadline ? role.headline : "");
+
+      // 2. SIGNALS LIST (Left Column)
+      let signalsHtml = "";
+      if (role.evidenceBlock && role.evidenceBlock.bullets) {
+        const bullets = role.evidenceBlock.bullets
+          .filter((b: string) => !b.toLowerCase().includes(h) && b.length > 5)
+          .slice(0, 3)
+          .map((b: string) => `<li style="margin-bottom: 3px;">${b}</li>`)
+          .join('');
+
+        signalsHtml = `
+            <div style="margin-top: 8px;">
+                <div style="font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Observed Signals</div>
+                <ul style="margin: 0; padding-left: 14px; color: #334155; font-size: 10px; line-height: 1.4;">
+                    ${bullets || '<li style="font-style:italic; color:#94a3b8">Pattern inferred from intake.</li>'}
+                </ul>
+            </div>`;
       }
-      item = item.replace(/{{this.evidenceHtml}}/g, evidenceHtml);
+      item = item.replace(/{{this.signalsHtml}}/g, signalsHtml);
+
+      // 3. ARTIFACT PANEL (Right Column)
+      const artifact = role.evidenceArtifact;
+      let artifactHtml = "";
+
+      if (isReal && artifact?.dataUrl) {
+        // Real Artifact (Proven)
+        const isSnapshot = artifact.type === 'snapshot';
+        const fit = isSnapshot ? 'contain' : 'cover'; // Snapshots are text cards; prevent cropping
+        const bg = isSnapshot ? '#0f172a' : '#000';   // Dark background for UI cards
+        const overlayStyle = isSnapshot ? 'display: none;' : ''; // Remove gradient overlay for text cards
+
+        artifactHtml = `
+            <div style="height: 100%; min-height: 138px; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; background: ${bg}; position: relative;">
+               <img src="${artifact.dataUrl}" style="width: 100%; height: 100%; object-fit: ${fit}; display: block;" />
+               <div style="position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.7)); padding: 40px 12px 12px; pointer-events: none; ${overlayStyle}"></div>
+            </div>`;
+      } else {
+        // Fallback Panel (Inferred)
+        artifactHtml = `
+            <div style="height: 100%; min-height: 138px; border: 1px dashed #cbd5e1; border-radius: 6px; background: #f8fafc; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px;">
+                <div>
+                   <div style="font-size: 10px; font-weight: 600; color: #64748b; margin-bottom: 4px;">No evidence artifact</div>
+                   <div style="font-size: 9px; color: #94a3b8; font-style: italic;">Pattern inferred from<br>intake + role synthesis.</div>
+                </div>
+            </div>`;
+      }
+      item = item.replace(/{{this.artifactHtml}}/g, artifactHtml);
 
       item = item.replace(/{{this.diagnosis}}/g, role.diagnosis || "");
       return item;
@@ -433,7 +489,29 @@ export async function generateTeamPdf(req: Request, res: Response) {
     let packet;
     try {
       const { calculateBoardReadyPacket } = require('./webinar.controller');
-      packet = calculateBoardReadyPacket(teamSessionId, rolePayloads);
+      const { getEvidenceArtifactBytes } = require('../services/storage/evidenceStorage');
+
+      packet = await calculateBoardReadyPacket(teamSessionId, rolePayloads);
+
+      // --- SYSTEMIC EVIDENCE: FETCH ARTIFACT BYTES ---
+      // 1. Try to fetch REAL uploaded artifacts first
+      if (packet.roleSummaries) {
+        await Promise.all(packet.roleSummaries.map(async (role: any) => {
+          const artifact = role.evidenceArtifact;
+          if (artifact && artifact.isRealArtifact && artifact.imageUrl) {
+            try {
+              const buffer = await getEvidenceArtifactBytes(artifact.imageUrl);
+              const base64 = buffer.toString('base64');
+              const mime = artifact.mimeType || 'image/png';
+              artifact.dataUrl = `data:${mime};base64,${base64}`;
+            } catch (err) {
+              console.error(`[PDF Gen] Failed to fetch artifact for ${role.roleId}:`, err);
+              // Do NOT set isRealArtifact=false yet; let Screenshot fallback handle it
+              // artifact.isRealArtifact = false; 
+            }
+          }
+        }));
+      }
 
       // Compute Narrative
       const narrative = assembleNarrative(packet);
@@ -449,31 +527,7 @@ export async function generateTeamPdf(req: Request, res: Response) {
       return;
     }
 
-    // AUGMENT ROLES WITH VERDICTS
-    const augmentedRoles = (packet.roleSummaries || []).map((r: any) => {
-      const v = ROLE_VERDICTS[r.roleId] || "Structural alignment check required.";
-      return { ...r, verdict: v };
-    });
-
-    const html = renderTemplate(HTML_TEMPLATE, {
-      generatedAt: new Date().toLocaleDateString(),
-      teamSessionId,
-      team: packet.team,
-      board: packet.board,
-      contracts: packet.contracts,
-      roles: augmentedRoles,
-      narrative: {
-        overview: packet.narrative?.overview?.content,
-        constraint: packet.narrative?.constraint?.content,
-        failureMode: packet.narrative?.failureMode?.content,
-        timing: packet.narrative?.timing?.content,
-        severity: packet.narrative?.severity?.content,
-        outcome: packet.narrative?.outcome?.content,
-        decisionSpine: (packet.narrative?.decisionSpine || []).map((b: any) => b.content),
-      }
-    });
-
-    // --- PUPPETEER ---
+    // --- PUPPETEER LAUNCH ---
     const chromiumAny = chromium as any;
     const browser = await puppeteer.launch({
       args: chromiumAny.args,
@@ -482,24 +536,108 @@ export async function generateTeamPdf(req: Request, res: Response) {
       headless: chromiumAny.headless,
     });
 
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+    try {
+      const FRONTEND_ORIGIN = process.env.FRONTEND_URL || 'http://127.0.0.1:5173';
 
-    const pdfBuffer = await page.pdf({
-      format: 'Letter',
-      printBackground: true,
-      preferCSSPageSize: true
-    });
+      // --- DETERMINISTIC ARTIFACT GENERATION (SCREENSHOTS) ---
+      // For any role that lacks a valid dataUrl, generate a screenshot of the RoleEvidenceCard
+      if (packet.roleSummaries) {
+        console.log(`[PDF Gen] Starting screenshot generation for ${packet.roleSummaries.length} roles...`);
+        await Promise.all(packet.roleSummaries.map(async (role: any) => {
+          // Skip if we already have a real artifact with content
+          if (role.evidenceArtifact?.isRealArtifact && role.evidenceArtifact?.dataUrl) {
+            return;
+          }
 
-    await browser.close();
+          try {
+            // Construct Prop Payload
+            const props = {
+              roleId: role.roleId,
+              roleName: role.roleName,
+              headline: role.headline,
+              signals: role.evidenceBlock?.bullets || [],
+              diagnosis: role.diagnosis,
+            };
 
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="Strategic_Indictment_${teamSessionId}.pdf"`,
-      'Content-Length': pdfBuffer.length
-    });
+            const json = JSON.stringify(props);
+            const payload = Buffer.from(json).toString('base64');
+            const url = `${FRONTEND_ORIGIN}/__render/role-evidence?payload=${encodeURIComponent(payload)}`;
 
-    res.end(pdfBuffer);
+            const page = await browser.newPage();
+            // DEBUG: Capture browser logs to backend console
+            page.on('console', msg => console.log('PAGE LOG:', msg.text()));
+            page.on('pageerror', err => console.error('PAGE ERROR:', err));
+            await page.setViewport({ width: 600, height: 600, deviceScaleFactor: 2 }); // High DPI capture
+
+            // Navigate and wait for DOM content (safer than networkidle0 with Vite HMR)
+            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+
+            // Wait for and get the component (robust against load delays)
+            const el = await page.waitForSelector('[data-testid="role-evidence-card"]', { timeout: 15000 });
+            if (el) {
+              const b64 = await el.screenshot({ encoding: 'base64' });
+              // Hydrate the artifact slot
+              role.evidenceArtifact = {
+                isRealArtifact: true, // It is now "Real" (visual existence)
+                type: 'snapshot',
+                mimeType: 'image/png',
+                dataUrl: `data:image/png;base64,${b64}`,
+                caption: 'Role Evidence'
+              };
+            }
+            await page.close();
+
+          } catch (err) {
+            console.error(`[PDF Gen] Screenshot failed for ${role.roleId}:`, err);
+            // Fallback to text panel handled by HTML template logic if isRealArtifact remains false
+          }
+        }));
+      }
+
+      // AUGMENT ROLES WITH VERDICTS (for template rendering)
+      const augmentedRoles = (packet.roleSummaries || []).map((r: any) => {
+        const v = ROLE_VERDICTS[r.roleId] || "Structural alignment check required.";
+        return { ...r, verdict: v };
+      });
+
+      const html = renderTemplate(HTML_TEMPLATE, {
+        generatedAt: new Date().toLocaleDateString(),
+        teamSessionId,
+        team: packet.team,
+        board: packet.board,
+        contracts: packet.contracts,
+        roles: augmentedRoles,
+        narrative: {
+          overview: packet.narrative?.overview?.content,
+          constraint: packet.narrative?.constraint?.content,
+          failureMode: packet.narrative?.failureMode?.content,
+          timing: packet.narrative?.timing?.content,
+          severity: packet.narrative?.severity?.content,
+          outcome: packet.narrative?.outcome?.content,
+          decisionSpine: (packet.narrative?.decisionSpine || []).map((b: any) => b.content),
+        }
+      });
+
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+
+      const pdfBuffer = await page.pdf({
+        format: 'Letter',
+        printBackground: true,
+        preferCSSPageSize: true
+      });
+
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="Strategic_Indictment_${teamSessionId}.pdf"`,
+        'Content-Length': pdfBuffer.length
+      });
+
+      res.end(pdfBuffer);
+
+    } finally {
+      await browser.close();
+    }
 
   } catch (error) {
     console.error('[PDF Gen] Error:', error);

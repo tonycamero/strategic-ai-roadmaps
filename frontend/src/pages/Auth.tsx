@@ -8,7 +8,7 @@ function getRoleBasedRoute(role: string): string {
     return `/intake/${role}`;
   }
   if (role === 'superadmin') {
-    return '/superadmin';
+    return '/superadmin/firms';
   }
   if (role === 'owner') {
     return '/dashboard';
@@ -19,7 +19,7 @@ function getRoleBasedRoute(role: string): string {
 export default function Auth() {
   const [, setLocation] = useLocation();
   const { login, isAuthenticated } = useAuth();
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');

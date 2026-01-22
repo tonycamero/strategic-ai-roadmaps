@@ -113,25 +113,25 @@ export interface FirmDetailResponseV2 {
       label: string;
       metrics: Record<string, number>;
     } | null;
-    latest: {
-      snapshotId: string;
-      snapshotDate: string;
-      label: string;
-      metrics: Record<string, number>;
-    } | null;
-    outcomes: {
-      id: string;
-      status: 'on_track' | 'at_risk' | 'off_track';
-      deltas: Record<string, number>;
-      realizedRoi: {
-        time_savings_hours_annual?: number;
-        time_savings_value_annual?: number;
-        revenue_impact_annual?: number;
-        cost_avoidance_annual?: number;
-        net_roi_percent?: number;
-      } | null;
-    } | null;
   };
+  latest: {
+    snapshotId: string;
+    snapshotDate: string;
+    label: string;
+    metrics: Record<string, number>;
+  } | null;
+  outcomes: {
+    id: string;
+    status: 'on_track' | 'at_risk' | 'off_track';
+    deltas: Record<string, number>;
+    realizedRoi: {
+      time_savings_hours_annual?: number;
+      time_savings_value_annual?: number;
+      revenue_impact_annual?: number;
+      cost_avoidance_annual?: number;
+      net_roi_percent?: number;
+    } | null;
+  } | null;
   documents: {
     totalsByCategory: {
       sop_output: number;
@@ -279,7 +279,12 @@ async function downloadFile(path: string, filename: string): Promise<void> {
 
 export const superadminApi = {
   getOverview: () => apiGet<SuperAdminOverview>('/overview'),
-  getFirms: () => apiGet<{ firms: SuperAdminFirmRow[] }>('/firms'),
+  getActivityFeed: (limit?: number) => apiGet<{ activities: any[] }>(`/activity-feed${limit ? `?limit=${limit}` : ''}`),
+  getFirms: (cohortLabel?: string) => {
+    const params = new URLSearchParams();
+    if (cohortLabel) params.append('cohortLabel', cohortLabel);
+    return apiGet<{ firms: SuperAdminFirmRow[] }>(`/firms?${params.toString()}`);
+  },
   getFirmDetail: (tenantId: string) =>
     apiGet<FirmDetailResponse>(`/firms/${tenantId}`),
   updateTenant: (
@@ -302,36 +307,29 @@ export const superadminApi = {
     const filename = `${safeName}-intakes-${new Date().toISOString().split('T')[0]}.${format}`;
     return downloadFile(`/export/firms/${tenantId}/intakes?${params.toString()}`, filename);
   },
-  
+
   // Workflow management functions
   getFirmWorkflowStatus: (tenantId: string) =>
     apiGet<any>(`/firms/${tenantId}/workflow-status`),
-  
-  generateSop01: (tenantId: string) =>
-    apiPost<{ ok: boolean }>(`/firms/${tenantId}/generate-sop01`),
-  
+
+
+
   getDiscoveryNotes: (tenantId: string) =>
     apiGet<{ notes: string; updatedAt: string | null }>(`/firms/${tenantId}/discovery-notes`),
-  
+
   saveDiscoveryNotes: (tenantId: string, notes: string) =>
     apiPost<{ ok: boolean }>(`/firms/${tenantId}/discovery-notes`, { notes }),
-  
-  generateRoadmap: (tenantId: string) =>
-    apiPost<{ ok: boolean }>(`/firms/${tenantId}/generate-roadmap`),
-  
-  getModerationStatus: (tenantId: string, diagnosticId: string) =>
-    apiGet<{
-      totalTickets: number;
-      approvedCount: number;
-      rejectedCount: number;
-      pendingCount: number;
-      allModerated: boolean;
-    }>(`/tickets/${tenantId}/${diagnosticId}/status`),
-  
+
+
+
+
+
+
+
   // TM-2: Ticket Moderation APIs
   getDiagnosticTickets: (tenantId: string, diagnosticId: string) =>
     apiGet<{ tickets: any[]; status: any }>(`/tickets/${tenantId}/${diagnosticId}`),
-  
+
   getTicketModerationStatus: (tenantId: string, diagnosticId: string) =>
     apiGet<{
       total: number;
@@ -340,7 +338,7 @@ export const superadminApi = {
       pending: number;
       readyForRoadmap: boolean;
     }>(`/tickets/${tenantId}/${diagnosticId}/status`),
-  
+
   approveTickets: (params: {
     tenantId: string;
     diagnosticId: string;
@@ -348,7 +346,7 @@ export const superadminApi = {
     adminNotes?: string;
   }) =>
     apiPost<{ updated: number; status: any }>(`/tickets/approve`, params),
-  
+
   rejectTickets: (params: {
     tenantId: string;
     diagnosticId: string;
@@ -356,10 +354,10 @@ export const superadminApi = {
     adminNotes?: string;
   }) =>
     apiPost<{ updated: number; status: any }>(`/tickets/reject`, params),
-  
+
   generateFinalRoadmap: (tenantId: string) =>
     apiPost<{ ok: boolean }>(`/firms/${tenantId}/generate-final-roadmap`),
-  
+
   // SR-3: Roadmaps browser endpoints
   getRoadmaps: async (filters?: {
     cohort?: string;
@@ -372,14 +370,61 @@ export const superadminApi = {
     if (filters?.search) params.set('search', filters.search);
     return apiGet<{ roadmaps: any[] }>(`/roadmaps?${params.toString()}`);
   },
-  
+
   getRoadmapSections: (tenantId: string) =>
     apiGet<{
       tenant: { id: string; name: string; cohortLabel: string | null };
       sections: any[];
     }>(`/firms/${tenantId}/roadmap-sections`),
-  
+
   // V2: Comprehensive firm detail (single source of truth)
   getFirmDetailV2: (tenantId: string) =>
     apiGet<FirmDetailResponseV2>(`/firms/${tenantId}/detail`),
+
+  // CR-UX-9: Command Center
+  getCommandCenterTenants: (filters?: {
+    search?: string;
+    states?: string;
+    missingFlags?: string;
+    sort?: string;
+    limit?: number;
+    offset?: number;
+  }) => {
+    const params = new URLSearchParams();
+    if (filters?.search) params.set('search', filters.search);
+    if (filters?.states) params.set('states', filters.states);
+    if (filters?.missingFlags) params.set('missingFlags', filters.missingFlags);
+    if (filters?.sort) params.set('sort', filters.sort);
+    if (filters?.limit) params.set('limit', filters.limit.toString());
+    if (filters?.offset) params.set('offset', filters.offset.toString());
+    return apiGet<{ tenants: any[]; total: number }>(`/command-center/tenants?${params.toString()}`);
+  },
+
+  getCommandCenterActivity: (window?: number) =>
+    apiGet<{ events: any[] }>(`/command-center/activity?window=${window || 60}`),
+
+
+
+  previewFinalizeBatch: (tenantIds: string[]) =>
+    apiPost<{ eligible: any[]; ineligible: any[] }>(`/command-center/batch/roadmap/finalize/preview`, { tenantIds }),
+
+  executeFinalizeBatch: (params: { tenantIds: string[]; override?: boolean; overrideReason?: string }) =>
+    apiPost<{ results: any[] }>(`/command-center/batch/roadmap/finalize/execute`, params),
+
+  // Phase 7: SNAPSHOT (Ticket 8)
+  getSnapshot: (tenantId: string) =>
+    apiGet<{ data: any }>(`/snapshot/${tenantId}`),
+
+  closeIntakeWindow: (tenantId: string) =>
+    apiPost<{ ok: boolean }>(`/firms/${tenantId}/close-intake`),
+
+
+
+  updateIntakeCoaching: (intakeId: string, coachingFeedback: string) =>
+    apiPatch<{ ok: boolean }>(`/intakes/${intakeId}/coaching`, { coachingFeedback }),
+
+  reopenIntake: (intakeId: string) =>
+    apiPost<{ ok: boolean }>(`/intakes/${intakeId}/reopen`),
+
+
 };

@@ -9,7 +9,7 @@ const scrollToTop = () => {
 };
 
 function getRoleBasedRoute(role: string): string {
-  if (role === 'superadmin') return '/superadmin';
+  if (role === 'superadmin') return '/superadmin/firms';
   // All authenticated users go to dashboard
   // Intake pages will redirect back if needed
   return '/dashboard';
