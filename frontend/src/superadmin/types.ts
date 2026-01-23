@@ -1,5 +1,7 @@
 export interface IntakeRoleDefinition {
   id: string;
+  vectorId?: string;
+  intakeId?: string;
   roleLabel: string; // e.g. "Manufacturing Facilitator"
   roleType: 'FACILITATOR' | 'OPERATIONAL_LEAD' | 'EXECUTIVE' | 'OTHER';
   description?: string;
@@ -16,6 +18,7 @@ export interface IntakeRoleDefinition {
   inviteStatus: 'NOT_SENT' | 'SENT' | 'FAILED';
   intakeStatus: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
   completedAt?: string;
+  isAccepted?: boolean;
 }
 
 export interface SuperAdminOverview {
@@ -40,7 +43,7 @@ export interface SuperAdminFirmRow {
   roadmapCount: number;
   createdAt: string;
   // Executive-Reflected Signals (may be null for delegates at API level, but UI must handle)
-  executiveBriefStatus?: 'NOT_CREATED' | 'DRAFT' | 'READY' | 'ACKNOWLEDGED' | 'WAIVED' | null;
+  executiveBriefStatus?: 'NOT_CREATED' | 'DRAFT' | 'APPROVED' | 'READY' | 'ACKNOWLEDGED' | 'WAIVED' | null;
   roadmapStatus?: 'LOCKED' | 'READY' | 'DELIVERED' | null;
   diagnosticStatus?: 'NOT_STARTED' | 'IN_REVIEW' | 'FINALIZED' | null;
 }
@@ -59,6 +62,8 @@ export interface SuperAdminTenantDetail {
     ownerName: string;
     lastDiagnosticId?: string | null;
     intakeWindowState: 'OPEN' | 'CLOSED';
+    executiveBriefStatus?: 'DRAFT' | 'APPROVED' | 'ACKNOWLEDGED' | 'WAIVED' | null;
+    executionPhase?: 'INTAKE_OPEN' | 'EXEC_BRIEF_DRAFT' | 'EXEC_BRIEF_APPROVED' | 'INTAKE_CLOSED';
     intakeSnapshotId?: string | null;
     intakeClosedAt?: string | null;
     knowledgeBaseReadyAt?: string | null;
@@ -107,6 +112,19 @@ export interface SuperAdminTenantDetail {
     // Expanded Metadata
     domain?: string;
     perceivedConstraints?: string[];
+    coachingFeedback?: Record<string, any>;
+  }[];
+  intakeVectors?: {
+    id: string;
+    roleLabel: string;
+    roleType: 'FACILITATOR' | 'OPERATIONAL_LEAD' | 'EXECUTIVE' | 'OTHER';
+    recipientEmail: string | null;
+    recipientName: string | null;
+    inviteStatus: 'NOT_SENT' | 'SENT' | 'FAILED';
+    intakeId: string | null;
+    intakeStatus: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+    perceivedConstraints: string;
+    anticipatedBlindSpots: string;
   }[];
   roadmaps: {
     id: string;
@@ -140,6 +158,12 @@ export interface SuperAdminTenantDetail {
     rejected: number;
     readyForRoadmap: boolean;
   };
+  latestDiagnostic?: {
+    id: string;
+    status: 'generated' | 'locked' | 'published' | 'archived';
+    createdAt: string;
+    updatedAt: string;
+  } | null;
 }
 
 export interface CommandCenterTenant {

@@ -3,9 +3,9 @@ import { AuthRequest } from '../middleware/auth';
 import { db } from '../db';
 import { tenants } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import { OnboardingProgressService } from '../services/onboardingProgress.service';
+import { onboardingProgressService } from '../services/onboardingProgress.service';
 
-const onboardingService = new OnboardingProgressService();
+const onboardingService = onboardingProgressService;
 
 export async function getTenant(req: AuthRequest, res: Response) {
   try {
@@ -20,9 +20,20 @@ export async function getTenant(req: AuthRequest, res: Response) {
 
     // Get tenant from middleware
     const tenantId = (req as any).tenantId;
-    if (!tenantId) {
+    const isSuperAdmin = req.user?.role === 'superadmin';
+
+    // @ANCHOR:backend_tenants_getTenant_superadmin_bypass
+    // SuperAdmins bypass the strict tenant resolution requirement
+    if (!tenantId && !isSuperAdmin) {
       return res.status(403).json({ error: 'Tenant not resolved' });
     }
+
+    // If superadmin and no specific tenant context, return null tenant safely
+    // This prevents 403s on global UI components that call /api/tenants/me
+    if (isSuperAdmin && !tenantId) {
+      return res.json({ tenant: null });
+    }
+
     const tenant = await db.query.tenants.findFirst({
       where: eq(tenants.id, tenantId),
     });
@@ -56,8 +67,8 @@ export async function updateBusinessType(req: AuthRequest, res: Response) {
     const { businessType } = req.body;
 
     // Validate businessType
-    if (!businessType || !['default', 'chamber'].includes(businessType)) {
-      return res.status(400).json({ error: 'Invalid businessType. Must be "default" or "chamber"' });
+    if (!businessType || !['default', 'chamber', 'manufacturing', 'enterprise'].includes(businessType)) {
+      return res.status(400).json({ error: 'Invalid businessType. Must be "default", "chamber", "manufacturing", or "enterprise"' });
     }
 
     // Ensure user is authenticated
@@ -90,7 +101,7 @@ export async function updateBusinessType(req: AuthRequest, res: Response) {
 
     // Mark onboarding step as complete if applicable
     try {
-      await onboardingService.markStep(tenant.id, 'ORGANIZATION_TYPE', 'COMPLETED');
+      await onboardingService.markStep(tenant.id, 'ORGANIZATION_TYPE', 'completed');
       console.log(`[BusinessType] Marked ORGANIZATION_TYPE step as completed for tenant ${tenant.id}`);
     } catch (onboardingError) {
       console.error('[BusinessType] Failed to update onboarding progress:', onboardingError);
@@ -176,7 +187,7 @@ export async function updateBusinessProfile(req: AuthRequest, res: Response) {
 
     // Mark onboarding step as complete
     try {
-      await onboardingService.markStep(tenant.id, 'BUSINESS_PROFILE', 'COMPLETED');
+      await onboardingService.markStep(tenant.id, 'BUSINESS_PROFILE', 'completed');
       console.log(`[BusinessProfile] Marked BUSINESS_PROFILE step as completed for tenant ${tenant.id}`);
     } catch (onboardingError) {
       console.error('[BusinessProfile] Failed to update onboarding progress:', onboardingError);

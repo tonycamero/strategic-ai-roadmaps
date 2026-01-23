@@ -248,10 +248,10 @@ export async function generateRawTickets(
 
     // 1. Normalize Artifacts & Strict Validation
     // We handle both raw artifact objects (new) and legacy strings (backward compat)
-    const diagInfo = getArtifactRawText(artifacts.sop01DiagnosticMarkdown || artifacts.diagnosticMap);
-    const aiInfo = getArtifactRawText(artifacts.sop01AiLeverageMarkdown || artifacts.aiLeverageMap);
-    const skeletonInfo = getArtifactRawText(artifacts.sop01RoadmapSkeletonMarkdown || artifacts.roadmapSkeleton);
-    const discoveryInfo = getArtifactRawText(artifacts.sop01DiscoveryQuestionsMarkdown || artifacts.discoveryQuestions);
+    const diagInfo = getArtifactRawText(artifacts.companyDiagnosticMap || artifacts.diagnosticMap);
+    const aiInfo = getArtifactRawText(artifacts.aiLeverageMap || artifacts.aiLeverageMap);
+    const skeletonInfo = getArtifactRawText(artifacts.roadmapSkeleton || artifacts.roadmapSkeleton);
+    const discoveryInfo = getArtifactRawText(artifacts.discoveryCallQuestions || artifacts.discoveryQuestions);
 
     // Standardized Logging (Truth Source Assertion)
     console.log(`[DiagnosticIngestion] DiagnosticMap artifact=${artifacts.diagnosticMap?.id || '?'} type=DIAGNOSTIC_MAP source=${diagInfo.source} rawLength=${diagInfo.length} reason=${diagInfo.reason || 'ok'}`);
@@ -278,10 +278,10 @@ export async function generateRawTickets(
     };
 
     const derivedInventory: SelectedInventoryTicket[] = extractInventoryFromArtifacts({
-        sop01DiagnosticMarkdown: diagInfo.raw,
-        sop01AiLeverageMarkdown: aiInfo.raw,
-        sop01RoadmapSkeletonMarkdown: skeletonInfo.raw,
-        sop01DiscoveryQuestionsMarkdown: discoveryInfo.raw,
+        companyDiagnosticMap: diagInfo.raw,
+        aiLeverageMap: aiInfo.raw,
+        roadmapSkeleton: skeletonInfo.raw,
+        discoveryCallQuestions: discoveryInfo.raw.split('\n\n'),
     });
 
     // Final Extraction Proof
@@ -396,7 +396,7 @@ export function getArtifactRawText(artifact: any): { raw: string; source: string
 export function extractInventoryFromArtifacts(sop01Content: Sop01Outputs): SelectedInventoryTicket[] {
     const rawInventory: SelectedInventoryTicket[] = [];
 
-    const raw = sop01Content.sop01RoadmapSkeletonMarkdown || '';
+    const raw = sop01Content.roadmapSkeleton || '';
     const lines = raw.split('\n');
     let currentSprint = 30;
 

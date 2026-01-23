@@ -13,4 +13,5 @@ router.get('/logs', getDebugLogs);
 // GET /api/debug/logs/types - Get available event types
 router.get('/logs/types', getLogEventTypes);
 
+
 export default router;

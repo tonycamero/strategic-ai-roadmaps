@@ -7,6 +7,11 @@ import { runVerifiedCompute } from './verified-compute.service';
 import type { ToolConfig, AgentConfig, AgentRoleType } from '../types/agent.types';
 import { ImplementationMetricsService } from './implementationMetrics.service';
 
+type TenantRow = typeof tenants.$inferSelect;
+type TenantWithOwner = TenantRow & { ownerName: string };
+
+
+
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -306,24 +311,25 @@ async function getIntakeData(firmId: string) {
 
 async function listFirms(filters?: { status?: string; has_completed_intakes?: boolean }) {
   try {
-    let query = db.select().from(tenants);
-
-    // Apply status filter if provided
-    if (filters?.status) {
-      query = query.where(eq(tenants.status, filters.status)) as any;
-    }
-
-    const firms = await query;
+const firms = await db
+  .select()
+  .from(tenants)
+  .where(filters?.status ? eq(tenants.status, filters.status) : undefined);
 
     // Fetch owner names for all firms
-    const firmsWithOwners = await Promise.all(
-      firms.map(async (firm) => {
-        const owner = await db.query.users.findFirst({
-          where: eq(users.id, firm.ownerUserId),
-        });
-        return { ...firm, ownerName: owner?.name || 'Unknown' };
-      })
-    );
+const firmsWithOwners: TenantWithOwner[] = await Promise.all(
+  firms.map(async (firm) => {
+    const owner = await db.query.users.findFirst({
+      where: eq(users.id, firm.ownerUserId),
+    });
+
+    return {
+      ...(firm as TenantRow),
+      ownerName: owner?.name ?? 'Unknown',
+    } as any;
+  })
+);
+
 
     // If filtering by completed intakes, check for owner intakes
     if (filters?.has_completed_intakes) {

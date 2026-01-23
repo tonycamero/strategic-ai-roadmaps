@@ -64,7 +64,7 @@ export default function InviteTeam() {
 
   const handleInvite = (role: RoleId) => {
     const email = emails[role].trim();
-    
+
     if (!email) {
       setErrors(prev => ({ ...prev, [role]: 'Email is required' }));
       return;
@@ -79,7 +79,7 @@ export default function InviteTeam() {
   };
 
   // Check if all invites are sent
-  const allInvitesSent = invitesData?.invites && 
+  const allInvitesSent = invitesData?.invites &&
     ROLES.every(role => invitesData.invites.some((inv: any) => inv.role === role.id));
 
   const getInviteStatus = (roleId: RoleId) => {
@@ -114,20 +114,21 @@ export default function InviteTeam() {
       {/* Content */}
       <div className="max-w-4xl mx-auto px-6 py-8">
         {/* Info Card */}
-        <div className="mb-8 bg-blue-900/20 border border-blue-800 rounded-xl p-6">
-          <div className="flex items-start gap-3">
-            <span className="text-2xl">👥</span>
+        <div className="mb-8 bg-slate-900 border border-slate-800 rounded-2xl p-6">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-full bg-blue-900/20 flex items-center justify-center shrink-0">
+              <span className="text-xl">👥</span>
+            </div>
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-blue-200 mb-2">
+              <h3 className="text-sm font-bold text-slate-100 mb-2 uppercase tracking-widest">
                 Why Your Team's Input Matters
               </h3>
-              <p className="text-xs text-blue-300/80 mb-3">
+              <p className="text-sm text-slate-400 mb-3 leading-relaxed">
                 To build an accurate AI Roadmap, we need perspectives from three key roles in your organization.
                 Each team member will complete a brief 10-minute intake focused on their area of expertise.
               </p>
-              <p className="text-xs text-blue-300/60">
-                <strong>Required:</strong> All three roles must be invited to continue. They'll receive an email
-                with a secure link to complete their intake.
+              <p className="text-xs text-blue-500 font-bold uppercase tracking-widest">
+                <span className="text-slate-400 font-normal normal-case mr-1">Required:</span> All three roles must be invited.
               </p>
             </div>
           </div>
@@ -142,21 +143,20 @@ export default function InviteTeam() {
             return (
               <div
                 key={role.id}
-                className={`border rounded-xl p-6 transition-all ${
-                  status === 'accepted'
-                    ? 'bg-green-900/10 border-green-800'
+                className={`border rounded-xl p-6 transition-all ${status === 'accepted'
+                    ? 'bg-emerald-950/30 border-emerald-900/50'
                     : status === 'pending'
-                    ? 'bg-yellow-900/10 border-yellow-800'
-                    : 'bg-slate-900/40 border-slate-800'
-                }`}
+                      ? 'bg-amber-950/30 border-amber-900/50'
+                      : 'bg-slate-900 border-slate-800'
+                  }`}
               >
                 <div className="flex items-start gap-4">
                   <div className="text-3xl">{role.icon}</div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-semibold text-slate-200 mb-1">
+                    <h3 className="text-base font-bold text-slate-100 mb-1 uppercase tracking-wider">
                       {role.label}
                     </h3>
-                    <p className="text-xs text-slate-400 mb-4">{role.description}</p>
+                    <p className="text-xs text-slate-500 mb-4">{role.description}</p>
 
                     {status === 'not_sent' ? (
                       <div className="space-y-3">
@@ -166,16 +166,16 @@ export default function InviteTeam() {
                             value={emails[role.id]}
                             onChange={(e) => setEmails(prev => ({ ...prev, [role.id]: e.target.value }))}
                             placeholder="team.member@company.com"
-                            className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                           />
                           {errors[role.id] && (
-                            <p className="mt-1 text-xs text-red-400">{errors[role.id]}</p>
+                            <p className="mt-2 text-xs text-red-400 font-medium">{errors[role.id]}</p>
                           )}
                         </div>
                         <button
                           onClick={() => handleInvite(role.id)}
                           disabled={sendInviteMutation.isPending}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                          className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50"
                         >
                           {sendInviteMutation.isPending ? 'Sending...' : 'Send Invite'}
                         </button>
@@ -183,18 +183,18 @@ export default function InviteTeam() {
                     ) : status === 'pending' ? (
                       <div className="flex items-center gap-3">
                         <div className="flex-1">
-                          <div className="text-sm text-slate-300 mb-1">{invite?.email}</div>
-                          <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-900/40 border border-yellow-800 rounded-full">
-                            <span className="text-xs text-yellow-300">⏳ Invitation sent - awaiting response</span>
+                          <div className="text-sm font-medium text-slate-300 mb-2">{invite?.email}</div>
+                          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                            <span className="text-xs font-bold text-amber-500 uppercase tracking-wider">⏳ Invitation Sent</span>
                           </div>
                         </div>
                       </div>
                     ) : (
                       <div className="flex items-center gap-3">
                         <div className="flex-1">
-                          <div className="text-sm text-slate-300 mb-1">{invite?.email}</div>
-                          <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-900/40 border border-green-800 rounded-full">
-                            <span className="text-xs text-green-300">✓ Accepted - intake in progress</span>
+                          <div className="text-sm font-medium text-slate-300 mb-2">{invite?.email}</div>
+                          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                            <span className="text-xs font-bold text-emerald-500 uppercase tracking-wider">✓ Intake Active</span>
                           </div>
                         </div>
                       </div>
@@ -210,7 +210,7 @@ export default function InviteTeam() {
         <div className="mt-8 flex gap-3">
           <button
             onClick={() => setLocation('/dashboard')}
-            className="flex-1 px-6 py-3 border border-slate-700 rounded-lg font-medium text-slate-300 hover:bg-slate-900 transition-colors"
+            className="flex-1 px-6 py-4 border border-slate-800 rounded-xl font-bold text-slate-500 hover:text-slate-100 hover:bg-slate-900 transition-all uppercase tracking-widest text-sm"
           >
             Back to Dashboard
           </button>
@@ -221,7 +221,7 @@ export default function InviteTeam() {
                 await queryClient.invalidateQueries({ queryKey: ['onboarding-progress'] });
                 setLocation('/dashboard');
               }}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+              className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-xl shadow-blue-600/20 disabled:opacity-50 uppercase tracking-widest text-sm"
             >
               Continue →
             </button>

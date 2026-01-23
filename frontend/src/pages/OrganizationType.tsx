@@ -13,9 +13,9 @@ export default function OrganizationType() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-slate-950 text-slate-400">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <OrganizationTypeStep 
+        <OrganizationTypeStep
           onContinue={handleContinue}
           initialBusinessType={(tenant?.businessType as BusinessType) || 'default'}
         />

@@ -107,3 +107,29 @@ export async function saveSnapshot(req: Request, res: Response) {
   }
 }
 
+export async function getLatestSnapshot(req: Request, res: Response) {
+  try {
+    const teamSessionId = req.query.teamSessionId as string;
+    if (!teamSessionId) {
+      return res.status(400).json({ error: 'Missing teamSessionId' });
+    }
+
+    const snapshot = await db.query.diagnosticSnapshots.findFirst({
+      where: eq(diagnosticSnapshots.teamSessionId, teamSessionId),
+      orderBy: [desc(diagnosticSnapshots.createdAt)],
+    });
+
+    if (!snapshot) {
+      return res.status(404).json({ error: 'No snapshot found for this session' });
+    }
+
+    return res.json({
+      success: true,
+      snapshot,
+    });
+  } catch (error) {
+    console.error('Get Latest Snapshot Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+

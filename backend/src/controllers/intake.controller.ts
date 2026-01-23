@@ -64,7 +64,7 @@ export async function submitIntake(req: AuthRequest, res: Response) {
             await onboardingProgressService.markStep(
               tenantId,
               'OWNER_INTAKE',
-              'COMPLETED'
+              'completed'
             );
           }
         } catch (error) {
@@ -101,7 +101,7 @@ export async function submitIntake(req: AuthRequest, res: Response) {
           await onboardingProgressService.markStep(
             tenant.id,
             'OWNER_INTAKE',
-            'COMPLETED'
+            'completed'
           );
         }
       } catch (error) {
@@ -133,7 +133,7 @@ export async function submitIntake(req: AuthRequest, res: Response) {
             await onboardingProgressService.markStep(
               tenant.id,
               'TEAM_INTAKES',
-              'COMPLETED'
+              'completed'
             );
           }
         }

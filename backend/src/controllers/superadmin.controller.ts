@@ -1,8 +1,16 @@
 import { Response } from 'express';
 import { nanoid } from 'nanoid';
 import { db } from '../db';
-import { users, intakes, tenants, roadmaps, auditEvents, tenantDocuments, discoveryCallNotes, roadmapSections, ticketPacks, ticketInstances, tenantMetricsDaily, webinarRegistrations, implementationSnapshots, roadmapOutcomes, agentConfigs, agentThreads, webinarSettings, diagnostics } from '../db/schema';
+import {
+  users, intakes, tenants, roadmaps, auditEvents, tenantDocuments,
+  discoveryCallNotes, roadmapSections, ticketPacks, ticketInstances,
+  tenantMetricsDaily, webinarRegistrations, implementationSnapshots,
+  roadmapOutcomes, agentConfigs, agentThreads, webinarSettings,
+  diagnostics, executiveBriefs, sopTickets, ticketModerationSessions,
+  ticketsDraft
+} from '../db/schema';
 import { eq, and, sql, count, desc, asc } from 'drizzle-orm';
+import { randomUUID } from 'crypto';
 import { AuthRequest } from '../middleware/auth';
 import path from 'path';
 import fs from 'fs/promises';
@@ -13,11 +21,28 @@ import { getOrCreateRoadmapForTenant } from '../services/roadmapOs.service';
 import { refreshVectorStoreContent } from '../services/tenantVectorStore.service';
 import { getModerationStatus } from '../services/ticketModeration.service';
 import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
-import { AuthorityCategory } from '@roadmap/shared';
+import { AuthorityCategory, CanonicalDiscoveryNotes } from '@roadmap/shared';
+import { generateRawTickets, ParsedTicket, InventoryEmptyError } from '../services/diagnosticIngestion.service';
+import { Sop01Outputs } from '../services/sop01Engine';
+
+// META-TICKET v2: Gate & SOP Architecture Imports
+import {
+  canLockIntake,
+  canGenerateDiagnostics,
+  canLockDiagnostic,
+  canPublishDiagnostics,
+  canIngestDiscoveryNotes,
+  canGenerateSopTickets,
+  canAssembleRoadmap
+} from '../services/gate.service';
+import { generateSop01Outputs } from '../services/sop01Engine';
+import { persistSop01OutputsForTenant } from '../services/sop01Persistence';
+import { buildNormalizedIntakeContext } from '../services/intakeNormalizer';
+
 const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 
 // ============================================================================
-// HELPER: Check SuperAdmin Permission
+// HELPER: Permissions & Authority
 // ============================================================================
 
 /**
@@ -58,19 +83,32 @@ function requireExecutiveAuthority(req: AuthRequest, res: Response): boolean {
 // GET /api/superadmin/overview - Global Dashboard Stats
 // ============================================================================
 
-export async function getOverview(req: AuthRequest<any, any, any, { cohortLabel?: string }>, res: Response) {
+export async function getOverview(
+  req: AuthRequest<any, any, any, { cohortLabel?: string }>,
+  res: Response
+) {
   try {
     if (!requireSuperAdmin(req, res)) return;
 
+    // Hard guard: if core schemas are missing, that's a server/config issue
+    if (!tenants || !intakes || !roadmaps) {
+      console.error('CRITICAL: Schema tables are undefined!', {
+        tenants: !!tenants,
+        intakes: !!intakes,
+        roadmaps: !!roadmaps,
+      });
+      return res
+        .status(503)
+        .json({ error: 'DB_UNAVAILABLE', message: 'Schema tables undefined' });
+    }
+
     // Count total tenants
-    const [{ totalFirms }] = await db
-      .select({ totalFirms: count() })
-      .from(tenants);
+    const firmRes = await db.select({ totalFirms: count() }).from(tenants);
+    const totalFirms = firmRes?.[0]?.totalFirms ?? 0;
 
     // Count intake completions
-    const [{ totalIntakes }] = await db
-      .select({ totalIntakes: count() })
-      .from(intakes);
+    const intakeRes = await db.select({ totalIntakes: count() }).from(intakes);
+    const totalIntakes = intakeRes?.[0]?.totalIntakes ?? 0;
 
     // Count tenants by status
     const statusStats = await db
@@ -90,39 +128,51 @@ export async function getOverview(req: AuthRequest<any, any, any, { cohortLabel?
       .from(roadmaps)
       .groupBy(roadmaps.status);
 
+    // Drizzle will throw if any selected field is undefined.
+    // These columns may not exist in some schema snapshots, so guard them.
+    const pilotStageCol = (roadmaps as any).pilotStage;
+    const cohortLabelCol = (tenants as any).cohortLabel;
+
     // Count roadmaps by pilot stage (exclude nulls)
-    const pilotStats = await db
-      .select({
-        pilotStage: roadmaps.pilotStage,
-        count: count(),
-      })
-      .from(roadmaps)
-      .where(sql`${roadmaps.pilotStage} IS NOT NULL`)
-      .groupBy(roadmaps.pilotStage);
+    const pilotStats = pilotStageCol
+      ? await db
+        .select({
+          pilotStage: pilotStageCol,
+          count: count(),
+        })
+        .from(roadmaps)
+        .where(sql`${pilotStageCol} IS NOT NULL`)
+        .groupBy(pilotStageCol)
+      : [];
 
     // Count by cohort
-    const cohortStats = await db
-      .select({
-        cohortLabel: tenants.cohortLabel,
-        count: count(),
-      })
-      .from(tenants)
-      .where(sql`${tenants.cohortLabel} IS NOT NULL`)
-      .groupBy(tenants.cohortLabel);
+    const cohortStats = cohortLabelCol
+      ? await db
+        .select({
+          cohortLabel: cohortLabelCol,
+          count: count(),
+        })
+        .from(tenants)
+        .where(sql`${cohortLabelCol} IS NOT NULL`)
+        .groupBy(cohortLabelCol)
+      : [];
 
     return res.json({
-      totalFirms: totalFirms || 0,
-      totalIntakes: totalIntakes || 0,
+      totalFirms,
+      totalIntakes,
       statusStats,
       roadmapStats,
       pilotStats,
       cohortStats,
     });
-  } catch (error) {
-    console.error('Get overview error:', error);
-    return res.status(500).json({ error: 'Failed to fetch overview' });
+  } catch (error: any) {
+    console.error('Get overview error:', error?.message ?? error, error?.stack);
+    return res
+      .status(503)
+      .json({ error: 'DB_UNAVAILABLE', message: 'Failed to fetch overview' });
   }
 }
+
 
 // ============================================================================
 // GET ACTIVITY FEED
@@ -260,6 +310,20 @@ export async function reopenIntake(req: AuthRequest<{ intakeId: string }>, res: 
 
     if (!intake) {
       return res.status(404).json({ error: 'Intake not found' });
+    }
+
+    // GATING: Block reopen if Intake Window is CLOSED (drift prevention)
+    const [tenant] = await db
+      .select({ intakeWindowState: tenants.intakeWindowState })
+      .from(tenants)
+      .where(eq(tenants.id, intake.tenantId))
+      .limit(1);
+
+    if (tenant && tenant.intakeWindowState === 'CLOSED') {
+      return res.status(403).json({
+        error: 'Gated Action',
+        details: 'Cannot reopen an intake after the Intake Window is CLOSED. Reopen the window via a new cycle (not supported in this mode).'
+      });
     }
 
     await db
@@ -534,6 +598,20 @@ export async function closeIntakeWindow(req: AuthRequest<{ tenantId: string }>, 
 
     const { tenantId } = req.params;
 
+    // GATING: Block close unless Executive Brief is ACKNOWLEDGED or WAIVED
+    const [brief] = await db
+      .select()
+      .from(executiveBriefs)
+      .where(eq(executiveBriefs.tenantId, tenantId))
+      .limit(1);
+
+    if (!brief || !(['ACKNOWLEDGED', 'WAIVED'].includes(brief.status))) {
+      return res.status(403).json({
+        error: 'Gated Action',
+        details: 'Executive Brief must be ACKNOWLEDGED or WAIVED before closing the Intake Window.'
+      });
+    }
+
     // Deterministic Snapshot ID
     const snapshotId = `intake_snap_${nanoid()}`;
     const closedAt = new Date();
@@ -571,11 +649,30 @@ export async function closeIntakeWindow(req: AuthRequest<{ tenantId: string }>, 
 // GET /api/superadmin/firms/:tenantId - Firm Detail
 // ============================================================================
 
+// Import artifact type constant if available, or hardcode string to avoid circular deps if needed
+// const DISCOVERY_SYNTHESIS_ARTIFACT_TYPE = 'DISCOVERY_SYNTHESIS_V1';
+
 export async function getFirmDetail(req: AuthRequest<{ tenantId: string }>, res: Response) {
   try {
     if (!requireSuperAdmin(req, res)) return;
 
     const { tenantId } = req.params;
+
+    // Fetch Executive Brief Status & Derive Phase
+    const [execBrief] = await db
+      .select({ status: executiveBriefs.status })
+      .from(executiveBriefs)
+      .where(eq(executiveBriefs.tenantId, tenantId))
+      .limit(1);
+
+    const briefStatus = execBrief?.status || null;
+
+    let executionPhase = 'INTAKE_OPEN';
+    if (briefStatus === 'APPROVED') {
+      executionPhase = 'EXEC_BRIEF_APPROVED';
+    } else if (briefStatus === 'DRAFT') {
+      executionPhase = 'EXEC_BRIEF_DRAFT';
+    }
 
     // Get tenant info with owner
     const [tenantData] = await db
@@ -602,7 +699,7 @@ export async function getFirmDetail(req: AuthRequest<{ tenantId: string }>, res:
         ownerRole: users.role,
       })
       .from(tenants)
-      .innerJoin(users, eq(tenants.ownerUserId, users.id))
+      .leftJoin(users, eq(tenants.ownerUserId, users.id))
       .where(eq(tenants.id, tenantId))
       .limit(1);
 
@@ -638,6 +735,7 @@ export async function getFirmDetail(req: AuthRequest<{ tenantId: string }>, res:
       role: row.intakes.role,
       status: row.intakes.status,
       answers: row.intakes.answers,
+      coachingFeedback: row.intakes.coachingFeedback,
       createdAt: row.intakes.createdAt,
       completedAt: row.intakes.completedAt,
       userName: row.users.name,
@@ -646,7 +744,13 @@ export async function getFirmDetail(req: AuthRequest<{ tenantId: string }>, res:
 
     // Get roadmaps for this firm
     const firmRoadmaps = await db
-      .select()
+      .select({
+        id: roadmaps.id,
+        status: roadmaps.status,
+        version: roadmaps.version,
+        createdAt: roadmaps.createdAt,
+        updatedAt: roadmaps.updatedAt
+      })
       .from(roadmaps)
       .where(eq(roadmaps.tenantId, tenantId))
       .orderBy(desc(roadmaps.createdAt));
@@ -678,8 +782,8 @@ export async function getFirmDetail(req: AuthRequest<{ tenantId: string }>, res:
     // Roadmap stats
     const roadmapStats = {
       total: firmRoadmaps.length,
-      delivered: firmRoadmaps.filter((r) => r.status === 'delivered').length,
-      draft: firmRoadmaps.filter((r) => r.status !== 'delivered').length,
+      delivered: firmRoadmaps.filter((r) => r.status === 'published').length,
+      draft: firmRoadmaps.filter((r) => r.status === 'draft').length,
     };
 
     // Documents summary by category
@@ -723,6 +827,31 @@ export async function getFirmDetail(req: AuthRequest<{ tenantId: string }>, res:
       diagnosticStatus = await getModerationStatus(tenantId, tenantData.lastDiagnosticId);
     }
 
+    // CANONICAL DIAGNOSTIC STATE: Query diagnostics table
+    const [latestDiagnostic] = await db
+      .select({
+        id: diagnostics.id,
+        status: diagnostics.status,
+        createdAt: diagnostics.createdAt,
+        updatedAt: diagnostics.updatedAt,
+      })
+      .from(diagnostics)
+      .where(eq(diagnostics.tenantId, tenantId))
+      .orderBy(desc(diagnostics.createdAt))
+      .limit(1);
+
+    // CHECK DISCOVERY STATUS
+    const [discoveryDoc] = await db
+      .select({ id: tenantDocuments.id })
+      .from(tenantDocuments)
+      .where(and(
+        eq(tenantDocuments.tenantId, tenantId),
+        eq(tenantDocuments.category, 'DISCOVERY_SYNTHESIS_V1')
+      ))
+      .limit(1);
+
+    const discoveryComplete = !!discoveryDoc;
+
     return res.json({
       tenantSummary: {
         id: tenantData.tenantId,
@@ -731,6 +860,8 @@ export async function getFirmDetail(req: AuthRequest<{ tenantId: string }>, res:
         segment: tenantData.segment,
         region: tenantData.region,
         status: tenantData.status,
+        executiveBriefStatus: briefStatus,
+        executionPhase,
         businessType: tenantData.businessType,
         teamHeadcount: tenantData.teamHeadcount,
         baselineMonthlyLeads: tenantData.baselineMonthlyLeads,
@@ -740,9 +871,12 @@ export async function getFirmDetail(req: AuthRequest<{ tenantId: string }>, res:
         lastDiagnosticId: tenantData.lastDiagnosticId,
         intakeWindowState: tenantData.intakeWindowState,
         intakeSnapshotId: tenantData.intakeSnapshotId,
-        intakeClosedAt: tenantData.intakeClosedAt,
       },
       diagnosticStatus, // Added for Ticket 5 gating
+      latestDiagnostic: latestDiagnostic || null, // CANONICAL: diagnostics table source of truth
+      discoveryStatus: {
+        complete: discoveryComplete
+      },
       owner: owner ? {
         id: owner.id,
         name: owner.name,
@@ -796,7 +930,6 @@ export async function getFirmDetailV2(req: AuthRequest<{ tenantId: string }>, re
         businessType: tenants.businessType,
         teamHeadcount: tenants.teamHeadcount,
         baselineMonthlyLeads: tenants.baselineMonthlyLeads,
-        baselineMonthlyLeads: tenants.baselineMonthlyLeads,
         firmSizeTier: tenants.firmSizeTier,
         notes: tenants.notes,
         lastDiagnosticId: tenants.lastDiagnosticId,
@@ -805,6 +938,7 @@ export async function getFirmDetailV2(req: AuthRequest<{ tenantId: string }>, re
         tenantCreatedAt: tenants.createdAt,
         tenantUpdatedAt: tenants.updatedAt,
         ownerUserId: tenants.ownerUserId,
+        intakeWindowState: tenants.intakeWindowState,
       })
       .from(tenants)
       .where(eq(tenants.id, tenantId))
@@ -812,6 +946,27 @@ export async function getFirmDetailV2(req: AuthRequest<{ tenantId: string }>, re
 
     if (!tenantRow) {
       return res.status(404).json({ error: 'Firm not found' });
+    }
+
+    // 1.1 Fetch Executive Brief Status & Derive Phase
+    const [execBrief] = await db
+      .select({ status: executiveBriefs.status })
+      .from(executiveBriefs)
+      .where(eq(executiveBriefs.tenantId, tenantId))
+      .limit(1);
+
+    const briefStatus = execBrief?.status || null;
+
+    let executionPhase = 'INTAKE_OPEN';
+    if (briefStatus === 'APPROVED') {
+      executionPhase = 'EXEC_BRIEF_APPROVED';
+    } else if (briefStatus === 'DRAFT') {
+      executionPhase = 'EXEC_BRIEF_DRAFT';
+    } else if (tenantRow.intakeWindowState === 'OPEN') {
+      executionPhase = 'INTAKE_OPEN';
+    } else if (tenantRow.intakeWindowState === 'CLOSED') {
+      // Fallback if closed but no brief (e.g. manual close or legacy)
+      executionPhase = 'INTAKE_CLOSED';
     }
 
     const [owner] = await db
@@ -909,7 +1064,14 @@ export async function getFirmDetailV2(req: AuthRequest<{ tenantId: string }>, re
 
     // 7. ROADMAPS
     const roadmapsData = await db
-      .select()
+      .select({
+        id: roadmaps.id,
+        status: roadmaps.status,
+        version: roadmaps.version,
+        createdAt: roadmaps.createdAt,
+        updatedAt: roadmaps.updatedAt,
+        modelJson: roadmaps.modelJson
+      })
       .from(roadmaps)
       .where(eq(roadmaps.tenantId, tenantId))
       .orderBy(desc(roadmaps.createdAt));
@@ -1038,13 +1200,16 @@ export async function getFirmDetailV2(req: AuthRequest<{ tenantId: string }>, re
         createdAt: tenantRow.tenantCreatedAt,
         updatedAt: tenantRow.tenantUpdatedAt,
         ownerUserId: tenantRow.ownerUserId,
+        intakeWindowState: tenantRow.intakeWindowState,
+        executiveBriefStatus: briefStatus,
+        executionPhase,
       },
 
 
       engagementSummary: {
         last30d: {
           intakeCompleted: Number(metricsLast30d[0]?.intakeCompleted || 0),
-          roadmapsDelivered: Number(metricsLast30d[0]?.roadmapsDelivered || 0),
+          roadmapsPublished: Number(metricsLast30d[0]?.roadmapsDelivered || 0),
         },
         lifetime: {
           intakeCompleted: Number(metricsLifetime[0]?.intakeCompleted || 0),
@@ -1068,7 +1233,7 @@ export async function getFirmDetailV2(req: AuthRequest<{ tenantId: string }>, re
           ? {
             id: lastRoadmap.id,
             status: lastRoadmap.status,
-            deliveredAt: lastRoadmap.deliveredAt,
+            deliveredAt: lastRoadmap.status === 'delivered' ? lastRoadmap.updatedAt : null,
             createdAt: lastRoadmap.createdAt,
           }
           : null,
@@ -2403,6 +2568,1385 @@ export async function updateWebinarPassword(req: AuthRequest, res: Response) {
   }
 }
 
+export async function signalReadiness(req: AuthRequest, res: Response) {
+  try {
+    const { tenantId } = req.params;
+    const { signal } = req.body;
+
+    if (!requireExecutiveAuthority(req, res)) return;
+
+    const updates: any = {};
+    if (signal === 'knowledge_base') updates.knowledgeBaseReadyAt = new Date();
+    if (signal === 'roles') updates.rolesValidatedAt = new Date();
+    if (signal === 'exec') updates.execReadyAt = new Date();
+
+    if (Object.keys(updates).length > 0) {
+      await db.update(tenants).set(updates).where(eq(tenants.id, tenantId));
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Signal readiness error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
 
 
 
+
+
+
+// ============================================================================
+// TRUTH PROBE (Lifecycle State)
+// ============================================================================
+
+export async function getTruthProbe(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+
+    const { tenantId } = req.query;
+
+    if (!tenantId || typeof tenantId !== 'string') {
+      return res.status(400).json({ error: 'BAD_REQUEST', message: 'Missing or invalid tenantId' });
+    }
+
+    // 0. Strict Schema Guard
+    const schemaMap: Record<string, any> = {
+      tenants,
+      intakes,
+      executiveBriefs,
+      diagnostics,
+      discoveryCallNotes,
+      sopTickets,
+      roadmaps
+    };
+
+    const missingSchemas = Object.entries(schemaMap)
+      .filter(([key, table]) => !table)
+      .map(([key]) => key);
+
+    if (missingSchemas.length > 0) {
+      console.error('[TruthProbe] CRITICAL: Schema tables unavailable:', missingSchemas);
+      return res.status(503).json({
+        error: 'SCHEMA_UNAVAILABLE',
+        message: 'Database schema definitions are missing at runtime.',
+        missing: missingSchemas
+      });
+    }
+
+    // 1. Tenant
+    console.log('[TruthProbe] Step 1: Tenant');
+    const [tenant] = await db
+      .select({
+        id: tenants.id,
+        name: tenants.name,
+        status: tenants.status
+      })
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
+
+    if (!tenant) {
+      return res.status(404).json({ error: 'NOT_FOUND', message: 'Tenant not found' });
+    }
+
+    // 2. Intake
+    console.log('[TruthProbe] Step 2: Intake');
+    const [intake] = await db
+      .select({
+        id: intakes.id,
+        status: intakes.status,
+        createdAt: intakes.createdAt
+      })
+      .from(intakes)
+      .where(eq(intakes.tenantId, tenant.id))
+      .orderBy(desc(intakes.createdAt))
+      .limit(1);
+
+    // 3. Executive Brief
+    console.log('[TruthProbe] Step 3: Executive Brief');
+    const [brief] = await db
+      .select({
+        id: executiveBriefs.id,
+        status: executiveBriefs.status,
+        approvedAt: executiveBriefs.approvedAt,
+        createdAt: executiveBriefs.createdAt
+      })
+      .from(executiveBriefs)
+      .where(eq(executiveBriefs.tenantId, tenant.id))
+      .orderBy(desc(executiveBriefs.createdAt))
+      .limit(1);
+
+    // Map Legacy APPROVED to REVIEWED for Canonical V2
+    const canonicalBriefStatus = (brief?.status === 'APPROVED') ? 'REVIEWED' : brief?.status;
+
+    // 4. Diagnostic
+    console.log('[TruthProbe] Step 4: Diagnostic');
+    const [diagnostic] = await db
+      .select({
+        id: diagnostics.id,
+        status: diagnostics.status,
+        createdAt: diagnostics.createdAt
+      })
+      .from(diagnostics)
+      .where(eq(diagnostics.tenantId, tenant.id))
+      .orderBy(desc(diagnostics.createdAt))
+      .limit(1);
+
+    // 5. Discovery Synthesis (Discovery Call Notes)
+    console.log('[TruthProbe] Step 5: Discovery');
+    const [discovery] = await db
+      .select({
+        id: discoveryCallNotes.id,
+        createdAt: discoveryCallNotes.createdAt
+      })
+      .from(discoveryCallNotes)
+      .where(eq(discoveryCallNotes.tenantId, tenantId))
+      .orderBy(desc(discoveryCallNotes.createdAt))
+      .limit(1);
+
+    // 5b. Canonical Findings
+    console.log('[TruthProbe] Step 5b: Canonical Findings');
+    const [findingsArtifact] = await db
+      .select({ id: tenantDocuments.id, createdAt: tenantDocuments.createdAt })
+      .from(tenantDocuments)
+      .where(and(
+        eq(tenantDocuments.tenantId, tenantId),
+        eq(tenantDocuments.category, 'findings_canonical')
+      ))
+      .orderBy(desc(tenantDocuments.createdAt))
+      .limit(1);
+
+    const [proposedFindingsArtifact] = await db
+      .select({ id: tenantDocuments.id, createdAt: tenantDocuments.createdAt })
+      .from(tenantDocuments)
+      .where(and(
+        eq(tenantDocuments.tenantId, tenantId),
+        eq(tenantDocuments.category, 'findings_proposed')
+      ))
+      .orderBy(desc(tenantDocuments.createdAt))
+      .limit(1);
+
+    // 6. Tickets (Drafts & SOPs)
+    console.log('[TruthProbe] Step 6: Tickets (Stats)');
+
+    // Check for draft tickets first (Stage 6 Canonical)
+    const draftStats = await db
+      .select({
+        status: ticketsDraft.status,
+        count: count()
+      })
+      .from(ticketsDraft)
+      .where(eq(ticketsDraft.tenantId, tenant.id))
+      .groupBy(ticketsDraft.status);
+
+    const hasDrafts = draftStats.length > 0;
+
+    // Fallback/Legacy: Check sop_tickets
+    const ticketStats = await db
+      .select({
+        status: sopTickets.moderationStatus,
+        approved: sopTickets.approved,
+        count: count()
+      })
+      .from(sopTickets)
+      .where(eq(sopTickets.tenantId, tenant.id))
+      .groupBy(sopTickets.moderationStatus, sopTickets.approved);
+
+    let totalTickets = 0;
+    let approvedTickets = 0;
+    let rejectedTickets = 0;
+    let pendingTickets = 0;
+
+    if (hasDrafts) {
+      // Stage 6 Mode: Use Drafts
+      totalTickets = draftStats.reduce((sum, s) => sum + (s.count ?? 0), 0);
+      pendingTickets = draftStats
+        .filter(s => s.status === 'pending')
+        .reduce((sum, s) => sum + (s.count ?? 0), 0);
+      approvedTickets = draftStats
+        .filter(s => s.status === 'accepted')
+        .reduce((sum, s) => sum + (s.count ?? 0), 0);
+      rejectedTickets = draftStats
+        .filter(s => s.status === 'rejected')
+        .reduce((sum, s) => sum + (s.count ?? 0), 0);
+    } else {
+      // Legacy Mode: Use sop_tickets
+      totalTickets = ticketStats.reduce((sum, s) => sum + (s.count ?? 0), 0);
+      approvedTickets = ticketStats
+        .filter(s => s.approved === true)
+        .reduce((sum, s) => sum + (s.count ?? 0), 0);
+      rejectedTickets = ticketStats
+        .filter(s => s.status === 'rejected')
+        .reduce((sum, s) => sum + (s.count ?? 0), 0);
+      pendingTickets = ticketStats
+        .filter(s => s.approved !== true && s.status !== 'rejected')
+        .reduce((sum, s) => sum + (s.count ?? 0), 0);
+    }
+
+    console.log('[TruthProbe] Step 6b: Tickets (Last)');
+    const [lastTicket] = await db
+      .select({ generatedAt: sopTickets.createdAt, moderatedAt: sopTickets.moderatedAt })
+      .from(sopTickets)
+      .where(eq(sopTickets.tenantId, tenant.id))
+      .orderBy(desc(sopTickets.createdAt))
+      .limit(1);
+
+    // 7. Roadmap
+    console.log('[TruthProbe] Step 7: Roadmap');
+    const [roadmap] = await db
+      .select({
+        id: roadmaps.id,
+        status: roadmaps.status,
+        updatedAt: roadmaps.updatedAt
+      })
+      .from(roadmaps)
+      .where(eq(roadmaps.tenantId, tenant.id))
+      .orderBy(desc(roadmaps.createdAt))
+      .limit(1);
+
+    // 8. Readiness Computation (Consistent with Gates)
+    console.log('[TruthProbe] Step 8: Readiness');
+    const blockingReasons: string[] = [];
+    // Allow REVIEWED (or Legacy APPROVED mapped to REVIEWED)
+    if (canonicalBriefStatus !== 'REVIEWED') blockingReasons.push('NO_REVIEWED_BRIEF');
+    if (!diagnostic) blockingReasons.push('NO_DIAGNOSTIC');
+    if (!discovery) blockingReasons.push('NO_DISCOVERY_NOTES');
+    if (!proposedFindingsArtifact) blockingReasons.push('NO_PROPOSED_FINDINGS');
+    if (!findingsArtifact) blockingReasons.push('NO_CANONICAL_FINDINGS');
+    if (approvedTickets === 0) blockingReasons.push('NO_APPROVED_TICKETS');
+
+    // Strict sequential gates:
+    // Discovery (Execution) requires Synthesis + Diagnostic + Brief (Verified)
+    const canRunDiscovery = !!(canonicalBriefStatus === 'REVIEWED' && diagnostic && discovery);
+
+    // Moderation requires active tickets
+    const canModerateTickets = totalTickets > 0 && pendingTickets > 0;
+
+    // Finalization requires roadmap + approved tickets
+    const canFinalizeRoadmap = !!(roadmap && approvedTickets > 0);
+
+    return res.json({
+      tenantId: tenant.id,
+      tenantName: tenant.name,
+      tenantStatus: tenant.status,
+
+      intake: {
+        exists: !!intake,
+        latestIntakeId: intake?.id ?? null,
+        state: intake?.status ?? null,
+        updatedAt: intake?.createdAt?.toISOString() ?? null,
+        sufficiencyHint: intake?.status === 'completed' ? 'COMPLETE' : 'INCOMPLETE'
+      },
+
+      executiveBrief: {
+        exists: !!brief,
+        briefId: brief?.id ?? null,
+        state: canonicalBriefStatus ?? null,
+        approvedAt: brief?.approvedAt?.toISOString() ?? null
+      },
+
+      diagnostic: {
+        exists: !!diagnostic,
+        diagnosticId: diagnostic?.id ?? null,
+        state: diagnostic?.status ?? null,
+        createdAt: diagnostic?.createdAt?.toISOString() ?? null
+      },
+
+      discovery: {
+        exists: !!discovery,
+        id: discovery?.id || null,
+        createdAt: discovery?.createdAt || null
+      },
+      findings: {
+        exists: !!findingsArtifact,
+        hasProposed: !!proposedFindingsArtifact,
+        proposedId: proposedFindingsArtifact?.id || null,
+        id: findingsArtifact?.id || null,
+        createdAt: findingsArtifact?.createdAt || null
+      },
+
+      tickets: {
+        total: totalTickets,
+        pending: pendingTickets,
+        approved: approvedTickets,
+        rejected: rejectedTickets,
+        isDraft: hasDrafts,
+        lastGeneratedAt: lastTicket?.generatedAt?.toISOString() ?? null,
+        lastModeratedAt: lastTicket?.moderatedAt?.toISOString() ?? null
+      },
+
+      roadmap: {
+        exists: !!roadmap,
+        roadmapId: roadmap?.id ?? null,
+        state: roadmap?.status ?? null,
+        lastUpdatedAt: roadmap?.updatedAt?.toISOString() ?? null,
+        isUnlocked: !!roadmap && roadmap.status === 'published'
+      },
+
+      readiness: {
+        canRunDiscovery,
+        canModerateTickets,
+        canFinalizeRoadmap,
+        blockingReasons
+      },
+
+      provenance: {
+        computedAt: new Date().toISOString(),
+        sources: [
+          { field: 'tenant', source: 'tenants (backend/src/db/schema.ts:8)' },
+          { field: 'intake', source: 'intakes (backend/src/db/schema.ts:80)' },
+          { field: 'executiveBrief', source: 'executive_briefs (backend/src/db/schema.ts:156)' },
+          { field: 'diagnostic', source: 'diagnostics (backend/src/db/schema.ts:951)' },
+          { field: 'discovery', source: 'discovery_call_notes (backend/src/db/schema.ts:836)' },
+          { field: 'tickets', source: 'sop_tickets (backend/src/db/schema.ts:674)' },
+          { field: 'roadmap', source: 'roadmaps (backend/src/db/schema.ts:236)' },
+          { field: 'readiness', source: 'superadmin.controller.ts:getTruthProbe' }
+        ]
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Truth Probe Error:', error);
+
+    const dbErrorCodes = ['ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND'];
+    const isDbError = dbErrorCodes.includes(error.code) ||
+      error.message?.includes('connect') ||
+      error.message?.includes('timeout') ||
+      error.message?.includes('orderSelectedFields') ||
+      error.message?.includes('Cannot convert undefined or null to object');
+
+    if (isDbError) {
+      return res.status(503).json({ error: 'DB_UNAVAILABLE', details: error.message });
+    }
+
+    return res.status(500).json({ error: 'Truth Probe failed', details: error.message });
+  }
+}
+
+// ============================================================================
+// META-TICKET v2: EXECUTION PIPELINE ACTIONS
+// ============================================================================
+
+export async function lockIntake(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { tenantId } = req.params;
+
+    const check = await canLockIntake(tenantId);
+    if (!check.allowed) {
+      return res.status(403).json({ error: 'GATE_LOCKED', message: check.reason });
+    }
+
+    await db.update(tenants)
+      .set({
+        intakeClosedAt: new Date(),
+      })
+      .where(eq(tenants.id, tenantId));
+
+    await db.insert(auditEvents).values({
+      tenantId,
+      actorUserId: req.user!.id || null,
+      actorRole: req.user?.role,
+      eventType: 'INTAKE_LOCKED',
+      entityType: 'tenant',
+      entityId: tenantId,
+      metadata: { lockedAt: new Date() }
+    });
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('Lock Intake Error:', error);
+    return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+  }
+}
+
+export async function generateDiagnostics(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { tenantId } = req.params;
+
+    const check = await canGenerateDiagnostics(tenantId);
+    if (!check.allowed) {
+      return res.status(403).json({ error: 'GATE_LOCKED', message: check.reason });
+    }
+
+    // 1. Build Context
+    const normalized = await buildNormalizedIntakeContext(tenantId);
+
+    // 2. Generate (SOP-01 Engine)
+    const outputs = await generateSop01Outputs(normalized);
+
+    // 3. Persist outputs to the diagnostic record
+
+    // 4. Create/Update Diagnostic Record
+    // Check for existing 'generated' diagnostic
+    const [existing] = await db.select().from(diagnostics)
+      .where(and(eq(diagnostics.tenantId, tenantId), eq(diagnostics.status, 'generated')))
+      .limit(1);
+
+    let diagnosticId = existing?.id;
+    let isNewDiagnostic = false;
+
+    const diagnosticValues = {
+      tenantId,
+      sopVersion: 'SOP-01',
+      status: 'generated' as const,
+      overview: { markdown: outputs.companyDiagnosticMap },
+      aiOpportunities: { markdown: outputs.aiLeverageMap },
+      roadmapSkeleton: { markdown: outputs.roadmapSkeleton },
+      discoveryQuestions: { list: outputs.discoveryCallQuestions },
+      generatedByUserId: req.user!.id || null,
+      updatedAt: new Date()
+    };
+
+    if (!diagnosticId) {
+      const [newDiag] = await db.insert(diagnostics).values(diagnosticValues).returning();
+      diagnosticId = newDiag.id;
+      isNewDiagnostic = true;
+
+      // Update tenant lastDiagnosticId
+      await db.update(tenants)
+        .set({ lastDiagnosticId: diagnosticId })
+        .where(eq(tenants.id, tenantId));
+    } else {
+      // Update existing record with fresh outputs
+      await db.update(diagnostics)
+        .set(diagnosticValues)
+        .where(eq(diagnostics.id, diagnosticId));
+    }
+
+    // ✅ Only insert audit event for new diagnostics (prevents duplicates)
+    if (isNewDiagnostic) {
+      await db.insert(auditEvents).values({
+        tenantId,
+        actorUserId: req.user!.id || null,
+        actorRole: req.user?.role,
+        eventType: 'DIAGNOSTIC_GENERATED',
+        entityType: 'diagnostic',
+        entityId: diagnosticId,
+        metadata: { version: 'v2' }
+      });
+    }
+
+    return res.json({ success: true, diagnosticId });
+  } catch (error: any) {
+    console.error('Generate Diagnostics Error:', error);
+    return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+  }
+}
+
+export async function lockDiagnostic(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { diagnosticId } = req.params;
+
+    const check = await canLockDiagnostic(diagnosticId);
+    if (!check.allowed) {
+      return res.status(403).json({ error: 'GATE_LOCKED', message: check.reason });
+    }
+
+    await db.update(diagnostics)
+      .set({ status: 'locked' })
+      .where(eq(diagnostics.id, diagnosticId));
+
+    // ✅ Sync to tenant_documents once LOCKED (Requirement: Tenant sees locked artifacts)
+    const [diag] = await db.select().from(diagnostics).where(eq(diagnostics.id, diagnosticId)).limit(1);
+    if (diag) {
+      const outputs = {
+        sop01DiagnosticMarkdown: diag.overview,
+        sop01AiLeverageMarkdown: diag.aiOpportunities,
+        sop01RoadmapSkeletonMarkdown: diag.roadmapSkeleton,
+        sop01DiscoveryQuestionsMarkdown: diag.discoveryQuestions
+      };
+      await persistSop01OutputsForTenant(diag.tenantId, outputs as any);
+    }
+
+    // Audit
+    await db.insert(auditEvents).values({
+      tenantId: null,
+      actorUserId: req.user!.id || null,
+      actorRole: req.user?.role,
+      eventType: 'DIAGNOSTIC_LOCKED',
+      entityType: 'diagnostic',
+      entityId: diagnosticId
+    });
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('Lock Diagnostic Error:', error);
+    return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+  }
+}
+
+// ... imports assumed ...
+
+export async function publishDiagnostic(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { diagnosticId } = req.params;
+
+    const check = await canPublishDiagnostics(diagnosticId);
+    if (!check.allowed) {
+      return res.status(403).json({ error: 'GATE_LOCKED', message: check.reason });
+    }
+
+    // Fetch diagnostic to get tenantId
+    const [diag] = await db.select().from(diagnostics).where(eq(diagnostics.id, diagnosticId)).limit(1);
+    if (!diag) return res.status(404).json({ error: 'Diagnostic not found' });
+
+    // Demote any currently published diagnostics to 'archived'
+    // Note: We need 'and' from drizzle-orm. If not available, we can filter differently or assume it's imported.
+    // Assuming 'and' is available or blindly adding it might break if not imported.
+    // I will try to use a pragmatic approach: Find published ones and update them by ID.
+    const publishedDiags = await db.select().from(diagnostics).where(eq(diagnostics.tenantId, diag.tenantId));
+    const toArchive = publishedDiags.filter(d => d.status === 'published' && d.id !== diagnosticId);
+
+    for (const d of toArchive) {
+      await db.update(diagnostics).set({ status: 'archived' }).where(eq(diagnostics.id, d.id));
+    }
+
+    // Publish the target diagnostic
+    await db.update(diagnostics)
+      .set({ status: 'published' })
+      .where(eq(diagnostics.id, diagnosticId));
+
+    // Audit
+    await db.insert(auditEvents).values({
+      tenantId: diag.tenantId, // Use the fetched tenantId
+      actorUserId: req.user!.id || null,
+      actorRole: req.user?.role,
+      eventType: 'DIAGNOSTIC_PUBLISHED',
+      entityType: 'diagnostic',
+      entityId: diagnosticId
+    });
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('Publish Diagnostic Error:', error);
+    return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+  }
+}
+
+export async function getDiscoveryNotes(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { tenantId } = req.params;
+
+    const [discoveryRecord] = await db
+      .select({ notes: discoveryCallNotes.notes, updatedAt: discoveryCallNotes.updatedAt })
+      .from(discoveryCallNotes)
+      .where(eq(discoveryCallNotes.tenantId, tenantId))
+      .orderBy(desc(discoveryCallNotes.createdAt))
+      .limit(1);
+
+    if (!discoveryRecord) {
+      return res.status(404).json({ error: 'NOT_FOUND', message: 'No discovery notes found for this firm.' });
+    }
+
+    return res.json({
+      notes: discoveryRecord.notes,
+      updatedAt: discoveryRecord.updatedAt?.toISOString() || null
+    });
+  } catch (error: any) {
+    console.error('Get Discovery Notes Error:', error);
+    return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+  }
+}
+
+export async function ingestDiscoveryNotes(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { tenantId } = req.params;
+    const { notes } = req.body; // Expects JSON stringified CanonicalDiscoveryNotes
+
+    const check = await canIngestDiscoveryNotes(tenantId);
+    if (!check.allowed) {
+      return res.status(403).json({ error: 'GATE_LOCKED', message: check.reason });
+    }
+
+    if (!notes) {
+      return res.status(400).json({ error: 'Missing notes content' });
+    }
+
+    // 1. Validation Refactor (Enforcement)
+    let parsedNotes: any;
+    try {
+      if (typeof notes === 'string') {
+        parsedNotes = JSON.parse(notes);
+      } else {
+        parsedNotes = notes; // Already object
+      }
+    } catch (e) {
+      return res.status(400).json({ error: 'INVALID_JSON', message: 'Notes must be valid JSON.' });
+    }
+
+    // 2. Shape Alignment (V2: Accept RAW Capture Shape or Canonical Wrapper)
+    let canonicalNotes: CanonicalDiscoveryNotes;
+
+    // Check for RAW capture shape (Option 1 preference)
+    if (parsedNotes.rawNotes || (parsedNotes.sessionDate && parsedNotes.rawNotes !== undefined)) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[ingestDiscoveryNotes] Detected RAW Capture Shape');
+      }
+      canonicalNotes = {
+        sessionMetadata: {
+          date: parsedNotes.sessionDate || new Date().toISOString().split('T')[0],
+          duration: parsedNotes.durationMinutes?.toString() || '',
+          attendees: parsedNotes.attendees || '',
+          firmName: '' // Will be updated if needed or left blank
+        },
+        currentBusinessReality: parsedNotes.rawNotes || '',
+        primaryFrictionPoints: '',
+        desiredFutureState: '',
+        technicalOperationalEnvironment: '',
+        explicitClientConstraints: ''
+      };
+    } else {
+      // Treat as Canonical Discovery Notes (either wrapped or direct)
+      canonicalNotes = parsedNotes;
+    }
+
+    // 3. Schema Enforcement (Relaxed for Stage 4 RAW)
+    const REQUIRED_TRUTH_BUCKETS = ['currentBusinessReality'];
+    const issues: { path: string; message: string }[] = [];
+
+    if (!canonicalNotes.sessionMetadata) {
+      issues.push({ path: 'sessionMetadata', message: 'Missing session metadata object.' });
+    } else if (!canonicalNotes.sessionMetadata.date) {
+      issues.push({ path: 'sessionMetadata.date', message: 'Session date is required.' });
+    }
+
+    REQUIRED_TRUTH_BUCKETS.forEach(field => {
+      if (!canonicalNotes[field as keyof CanonicalDiscoveryNotes]) {
+        issues.push({ path: field, message: `Field '${field}' is required for raw capture.` });
+      }
+    });
+
+    if (issues.length > 0) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[ingestDiscoveryNotes] SCHEMA_VIOLATION:', issues);
+      }
+      return res.status(400).json({
+        error: 'SCHEMA_VIOLATION',
+        message: `Validation failed for ${issues.length} fields.`,
+        issues
+      });
+    }
+
+    // Assign back to parsedNotes for downstream services
+    parsedNotes = canonicalNotes;
+
+    // 3. Persist Immutable Truth
+    // Stores as JSON string to preserve structure in text column
+    const canonicalPayload = JSON.stringify(parsedNotes);
+
+    const [discoveryRecord] = await db.insert(discoveryCallNotes).values({
+      tenantId,
+      notes: canonicalPayload,
+      status: 'ingested',
+      createdByUserId: req.user!.id || null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning({ id: discoveryCallNotes.id });
+
+    // 4. Trigger Findings Extraction (F1-F4)
+    // Dynamic import to avoid circular dep issues in this monolithic file
+    const { FindingsService } = await import('../services/findings.service');
+
+    // Safety check for import
+    if (!FindingsService) {
+      throw new Error('FindingsService failed to load');
+    }
+
+    const findingsObject = FindingsService.extractFindings(tenantId, discoveryRecord.id, parsedNotes);
+
+    // Persist Proposed Findings Artifact (Draft for review)
+    await db.insert(tenantDocuments).values({
+      tenantId,
+      category: 'findings_proposed',
+      title: 'Proposed Findings (Auto-Generated)',
+      filename: `findings-proposed-${discoveryRecord.id}.json`,
+      originalFilename: `findings-proposed-${discoveryRecord.id}.json`,
+      description: 'Deterministic extraction from Discovery Notes (Awaiting Review)',
+      content: JSON.stringify(findingsObject),
+      fileSize: Buffer.byteLength(JSON.stringify(findingsObject)),
+      filePath: 'virtual://findings', // Virtual path
+      uploadedBy: req.user!.id || null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    // Audit
+    await db.insert(auditEvents).values({
+      tenantId,
+      actorUserId: req.user!.id || null,
+      actorRole: req.user?.role,
+      eventType: 'DISCOVERY_NOTES_INGESTED_AND_COMPILED',
+      entityType: 'tenant',
+      entityId: tenantId,
+      metadata: {
+        schemaVersion: 'CANONICAL_V1',
+        findingsCount: findingsObject.findings.length
+      }
+    });
+
+    return res.json({ success: true });
+
+  } catch (error: any) {
+    console.error('Ingest Discovery Error:', error);
+    return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+  }
+}
+
+/**
+ * GET /api/superadmin/diagnostics/:diagnosticId/artifacts
+ * Returns diagnostic with all artifacts for modal display
+ */
+export async function getDiagnosticArtifacts(req: AuthRequest, res: Response) {
+  try {
+    const { diagnosticId } = req.params;
+
+    if (!diagnosticId) {
+      return res.status(400).json({ error: 'Diagnostic ID is required' });
+    }
+
+    // Fetch diagnostic with all artifacts
+    const [diagnostic] = await db
+      .select()
+      .from(diagnostics)
+      .where(eq(diagnostics.id, diagnosticId))
+      .limit(1);
+
+    if (!diagnostic) {
+      return res.status(404).json({
+        error: 'DIAGNOSTIC_NOT_FOUND',
+        message: 'No diagnostic found with this ID.'
+      });
+    }
+
+    // Return diagnostic with artifacts structured for the modal
+    return res.status(200).json({
+      diagnostic: {
+        id: diagnostic.id,
+        tenantId: diagnostic.tenantId,
+        sopVersion: diagnostic.sopVersion,
+        status: diagnostic.status,
+        createdAt: diagnostic.createdAt,
+        updatedAt: diagnostic.updatedAt,
+        approvedAt: diagnostic.approvedAt,
+        generatedByUserId: diagnostic.generatedByUserId,
+        approvedByUserId: diagnostic.approvedByUserId,
+      },
+      outputs: {
+        overview: diagnostic.overview,
+        aiOpportunities: diagnostic.aiOpportunities,
+        roadmapSkeleton: diagnostic.roadmapSkeleton,
+        discoveryQuestions: diagnostic.discoveryQuestions,
+      }
+    });
+
+  } catch (error: any) {
+    console.error('[Diagnostic Artifacts] Get error:', error);
+    return res.status(500).json({
+      error: 'Internal Server Error',
+      details: 'Failed to retrieve diagnostic artifacts.'
+    });
+  }
+}
+/**
+ * POST /api/superadmin/firms/:tenantId/assisted-synthesis/generate-proposals
+ * Generates proposed findings using LLM synthesis of all artifacts
+ */
+export async function generateAssistedProposals(req: AuthRequest, res: Response) {
+  const requestId = randomUUID(); // PHASE 1: Request correlation
+
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { tenantId } = req.params;
+
+    console.log(`[generateAssistedProposals:${requestId}] Request for tenant ${tenantId}`);
+
+    // Dynamic import to avoid circular dependencies
+    const { AssistedSynthesisProposalsService, ProposalGenerationError } = await import('../services/assistedSynthesisProposals.service');
+
+    // Generate proposals using LLM (with requestId for tracing)
+    const draft = await AssistedSynthesisProposalsService.generateProposals(tenantId);
+
+    // Persist to tenant_documents (PHASE 2.5)
+    try {
+      const [existing] = await db
+        .select()
+        .from(tenantDocuments)
+        .where(and(
+          eq(tenantDocuments.tenantId, tenantId),
+          eq(tenantDocuments.category, 'findings_proposed')
+        ))
+        .orderBy(desc(tenantDocuments.createdAt))
+        .limit(1);
+
+      // Archive previous if exists
+      if (existing) {
+        await db
+          .update(tenantDocuments)
+          .set({ category: 'findings_proposed_archived' })
+          .where(eq(tenantDocuments.id, existing.id));
+      }
+
+      // Insert new proposed findings
+      await db.insert(tenantDocuments).values({
+        tenantId,
+        category: 'findings_proposed',
+        title: 'Proposed Findings Draft',
+        filename: `findings-proposed-${Date.now()}.json`,
+        originalFilename: 'findings-proposed.json',
+        filePath: `/virtual/findings-proposed-${Date.now()}.json`,
+        fileSize: JSON.stringify(draft).length,
+        content: JSON.stringify(draft),
+        uploadedBy: req.user!.id || null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      console.log(`[generateAssistedProposals:${requestId}] Successfully persisted ${draft.items.length} proposals`);
+    } catch (dbError: any) {
+      console.error(`[generateAssistedProposals:${requestId}] DB persist failed:`, dbError);
+      return res.status(500).json({
+        code: 'PROPOSALS_PERSIST_FAILED',
+        message: 'Generated proposals but failed to save. Retry or contact support.',
+        requestId,
+        details: dbError.message
+      });
+    }
+
+    return res.json(draft);
+  } catch (error: any) {
+    console.error(`[generateAssistedProposals:${requestId}] Error:`, error);
+
+    // PHASE 1 & 2: Structured error responses
+    if (error.name === 'ProposalGenerationError') {
+      const statusCode =
+        error.code === 'SOURCE_ARTIFACTS_MISSING' ? 400 :
+          error.code === 'INVALID_DISCOVERY_NOTES' ? 400 :
+            error.code === 'LLM_CONFIG_MISSING' ? 500 :
+              error.code === 'LLM_API_FAILED' ? 502 :
+                error.code === 'LLM_BAD_RESPONSE' ? 502 :
+                  error.code === 'LLM_INVALID_SCHEMA' ? 502 :
+                    500;
+
+      return res.status(statusCode).json({
+        code: error.code,
+        message: error.message,
+        requestId,
+        details: error.details
+      });
+    }
+
+    // Unexpected error
+    return res.status(500).json({
+      code: 'UNKNOWN_ERROR',
+      message: 'An unexpected error occurred. Contact support.',
+      requestId,
+      details: error.message
+    });
+  }
+}
+
+/**
+ * GET /api/superadmin/firms/:tenantId/findings/proposed
+ * Returns the latest proposed findings for review
+ */
+export async function getProposedFindings(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { tenantId } = req.params;
+
+    const [proposed] = await db
+      .select()
+      .from(tenantDocuments)
+      .where(and(
+        eq(tenantDocuments.tenantId, tenantId),
+        eq(tenantDocuments.category, 'findings_proposed')
+      ))
+      .orderBy(desc(tenantDocuments.createdAt))
+      .limit(1);
+
+    if (!proposed || !proposed.content) {
+      // Return empty state indicating no proposals generated yet
+      return res.json({
+        version: 'v2.0-proposal-1',
+        items: [],
+        generatedBy: 'none',
+        sourceArtifactIds: [],
+        createdAt: null,
+        requiresGeneration: true
+      });
+    }
+
+    const draft = JSON.parse(proposed.content);
+    return res.json(draft);
+  } catch (error: any) {
+    console.error('Get Proposed Findings Error:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+}
+
+/**
+ * POST /api/superadmin/firms/:tenantId/findings/declare
+ * Promotes reviewed findings to canonical status
+ */
+export async function declareCanonicalFindings(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { tenantId } = req.params;
+    const { findings } = req.body;
+
+    if (!findings || !Array.isArray(findings)) {
+      return res.status(400).json({ error: 'Missing findings data' });
+    }
+
+    const [discoveryRecord] = await db
+      .select()
+      .from(discoveryCallNotes)
+      .where(eq(discoveryCallNotes.tenantId, tenantId))
+      .orderBy(desc(discoveryCallNotes.createdAt))
+      .limit(1);
+
+    if (!discoveryRecord) {
+      return res.status(404).json({ error: 'No discovery context found' });
+    }
+
+    const findingsObject = {
+      id: randomUUID(),
+      tenantId,
+      generatedAt: new Date(),
+      discoveryRef: discoveryRecord.id,
+      findings
+    };
+
+    // Persist Canonical Findings
+    await db.insert(tenantDocuments).values({
+      tenantId,
+      category: 'findings_canonical',
+      title: 'Canonical Findings (Operator Reviewed)',
+      filename: `findings-canonical-${discoveryRecord.id}.json`,
+      originalFilename: `findings-canonical-${discoveryRecord.id}.json`,
+      description: 'Promoted from Stage 5 Assisted Synthesis',
+      content: JSON.stringify(findingsObject),
+      fileSize: Buffer.byteLength(JSON.stringify(findingsObject)),
+      filePath: 'virtual://findings',
+      uploadedBy: req.user!.id || null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    // Audit
+    await db.insert(auditEvents).values({
+      tenantId,
+      actorUserId: req.user!.id || null,
+      actorRole: req.user?.role,
+      eventType: 'FINDINGS_DECLARED_CANONICAL',
+      entityType: 'tenant',
+      entityId: tenantId,
+      metadata: {
+        findingsCount: findings.length
+      }
+    });
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('Declare Canonical Findings Error:', error);
+    return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+  }
+}
+
+// ============================================================================
+// POST /api/superadmin/firms/:tenantId/ticket-moderation/activate
+// ============================================================================
+
+export async function activateTicketModeration(req: AuthRequest, res: Response) {
+  const { tenantId } = req.params;
+  console.log(`[Stage 6] activateTicketModeration triggered for tenant: ${tenantId}`);
+  try {
+    if (!requireSuperAdmin(req, res)) {
+      console.warn(`[Stage 6] Unauthorized attempt by user: ${req.user?.id}`);
+      return;
+    }
+
+    // 1. Validation: Canonical findings must exist
+    console.log(`[Stage 6] Checking for canonical findings for tenant: ${tenantId}`);
+    const [canonicalDoc] = await db
+      .select()
+      .from(tenantDocuments)
+      .where(
+        and(
+          eq(tenantDocuments.tenantId, tenantId),
+          eq(tenantDocuments.category, 'findings_canonical')
+        )
+      )
+      .orderBy(desc(tenantDocuments.createdAt))
+      .limit(1);
+
+    if (!canonicalDoc) {
+      console.error(`[Stage 6] Error: Canonical findings not found for ${tenantId}`);
+      return res.status(400).json({ error: 'Canonical findings not found. Declare findings first.' });
+    }
+    console.log(`[Stage 6] Found canonical doc: ${canonicalDoc.id}`);
+
+    // 2. Check for existing active session
+    console.log(`[Stage 6] Checking for existing active session for ${tenantId}`);
+    const [existingSession] = await db
+      .select()
+      .from(ticketModerationSessions)
+      .where(
+        and(
+          eq(ticketModerationSessions.tenantId, tenantId),
+          eq(ticketModerationSessions.status, 'active')
+        )
+      )
+      .limit(1);
+
+    if (existingSession) {
+      console.warn(`[Stage 6] Active session already exists for ${tenantId}: ${existingSession.id}`);
+      return res.status(400).json({ error: 'Ticket moderation session is already active.' });
+    }
+
+    // 3. Create Session & Materialize Tickets (Atomic logic)
+    console.log(`[Stage 6] Materializing tickets from canonical findings...`);
+    const content = JSON.parse(canonicalDoc.content || '{}');
+    const sourceFindings = content.findings || [];
+    console.log(`[Stage 6] Source findings count: ${sourceFindings.length}`);
+
+    // Support both 'accepted' status AND implicit acceptance (anything in canon is accepted)
+    // 3. Generate tickets via Legacy AI Architect (SOP-01)
+    // Fetch SOP artifacts
+    console.log(`[Stage 6] Fetching SOP-01 artifacts...`);
+    const sopDocs = await db.select().from(tenantDocuments).where(and(eq(tenantDocuments.tenantId, tenantId), eq(tenantDocuments.category, 'sop_output')));
+
+    const sop01Artifacts = {
+      diagnosticMap: sopDocs.find(d => d.outputNumber === 'DIAGNOSTIC_MAP'),
+      aiLeverageMap: sopDocs.find(d => d.outputNumber === 'AI_LEVERAGE_MAP'),
+      roadmapSkeleton: sopDocs.find(d => d.outputNumber === 'ROADMAP_SKELETON'),
+      discoveryQuestions: sopDocs.find(d => d.outputNumber === 'DISCOVERY_QUESTIONS'),
+    };
+
+    // Validate we have enough to generate
+    if (!sop01Artifacts.diagnosticMap || !sop01Artifacts.roadmapSkeleton) {
+      console.error(`[Stage 6] Missing artifacts: diagMap=${!!sop01Artifacts.diagnosticMap}, skeleton=${!!sop01Artifacts.roadmapSkeleton}`);
+      return res.status(409).json({
+        error: 'MISSING_ARTIFACTS',
+        message: 'Cannot generate tickets: SOP-01 artifacts (Diagnostic Map, Roadmap Skeleton) are missing. Please ensure diagnostic interpretation is complete.'
+      });
+    }
+    // Fetch Tenant Data for AI Context
+    const [tenantData] = await db
+      .select({
+        tenantName: tenants.name,
+        firmSizeTier: tenants.firmSizeTier,
+        teamHeadcount: tenants.teamHeadcount
+      })
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
+
+    if (!tenantData) {
+      console.error(`[Stage 6] Tenant not found for context: ${tenantId}`);
+      return res.status(404).json({ error: 'Tenant data not found' });
+    }
+
+    let rawTickets: ParsedTicket[] = [];
+    try {
+      const diagMap = {
+        tenantId,
+        firmName: tenantData.tenantName || 'Firm',
+        firmSize: tenantData.firmSizeTier || 'Small',
+        employeeCount: tenantData.teamHeadcount || 5
+      };
+
+      console.log(`[Stage 6] invoking legacy AI Ticket Architect for ${tenantId}...`);
+      rawTickets = await generateRawTickets(tenantId, diagMap, sop01Artifacts);
+      console.log(`[Stage 6] Raw tickets generated: ${rawTickets.length}`);
+    } catch (e: any) {
+      if (e instanceof InventoryEmptyError) {
+        console.warn(`[Stage 6] Fail-Closed: Inventory Empty for ${tenantId}. Skipping OpenAI.`);
+        return res.status(409).json({
+          error: 'INVENTORY_EMPTY',
+          message: 'No inventory items could be extracted from SOP artifacts. Check artifact format.',
+          debug: e.debug
+        });
+      }
+      console.error('[Stage 6] AI Ticket Generation Failed:', e);
+      return res.status(502).json({ error: 'AI_GENERATION_FAILED', message: e.message });
+    }
+
+    const { session, draftCount } = await db.transaction(async (tx) => {
+      const [newSession] = await tx.insert(ticketModerationSessions).values({
+        tenantId,
+        sourceDocId: canonicalDoc.id,
+        sourceDocVersion: 'v1.0',
+        status: 'active',
+        startedBy: req.user!.id,
+      }).returning();
+
+      const ticketsToCreate = rawTickets.map((t, idx) => ({
+        tenantId,
+        moderationSessionId: newSession.id,
+        findingId: `ai-gen-${randomUUID().substring(0, 8)}`, // Synthetic ID as AI output is new creation
+        findingType: 'AI_SOP_GEN',
+        ticketType: 'Implementation',
+        title: t.title.substring(0, 255),
+        description: t.description,
+        status: 'pending',
+        evidenceRefs: [],
+
+        // Rich Fields (Stage 6)
+        category: t.category,
+        tier: t.tier,
+        ghlImplementation: t.ghl_implementation,
+        implementationSteps: t.implementation_steps, // ParsedTicket types is string[] | undefined, schema is json
+        successMetric: t.success_metric,
+        roiNotes: t.roi_notes,
+        timeEstimateHours: t.time_estimate_hours || 0,
+        sprint: t.sprint || 30,
+        painSource: 'AI Diagnostic Analysis'
+      }));
+
+      if (ticketsToCreate.length > 0) {
+        await tx.insert(ticketsDraft).values(ticketsToCreate as any);
+      }
+
+      return { session: newSession, draftCount: ticketsToCreate.length };
+    });
+
+    // 4. Audit
+    await db.insert(auditEvents).values({
+      tenantId,
+      actorUserId: req.user!.id,
+      actorRole: req.user?.role,
+      eventType: AUDIT_EVENT_TYPES.TICKET_MODERATION_ACTIVATED,
+      entityType: 'ticket_moderation_session',
+      entityId: session.id,
+      metadata: {
+        sourceDocId: session.sourceDocId,
+        draftTicketCount: draftCount,
+      }
+    });
+
+    return res.json({
+      status: 'activated',
+      sessionId: session.id,
+      draftTicketCount: draftCount,
+    });
+  } catch (error: any) {
+    console.error('Activate Ticket Moderation Error:', error);
+    return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+  }
+}
+
+/**
+ * GET /api/superadmin/firms/:tenantId/ticket-moderation/active
+ * Returns active session + draft tickets
+ */
+export async function getActiveModerationSession(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { tenantId } = req.params;
+
+    const [session] = await db
+      .select()
+      .from(ticketModerationSessions)
+      .where(
+        and(
+          eq(ticketModerationSessions.tenantId, tenantId),
+          eq(ticketModerationSessions.status, 'active')
+        )
+      )
+      .limit(1);
+
+    if (!session) {
+      return res.status(404).json({ error: 'No active moderation session found.' });
+    }
+
+    const tickets = await db
+      .select()
+      .from(ticketsDraft)
+      .where(eq(ticketsDraft.moderationSessionId, session.id))
+      .orderBy(asc(ticketsDraft.createdAt));
+
+    return res.json({ session, tickets });
+  } catch (error: any) {
+    console.error('Get Active Moderation Session Error:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+}
+
+// ============================================================================
+// ASSISTED SYNTHESIS AGENT ENDPOINTS (Stage 5 - Bounded Persistence)
+// ============================================================================
+
+/**
+ * GET /api/superadmin/me
+ * Returns SuperAdmin user context (for auth verification in agent/modal contexts)
+ */
+export async function getSuperAdminMe(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+
+    return res.json({
+      user: {
+        id: req.user!.id,
+        email: req.user!.email,
+        role: req.user!.role,
+        isInternal: req.user!.isInternal || false
+      },
+      tenantId: null,
+      authority: 'superadmin'
+    });
+  } catch (error: any) {
+    console.error('Get SuperAdmin Me Error:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+}
+
+/**
+ * GET /api/superadmin/firms/:tenantId/assisted-synthesis/agent/session
+ * Get or create agent session for Current Facts resolution
+ */
+export async function getAgentSession(req: AuthRequest, res: Response) {
+  const requestId = randomUUID();
+
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { tenantId } = req.params;
+    const { contextVersion } = req.query;
+
+    console.log(`[getAgentSession:${requestId}] Request for tenant ${tenantId}`);
+
+    const { AssistedSynthesisAgentService } = await import('../services/assistedSynthesisAgent.service');
+
+    const session = await AssistedSynthesisAgentService.getOrCreateSession(
+      tenantId,
+      contextVersion as string || 'default',
+      requestId
+    );
+
+    return res.json(session);
+  } catch (error: any) {
+    console.error(`[getAgentSession:${requestId}] Error:`, error);
+
+    if (error.name === 'AgentOperationError') {
+      const statusCode = error.code === 'LLM_CONFIG_MISSING' ? 500 : 500;
+      return res.status(statusCode).json({
+        code: error.code,
+        message: error.message,
+        requestId,
+        details: error.details
+      });
+    }
+
+    return res.status(500).json({
+      code: 'UNKNOWN_ERROR',
+      message: 'Failed to load agent session.',
+      requestId,
+      details: error.message
+    });
+  }
+}
+
+/**
+ * POST /api/superadmin/firms/:tenantId/assisted-synthesis/agent/messages
+ * Send message to agent and get response
+ */
+export async function sendAgentMessage(req: AuthRequest, res: Response) {
+  const requestId = randomUUID();
+
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { tenantId } = req.params;
+    const { sessionId, message } = req.body;
+
+    if (!sessionId || !message) {
+      return res.status(400).json({
+        code: 'INVALID_REQUEST',
+        message: 'sessionId and message are required.',
+        requestId
+      });
+    }
+
+    console.log(`[sendAgentMessage:${requestId}] Request for tenant ${tenantId}, session ${sessionId}`);
+
+    const { AssistedSynthesisAgentService, AgentOperationError } = await import('../services/assistedSynthesisAgent.service');
+
+    const result = await AssistedSynthesisAgentService.sendMessage(
+      tenantId,
+      sessionId,
+      message,
+      requestId
+    );
+
+    return res.json({ ...result, requestId });
+  } catch (error: any) {
+    console.error(`[sendAgentMessage:${requestId}] Error:`, error);
+
+    if (error.name === 'AgentOperationError') {
+      const statusCode =
+        error.code === 'LLM_CONFIG_MISSING' ? 500 :
+          error.code === 'LLM_API_FAILED' ? 502 :
+            error.code === 'LLM_BAD_RESPONSE' ? 502 :
+              500;
+
+      return res.status(statusCode).json({
+        code: error.code,
+        message: error.message,
+        requestId,
+        details: error.details
+      });
+    }
+
+    return res.status(500).json({
+      code: 'UNKNOWN_ERROR',
+      message: 'Failed to send message to agent.',
+      requestId,
+      details: error.message
+    });
+  }
+}
+
+/**
+ * POST /api/superadmin/firms/:tenantId/assisted-synthesis/agent/reset
+ * Reset agent session (clear all messages)
+ */
+export async function resetAgentSession(req: AuthRequest, res: Response) {
+  const requestId = randomUUID();
+
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { tenantId } = req.params;
+    const { sessionId } = req.body;
+
+    if (!sessionId) {
+      return res.status(400).json({
+        code: 'INVALID_REQUEST',
+        message: 'sessionId is required.',
+        requestId
+      });
+    }
+
+    console.log(`[resetAgentSession:${requestId}] Request for tenant ${tenantId}, session ${sessionId}`);
+
+    const { AssistedSynthesisAgentService } = await import('../services/assistedSynthesisAgent.service');
+
+    await AssistedSynthesisAgentService.resetSession(tenantId, sessionId, requestId);
+
+    return res.json({ success: true, requestId });
+  } catch (error: any) {
+    console.error(`[resetAgentSession:${requestId}] Error:`, error);
+
+    return res.status(500).json({
+      code: 'UNKNOWN_ERROR',
+      message: 'Failed to reset agent session.',
+      requestId,
+      details: error.message
+    });
+  }
+}

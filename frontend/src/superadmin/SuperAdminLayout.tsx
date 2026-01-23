@@ -7,7 +7,7 @@ import { AuthorityCategory } from '@roadmap/shared';
 import SuperAdminOverviewPage from './pages/SuperAdminOverviewPage';
 import SuperAdminFirmsPage from './pages/SuperAdminFirmsPage';
 import SuperAdminFirmDetailPage from './pages/SuperAdminFirmDetailPage';
-import SuperAdminExecuteFirmDetailPage from './pages/SuperAdminExecuteFirmDetailPage';
+import SuperAdminControlPlaneFirmDetailPage from './pages/SuperAdminControlPlaneFirmDetailPage';
 import SuperAdminAgentPage from './pages/SuperAdminAgentPage';
 import EugeneCohortPage from './pages/EugeneCohortPage';
 import SuperAdminRoadmapViewerPage from './pages/SuperAdminRoadmapViewerPage';
@@ -170,7 +170,7 @@ export function SuperAdminLayout() {
               {(params) => (
                 isOperator
                   ? <Redirect to="/superadmin" />
-                  : <SuperAdminExecuteFirmDetailPage />
+                  : <SuperAdminControlPlaneFirmDetailPage />
               )}
             </Route>
 

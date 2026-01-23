@@ -36,7 +36,7 @@ export const config: TrustAgentConfig = {
 
   // Content
   intro: {
-    headline: "Hi, I'm TrustAgent",
+    headline: "Hi, I'm TrustConsole",
     subheadline: "I help you see if the Strategic AI Roadmap is a fit, in plain language. No sales pressure, just clarity.",
     quickPicks: [
       { label: 'What exactly is this Roadmap?', flowId: 'explain_roadmap' },
@@ -48,8 +48,8 @@ export const config: TrustAgentConfig = {
   },
 
   panel: {
-    title: 'TrustAgent',
-    subtitle: 'Your Strategic AI Roadmap intake specialist.',
+    title: 'TrustConsole',
+    subtitle: 'Your Strategic AI Roadmap execution intelligence.',
   },
 
   // Timing

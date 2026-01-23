@@ -21,7 +21,6 @@ import AgentInbox from './pages/owner/AgentInbox';
 import { SuperAdminLayout } from './superadmin/SuperAdminLayout';
 import RoadmapViewer from './pages/RoadmapViewer';
 import TicketModeration from './components/TicketModeration';
-import TonyCameroLanding from './pages/TonyCameroLanding';
 import Onepager from './pages/Onepager';
 import BusinessProfile from './pages/BusinessProfile';
 import OrganizationType from './pages/OrganizationType';
@@ -35,6 +34,11 @@ import { OnboardingLayout } from './layouts/OnboardingLayout';
 import { TrustAgentShell as SmartShell } from './trustagent/TrustAgentShell';
 import { Webinar } from './pages/Webinar';
 import RoleEvidenceRender from './pages/render/RoleEvidenceRender';
+import SmbSales from './pages/public/SmbSales';
+import AuthorityEconomics from './pages/public/AuthorityEconomics';
+import AuthorityPartner from './pages/public/AuthorityPartner';
+import CertifiedOperator from './pages/public/CertifiedOperator';
+import Features from './pages/public/Features';
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -90,16 +94,19 @@ function App() {
               {/* Portal TrustAgent for authenticated owners */}
               <PortalTrustAgent />
               <Switch>
-                <Route path="/">{() => { return <TonyCameroLanding />; }}</Route>
+                <Route path="/" component={LandingPage} />
+                <Route path="/smb" component={SmbSales} />
+                <Route path="/economics" component={AuthorityEconomics} />
+                <Route path="/partner" component={AuthorityPartner} />
+                <Route path="/operator" component={CertifiedOperator} />
+                <Route path="/features" component={Features} />
                 <Route path="/__render/role-evidence" component={RoleEvidenceRender} />
 
-                {/* Strategic AI Roadmaps SaaS Homepage - Consolidated */}
-                <Route path="/ai" component={LandingPage} />
-
-                {/* Redirect old routes to /ai */}
-                <Route path="/home">{() => { window.location.href = '/ai'; return null; }}</Route>
-                <Route path="/cohort">{() => { window.location.href = '/ai'; return null; }}</Route>
-                <Route path="/eugene-2026">{() => { window.location.href = '/ai'; return null; }}</Route>
+                {/* Legacy Redirects */}
+                <Route path="/ai">{() => { window.location.href = '/'; return null; }}</Route>
+                <Route path="/home">{() => { window.location.href = '/'; return null; }}</Route>
+                <Route path="/cohort">{() => { window.location.href = '/'; return null; }}</Route>
+                <Route path="/eugene-2026">{() => { window.location.href = '/'; return null; }}</Route>
 
                 <Route path="/onepager" component={Onepager} />
                 <Route path="/diagnostic" component={Webinar} />
