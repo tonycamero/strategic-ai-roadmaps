@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "src/scripts/**",
+    "src/tests/**",
+    "src/controllers/temp_controller.ts",
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ]
+}
