@@ -1,139 +1,107 @@
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
 import { db } from '../db';
-import { tenants, tenantDocuments } from '../db/schema';
+import { tenantDocuments, tenants } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
-import { getStorageProvider, s3PutText } from './storage';
+import { Sop01Outputs } from './sop01Engine';
 
-interface SOP01Outputs {
-  companyDiagnosticMap: string;
-  aiLeverageMap: string;
-  discoveryCallQuestions: string[];
-  roadmapSkeleton: string;
-}
+/**
+ * Persist SOP-01 artifacts to tenant_documents.
+ * Category: 'sop_output'
+ * SOP Number: 'SOP-01'
+ * Stable Output Numbers for identification.
+ */
+export async function persistSop01OutputsForTenant(tenantId: string, outputs: Sop01Outputs): Promise<void> {
+    console.log('[SOP-01 Persistence] Persisting outputs for tenant:', tenantId);
 
-export async function persistSop01OutputsForTenant(
-  tenantId: string,
-  outputs: SOP01Outputs
-): Promise<void> {
-  // Verify tenant exists
-  const [tenant] = await db
-    .select({ id: tenants.id, name: tenants.name, ownerUserId: tenants.ownerUserId })
-    .from(tenants)
-    .where(eq(tenants.id, tenantId))
-    .limit(1);
+    // 1. Strict Validation: All 4 must exist
+    const requiredKeys: (keyof Sop01Outputs)[] = [
+        'companyDiagnosticMap',
+        'aiLeverageMap',
+        'discoveryCallQuestions',
+        'roadmapSkeleton'
+    ];
 
-  if (!tenant) {
-    throw new Error(`Tenant not found: ${tenantId}`);
-  }
+    for (const key of requiredKeys) {
+        const val = outputs[key];
+        if (!val || (Array.isArray(val) && val.length === 0) || (typeof val === 'string' && val.trim() === '')) {
+            throw new Error(`SOP01_PERSIST_FAILED: Missing mandatory artifact: ${key}`);
+        }
+    }
 
-  // Ensure storage directory exists
-  // Use /tmp in production/serverless environments, otherwise use local storage
-  const baseStorageDir = process.env.NODE_ENV === 'production' || !fs.existsSync(path.join(process.cwd(), 'storage'))
-    ? path.join(os.tmpdir(), 'strategic-ai-roadmaps', 'sop01')
-    : path.join(process.cwd(), 'storage', 'sop01');
-  
-  const storageDir = path.join(baseStorageDir, tenantId);
-  
-  if (!fs.existsSync(storageDir)) {
-    fs.mkdirSync(storageDir, { recursive: true });
-  }
+    const [tenant] = await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1);
+    if (!tenant) {
+        throw new Error(`Tenant not found: ${tenantId}`);
+    }
 
-  const files = [
-    {
-      filename: 'output1_company_diagnostic_map.md',
-      content: outputs.companyDiagnosticMap,
-      title: 'Company Diagnostic Map',
-      outputNumber: 'Output-1',
-    },
-    {
-      filename: 'output2_ai_leverage_map.md',
-      content: outputs.aiLeverageMap,
-      title: 'AI Leverage & Opportunity Map',
-      outputNumber: 'Output-2',
-    },
-    {
-      filename: 'output3_discovery_call_questions.md',
-      content: `# Discovery Call Questions\n\n${outputs.discoveryCallQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}`,
-      title: 'Discovery Call Preparation Questions',
-      outputNumber: 'Output-3',
-    },
-    {
-      filename: 'output4_roadmap_skeleton.md',
-      content: outputs.roadmapSkeleton,
-      title: 'Strategic Roadmap Skeleton',
-      outputNumber: 'Output-4',
-    },
-  ];
+    const ownerUserId = tenant.ownerUserId;
 
-  // Write files to filesystem (best-effort for local/dev)
-  for (const file of files) {
+    const artifacts = [
+        {
+            type: 'DIAGNOSTIC_MAP',
+            title: 'Company Diagnostic Map',
+            content: outputs.companyDiagnosticMap,
+            filename: 'sop01_diagnostic_map.md'
+        },
+        {
+            type: 'AI_LEVERAGE_MAP',
+            title: 'AI Leverage & Opportunity Map',
+            content: outputs.aiLeverageMap,
+            filename: 'sop01_ai_leverage_map.md'
+        },
+        {
+            type: 'ROADMAP_SKELETON',
+            title: 'Strategic Roadmap Skeleton',
+            content: outputs.roadmapSkeleton,
+            filename: 'sop01_roadmap_skeleton.md'
+        },
+        {
+            type: 'DISCOVERY_QUESTIONS',
+            title: 'Discovery Call Preparation Questions',
+            content: Array.isArray(outputs.discoveryCallQuestions)
+                ? outputs.discoveryCallQuestions.join('\n\n')
+                : outputs.discoveryCallQuestions,
+            filename: 'sop01_discovery_questions.md'
+        }
+    ];
+
     try {
-      const filePath = path.join(storageDir, file.filename);
-      fs.writeFileSync(filePath, file.content, 'utf8');
-    } catch {}
-  }
+        await db.transaction(async (tx) => {
+            for (const artifact of artifacts) {
+                const docData = {
+                    tenantId,
+                    ownerUserId,
+                    filename: artifact.filename,
+                    originalFilename: artifact.filename,
+                    title: artifact.title,
+                    description: `AI-generated ${artifact.title} (SOP-01)`,
+                    category: 'sop_output',
+                    sopNumber: 'SOP-01',
+                    outputNumber: artifact.type,
+                    content: artifact.content,
+                    filePath: `db://sop01/${artifact.type.toLowerCase()}.md`,
+                    fileSize: Buffer.byteLength(artifact.content, 'utf-8'),
+                    mimeType: 'text/markdown',
+                    isPublic: true,
+                    updatedAt: new Date()
+                };
 
-  // Upsert to tenant_documents (store content in DB for durability)
-  const provider = getStorageProvider();
+                // Use upsert logic via onConflictDoUpdate
+                await tx.insert(tenantDocuments)
+                    .values({
+                        ...docData,
+                        createdAt: new Date()
+                    })
+                    .onConflictDoUpdate({
+                        target: [tenantDocuments.tenantId, tenantDocuments.category, tenantDocuments.sopNumber, tenantDocuments.outputNumber],
+                        set: docData
+                    });
 
-  for (const file of files) {
-    const filePath = path.join(storageDir, file.filename);
-    const fileSize = Buffer.byteLength(file.content, 'utf8');
-    let s3Key: string | null = null;
-    if (provider === 's3') {
-      const r = await s3PutText({ tenantId, subdir: 'sop01', filename: file.filename, content: file.content, contentType: 'text/markdown; charset=utf-8' });
-      s3Key = r.key;
+                console.log(`  - Persisted artifact: ${artifact.type}`);
+            }
+        });
+    } catch (err: any) {
+        console.error('[SOP-01 Persistence] Transaction failed:', err);
+        throw new Error(`SOP01_PERSIST_FAILED: ${err.message}`);
     }
 
-    // Check if document already exists
-    const existing = await db
-      .select()
-      .from(tenantDocuments)
-      .where(
-        and(
-          eq(tenantDocuments.tenantId, tenantId),
-          eq(tenantDocuments.sopNumber, 'SOP-01'),
-          eq(tenantDocuments.outputNumber, file.outputNumber)
-        )
-      )
-      .limit(1);
-
-    if (existing.length > 0) {
-      // Update existing record
-      await db
-        .update(tenantDocuments)
-        .set({
-          filePath: s3Key || filePath,
-          fileSize,
-          content: file.content,
-          storageProvider: s3Key ? 's3' : 'db',
-          updatedAt: new Date(),
-        })
-        .where(eq(tenantDocuments.id, existing[0].id));
-    } else {
-      // Insert new record
-      await db.insert(tenantDocuments).values({
-        tenantId,
-        ownerUserId: tenant.ownerUserId,
-        filename: file.filename,
-        originalFilename: file.filename,
-        filePath: s3Key || filePath,
-        fileSize,
-        mimeType: 'text/markdown',
-        category: 'sop_output',
-        title: file.title,
-        content: file.content,
-        storageProvider: s3Key ? 's3' : 'db',
-        sopNumber: 'SOP-01',
-        outputNumber: file.outputNumber,
-        section: null,
-        uploadedBy: null,
-        isPublic: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-    }
-  }
+    console.log('[SOP-01 Persistence] Completed successfully.');
 }

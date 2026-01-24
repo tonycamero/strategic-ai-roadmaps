@@ -9,7 +9,7 @@ const scrollToTop = () => {
 };
 
 function getRoleBasedRoute(role: string): string {
-  if (role === 'superadmin') return '/superadmin';
+  if (role === 'superadmin') return '/superadmin/firms';
   // All authenticated users go to dashboard
   // Intake pages will redirect back if needed
   return '/dashboard';
@@ -37,8 +37,8 @@ const HomePage: React.FC = () => {
       <nav className="border-b border-slate-800 bg-slate-950/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" onClick={scrollToTop}>
-            <span className="text-xl font-semibold text-white hover:text-slate-200 transition cursor-pointer">
-              Tony Camero
+            <span className="text-xl font-medium tracking-tight text-slate-100 hover:text-blue-400 transition-colors cursor-pointer">
+              <span className="text-blue-500">Strategic</span>AI.app
             </span>
           </Link>
           <div className="flex items-center gap-6">
@@ -185,7 +185,7 @@ const HomePage: React.FC = () => {
       <footer className="border-t border-slate-800 mt-16">
         <div className="max-w-6xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between text-sm text-slate-500">
-            <p>© 2025 Tony Camero. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} Strategic AI Infrastructure. All rights reserved.</p>
             <div className="flex gap-6">
               <Link href="/cohort" onClick={scrollToTop}>
                 <span className="hover:text-slate-400 transition cursor-pointer">Cohort</span>
@@ -200,7 +200,7 @@ const HomePage: React.FC = () => {
 
       {/* TrustAgent - only show when not authenticated */}
       {!isAuthenticated && (
-        <TrustAgentShell enabled={true} />
+        <TrustAgentShell enabled={true} mode="homepage" />
       )}
     </div>
   );

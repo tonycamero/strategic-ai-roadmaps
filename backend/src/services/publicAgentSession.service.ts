@@ -133,7 +133,8 @@ export async function logEvent(
 export async function queryHomepageAssistant(
   threadId: string,
   message: string,
-  safetyOverride?: string
+  safetyOverride?: string,
+  instructionOverride?: string
 ): Promise<string> {
   if (!homepageAssistantConfig.assistantId) {
     throw new Error('Homepage assistant not configured');
@@ -158,6 +159,7 @@ export async function queryHomepageAssistant(
     {
       assistant_id: homepageAssistantConfig.assistantId,
       temperature: 0.7,
+      instructions: instructionOverride, // Allow overriding system prompt at runtime
     },
     {
       pollIntervalMs: 500,
@@ -221,7 +223,7 @@ export async function queryHomepageAssistant(
   }
 
   const rawResponse = textContent.text.value;
-  
+
   // Log raw response for debugging
   if (process.env.NODE_ENV !== 'production') {
     console.log('[PublicSession] RAW ASSISTANT RESPONSE:', rawResponse);

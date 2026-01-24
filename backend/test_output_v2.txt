@@ -1,0 +1,33 @@
+🧪 Running Unit Tests: Parser & Normalizer (SAR-STAGE6-PARSER-FIX-INV001-REV2)
+
+
+--- 1. Normalizer Tests ---
+✅ PASS: Direct string normalized
+✅ PASS: Simple object normalized
+✅ PASS: Nested (artifact.content) normalized
+✅ PASS: Stringified JSON payload normalized
+✅ PASS: Parsed JSON object normalized
+✅ PASS: Null normalized to empty
+✅ PASS: Empty string field normalized to empty
+
+--- 2. Parser Tests ---
+[DiagnosticIngestion] Parsing inventory items from 5 lines (extractInventoryFromArtifacts/v2)...
+✅ PASS: Extracted 3 items from varied bullets
+✅ PASS: Bullet "-" parsed correctly
+✅ PASS: Bullet "•" parsed correctly
+[DiagnosticIngestion] Parsing inventory items from 4 lines (extractInventoryFromArtifacts/v2)...
+✅ PASS: Numbered list parsed correctly
+[DiagnosticIngestion] Parsing inventory items from 5 lines (extractInventoryFromArtifacts/v2)...
+✅ PASS: Nested/Indented bullets parsed (flattened)
+[DiagnosticIngestion] Parsing inventory items from 3 lines (extractInventoryFromArtifacts/v2)...
+✅ PASS: Legacy format parsed correctly
+[DiagnosticIngestion] Parsing inventory items from 6 lines (extractInventoryFromArtifacts/v2)...
+✅ PASS: Case-insensitive trim deduplication works
+✅ PASS: Leading/trailing whitespace trimmed
+[DiagnosticIngestion] Parsing inventory items from 6 lines (extractInventoryFromArtifacts/v2)...
+✅ PASS: Phase 1 assigned sprint 30
+✅ PASS: Phase 2 assigned sprint 60
+
+Tests Complete. Failures: 0
+
+🌟 ALL UNIT TESTS PASSED

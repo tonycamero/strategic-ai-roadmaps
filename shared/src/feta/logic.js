@@ -12,7 +12,6 @@
  *
  * If unsure: STOP and ask before editing.
  */
-
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.selectSynthesis = selectSynthesis;
@@ -44,5 +43,5 @@ function isValidAnswer(step, answerId) {
     const question = canonical_1.FETA_CANONICAL_TAXONOMY[step];
     if (!question)
         return false;
-    return question.options.some(opt => opt.id === answerId);
+    return question.options.some((opt) => opt.id === answerId);
 }

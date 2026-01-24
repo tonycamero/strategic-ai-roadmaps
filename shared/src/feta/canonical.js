@@ -12,14 +12,13 @@
  *
  * If unsure: STOP and ask before editing.
  */
-
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.FETA_CANONICAL_SYNTHESIS = exports.FETA_CANONICAL_TAXONOMY = void 0;
 /**
  * AUTO-GENERATED FROM /canonical/feta
  * DO NOT EDIT MANUALLY
  */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.FETA_CANONICAL_SYNTHESIS = exports.FETA_CANONICAL_TAXONOMY = void 0;
 exports.FETA_CANONICAL_TAXONOMY = {
     "H0": {
         "question": "Hey — thanks for stopping by.\nI’m guessing you might want some help diagnosing where your operations are breaking.\nWant to take a quick look?",

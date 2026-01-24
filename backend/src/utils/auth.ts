@@ -7,8 +7,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'development-secret-change-in-produ
 
 export interface TokenPayload {
   userId: string;
+  id?: string; // backward compatibility
   email: string;
   role: UserRole;
+  isInternal: boolean;
   tenantId: string | null; // Multi-tenant: tenant key
 }
 

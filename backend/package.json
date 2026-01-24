@@ -4,7 +4,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "dotenv -e .env -- tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "tsc -p tsconfig.vercel.json",
     "start": "node dist/index.js",
     "db:generate": "drizzle-kit generate:pg",
     "db:push": "drizzle-kit push:pg",
@@ -22,7 +22,8 @@
     "provision:homepage-trustagent": "dotenv -e .env -- tsx src/scripts/provision_homepage_trustagent.ts",
     "homepage:upload-knowledge": "dotenv -e .env -- tsx src/scripts/upload_homepage_knowledge.ts",
     "openai:dump-trustagent": "dotenv -e .env -- tsx src/scripts/dump_trustagent.ts",
-    "test:diagnostic": "dotenv -e .env -- tsx src/scripts/testHayesDiagnostic.ts"
+    "test:diagnostic": "dotenv -e .env -- tsx src/scripts/testHayesDiagnostic.ts",
+    "fix:orphans": "dotenv -e .env -- tsx src/scripts/fix_orphaned_data_v2.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.675.0",

@@ -20,6 +20,22 @@ export async function submitIntake(req: AuthRequest, res: Response) {
       return res.status(403).json({ error: 'Role mismatch' });
     }
 
+    // 🛑 CR-UX-5: Intake Freeze Gate
+    const tenantId = (req as any).tenantId;
+    if (tenantId) {
+      const tenant = await db.query.tenants.findFirst({
+        where: eq(tenants.id, tenantId),
+        columns: { intakeWindowState: true }
+      });
+
+      if (tenant?.intakeWindowState === 'CLOSED') {
+        return res.status(403).json({
+          error: 'Intake window is closed',
+          message: 'This intake cycle has been finalized by Executive Authority. No further submissions are accepted.'
+        });
+      }
+    }
+
     // Check if intake already exists
     const [existing] = await db
       .select()
@@ -31,8 +47,8 @@ export async function submitIntake(req: AuthRequest, res: Response) {
       // Update existing intake
       const [updated] = await db
         .update(intakes)
-        .set({ 
-          answers, 
+        .set({
+          answers,
           role,
           status: 'completed',
           completedAt: new Date(),
@@ -48,7 +64,7 @@ export async function submitIntake(req: AuthRequest, res: Response) {
             await onboardingProgressService.markStep(
               tenantId,
               'OWNER_INTAKE',
-              'COMPLETED'
+              'completed'
             );
           }
         } catch (error) {
@@ -80,12 +96,12 @@ export async function submitIntake(req: AuthRequest, res: Response) {
         const tenant = tenantId ? await db.query.tenants.findFirst({
           where: eq(tenants.id, tenantId),
         }) : null;
-        
+
         if (tenant) {
           await onboardingProgressService.markStep(
             tenant.id,
             'OWNER_INTAKE',
-            'COMPLETED'
+            'completed'
           );
         }
       } catch (error) {
@@ -101,23 +117,23 @@ export async function submitIntake(req: AuthRequest, res: Response) {
         const tenant = tenantId ? await db.query.tenants.findFirst({
           where: eq(tenants.id, tenantId),
         }) : null;
-        
+
         if (tenant) {
           // Check if all three team roles have completed intakes
           const allIntakes = await db
             .select()
             .from(intakes)
             .where(eq(intakes.tenantId, tenantId));
-          
+
           const hasOps = allIntakes.some(i => i.role === 'ops');
           const hasSales = allIntakes.some(i => i.role === 'sales');
           const hasDelivery = allIntakes.some(i => i.role === 'delivery');
-          
+
           if (hasOps && hasSales && hasDelivery) {
             await onboardingProgressService.markStep(
               tenant.id,
               'TEAM_INTAKES',
-              'COMPLETED'
+              'completed'
             );
           }
         }
@@ -143,8 +159,11 @@ export async function getOwnerIntakes(req: AuthRequest, res: Response) {
     }
 
     const userRole: string = req.user.role;
-    if (userRole !== 'owner' && userRole !== 'superadmin') {
-      return res.status(403).json({ error: 'Only owners and superadmins can view intakes' });
+    const isSuperAdmin = req.user.isInternal && userRole === 'superadmin';
+    const isOwner = !req.user.isInternal && userRole === 'owner';
+
+    if (!isSuperAdmin && !isOwner) {
+      return res.status(403).json({ error: 'Only Owners and Internal Consultants can view all intakes' });
     }
 
     // Both superadmin and owner see only their own tenant's intakes when viewing dashboard

@@ -1,6 +1,7 @@
-import 'dotenv/config';
+import { config } from './config/env';
 
 import express from 'express';
+import path from 'path';
 import cors from 'cors';
 
 import authRoutes from './routes/auth.routes';
@@ -24,7 +25,10 @@ import trustagentRoutes from './routes/trustagent.routes';
 import diagnosticRoutes from './routes/diagnostic.routes'; // formerly webinar.routes
 import diagnosticGenerationRoutes from './routes/diagnostic_generation.routes'; // formerly diagnostic.routes
 import onboardingRoutes from './routes/onboarding.routes';
+import commandCenterRoutes from './routes/command_center.routes';
+
 import tenantsRoutes from './routes/tenants.routes';
+import internalEvidenceRoutes from './routes/internalEvidence.routes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -35,6 +39,9 @@ app.set('trust proxy', 1);
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Serve uploads locally in dev/non-blob mode
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Request logging in development
 if (process.env.NODE_ENV !== 'production') {
@@ -53,7 +60,10 @@ app.get('/health', (req, res) => {
   });
 });
 
+import healthRoutes from './routes/health.routes';
+
 // API Routes
+app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/invites', inviteRoutes);
 app.use('/api/intake', intakeRoutes);
@@ -68,6 +78,7 @@ app.use('/api/agent', agentRoutes);              // Legacy chat completions
 app.use('/api/assistant', assistantAgentRoutes); // NEW: Assistants API for owner/team
 app.use('/api/agents', agentConfigRoutes);
 app.use('/api/superadmin/assistant', superadminAssistantRoutes); // SuperAdmin tap-in
+app.use('/api/superadmin/command-center', commandCenterRoutes);
 app.use('/api/superadmin', superadminRoutes);
 app.use('/api/diagnostics', diagnosticGenerationRoutes); // Diagnostic ticket+roadmap generation (PRESERVED)
 app.use('/api/public/pulseagent', pulseagentRoutes); // Public PulseAgent API
@@ -76,6 +87,9 @@ app.use('/api/public/diagnostic', diagnosticRoutes); // Team Execution Diagnosti
 app.use('/api/tenants', tenantsRoutes); // Tenant business profile
 app.use('/api/tenants', onboardingRoutes); // Tenant onboarding progress
 app.use('/api', leadRequestRoutes); // Public routes
+if (process.env.INTERNAL_EVIDENCE_TOKEN) {
+  app.use('/api/internal/evidence', internalEvidenceRoutes);
+}
 
 // 404 handler
 app.use((req, res) => {
@@ -90,10 +104,41 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 // Only start server if not running in Vercel serverless environment
 if (process.env.VERCEL !== '1') {
-  app.listen(PORT, () => {
+  app.listen(PORT, async () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/health`);
-    console.log(`🔐 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔐 Environment: ${config.nodeEnv}`);
+
+    // PHASE 2: DB FINGERPRINT
+    try {
+      const { db } = await import('./db');
+      const { sql } = await import('drizzle-orm');
+
+      const dbUrl = config.dbUrl || '';
+      const maskedHost = dbUrl.split('@')[1]?.split('/')[0]?.slice(-15) || 'unknown';
+      const dbName = dbUrl.split('/').pop()?.split('?')[0] || 'unknown';
+
+      console.log(`\n🔍 --- DB CONNECTION FINGERPRINT ---`);
+      console.log(`📡 Host Mask: ...${maskedHost}`);
+      console.log(`🗄️  DB Name:   ${dbName}`);
+
+      const result = await db.execute(sql`
+            SELECT 
+                current_database() as db,
+                current_user as user,
+                version() as version,
+                inet_server_addr()::text as ip
+        `);
+
+      const fp = result[0];
+      console.log(`🆔 Identity:  ${fp.user}@${fp.db}`);
+      console.log(`📍 Server IP: ${fp.ip || 'managed-cloud'}`);
+      console.log(`📦 Version:   ${fp.version}`);
+      console.log(`-----------------------------------\n`);
+
+    } catch (err) {
+      console.error('❌ DB CONNECTION FAILED DURING STARTUP:', err);
+    }
   });
 }
 

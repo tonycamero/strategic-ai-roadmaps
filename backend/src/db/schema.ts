@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, boolean, json, serial, text, integer, date } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, timestamp, boolean, json, jsonb, serial, text, integer, date, unique, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import type { UserRole } from '@roadmap/shared';
 
 // ============================================================================
@@ -10,8 +10,8 @@ export const tenants = pgTable('tenants', {
   ownerUserId: uuid('owner_user_id').unique(),
   name: varchar('name', { length: 255 }).notNull(),
   cohortLabel: varchar('cohort_label', { length: 50 }),
-  segment: varchar('segment', { length: 50 }),
-  region: varchar('region', { length: 50 }),
+  segment: varchar('segment', { length: 255 }),
+  region: varchar('region', { length: 255 }),
   status: varchar('status', { length: 20 }).notNull().default('prospect'), // prospect | active | paused | churned
   businessType: text('business_type').notNull().default('default'), // default | chamber
   teamHeadcount: integer('team_headcount').default(5),
@@ -19,9 +19,32 @@ export const tenants = pgTable('tenants', {
   firmSizeTier: varchar('firm_size_tier', { length: 20 }).default('small'), // micro | small | mid | large
   discoveryComplete: boolean('discovery_complete').notNull().default(false),
   lastDiagnosticId: varchar('last_diagnostic_id', { length: 255 }),
+  intakeWindowState: varchar('intake_window_state', { length: 20 }).notNull().default('OPEN'), // OPEN | CLOSED
+  intakeSnapshotId: varchar('intake_snapshot_id', { length: 255 }),
+  intakeClosedAt: timestamp('intake_closed_at', { withTimezone: true }),
+
+  // META-TICKET v2: Intake Lock (Gate 1)
+  intakeLockedAt: timestamp('intake_locked_at', { withTimezone: true }),
+  intakeLockedByUserId: uuid('intake_locked_by_user_id').references(() => users.id),
+
   notes: text('notes'),
+
+
+
+
+
+  readinessNotes: text('readiness_notes'),
+
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
+
+  // Readiness signals
+  slug: varchar('slug', { length: 255 }),
+  domain: varchar('domain', { length: 255 }),
+  discoveryAcknowledgedAt: timestamp('discovery_acknowledged_at', { withTimezone: true }),
+  knowledgeBaseReadyAt: timestamp('knowledge_base_ready_at', { withTimezone: true }),
+  rolesValidatedAt: timestamp('roles_validated_at', { withTimezone: true }),
+  execReadyAt: timestamp('exec_ready_at', { withTimezone: true }),
 });
 
 // ============================================================================
@@ -34,6 +57,7 @@ export const users = pgTable('users', {
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   role: varchar('role', { length: 20 }).$type<UserRole>().notNull(),
   name: varchar('name', { length: 255 }).notNull(),
+  isInternal: boolean('is_internal').notNull().default(false),
   tenantId: uuid('tenant_id').references(() => tenants.id, { onDelete: 'set null' }),
   resetToken: varchar('reset_token', { length: 255 }).unique(),
   resetTokenExpiry: timestamp('reset_token_expiry'),
@@ -63,11 +87,155 @@ export const intakes = pgTable('intakes', {
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   role: varchar('role', { length: 20 }).notNull(),
   answers: json('answers').notNull(), // JSONB storage
+  coachingFeedback: json('coaching_feedback').default({}), // questionKey -> { comment, isFlagged }
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   status: varchar('status', { length: 20 }).notNull().default('in_progress'), // in_progress | completed
   completedAt: timestamp('completed_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
+
+// ============================================================================
+// INTAKE VECTORS (Stakeholder role definitions for perception/reality synthesis)
+// ============================================================================
+
+export const intakeVectors = pgTable('intake_vectors', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+
+  // Role Definition
+  roleLabel: varchar('role_label', { length: 255 }).notNull(), // e.g., "Manufacturing Facilitator"
+  roleType: varchar('role_type', { length: 50 }).notNull(), // FACILITATOR | OPERATIONAL_LEAD | EXECUTIVE | OTHER
+
+  // Perception vs Reality Synthesis (Executive Brief fields)
+  perceivedConstraints: text('perceived_constraints').notNull(),
+  anticipatedBlindSpots: text('anticipated_blind_spots'),
+
+  // Recipient Information
+  recipientEmail: varchar('recipient_email', { length: 255 }),
+  recipientName: varchar('recipient_name', { length: 255 }),
+
+  // Status Tracking
+  inviteStatus: varchar('invite_status', { length: 20 }).notNull().default('NOT_SENT'), // NOT_SENT | SENT | FAILED
+  intakeId: uuid('intake_id').references(() => intakes.id, { onDelete: 'set null' }), // Link to completed intake
+
+  // Backfill / Provenance Metadata
+  metadata: json('metadata').$type<{
+    sourceTag?: 'LEGACY_INTAKE' | 'OWNER_INTAKE' | 'DOC_EXTRACT' | 'MANUAL';
+    confidence?: number;
+  }>().default({}),
+
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ============================================================================
+// FIRM BASELINE INTAKE (Owner-provided starting state)
+// ============================================================================
+
+export const firmBaselineIntake = pgTable('firm_baseline_intake', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().unique().references(() => tenants.id, { onDelete: 'cascade' }),
+
+  // Baseline Metrics
+  monthlyLeadVolume: integer('monthly_lead_volume'),
+  avgResponseTimeMinutes: integer('avg_response_time_minutes'),
+  closeRatePercent: integer('close_rate_percent'),
+  avgJobValue: integer('avg_job_value'),
+  currentTools: jsonb('current_tools').notNull().default([]),
+  salesRepsCount: integer('sales_reps_count'),
+  opsAdminCount: integer('ops_admin_count'),
+  primaryBottleneck: text('primary_bottleneck'),
+
+  // Status
+  status: varchar('status', { length: 20 }).notNull().default('DRAFT'), // DRAFT | COMPLETE
+
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index('idx_firm_baseline_intake_tenant_id').on(table.tenantId),
+}));
+
+
+
+// ============================================================================
+// EXECUTIVE BRIEFS TABLE (v0)
+// ============================================================================
+
+export const executiveBriefs = pgTable('executive_briefs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  version: varchar('version', { length: 10 }).notNull().default('v0'),
+  generatedAt: timestamp('generated_at', { withTimezone: true }).notNull().defaultNow(),
+
+  // Synthesis sections (stored as JSONB)
+  synthesis: jsonb('synthesis').notNull().$type<{
+    executiveSummary: string;
+    operatingReality: string;
+    constraintLandscape: string;
+    blindSpotRisks: string;
+    alignmentSignals: string;
+  }>(),
+
+  // Signals (stored as JSONB)
+  signals: jsonb('signals').notNull().$type<{
+    constraintConsensusLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+    executionRiskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+    orgClarityScore: number; // 0-100
+  }>(),
+
+  // Sources (stored as JSONB)
+  sources: jsonb('sources').notNull().$type<{
+    snapshotId: string | null;
+    intakeVectorIds: string[];
+  }>(),
+
+  // Authority
+  status: varchar('status', { length: 20 }).notNull().default('DRAFT'), // DRAFT | GENERATED | REVIEWED
+  approvedBy: uuid('approved_by').references(() => users.id, { onDelete: 'set null' }),
+  approvedAt: timestamp('approved_at', { withTimezone: true }),
+
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  // Unique constraint: one brief per tenant (for now, can be extended for versioning)
+  uniqueTenantVersion: unique().on(table.tenantId, table.version),
+  tenantIdIdx: index('executive_briefs_tenant_id_idx').on(table.tenantId),
+}));
+
+// ============================================================================
+// EXECUTIVE BRIEF ARTIFACTS TABLE
+// ============================================================================
+
+export const executiveBriefArtifacts = pgTable('executive_brief_artifacts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  executiveBriefId: uuid('executive_brief_id').notNull().references(() => executiveBriefs.id, { onDelete: 'cascade' }),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+
+  artifactType: varchar('artifact_type', { length: 50 }).notNull(), // 'PRIVATE_LEADERSHIP_PDF'
+  fileName: text('file_name').notNull(),
+  filePath: text('file_path').notNull(), // Local path or S3 path
+  fileSize: integer('file_size').notNull(), // Bytes
+  checksum: text('checksum').notNull(), // SHA-256 hash
+
+  isImmutable: boolean('is_immutable').notNull().default(true),
+
+  // Metadata (delivery tracking, etc.)
+  metadata: jsonb('metadata').$type<{
+    emailedTo?: string;
+    emailedAt?: string;
+    deliveryStatus?: 'pending' | 'sent' | 'failed';
+    retryCount?: number;
+  }>(),
+
+  generatedAt: timestamp('generated_at', { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  briefIdIdx: index('executive_brief_artifacts_brief_id_idx').on(table.executiveBriefId),
+  tenantIdIdx: index('executive_brief_artifacts_tenant_id_idx').on(table.tenantId),
+  // UNIQUE: One artifact per (brief, type) - enforces immutability
+  uniqueBriefType: unique('executive_brief_artifacts_brief_type_unique')
+    .on(table.executiveBriefId, table.artifactType),
+}));
 
 // ============================================================================
 // ROADMAPS TABLE
@@ -77,11 +245,15 @@ export const roadmaps = pgTable('roadmaps', {
   id: uuid('id').primaryKey().defaultRandom(),
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   createdByUserId: uuid('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  status: varchar('status', { length: 30 }).notNull().default('draft'), // locked | generated | delivered
+  version: varchar('version', { length: 50 }).notNull().default('v1.0'),
+  modelJson: jsonb('model_json').notNull(), // RoadmapModel
+  snapshotId: uuid('snapshot_id').references(() => implementationSnapshots.id, { onDelete: 'set null' }),
+  sourceRefs: jsonb('source_refs').notNull(), // { briefId, diagnosticIds }
   pdfUrl: varchar('pdf_url', { length: 500 }),
-  status: varchar('status', { length: 30 }).notNull().default('draft'), // draft | in_progress | delivered
-  pilotStage: varchar('pilot_stage', { length: 30 }), // null | pilot_proposed | pilot_active | pilot_completed
-  deliveredAt: timestamp('delivered_at'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 // ============================================================================
@@ -186,27 +358,7 @@ export const impersonationSessions = pgTable('impersonation_sessions', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
-// ============================================================================
-// ONBOARDING STATES (Gamified onboarding progress tracking)
-// ============================================================================
 
-export const onboardingStates = pgTable('onboarding_states', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  tenantId: uuid('tenant_id').notNull().unique().references(() => tenants.id, { onDelete: 'cascade' }),
-
-  // Overall progress snapshot
-  percentComplete: integer('percent_complete').notNull().default(0),
-  totalPoints: integer('total_points').notNull().default(0),
-  maxPoints: integer('max_points').notNull().default(120),
-
-  // JSON arrays for steps and badges
-  steps: json('steps').notNull().default([]),
-  badges: json('badges').notNull().default([]),
-
-  // System audit
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
 
 // ============================================================================
 // WEBINAR REGISTRATIONS (Webinar participant registrations)
@@ -258,25 +410,26 @@ export const tenantDocuments = pgTable('tenant_documents', {
   content: text('content'),
   storageProvider: varchar('storage_provider', { length: 50 }),
 
+  // Extended metadata for SOPs and Roadmaps
+  section: text('section'),
+  sopNumber: text('sop_number'),
+  outputNumber: text('output_number'),
+
   // Document classification
   category: varchar('category', { length: 50 }).notNull(), // 'sop_output', 'roadmap', 'report', 'other'
   title: varchar('title', { length: 255 }).notNull(),
   description: text('description'),
 
-  // SOP-specific metadata
-  sopNumber: varchar('sop_number', { length: 20 }),
-  outputNumber: varchar('output_number', { length: 20 }),
-
-  // Roadmap-specific metadata
-  section: varchar('section', { length: 50 }), // 'executive', 'diagnostic', 'architecture', etc.
-  tags: json('tags').$type<string[]>().default([]),
-
   // Access control
   uploadedBy: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }),
-  isPublic: boolean('is_public').default(false),
+  isPublic: boolean('is_public').notNull().default(false),
 
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => {
+  return {
+    tenantDocSopIdx: uniqueIndex('tenant_doc_sop_idx').on(table.tenantId, table.category, table.sopNumber, table.outputNumber),
+  };
 });
 
 // ============================================================================
@@ -324,6 +477,9 @@ export const agentConfigs = pgTable('agent_configs', {
   updatedBy: uuid('updated_by').references(() => users.id),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
+
+  // Align with temp_controller expectations
+  lastUpdatedBy: uuid('last_updated_by').references(() => users.id),
 });
 
 // ============================================================================
@@ -381,9 +537,7 @@ export const tenantVectorStores = pgTable('tenant_vector_stores', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-// ============================================================================
-// TYPE EXPORTS
-// ============================================================================
+
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -393,6 +547,10 @@ export type NewInvite = typeof invites.$inferInsert;
 
 export type Intake = typeof intakes.$inferSelect;
 export type NewIntake = typeof intakes.$inferInsert;
+
+export type IntakeVector = typeof intakeVectors.$inferSelect;
+export type NewIntakeVector = typeof intakeVectors.$inferInsert;
+
 
 export type Roadmap = typeof roadmaps.$inferSelect;
 export type NewRoadmap = typeof roadmaps.$inferInsert;
@@ -427,8 +585,7 @@ export type NewTenantFeatureFlag = typeof tenantFeatureFlags.$inferInsert;
 export type ImpersonationSession = typeof impersonationSessions.$inferSelect;
 export type NewImpersonationSession = typeof impersonationSessions.$inferInsert;
 
-export type OnboardingState = typeof onboardingStates.$inferSelect;
-export type NewOnboardingState = typeof onboardingStates.$inferInsert;
+
 
 export type TenantDocument = typeof tenantDocuments.$inferSelect;
 export type NewTenantDocument = typeof tenantDocuments.$inferInsert;
@@ -514,6 +671,50 @@ export const roadmapSections = pgTable('roadmap_sections', {
   }>().default({}),
   wordCount: integer('word_count'),
   diagrams: json('diagrams').$type<string[]>().default([]),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ============================================================================
+// SOP TICKETS (Structured SOP-01 output for ticket generation)
+// ============================================================================
+
+export const sopTickets = pgTable('sop_tickets', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  diagnosticId: uuid('diagnostic_id').references(() => diagnostics.id, { onDelete: 'cascade' }),
+  ticketId: varchar('ticket_id', { length: 50 }).notNull(), // e.g., "S3-T1"
+  title: varchar('title', { length: 255 }).notNull(),
+  description: text('description').notNull(),
+  category: varchar('category', { length: 100 }),
+  tier: varchar('tier', { length: 50 }),
+  valueCategory: varchar('value_category', { length: 100 }),
+  owner: varchar('owner', { length: 100 }),
+  priority: varchar('priority', { length: 50 }),
+  sprint: integer('sprint').default(1),
+  timeEstimateHours: integer('time_estimate_hours').default(0),
+  costEstimate: integer('cost_estimate').default(0),
+  projectedHoursSavedWeekly: integer('projected_hours_saved_weekly').default(0),
+  projectedLeadsRecoveredMonthly: integer('projected_leads_recovered_monthly').default(0),
+  approved: boolean('approved').default(false),
+  adminNotes: text('admin_notes'),
+  ticketType: varchar('ticket_type', { length: 50 }),
+  roadmapSection: text('roadmap_section'),
+  inventoryId: text('inventory_id'),
+  isSidecar: boolean('is_sidecar').default(false),
+  painSource: text('pain_source'),
+  currentState: text('current_state'),
+  targetState: text('target_state'),
+  aiDesign: text('ai_design'),
+  ghlImplementation: text('ghl_implementation'),
+  implementationSteps: json('implementation_steps'),
+  dependencies: json('dependencies').$type<string[]>(),
+  moderationStatus: varchar('moderation_status', { length: 30 }).default('pending'),
+  status: varchar('status', { length: 20 }).notNull().default('generated'), // generated|pending|approved|rejected|locked
+  successMetric: text('success_metric'),
+  roiNotes: text('roi_notes'),
+  moderatedAt: timestamp('moderated_at', { withTimezone: true }),
+  moderatedBy: uuid('moderated_by').references(() => users.id),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -645,6 +846,7 @@ export const discoveryCallNotes = pgTable('discovery_call_notes', {
   id: uuid('id').primaryKey().defaultRandom(),
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   createdByUserId: uuid('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  status: varchar('status', { length: 20 }).notNull().default('draft'), // draft | ingested
   notes: text('notes').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -706,64 +908,213 @@ export type NewPublicAgentSession = typeof publicAgentSessions.$inferInsert;
 export type PublicAgentEvent = typeof publicAgentEvents.$inferSelect;
 export type NewPublicAgentEvent = typeof publicAgentEvents.$inferInsert;
 
+
+
 // ============================================================================
-// SOP TICKETS (Diagnostic-generated structured tickets)
+// DIAGNOSTIC SNAPSHOTS
 // ============================================================================
 
-export const sopTickets = pgTable('sop_tickets', {
+export const diagnosticSnapshots = pgTable('diagnostic_snapshots', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  email: varchar('email', { length: 255 }),
+  orgName: varchar('org_name', { length: 255 }),
+  // Allow multiple snapshots per session (history), but maybe index for lookup
+  teamSessionId: varchar('team_session_id', { length: 255 }).notNull(),
+  payload: json('payload').notNull(),
+  version: integer('version').notNull().default(1),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type DiagnosticSnapshot = typeof diagnosticSnapshots.$inferSelect;
+export type NewDiagnosticSnapshot = typeof diagnosticSnapshots.$inferInsert;
+
+// ============================================================================
+// DIAGNOSTICS (System of Record for SOP-01)
+// ============================================================================
+
+export const diagnostics = pgTable('diagnostics', {
   id: uuid('id').primaryKey().defaultRandom(),
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  diagnosticId: varchar('diagnostic_id', { length: 255 }).notNull(),
-  ticketId: varchar('ticket_id', { length: 10 }).notNull(),
+  sopVersion: varchar('sop_version', { length: 20 }).notNull().default('SOP-01'),
+  status: varchar('status', { length: 20 }).notNull().default('generated'), // not_generated | generated | locked | published
 
-  // Inventory tracking
-  inventoryId: varchar('inventory_id', { length: 64 }),
-  isSidecar: boolean('is_sidecar').notNull().default(false),
+  // Artifacts (Storing simplified payloads for easy UI rendering)
+  overview: json('overview').$type<Record<string, any>>().notNull(),
+  aiOpportunities: json('ai_opportunities').$type<Record<string, any>>().notNull(),
+  roadmapSkeleton: json('roadmap_skeleton').$type<Record<string, any>>().notNull(),
+  discoveryQuestions: json('discovery_questions').$type<Record<string, any>>().notNull(),
 
-  // Core ticket content
-  title: text('title').notNull(),
-  category: varchar('category', { length: 50 }).notNull(),
-  valueCategory: varchar('value_category', { length: 100 }).notNull().default('General'),
-  tier: varchar('tier', { length: 20 }).notNull().default('recommended'),
-  painSource: text('pain_source').notNull(),
-
-  // Moderation fields
-  approved: boolean('approved').notNull().default(false),
-  moderationStatus: varchar('moderation_status', { length: 20 }).notNull().default('pending'),
-  adminNotes: text('admin_notes'),
-  moderatedAt: timestamp('moderated_at', { withTimezone: true }),
-  moderatedBy: uuid('moderated_by').references(() => users.id),
-  description: text('description').notNull(),
-  currentState: text('current_state').notNull(),
-  targetState: text('target_state').notNull(),
-
-  // Technical implementation
-  aiDesign: text('ai_design').notNull(),
-  ghlImplementation: text('ghl_implementation').notNull(),
-  implementationSteps: json('implementation_steps').$type<string[]>().notNull().default([]),
-
-  // Ownership and dependencies
-  owner: varchar('owner', { length: 100 }).notNull(),
-  dependencies: json('dependencies').$type<string[]>().notNull().default([]),
-
-  // Cost modeling
-  timeEstimateHours: integer('time_estimate_hours').notNull(),
-  costEstimate: integer('cost_estimate').notNull(),
-  successMetric: text('success_metric').notNull(),
-
-  // Roadmap integration
-  roadmapSection: varchar('roadmap_section', { length: 50 }).notNull(),
-  priority: varchar('priority', { length: 20 }).notNull(),
-  sprint: integer('sprint').notNull(),
-
-  // ROI projections
-  projectedHoursSavedWeekly: integer('projected_hours_saved_weekly').notNull().default(0),
-  projectedLeadsRecoveredMonthly: integer('projected_leads_recovered_monthly').notNull().default(0),
-  roiNotes: text('roi_notes'),
+  // Metadata
+  generatedByUserId: uuid('generated_by_user_id').references(() => users.id),
+  approvedByUserId: uuid('approved_by_user_id').references(() => users.id),
+  approvedAt: timestamp('approved_at', { withTimezone: true }),
 
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export type Diagnostic = typeof diagnostics.$inferSelect;
+export type NewDiagnostic = typeof diagnostics.$inferInsert;
+
+// ============================================================================
+// EVIDENCE ARTIFACTS (Real Systemic Evidence)
+// ============================================================================
+
+export const evidenceArtifacts = pgTable('evidence_artifacts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  kind: varchar('kind', { length: 50 }).notNull().default('image'), // image | pdf_excerpt | text_excerpt
+  storageProvider: varchar('storage_provider', { length: 50 }).notNull(), // vercel_blob | local | s3
+  storageKey: text('storage_key').notNull(),
+  publicUrl: text('public_url'),
+  mimeType: varchar('mime_type', { length: 100 }),
+  bytes: integer('bytes'),
+  width: integer('width'),
+  height: integer('height'),
+  caption: text('caption'),
+  source: varchar('source', { length: 100 }), // manual_upload
+  createdBy: text('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const evidenceBindings = pgTable('evidence_bindings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  teamSessionId: varchar('team_session_id', { length: 128 }).notNull(), // FE Token or Team ID
+  role: varchar('role', { length: 50 }).notNull(),
+  slotKey: varchar('slot_key', { length: 100 }).notNull(),
+  artifactId: uuid('artifact_id').notNull().references(() => evidenceArtifacts.id, { onDelete: 'cascade' }),
+  strength: integer('strength').default(1),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type EvidenceArtifact = typeof evidenceArtifacts.$inferSelect;
+export type NewEvidenceArtifact = typeof evidenceArtifacts.$inferInsert;
+
+export type EvidenceBinding = typeof evidenceBindings.$inferSelect;
+export type NewEvidenceBinding = typeof evidenceBindings.$inferInsert;
+
+
+
+// ============================================================================
+// ONBOARDING STATES TABLE
+// ============================================================================
+
+export const onboardingStates = pgTable('onboarding_states', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  step: varchar('step', { length: 50 }).notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('not_started'),
+  metadata: json('metadata').default({}),
+  completedAt: timestamp('completed_at'),
+  percentComplete: integer('percent_complete').default(0),
+  totalPoints: integer('total_points').default(0),
+  maxPoints: integer('max_points').default(0),
+  steps: json('steps').default([]),
+  badges: json('badges').default([]),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
 export type SopTicket = typeof sopTickets.$inferSelect;
 export type NewSopTicket = typeof sopTickets.$inferInsert;
+
+export type ExecutiveBrief = typeof executiveBriefs.$inferSelect;
+export type NewExecutiveBrief = typeof executiveBriefs.$inferInsert;
+
+export type FirmBaselineIntake = typeof firmBaselineIntake.$inferSelect;
+export type NewFirmBaselineIntake = typeof firmBaselineIntake.$inferInsert;
+
+// ============================================================================
+// ASSISTED SYNTHESIS AGENT SESSIONS (Stage 5 only - bounded persistence)
+// ============================================================================
+
+/**
+ * Bounded session storage for Stage 5 interpretive agent.
+ * Sessions persist ONLY while Current Facts have pending items.
+ * Hard reset when all Current Facts are resolved.
+ */
+export const assistedSynthesisAgentSessions = pgTable('assisted_synthesis_agent_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: varchar('tenant_id', { length: 255 }).notNull(),
+  stage: varchar('stage', { length: 50 }).notNull().default('assisted_synthesis'),
+  phase: varchar('phase', { length: 50 }).notNull().default('current_facts'),
+  contextVersion: varchar('context_version', { length: 255 }).notNull(), // hash or timestamp of proposals
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow()
+});
+
+/**
+ * Individual chat messages within a bounded session.
+ * Cleared when session is reset.
+ */
+export const assistedSynthesisAgentMessages = pgTable('assisted_synthesis_agent_messages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  sessionId: uuid('session_id').notNull().references(() => assistedSynthesisAgentSessions.id, { onDelete: 'cascade' }),
+  role: varchar('role', { length: 20 }).notNull(), // 'user' | 'assistant'
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow()
+});
+
+export type AssistedSynthesisAgentSession = typeof assistedSynthesisAgentSessions.$inferSelect;
+export type NewAssistedSynthesisAgentSession = typeof assistedSynthesisAgentSessions.$inferInsert;
+
+export type AssistedSynthesisAgentMessage = typeof assistedSynthesisAgentMessages.$inferSelect;
+export type NewAssistedSynthesisAgentMessage = typeof assistedSynthesisAgentMessages.$inferInsert;
+
+// ============================================================================
+// TICKET MODERATION PIPELINE (Stage 6)
+// ============================================================================
+
+export const ticketModerationSessions = pgTable('ticket_moderation_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  sourceDocId: uuid('source_doc_id').notNull().references(() => tenantDocuments.id),
+  sourceDocVersion: varchar('source_doc_version', { length: 255 }),
+  status: varchar('status', { length: 50 }).notNull().default('active'), // active|complete|archived
+  startedBy: uuid('started_by').references(() => users.id, { onDelete: 'set null' }),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const ticketsDraft = pgTable('tickets_draft', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  moderationSessionId: uuid('moderation_session_id').notNull().references(() => ticketModerationSessions.id, { onDelete: 'cascade' }),
+  findingId: varchar('finding_id', { length: 255 }).notNull(),
+  findingType: varchar('finding_type', { length: 100 }).notNull(),
+  ticketType: varchar('ticket_type', { length: 100 }).notNull(), // Diagnostic|Optimization|ConstraintCheck|CapabilityBuild
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  evidenceRefs: jsonb('evidence_refs'),
+  status: varchar('status', { length: 50 }).notNull().default('pending'), // pending|accepted|rejected
+
+  // ==========================================================================
+  // STAGE 6: ENRICHED TICKET FIELDS (Parity with sop_tickets/legacy gen)
+  // ==========================================================================
+  category: varchar('category', { length: 100 }),
+  tier: varchar('tier', { length: 50 }),
+  ghlImplementation: text('ghl_implementation'),
+  implementationSteps: json('implementation_steps'),
+  successMetric: text('success_metric'),
+  roiNotes: text('roi_notes'),
+  timeEstimateHours: integer('time_estimate_hours').default(0),
+  sprint: integer('sprint').default(30),
+  painSource: text('pain_source'),
+
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => {
+  return {
+    moderationSessionFindingIdx: uniqueIndex('moderation_session_finding_idx').on(table.moderationSessionId, table.findingId),
+  }
+});
+
+export type TicketModerationSession = typeof ticketModerationSessions.$inferSelect;
+export type NewTicketModerationSession = typeof ticketModerationSessions.$inferInsert;
+
+export type TicketDraft = typeof ticketsDraft.$inferSelect;
+export type NewTicketDraft = typeof ticketsDraft.$inferInsert;

@@ -5,7 +5,12 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+      },
+      // Using Standard Tailwind Slate 950 for background
+
+    },
   },
   plugins: [
     require('@tailwindcss/typography'),

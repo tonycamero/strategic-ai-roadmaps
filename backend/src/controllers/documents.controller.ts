@@ -63,12 +63,12 @@ export async function getDocument(req: AuthRequest, res: Response) {
       .select()
       .from(tenantDocuments)
       .where(
-        req.user.role === 'superadmin'
+        (req.user.role === 'superadmin' && req.user.isInternal)
           ? eq(tenantDocuments.id, id)
           : and(
-              eq(tenantDocuments.id, id),
-              eq(tenantDocuments.tenantId, tenantId || '')
-            )
+            eq(tenantDocuments.id, id),
+            eq(tenantDocuments.tenantId, tenantId || '')
+          )
       )
       .limit(1);
 
@@ -97,7 +97,7 @@ export async function getDocument(req: AuthRequest, res: Response) {
             const text = await fs.readFile(fp, 'utf-8');
             content = text;
             break;
-          } catch {}
+          } catch { }
         }
       }
     }
@@ -108,8 +108,7 @@ export async function getDocument(req: AuthRequest, res: Response) {
         title: document.title,
         description: document.description,
         category: document.category,
-        sopNumber: document.sopNumber,
-        outputNumber: document.outputNumber,
+
         mimeType: document.mimeType,
         fileSize: document.fileSize,
         originalFilename: document.originalFilename,
@@ -142,12 +141,12 @@ export async function downloadDocument(req: AuthRequest, res: Response) {
       .select()
       .from(tenantDocuments)
       .where(
-        req.user.role === 'superadmin'
+        (req.user.role === 'superadmin' && req.user.isInternal)
           ? eq(tenantDocuments.id, id)
           : and(
-              eq(tenantDocuments.id, id),
-              eq(tenantDocuments.tenantId, tenantId || '')
-            )
+            eq(tenantDocuments.id, id),
+            eq(tenantDocuments.tenantId, tenantId || '')
+          )
       )
       .limit(1);
 
@@ -190,7 +189,7 @@ export async function downloadDocument(req: AuthRequest, res: Response) {
         await fs.access(fp);
         resolvedPath = fp;
         break;
-      } catch {}
+      } catch { }
     }
     if (!resolvedPath) {
       return res.status(404).json({ error: 'File not found on disk' });
@@ -260,8 +259,6 @@ export async function uploadDocument(req: AuthRequest, res: Response) {
         category,
         title,
         description: description || null,
-        sopNumber: sopNumber || null,
-        outputNumber: outputNumber || null,
         uploadedBy: req.user.userId,
         isPublic: isPublic === 'true' || isPublic === true,
       })

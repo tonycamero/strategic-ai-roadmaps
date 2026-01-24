@@ -1,0 +1,27 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/controllers/**/*.ts",
+    "src/services/**/*.ts",
+    "src/routes/**/*.ts",
+    "src/middleware/**/*.ts",
+    "src/utils/**/*.ts",
+    "src/db/**/*.ts",
+    "src/index.ts"
+  ],
+  "exclude": [
+    "src/scripts/**",
+    "src/tests/**",
+    "src/narrative/**",
+    "src/ai/**",
+    "src/controllers/temp_controller.ts",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "**/verify_*",
+    "**/test_*"
+  ]
+}

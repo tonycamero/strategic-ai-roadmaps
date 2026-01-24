@@ -6,9 +6,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import ReactMarkdown from "react-markdown";
+import { SaveResultsCTA } from "./SaveResultsCTA";
 import { webinarApi } from "./webinarApi";
 import { shapeOnepager } from "../../lib/onepagerShaper";
 import { useRoadmap } from "../../context/RoadmapContext";
+import { RoleEvidenceCard } from "./RoleEvidenceCard";
+
+// Placeholder for API_BASE_URL, adjust as needed for your environment
+const API_BASE_URL = "";
 
 type RoleId = "OWNER" | "SALES" | "OPS" | "DELIVERY";
 
@@ -44,7 +49,7 @@ const AUTH_KEY = "webinar_auth";
 const COMPLETED_KEY = "webinar_completed_roles";
 const ORIENTATION_DONE_KEY = "webinar_orientation_done";
 const ROLE_PAYLOADS_KEY = "webinar_role_payloads";
-const PROGRESS_KEY = "webinar_progress";
+
 const TEAM_REPORT_KEY = "webinar_team_report";
 const ROLE_RESULTS_KEY = "webinar_role_results";
 const SESSION_ID_KEY = "webinar_session_id";
@@ -76,7 +81,7 @@ export function WebinarDiagnostic({
   const [evidenceInput, setEvidenceInput] = useState("");
 
   // Role Progress State
-  const [progress, setProgress] = useState<any>(null);
+
   const [completedRoles, setCompletedRoles] = useState<RoleId[]>([]);
   const [questionStep, setQuestionStep] = useState(0);
   const [currentRoleEvidence, setCurrentRoleEvidence] = useState<
@@ -90,7 +95,7 @@ export function WebinarDiagnostic({
     | "ROLE_COMPLETE"
     | "RESULTS"
   >("AUTH");
-  const [teamReport, setTeamReport] = useState<any>(null);
+
   const [teamResults, setTeamResults] = useState<any>(null);
   const [narrative, setNarrative] = useState<any>(null); // Phase 4D: Narrative Lattice
   const [showDebug, setShowDebug] = useState(false); // Phase 4D: Debug Toggle
@@ -98,7 +103,10 @@ export function WebinarDiagnostic({
   const [strategyError, setStrategyError] = useState<string | null>(null);
   const [isPdfGenerating, setIsPdfGenerating] = useState(false);
 
-  // PDF Generation Handler
+  // PDF Generation  // Save State
+  const [isSaved, setIsSaved] = useState(false);
+
+  // Handlers
   const handleGeneratePdf = async () => {
     if (completedRoles.length < 4) return;
     setIsPdfGenerating(true);
@@ -213,23 +221,9 @@ export function WebinarDiagnostic({
       setViewMode("RESULTS");
     }
 
-    const savedProgress = sessionStorage.getItem(PROGRESS_KEY);
-    if (savedProgress) {
-      try {
-        setProgress(JSON.parse(savedProgress));
-      } catch (e) {
-        console.error(e);
-      }
-    }
 
-    const savedReport = sessionStorage.getItem(TEAM_REPORT_KEY);
-    if (savedReport) {
-      try {
-        setTeamReport(JSON.parse(savedReport));
-      } catch (e) {
-        console.error(e);
-      }
-    }
+
+
 
     const savedResults = sessionStorage.getItem(TEAM_RESULTS_KEY);
     if (savedResults) {
@@ -297,8 +291,8 @@ export function WebinarDiagnostic({
   };
 
   const randomDelay = () => {
-    const min = 3000;
-    const max = 9000;
+    const min = 1000;
+    const max = 3000;
     return Math.floor(Math.random() * (max - min + 1)) + min;
   };
 
@@ -381,6 +375,57 @@ export function WebinarDiagnostic({
     await processMessage(id, label, evidence);
   };
 
+  const handleSaveSnapshot = async (formData: { email: string; name: string; orgName: string }) => {
+    if (!sessionId || !teamResults) return;
+
+    // Collect full state
+    const rolePayloads = JSON.parse(sessionStorage.getItem(ROLE_PAYLOADS_KEY) || "{}");
+    // Ensure board state is captured if mutable (currently static in component render? No, teamResults has board)
+
+    // Construct payload
+    const payload = {
+      rolePayloads,
+      teamResults,
+      narrative, // if computed separately
+      completedRoles,
+      boardState: teamResults.board, // explicit
+      version: "1.0"
+    };
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/public/diagnostic/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email,
+          name: formData.name,
+          orgName: formData.orgName,
+          teamSessionId: sessionId,
+          payload
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Save failed");
+      }
+
+      const data = await res.json();
+      setIsSaved(true);
+
+      // If token returned (auto-login), store it
+      if (data.token) {
+        localStorage.setItem("auth_token", data.token);
+        // Trigger global auth refresh
+        onAuthChange(true);
+      }
+
+    } catch (error: any) {
+      console.error("Save error:", error);
+      throw error; // Re-throw for CTA component to handle
+    }
+  };
+
   const processMessage = async (
     optionId: string,
     label: string,
@@ -457,9 +502,7 @@ export function WebinarDiagnostic({
       // Increment question step
       setQuestionStep((prev: number) => prev + 1);
 
-      if (response.progress) {
-        setProgress(response.progress);
-      }
+
 
       // Completion detection: Options empty (A1/T1)
       const isComplete =
@@ -499,7 +542,7 @@ export function WebinarDiagnostic({
       }
 
       if (response.teamReport) {
-        setTeamReport(response.teamReport);
+
         sessionStorage.setItem(
           TEAM_REPORT_KEY,
           JSON.stringify(response.teamReport),
@@ -698,9 +741,9 @@ export function WebinarDiagnostic({
                 onClick={() => !isCompleted && startRole(role)}
                 disabled={isCompleted}
                 className={`group px-6 py-4 border rounded-lg font-medium transition-all text-left flex items-center justify-between ${isCompleted
-                  ? "bg-slate-900/50 border-slate-800 text-slate-500 cursor-not-allowed"
+                  ? "bg-slate-900/50 border-slate-800 text-slate-400 cursor-not-allowed"
                   : "bg-slate-950 border-slate-700 hover:border-blue-500 hover:bg-slate-900 text-white"
-                  }`}
+                  } `}
               >
                 <div className="flex flex-col">
                   <span className="text-sm font-semibold">
@@ -773,9 +816,7 @@ export function WebinarDiagnostic({
 
   // Results View
   if (viewMode === "RESULTS") {
-    const roleResults = JSON.parse(
-      sessionStorage.getItem(ROLE_RESULTS_KEY) || "{}",
-    );
+
     const rolePayloads = JSON.parse(
       sessionStorage.getItem(ROLE_PAYLOADS_KEY) || "{}",
     );
@@ -817,7 +858,7 @@ export function WebinarDiagnostic({
                   const isDone = completedRoles.includes(roleId);
                   const payload = rolePayloads[roleId];
                   return (
-                    <div key={roleId} className={`p-6 rounded-xl border ${isDone ? 'bg-slate-900/50 border-emerald-500/30' : 'bg-slate-900/30 border-slate-800'}`}>
+                    <div key={roleId} className={`p-6 rounded-xl border ${isDone ? 'bg-slate-900/50 border-emerald-500/30' : 'bg-slate-900/30 border-slate-800'} `}>
                       <div className="flex justify-between items-center mb-3">
                         <h4 className="font-bold text-slate-200">{ROLE_LABELS[roleId]}</h4>
                         {isDone ? <span className="text-xs text-emerald-400 font-bold">READY</span> : <span className="text-xs text-slate-500">PENDING</span>}
@@ -942,35 +983,16 @@ export function WebinarDiagnostic({
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {/* Ensure we render 4 items safe */}
-                  {(teamResults.roleSummaries || []).map((role: any, idx: number) => {
-                    const verdicts: any = {
-                      owner: "You are absorbing system failures instead of enforcing structure.",
-                      sales: "Revenue depends on heroics instead of enforced follow-up.",
-                      ops: "Execution speed exceeds system control.",
-                      delivery: "Momentum decays after handoff due to unclear ownership."
-                    };
-                    return (
-                      <div key={idx} className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-colors">
-                        <h4 className="text-sm font-black text-white uppercase tracking-wide mb-3">{role.roleName}</h4>
-                        <p className="text-xs font-bold text-white mb-3 bg-white/5 p-2 rounded border-l-2 border-emerald-500">
-                          {verdicts[role.roleId]}
-                        </p>
-                        <div className="min-h-[60px] mb-4">
-                          <p className="text-sm font-bold text-blue-400 leading-snug">{role.headline}</p>
-                        </div>
-                        <div className="space-y-3 mb-4">
-                          {(role.signals || []).slice(0, 2).map((s: string, si: number) => (
-                            <div key={si} className="text-[10px] py-1 px-2 bg-slate-950 rounded border border-slate-800 text-slate-400">
-                              {s}
-                            </div>
-                          ))}
-                        </div>
-                        <p className="text-xs text-slate-500 italic border-t border-slate-800 pt-3">
-                          "{role.diagnosis}"
-                        </p>
-                      </div>
-                    );
-                  })}
+                  {(teamResults.roleSummaries || []).map((role: any, idx: number) => (
+                    <RoleEvidenceCard
+                      key={idx}
+                      roleId={role.roleId}
+                      roleName={role.roleName}
+                      headline={role.headline}
+                      signals={role.signals}
+                      diagnosis={role.diagnosis}
+                    />
+                  ))}
                 </div>
               </div>
 
@@ -1168,6 +1190,16 @@ export function WebinarDiagnostic({
             </div>
           )}
 
+
+          {/* SAVE RESULTS CTA */}
+          {teamResults && (
+            <SaveResultsCTA
+              onSave={handleSaveSnapshot}
+              isSaved={isSaved}
+              canRefire={false}
+            />
+          )}
+
           {/* DEBUG PANEL (Phase 4D) */}
           {showDebug && narrative && (
             <div className="mx-8 mb-32 p-6 bg-black/80 font-mono text-xs text-green-400 border border-green-900 rounded-xl overflow-x-auto">
@@ -1201,12 +1233,12 @@ export function WebinarDiagnostic({
           <div className="flex items-center gap-4">
             <button
               onClick={() => setShowDebug(!showDebug)}
-              className={`text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded border ${showDebug ? 'bg-green-900/20 text-green-400 border-green-900' : 'bg-transparent text-slate-700 border-slate-800 hover:border-slate-600'}`}
+              className={`text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded border ${showDebug ? 'bg-green-900/20 text-green-400 border-green-900' : 'bg-transparent text-slate-700 border-slate-800 hover:border-slate-600'} `}
             >
               Lattice Debug
             </button>
             <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${completedRoles.length === 4 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-amber-500'}`}></div>
+              <div className={`w-3 h-3 rounded-full ${completedRoles.length === 4 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-amber-500'} `}></div>
               <span className="text-sm font-bold text-white tracking-wide">
                 {completedRoles.length}/4 Roles Complete
               </span>
@@ -1223,13 +1255,13 @@ export function WebinarDiagnostic({
             onClick={teamResults ? handleGeneratePdf : handleGenerateStrategy}
             disabled={completedRoles.length < 4 || isGeneratingStrategy || isPdfGenerating}
             className={`
-                   px-8 py-3 rounded-xl font-bold text-sm transition-all shadow-lg flex items-center gap-3
+px-8 py-3 rounded-xl font-bold text-sm transition-all shadow-lg flex items-center gap-3
                    ${teamResults
                 ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/30'
                 : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/30'
               }
-                   disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed
-                `}
+disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed
+  `}
           >
             {isGeneratingStrategy || isPdfGenerating ? (
               <>
@@ -1391,13 +1423,13 @@ export function WebinarDiagnostic({
           {messages.map((msg: Message) => (
             <div
               key={msg.id}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} `}
             >
               <div
-                className={`max-w-[85%] rounded-lg p-4 ${msg.role === "user"
+                className={`max-w-[85%] rounded-lg p-8 ${msg.role === "user"
                   ? "bg-blue-600 text-white"
                   : "bg-slate-950 text-slate-200"
-                  }`}
+                  } `}
               >
                 {msg.role === "agent" ? (
                   <div className="prose prose-invert prose-sm max-w-none">

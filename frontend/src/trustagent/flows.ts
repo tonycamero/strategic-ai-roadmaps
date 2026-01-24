@@ -58,7 +58,7 @@ export const flows: Record<FlowId, FlowStep[]> = {
     {
       id: 'intro-1',
       speaker: 'agent',
-      message: "Hi! I'm TrustAgent. I help teams understand if the Strategic AI Roadmap is right for them. What would you like to know?",
+      message: "Hi! I'm TrustConsole. I help teams understand if the Strategic AI Roadmap is right for them. What would you like to know?",
       options: [
         { id: 'opt-1', label: 'What is the Roadmap?', nextStepId: 'intro-explain' },
         { id: 'opt-2', label: 'Who is this for?', nextStepId: 'intro-fit' },

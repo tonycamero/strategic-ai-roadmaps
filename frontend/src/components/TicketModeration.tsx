@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRoute, useLocation } from 'wouter';
+import { superadminApi } from '../superadmin/api';
 
 interface Ticket {
   ticketId: string;
@@ -30,7 +31,7 @@ type TicketColumn = 'CORE' | 'RECOMMENDED' | 'ADVANCED' | 'REJECTED';
 export default function TicketModeration() {
   const [, params] = useRoute<{ tenantId: string; diagnosticId: string }>('/superadmin/tickets/:tenantId/:diagnosticId');
   const [, setLocation] = useLocation();
-  
+
   const tenantId = params?.tenantId;
   const diagnosticId = params?.diagnosticId;
 
@@ -43,24 +44,63 @@ export default function TicketModeration() {
 
   // Fetch tickets
   useEffect(() => {
-    fetchTickets();
-    fetchStatus();
-  }, [tenantId, diagnosticId]);
+    fetchSessionAndTickets();
+  }, [tenantId]);
 
-  const fetchTickets = async () => {
+  const fetchSessionAndTickets = async () => {
+    if (!tenantId) return;
     try {
       setLoading(true);
-      const response = await fetch(
-        `/api/superadmin/tickets/${tenantId}/${diagnosticId}`,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+
+      // 1. Check for active moderation session (Stage 6)
+      try {
+        const { session, tickets: draftTickets } = await superadminApi.getActiveModerationSession(tenantId);
+
+        if (session && draftTickets) {
+          console.log('[TicketModeration] Using active Stage 6 session:', session.id);
+          // Map draft tickets to UI Ticket interface
+          const mapped: Ticket[] = draftTickets.map((t: any) => ({
+            ticketId: t.id,
+            title: t.title,
+            category: t.findingType,
+            valueCategory: t.ticketType,
+            tier: mapTypeToTier(t.ticketType),
+            description: t.description,
+            timeEstimateHours: 0, // Not present in draft yet
+            costEstimate: 0,
+            projectedHoursSavedWeekly: 0,
+            projectedLeadsRecoveredMonthly: 0,
+            approved: t.status === 'accepted' ? true : t.status === 'rejected' ? false : null,
+            moderatedAt: t.status !== 'pending' ? new Date().toISOString() : null,
+            adminNotes: null
+          }));
+
+          setTickets(mapped);
+          setStatus({
+            totalTickets: mapped.length,
+            approvedCount: mapped.filter(t => t.approved === true).length,
+            rejectedCount: mapped.filter(t => t.approved === false).length,
+            pendingCount: mapped.filter(t => t.approved === null).length,
+            allModerated: mapped.every(t => t.approved !== null)
+          });
+          return;
         }
-      );
+      } catch (e) {
+        console.warn('[TicketModeration] No active session found or failed to load:', e);
+      }
 
-      if (!response.ok) throw new Error('Failed to fetch tickets');
+      // 2. Fallback to legacy SOP tickets (Stage 5 and below)
+      console.log('[TicketModeration] Falling back to legacy tickets for diagnostic:', diagnosticId);
+      const { tickets: legacyTickets, status: legacyStatus } = await superadminApi.getDiagnosticTickets(tenantId, diagnosticId!);
+      setTickets(legacyTickets || []);
+      setStatus({
+        totalTickets: legacyStatus.total,
+        approvedCount: legacyStatus.approved,
+        rejectedCount: legacyStatus.rejected,
+        pendingCount: legacyStatus.pending,
+        allModerated: legacyStatus.pending === 0
+      });
 
-      const data = await response.json();
-      setTickets(data.tickets || []);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -68,22 +108,10 @@ export default function TicketModeration() {
     }
   };
 
-  const fetchStatus = async () => {
-    try {
-      const response = await fetch(
-        `/api/superadmin/tickets/${tenantId}/${diagnosticId}/status`,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        }
-      );
-
-      if (!response.ok) throw new Error('Failed to fetch status');
-
-      const data = await response.json();
-      setStatus(data);
-    } catch (err: any) {
-      console.error('Failed to fetch moderation status:', err);
-    }
+  const mapTypeToTier = (type: string): TicketColumn => {
+    if (type === 'Optimization') return 'RECOMMENDED';
+    if (type === 'CapabilityBuild') return 'ADVANCED';
+    return 'CORE'; // Diagnostic, ConstraintCheck
   };
 
   const handleApprove = async () => {
@@ -91,22 +119,14 @@ export default function TicketModeration() {
 
     try {
       setActionLoading(true);
-      const response = await fetch('/api/superadmin/tickets/approve', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ticketIds: Array.from(selectedTickets),
-          adminNotes: 'Bulk approved'
-        })
+      await superadminApi.approveTickets({
+        tenantId: tenantId!,
+        diagnosticId: diagnosticId || 'none',
+        ticketIds: Array.from(selectedTickets),
+        adminNotes: 'Bulk approved'
       });
 
-      if (!response.ok) throw new Error('Failed to approve tickets');
-
-      await fetchTickets();
-      await fetchStatus();
+      await fetchSessionAndTickets();
       setSelectedTickets(new Set());
     } catch (err: any) {
       setError(err.message);
@@ -120,22 +140,14 @@ export default function TicketModeration() {
 
     try {
       setActionLoading(true);
-      const response = await fetch('/api/superadmin/tickets/reject', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ticketIds: Array.from(selectedTickets),
-          adminNotes: 'Bulk rejected'
-        })
+      await superadminApi.rejectTickets({
+        tenantId: tenantId!,
+        diagnosticId: diagnosticId || 'none',
+        ticketIds: Array.from(selectedTickets),
+        adminNotes: 'Bulk rejected'
       });
 
-      if (!response.ok) throw new Error('Failed to reject tickets');
-
-      await fetchTickets();
-      await fetchStatus();
+      await fetchSessionAndTickets();
       setSelectedTickets(new Set());
     } catch (err: any) {
       setError(err.message);
@@ -323,9 +335,8 @@ function TicketCard({ ticket, isSelected, onToggle }: TicketCardProps) {
 
   return (
     <div
-      className={`border rounded p-3 bg-white cursor-pointer transition-all ${
-        isSelected ? 'ring-2 ring-blue-500' : ''
-      } ${isModerated ? 'opacity-75' : ''}`}
+      className={`border rounded p-3 bg-white cursor-pointer transition-all ${isSelected ? 'ring-2 ring-blue-500' : ''
+        } ${isModerated ? 'opacity-75' : ''}`}
       onClick={onToggle}
     >
       <div className="flex items-start gap-2 mb-2">

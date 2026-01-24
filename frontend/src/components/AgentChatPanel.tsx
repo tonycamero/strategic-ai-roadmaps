@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { getInteractionMode } from '../utils/roleAwareness';
+import { api } from '../lib/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -29,15 +30,15 @@ interface AgentChatPanelProps {
   showAutoRoute?: boolean;
 }
 
-export function AgentChatPanel({ 
-  defaultRole = 'owner', 
+export function AgentChatPanel({
+  defaultRole = 'owner',
   showRoleSelector = true,
   showAutoRoute = true,
 }: AgentChatPanelProps) {
   const { user } = useAuth();
   const mode = getInteractionMode(user?.role || 'owner');
   const isObserver = mode === 'observer';
-  
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -56,7 +57,7 @@ export function AgentChatPanel({
       document.body.style.overflow = '';
     };
   }, [isOpen]);
-  
+
   const debouncedSetAutoRoute = useCallback((value: boolean) => {
     if (autoRouteDebounceTimer) {
       clearTimeout(autoRouteDebounceTimer);
@@ -70,11 +71,11 @@ export function AgentChatPanel({
   const queryMutation = useMutation({
     mutationFn: async (message: string) => {
       const token = localStorage.getItem('token');
-      
+
       // Decode JWT to check role
       const payload = token ? JSON.parse(atob(token.split('.')[1])) : null;
       const isSuperadmin = payload?.role === 'superadmin';
-      
+
       if (isSuperadmin) {
         // Superadmin uses legacy console agent
         const res = await fetch('/api/agent/query', {
@@ -93,26 +94,14 @@ export function AgentChatPanel({
 
         return res.json();
       } else {
-        // Owner/team uses new Assistant with roleType + autoRoute
-        const res = await fetch('/api/assistant/query', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ 
-            message, 
-            roleType: selectedRole,
-            autoRoute,
-          }),
+        // Owner/team uses new Roadmap Agent (Unified TrustAgent)
+        // We bypass the legacy role-based routing for now as the Roadmap Agent is the single source of truth
+        const res = await api.askRoadmapQuestion({
+          question: message,
+          // We can add section context here later if needed
         });
 
-        if (!res.ok) {
-          const error = await res.json();
-          throw new Error(error.error || 'Agent query failed');
-        }
-
-        return res.json();
+        return { reply: res.answer };
       }
     },
     onSuccess: (data) => {
@@ -267,31 +256,30 @@ export function AgentChatPanel({
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[85%] p-3 rounded-lg text-sm ${
-                    msg.role === 'user'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-900 text-slate-100 border border-slate-800'
-                  }`}
+                  className={`max-w-[85%] p-3 rounded-lg text-sm ${msg.role === 'user'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-900 text-slate-100 border border-slate-800'
+                    }`}
                 >
                   {msg.role === 'user' ? (
                     <div className="whitespace-pre-wrap">{msg.content}</div>
                   ) : (
                     <div className="prose prose-invert prose-sm max-w-none">
-                      <ReactMarkdown 
+                      <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
-                        ul: ({node, ...props}) => <ul className="list-disc ml-4 my-2 space-y-1" {...props} />,
-                        ol: ({node, ...props}) => <ol className="list-decimal ml-4 my-2 space-y-1" {...props} />,
-                        p: ({node, ...props}) => <p className="my-2" {...props} />,
-                        h1: ({node, ...props}) => <h1 className="text-lg font-bold mt-4 mb-2" {...props} />,
-                        h2: ({node, ...props}) => <h2 className="text-base font-bold mt-3 mb-2" {...props} />,
-                        h3: ({node, ...props}) => <h3 className="text-sm font-bold mt-2 mb-1" {...props} />,
-                        strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
-                        code: ({node, ...props}: any) => 
-                          props.inline ? 
-                            <code className="bg-slate-800 px-1 py-0.5 rounded text-xs" {...props} /> : 
-                            <code className="block bg-slate-800 p-2 rounded my-2 text-xs overflow-x-auto" {...props} />,
-                      }}
+                          ul: ({ node, ...props }) => <ul className="list-disc ml-4 my-2 space-y-1" {...props} />,
+                          ol: ({ node, ...props }) => <ol className="list-decimal ml-4 my-2 space-y-1" {...props} />,
+                          p: ({ node, ...props }) => <p className="my-2" {...props} />,
+                          h1: ({ node, ...props }) => <h1 className="text-lg font-bold mt-4 mb-2" {...props} />,
+                          h2: ({ node, ...props }) => <h2 className="text-base font-bold mt-3 mb-2" {...props} />,
+                          h3: ({ node, ...props }) => <h3 className="text-sm font-bold mt-2 mb-1" {...props} />,
+                          strong: ({ node, ...props }) => <strong className="font-semibold" {...props} />,
+                          code: ({ node, ...props }: any) =>
+                            props.inline ?
+                              <code className="bg-slate-800 px-1 py-0.5 rounded text-xs" {...props} /> :
+                              <code className="block bg-slate-800 p-2 rounded my-2 text-xs overflow-x-auto" {...props} />,
+                        }}
                       >
                         {msg.content}
                       </ReactMarkdown>
@@ -299,7 +287,7 @@ export function AgentChatPanel({
                   )}
                   {msg.routedTo && msg.routingSource && (
                     <div className="text-xs mt-2 pt-2 border-t border-slate-700 text-slate-400">
-                      🎯 Routed to {ROLE_OPTIONS.find(r => r.value === msg.routedTo)?.label} 
+                      🎯 Routed to {ROLE_OPTIONS.find(r => r.value === msg.routedTo)?.label}
                       {msg.routingSource !== 'semantic' && ` (${msg.routingSource})`}
                     </div>
                   )}

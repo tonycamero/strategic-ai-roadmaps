@@ -47,9 +47,14 @@ export async function chat(
   message: string,
   sessionId?: string,
   pageContext?: ChatRequest['pageContext'],
-  mode: 'feta' = 'feta'
+  mode: 'feta' | 'homepage' = 'homepage'
 ): Promise<ChatResponse> {
-  const response = await fetch('/api/public/trustagent/homepage/chat', {
+  // Bifurcate endpoint based on mode
+  const endpoint = mode === 'homepage'
+    ? '/api/public/pulseagent/homepage/chat' // Smartass Sales Persona
+    : '/api/public/trustagent/homepage/chat'; // Diagnostic/FE-TA Persona
+
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

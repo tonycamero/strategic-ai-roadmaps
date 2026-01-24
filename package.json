@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@vercel/node": "^5.5.8",
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "typescript": "^5.9.3"
   }
 }

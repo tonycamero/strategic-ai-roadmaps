@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { useAuth } from '../../context/AuthContext';
@@ -101,6 +101,8 @@ export default function OwnerIntake() {
     queryFn: () => api.getMyIntake(),
   });
 
+  const coachingFeedback = intakeData?.intake?.coachingFeedback || {};
+
   // Load existing intake data into form when editing
   useEffect(() => {
     if (intakeData?.intake && isEditing) {
@@ -128,8 +130,6 @@ export default function OwnerIntake() {
     }
   }, [intakeData, isEditing]);
 
-  // Allow viewing intake even if already submitted (removed auto-redirect)
-
   const submitMutation = useMutation({
     mutationFn: api.submitIntake,
     onSuccess: async () => {
@@ -148,7 +148,7 @@ export default function OwnerIntake() {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const payload: OwnerIntakeForm = {
       ...formData,
@@ -203,7 +203,7 @@ export default function OwnerIntake() {
               Strategic Assessment Complete
             </h2>
             <p className="text-slate-400 mb-6">
-              Thank you for completing your strategic assessment. Your responses provide the 
+              Thank you for completing your strategic assessment. Your responses provide the
               foundation for building your team's AI roadmap.
             </p>
             <button
@@ -217,7 +217,7 @@ export default function OwnerIntake() {
           <div className="bg-slate-900 rounded-lg border border-slate-800 p-8">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-slate-100 mb-2">Your Submitted Intake</h2>
+                <h2 className="text-2xl font-bold text-slate-100 mb-2">Your Submitted Assessment</h2>
                 <p className="text-sm text-slate-400">
                   Submitted {new Date(intakeData.intake.createdAt as any).toLocaleDateString()}
                 </p>
@@ -243,6 +243,7 @@ export default function OwnerIntake() {
                   <div className="text-sm text-slate-200 whitespace-pre-wrap">
                     {renderValue(value)}
                   </div>
+                  <ConsultantFeedback feedback={coachingFeedback[key]} />
                 </div>
               ))}
             </div>
@@ -267,6 +268,7 @@ export default function OwnerIntake() {
                 placeholder="List your most important business priorities..."
                 required
               />
+              <ConsultantFeedback feedback={coachingFeedback.top_priorities} />
             </div>
 
             <div>
@@ -281,6 +283,7 @@ export default function OwnerIntake() {
                 placeholder="Be specific about what holds you back..."
                 required
               />
+              <ConsultantFeedback feedback={coachingFeedback.biggest_frustration} />
             </div>
 
             <div>
@@ -295,6 +298,7 @@ export default function OwnerIntake() {
                 placeholder="Describe your ideal operational state..."
                 required
               />
+              <ConsultantFeedback feedback={coachingFeedback.ideal_state} />
             </div>
 
             {/* Section B: Team & Workflow */}
@@ -315,6 +319,7 @@ export default function OwnerIntake() {
                 placeholder="Describe where things get stuck..."
                 required
               />
+              <ConsultantFeedback feedback={coachingFeedback.workflow_stuck} />
             </div>
 
             <div>
@@ -329,6 +334,7 @@ export default function OwnerIntake() {
                 placeholder="Who's stretched too thin?..."
                 required
               />
+              <ConsultantFeedback feedback={coachingFeedback.team_bottlenecks} />
             </div>
 
             <div>
@@ -343,6 +349,7 @@ export default function OwnerIntake() {
                 placeholder="Where do you personally become the bottleneck?..."
                 required
               />
+              <ConsultantFeedback feedback={coachingFeedback.owner_bottlenecks} />
             </div>
 
             {/* Section C: Systems & Communication */}
@@ -363,6 +370,7 @@ export default function OwnerIntake() {
                 placeholder="What tools aren't working?..."
                 required
               />
+              <ConsultantFeedback feedback={coachingFeedback.systems_struggles} />
             </div>
 
             <div>
@@ -377,6 +385,7 @@ export default function OwnerIntake() {
                 placeholder="Where do messages get missed or lost?..."
                 required
               />
+              <ConsultantFeedback feedback={coachingFeedback.communication_breakdown} />
             </div>
 
             <div>
@@ -391,6 +400,7 @@ export default function OwnerIntake() {
                 placeholder="What takes too much manual effort?..."
                 required
               />
+              <ConsultantFeedback feedback={coachingFeedback.manual_firefighting} />
             </div>
 
             {/* Section D: Growth & Capacity */}
@@ -411,6 +421,7 @@ export default function OwnerIntake() {
                 placeholder="What prevents consistent scaling?..."
                 required
               />
+              <ConsultantFeedback feedback={coachingFeedback.growth_barriers} />
             </div>
 
             <div>
@@ -425,6 +436,7 @@ export default function OwnerIntake() {
                 placeholder="What's your most fragile point?..."
                 required
               />
+              <ConsultantFeedback feedback={coachingFeedback.volume_breaking_point} />
             </div>
 
             <div>
@@ -439,6 +451,7 @@ export default function OwnerIntake() {
                 placeholder="Where do you see the biggest opportunity?..."
                 required
               />
+              <ConsultantFeedback feedback={coachingFeedback.ai_opportunities} />
             </div>
 
             {/* Section E: Profile, Goals & Metrics */}
@@ -461,6 +474,7 @@ export default function OwnerIntake() {
                   className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="e.g. Roberta"
                 />
+                <ConsultantFeedback feedback={coachingFeedback.display_name} />
               </div>
 
               <div>
@@ -474,6 +488,7 @@ export default function OwnerIntake() {
                   className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="e.g. Owner, Founder & CEO"
                 />
+                <ConsultantFeedback feedback={coachingFeedback.role_label} />
               </div>
             </div>
 
@@ -483,20 +498,22 @@ export default function OwnerIntake() {
               </label>
               <div className="space-y-2">
                 {formData.top_3_issues.map((val, idx) => (
-                  <input
-                    key={idx}
-                    type="text"
-                    value={val}
-                    onChange={(e) => {
-                      const next = [...formData.top_3_issues];
-                      next[idx] = e.target.value;
-                      setFormData(prev => ({ ...prev, top_3_issues: next }));
-                    }}
-                    className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder={idx === 0 ? 'Issue #1 (most important)' : `Issue #${idx + 1}`}
-                  />
+                  <div key={idx}>
+                    <input
+                      type="text"
+                      value={val}
+                      onChange={(e) => {
+                        const next = [...formData.top_3_issues];
+                        next[idx] = e.target.value;
+                        setFormData(prev => ({ ...prev, top_3_issues: next }));
+                      }}
+                      className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder={idx === 0 ? 'Issue #1 (most important)' : `Issue #${idx + 1}`}
+                    />
+                  </div>
                 ))}
               </div>
+              <ConsultantFeedback feedback={coachingFeedback.top_3_issues} />
             </div>
 
             <div>
@@ -510,6 +527,7 @@ export default function OwnerIntake() {
                 className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Finish the sentence in your own words..."
               />
+              <ConsultantFeedback feedback={coachingFeedback.if_nothing_else_changes_but_X_this_was_worth_it} />
             </div>
 
             <div>
@@ -548,6 +566,7 @@ export default function OwnerIntake() {
                   </div>
                 ))}
               </div>
+              <ConsultantFeedback feedback={coachingFeedback.primary_kpis} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -566,6 +585,7 @@ export default function OwnerIntake() {
                   className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="e.g. 3–5 hours/week"
                 />
+                <ConsultantFeedback feedback={coachingFeedback.weekly_capacity_for_implementation_hours} />
               </div>
 
               <div>
@@ -581,6 +601,7 @@ export default function OwnerIntake() {
                   <option value="medium">Medium – steady pace</option>
                   <option value="high">High – we're ready to move</option>
                 </select>
+                <ConsultantFeedback feedback={coachingFeedback.change_readiness} />
               </div>
             </div>
 
@@ -595,6 +616,7 @@ export default function OwnerIntake() {
                 rows={3}
                 placeholder="Be honest — where could this go sideways?"
               />
+              <ConsultantFeedback feedback={coachingFeedback.biggest_risk_if_we_push_too_fast} />
             </div>
 
             {isChamber && chamberQuestions.length > 0 && (
@@ -619,6 +641,7 @@ export default function OwnerIntake() {
                       className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       rows={3}
                     />
+                    <ConsultantFeedback feedback={coachingFeedback.chamber_exec_membership_pressure} />
                   </div>
 
                   <div>
@@ -633,6 +656,7 @@ export default function OwnerIntake() {
                       className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       rows={3}
                     />
+                    <ConsultantFeedback feedback={coachingFeedback.chamber_exec_board_engagement} />
                   </div>
                 </div>
               </div>
@@ -665,6 +689,36 @@ export default function OwnerIntake() {
           </form>
         )}
       </div>
+    </div>
+  );
+}
+
+function ConsultantFeedback({ feedback }: { feedback?: { comment: string; isFlagged: boolean } }) {
+  if (!feedback || (!feedback.comment && !feedback.isFlagged)) return null;
+
+  return (
+    <div className={`mt-2 p-3 rounded-lg border text-sm transition-all ${feedback.isFlagged ? 'bg-red-900/10 border-red-800/50 ring-1 ring-red-500/20' : 'bg-slate-800/40 border-slate-800'}`}>
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+            Consultant Coaching
+          </span>
+        </div>
+        {feedback.isFlagged && (
+          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-500/10 border border-red-500/20 rounded-full">
+            <span className="w-1 h-1 rounded-full bg-red-400 animate-ping" />
+            <span className="text-[9px] font-bold uppercase tracking-tight text-red-400">
+              Needs Revision
+            </span>
+          </div>
+        )}
+      </div>
+      {feedback.comment && (
+        <p className="text-slate-300 italic leading-relaxed pl-3 border-l border-slate-700/50">
+          "{feedback.comment}"
+        </p>
+      )}
     </div>
   );
 }

@@ -1,0 +1,24 @@
+                  id                  |   ticket_id   |  status  | moderation_status | diagnostic_id 
+--------------------------------------+---------------+----------+-------------------+---------------
+ 19cb41d7-3237-43e0-9b57-87b02449799c | T-undefined-2 | archived | pending           | 
+ e39d4490-e38b-43e0-a98d-e2a918268a78 | T-undefined-3 | archived | pending           | 
+ 744604fe-6de1-4f4f-bf18-beab2d11c5aa | T-undefined-4 | archived | pending           | 
+ 2c94a828-eb35-4800-a191-ddd0843ba2a0 | T-undefined-5 | archived | pending           | 
+ 0f73d9e5-42c6-4b30-a7df-d63eeb3da1dd | T-undefined-6 | archived | pending           | 
+ f3dd965c-5153-415a-bed3-8316065faeac | T-undefined-2 | archived | pending           | 
+ ae4d33f4-9e6b-4c92-b714-9ed7cb7a423e | T-undefined-3 | archived | pending           | 
+ 16291243-a206-44f3-b6b3-b5a65916ec0d | T-undefined-4 | archived | pending           | 
+ c1f51b82-1dc4-496b-abed-174f894de11e | T-undefined-5 | archived | pending           | 
+ a884f5c8-e406-40e6-bdf0-c6b8a1ed595a | T-undefined-6 | archived | pending           | 
+ bce5aea7-8a62-4546-814e-cafe43ca92be | T-undefined-2 | archived | pending           | 
+ cd711934-3bdf-41f0-8975-62e090c610b6 | T-undefined-3 | archived | pending           | 
+ 7718ecbf-06d9-42a7-b31e-efc12a0dbd92 | T-undefined-4 | archived | pending           | 
+ aaec56b8-7693-4a9e-bf85-0cb06f5f1af8 | T-undefined-5 | archived | pending           | 
+ 59f57fb1-cf3c-42d1-8894-c98819af2688 | T-undefined-6 | archived | pending           | 
+ d8190a46-8b25-4777-a1f5-c27b2b72a094 | T-undefined-2 | archived | pending           | 
+ 80b8a325-2472-453f-a2eb-8b46f6a96b8d | T-undefined-3 | archived | pending           | 
+ 5fc6782b-d83f-4ae2-b515-8a5113aa971e | T-undefined-4 | archived | pending           | 
+ 5cf58744-8737-464a-b520-eab4f95e0c4a | T-undefined-5 | archived | pending           | 
+ b456e019-2ebd-46de-b7d6-f1e759e8894e | T-undefined-6 | archived | pending           | 
+(20 rows)
+

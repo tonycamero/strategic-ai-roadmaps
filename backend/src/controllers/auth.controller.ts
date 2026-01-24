@@ -28,11 +28,12 @@ export async function login(req: Request, res: Response) {
     }
 
     console.log('[Auth] Login successful for:', user.email, 'tenantId:', user.tenantId);
-    
+
     const token = generateToken({
       userId: user.id,
       email: user.email,
       role: user.role,
+      isInternal: user.isInternal,
       tenantId: user.tenantId || null,
     });
 
@@ -72,10 +73,10 @@ export async function register(req: Request, res: Response) {
 
     // Create owner user first (tenantId will be set after tenant row is created)
     const passwordHash = await hashPassword(password);
-    
+
     // Generate UUID for the new user
     const userId = crypto.randomUUID();
-    
+
     const [newUser] = await db
       .insert(users)
       .values({
@@ -109,6 +110,7 @@ export async function register(req: Request, res: Response) {
       userId: newUser.id,
       email: newUser.email,
       role: newUser.role,
+      isInternal: newUser.isInternal,
       tenantId: tenant.id,
     });
 
@@ -168,7 +170,7 @@ export async function requestPasswordReset(req: Request, res: Response) {
         .where(eq(users.id, user.id));
 
       console.log(`[Auth] Password reset requested for: ${email}`);
-      
+
       // Send password reset email via Resend
       try {
         await sendPasswordResetEmail(email, resetToken);
@@ -176,24 +178,24 @@ export async function requestPasswordReset(req: Request, res: Response) {
         console.error('[Auth] Failed to send password reset email:', emailError);
         // Don't throw - we don't want to leak whether email exists
       }
-      
+
       const response: any = {
-        success: true, 
+        success: true,
         message: 'If an account exists with that email, a reset link has been sent.',
       };
-      
+
       // DEV ONLY: Include token for testing without email
       if (process.env.NODE_ENV === 'development') {
         response.resetToken = resetToken;
         response.resetLink = `/reset-password/${resetToken}`;
       }
-      
+
       return res.json(response);
     }
 
     // Always return success even if user doesn't exist
-    return res.json({ 
-      success: true, 
+    return res.json({
+      success: true,
       message: 'If an account exists with that email, a reset link has been sent.',
     });
   } catch (error) {
@@ -281,8 +283,8 @@ export async function resetPassword(req: Request, res: Response) {
 
     console.log(`[Auth] Password reset successful for: ${user.email}`);
 
-    return res.json({ 
-      success: true, 
+    return res.json({
+      success: true,
       message: 'Password has been reset successfully. You can now log in with your new password.',
     });
   } catch (error) {

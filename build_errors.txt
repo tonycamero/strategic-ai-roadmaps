@@ -1,0 +1,51 @@
+
+> @roadmap/backend@1.0.0 build /home/tonycamero/code/Strategic_AI_Roadmaps/backend
+> tsc -p tsconfig.vercel.json
+
+src/controllers/diagnosticRerun.controller.ts(133,43): error TS2339: Property 'sop01DiagnosticMarkdown' does not exist on type 'Sop01Outputs'.
+src/controllers/diagnosticRerun.controller.ts(134,41): error TS2339: Property 'sop01RoadmapSkeletonMarkdown' does not exist on type 'Sop01Outputs'.
+src/controllers/intake.controller.ts(67,15): error TS2345: Argument of type '"COMPLETED"' is not assignable to parameter of type '"in_progress" | "completed" | "not_started"'.
+src/controllers/intake.controller.ts(104,13): error TS2345: Argument of type '"COMPLETED"' is not assignable to parameter of type '"in_progress" | "completed" | "not_started"'.
+src/controllers/intake.controller.ts(136,15): error TS2345: Argument of type '"COMPLETED"' is not assignable to parameter of type '"in_progress" | "completed" | "not_started"'.
+src/controllers/invite.controller.ts(92,11): error TS2345: Argument of type '"COMPLETED"' is not assignable to parameter of type '"in_progress" | "completed" | "not_started"'.
+src/controllers/invite.controller.ts(164,37): error TS2345: Argument of type '{ userId: any; email: any; role: any; tenantId: any; }' is not assignable to parameter of type 'TokenPayload'.
+  Property 'isInternal' is missing in type '{ userId: any; email: any; role: any; tenantId: any; }' but required in type 'TokenPayload'.
+src/controllers/roadmap.controller.ts(235,42): error TS2339: Property 'sprint' does not exist on type 'PgTableWithColumns<{ name: "ticket_instances"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "ticket_instances"; dataType: "string"; columnType: "PgUUID"; data: string; driverParam: string; notNull: true; hasDefault: true; enumValues: undefined; baseColumn: never; }, {}, {}>; ... 9 more ...; up...'.
+src/controllers/superadmin.controller.ts(1236,38): error TS2339: Property 'deliveredAt' does not exist on type '{ id: any; status: any; version: any; createdAt: any; updatedAt: any; modelJson: any; }'.
+src/controllers/superadmin.controller.ts(2995,25): error TS2339: Property 'sop01DiagnosticMarkdown' does not exist on type 'Sop01Outputs'.
+src/controllers/superadmin.controller.ts(2996,32): error TS2339: Property 'sop01AiLeverageMarkdown' does not exist on type 'Sop01Outputs'.
+src/controllers/superadmin.controller.ts(2997,32): error TS2339: Property 'sop01RoadmapSkeletonMarkdown' does not exist on type 'Sop01Outputs'.
+src/controllers/superadmin.controller.ts(2998,35): error TS2339: Property 'sop01DiscoveryQuestionsMarkdown' does not exist on type 'Sop01Outputs'.
+src/controllers/superadmin.controller.ts(3371,48): error TS2339: Property 'ProposalGenerationError' does not exist on type 'typeof import("/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/services/assistedSynthesisProposals.service")'.
+src/controllers/superadmin.controller.ts(3374,87): error TS2554: Expected 1 arguments, but got 2.
+src/controllers/superadmin.controller.ts(3686,40): error TS2339: Property 'version' does not exist on type '{ id: string; ownerUserId: string; tenantId: string; createdAt: Date; updatedAt: Date; filePath: string; fileSize: number; title: string; description: string; content: string; filename: string; ... 8 more ...; isPublic: boolean; }'.
+src/routes/superadmin.routes.ts(8,41): error TS2307: Cannot find module '../controllers/intakeVector.controller' or its corresponding type declarations.
+src/routes/superadmin.routes.ts(9,43): error TS2307: Cannot find module '../controllers/executiveBrief.controller' or its corresponding type declarations.
+src/routes/superadmin.routes.ts(10,46): error TS2307: Cannot find module '../controllers/stakeholderRepair.controller' or its corresponding type declarations.
+src/routes/superadmin.routes.ts(11,54): error TS2307: Cannot find module '../controllers/stakeholderMetadataUpdate.controller' or its corresponding type declarations.
+src/routes/superadmin.routes.ts(15,43): error TS2307: Cannot find module '../controllers/executionState.controller' or its corresponding type declarations.
+src/services/agent.service.ts(333,50): error TS2339: Property 'id' does not exist on type '{ ownerName: any; }'.
+src/services/agent.service.ts(339,19): error TS2339: Property 'id' does not exist on type '{ ownerName: any; }'.
+src/services/agent.service.ts(340,21): error TS2339: Property 'name' does not exist on type '{ ownerName: any; }'.
+src/services/agent.service.ts(342,23): error TS2339: Property 'status' does not exist on type '{ ownerName: any; }'.
+src/services/agent.service.ts(343,26): error TS2339: Property 'createdAt' does not exist on type '{ ownerName: any; }'.
+src/services/agent.service.ts(348,16): error TS2339: Property 'id' does not exist on type '{ ownerName: any; }'.
+src/services/agent.service.ts(349,18): error TS2339: Property 'name' does not exist on type '{ ownerName: any; }'.
+src/services/agent.service.ts(351,20): error TS2339: Property 'status' does not exist on type '{ ownerName: any; }'.
+src/services/agent.service.ts(352,23): error TS2339: Property 'createdAt' does not exist on type '{ ownerName: any; }'.
+src/services/assistedSynthesisAgent.service.ts(282,37): error TS2339: Property 'outputs' does not exist on type '{ id: string; status: string; tenantId: string; createdAt: Date; updatedAt: Date; approvedAt: Date; sopVersion: string; overview: Record<string, any>; aiOpportunities: Record<...>; roadmapSkeleton: Record<...>; discoveryQuestions: Record<...>; generatedByUserId: string; approvedByUserId: string; }'.
+src/services/diagnosticIngestion.service.ts(281,9): error TS2353: Object literal may only specify known properties, and 'sop01DiagnosticMarkdown' does not exist in type 'Sop01Outputs'.
+src/services/diagnosticIngestion.service.ts(399,30): error TS2339: Property 'sop01RoadmapSkeletonMarkdown' does not exist on type 'Sop01Outputs'.
+src/services/findings.service.ts(6,60): error TS2305: Module '"@roadmap/shared/src/canon"' has no exported member 'Finding'.
+src/services/findings.service.ts(80,13): error TS2322: Type 'Date' is not assignable to type 'string'.
+src/services/gate.service.ts(12,10): error TS2305: Module '"@roadmap/shared"' has no exported member 'TenantLifecycleState'.
+src/services/gate.service.ts(12,32): error TS2305: Module '"@roadmap/shared"' has no exported member 'ArtifactStatus'.
+src/services/onboardingProgress.service.ts(13,31): error TS2551: Property 'stepId' does not exist on type 'PgTableWithColumns<{ name: "onboarding_states"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "onboarding_states"; dataType: "string"; columnType: "PgUUID"; data: string; driverParam: string; notNull: true; hasDefault: true; enumValues: undefined; baseColumn: never; }, {}, {}>; ... 12 more ...;...'. Did you mean 'step'?
+src/services/onboardingProgress.service.ts(28,41): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: { tenantId: string | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; step: string | SQL<unknown> | Placeholder<...>; ... 10 more ...; badges?: unknown; }): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, but 'stepId' does not exist in type '{ tenantId: string | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; step: string | SQL<unknown> | Placeholder<...>; ... 10 more ...; badges?: unknown; }'. Did you mean to write 'step'?
+  Overload 2 of 2, '(values: { tenantId: string | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; step: string | SQL<unknown> | Placeholder<...>; ... 10 more ...; badges?: unknown; }[]): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, and 'tenantId' does not exist in type '{ tenantId: string | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; step: string | SQL<unknown> | Placeholder<...>; ... 10 more ...; badges?: unknown; }[]'.
+src/services/onboardingProgress.service.ts(45,13): error TS2551: Property 'stepId' does not exist on type '{ id: string; status: string; tenantId: string; createdAt: Date; updatedAt: Date; userId: string; completedAt: Date; metadata: unknown; step: string; percentComplete: number; totalPoints: number; maxPoints: number; steps: unknown; badges: unknown; }'. Did you mean 'step'?
+src/services/roadmapAgentSync.service.ts(4,10): error TS2305: Module '"./assistantProvisioning.service"' has no exported member 'provisionAssistantForConfig'.
+ ELIFECYCLE  Command failed with exit code 2.

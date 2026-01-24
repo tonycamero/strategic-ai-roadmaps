@@ -4,7 +4,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useTenant, useBusinessTypeProfile } from '../../context/TenantContext';
 import { api, ApiError } from '../../lib/api';
 import { useLocation } from 'wouter';
-import { AgentChatPanel } from '../../components/AgentChatPanel';
 import { CommandStrip } from '../../components/dashboard/CommandStrip';
 import { ROICard } from '../../components/roi/ROICard';
 import { NextActionCard } from '../../components/dashboard/NextActionCard';
@@ -62,16 +61,16 @@ export default function DashboardV5() {
   const intakes = intakesData?.intakes || [];
   const documents = documentsData?.documents || [];
   const workflow = (dashboardData as any)?.workflow;
-  
+
   const allIntakesComplete = workflow?.intakes?.allComplete || false;
   const sop01Generated = workflow?.sop01?.generated || false;
   const roadmapGenerated = workflow?.roadmapDocs?.generated || false;
 
   // Determine current phase based on new workflow
-  const currentPhase: 'onboarding' | 'roadmap_review' | 'pilot_design' | 'implementation' = 
+  const currentPhase: 'onboarding' | 'roadmap_review' | 'pilot_design' | 'implementation' =
     !allIntakesComplete ? 'onboarding' :
-    !roadmapGenerated ? 'roadmap_review' :
-    'pilot_design';
+      !roadmapGenerated ? 'roadmap_review' :
+        'pilot_design';
 
   // Prepare leadership data for table
   const leadershipData = ['ops', 'sales', 'delivery'].map(role => {
@@ -129,7 +128,7 @@ export default function DashboardV5() {
         onSuperadminClick={() => setLocation('/superadmin')}
         isRoadmapGenerated={roadmapGenerated}
       />
-      
+
       {/* Chamber Edition Badge */}
       {businessType === 'chamber' && (
         <div className="border-b border-slate-800 bg-slate-900/50 backdrop-blur">
@@ -152,320 +151,319 @@ export default function DashboardV5() {
       {/* Band 2: Onboarding Rail + Main Content */}
       <div className="flex">
         <OnboardingRail />
-        
+
         <div className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Band 2: Two-column work zone */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Left column: Execution */}
-          <div className="space-y-6">
-            {/* This Week's Focus - show when documents exist or roadmap generated */}
-            {(roadmapGenerated || documents.length > 0) && (
-              <NextActionCard
-                phase={currentPhase}
-                actions={[]}
-                onViewPlan={() => setLocation('/roadmap')}
+          {/* Band 2: Two-column work zone */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Left column: Execution */}
+            <div className="space-y-6">
+              {/* This Week's Focus - show when documents exist or roadmap generated */}
+              {(roadmapGenerated || documents.length > 0) && (
+                <NextActionCard
+                  phase={currentPhase}
+                  actions={[]}
+                  onViewPlan={() => setLocation('/roadmap')}
+                />
+              )}
+
+              {/* Roadmap Status - Top Priority */}
+              <RoadmapStatusCard
+                status={roadmapGenerated ? 'finalized' : 'draft'}
+                lastUpdated={new Date()}
+                nextMilestone={roadmapGenerated ? 'Select pilot systems' : 'Complete workflow steps'}
+                onOpenRoadmap={() => setLocation('/roadmap')}
+                isRoadmapGenerated={roadmapGenerated}
               />
-            )}
 
-            {/* Roadmap Status - Top Priority */}
-            <RoadmapStatusCard
-              status={roadmapGenerated ? 'finalized' : 'draft'}
-              lastUpdated={new Date()}
-              nextMilestone={roadmapGenerated ? 'Select pilot systems' : 'Complete workflow steps'}
-              onOpenRoadmap={() => setLocation('/roadmap')}
-              isRoadmapGenerated={roadmapGenerated}
-            />
+              {/* Workflow Status */}
+              {workflow && (
+                <div className="bg-slate-900/40 rounded-xl border border-slate-800 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-slate-200">
+                      Roadmap Generation Workflow
+                    </h2>
+                    <span className="text-2xl">🔄</span>
+                  </div>
 
-            {/* Workflow Status */}
-            {workflow && (
-              <div className="bg-slate-900/40 rounded-xl border border-slate-800 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-slate-200">
-                    Roadmap Generation Workflow
-                  </h2>
-                  <span className="text-2xl">🔄</span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {/* Intakes */}
-                  <div className="bg-slate-800/60 rounded-lg p-4 border border-slate-700">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-slate-400">1. Intakes</span>
-                      {workflow.intakes.allComplete ? (
-                        <span className="text-green-400">✓</span>
-                      ) : (
-                        <span className="text-yellow-400">⋯</span>
-                      )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Intakes */}
+                    <div className="bg-slate-800/60 rounded-lg p-4 border border-slate-700">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-slate-400">1. Intakes</span>
+                        {workflow.intakes.allComplete ? (
+                          <span className="text-green-400">✓</span>
+                        ) : (
+                          <span className="text-yellow-400">⋯</span>
+                        )}
+                      </div>
+                      <div className="text-2xl font-bold text-slate-100">
+                        {workflow.intakes.completed}/{workflow.intakes.total}
+                      </div>
+                      <div className="text-xs text-slate-400 mt-1">
+                        {workflow.intakes.allComplete ? 'Complete' : 'In Progress'}
+                      </div>
                     </div>
-                    <div className="text-2xl font-bold text-slate-100">
-                      {workflow.intakes.completed}/{workflow.intakes.total}
+
+                    {/* SOP-01 */}
+                    <div className="bg-slate-800/60 rounded-lg p-4 border border-slate-700">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-slate-400">2. Business Diagnostic</span>
+                        {workflow.sop01.generated ? (
+                          <span className="text-green-400">✓</span>
+                        ) : (
+                          <span className="text-slate-500">○</span>
+                        )}
+                      </div>
+                      <div className="text-2xl font-bold text-slate-100">
+                        {workflow.sop01.count}/{workflow.sop01.expectedCount}
+                      </div>
+                      <div className="text-xs text-slate-400 mt-1">
+                        {workflow.sop01.generated ? 'Generated' : 'Not Started'}
+                      </div>
                     </div>
-                    <div className="text-xs text-slate-400 mt-1">
-                      {workflow.intakes.allComplete ? 'Complete' : 'In Progress'}
+
+                    {/* Discovery Call */}
+                    <div className="bg-slate-800/60 rounded-lg p-4 border border-slate-700">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-slate-400">3. Discovery Call</span>
+                        {workflow.discovery.hasNotes ? (
+                          <span className="text-green-400">✓</span>
+                        ) : (
+                          <span className="text-slate-500">○</span>
+                        )}
+                      </div>
+                      <div className="text-2xl font-bold text-slate-100">
+                        {workflow.discovery.hasNotes ? '1' : '0'}/1
+                      </div>
+                      <div className="text-xs text-slate-400 mt-1">
+                        {workflow.discovery.hasNotes ? 'Notes Saved' : 'Pending'}
+                      </div>
+                    </div>
+
+                    {/* Roadmap */}
+                    <div className="bg-slate-800/60 rounded-lg p-4 border border-slate-700">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-slate-400">4. Strategic Roadmap</span>
+                        {workflow.roadmapDocs.generated ? (
+                          <span className="text-green-400">✓</span>
+                        ) : (
+                          <span className="text-slate-500">○</span>
+                        )}
+                      </div>
+                      <div className="text-2xl font-bold text-slate-100">
+                        {workflow.roadmapDocs.count}/{workflow.roadmapDocs.expectedCount}
+                      </div>
+                      <div className="text-xs text-slate-400 mt-1">
+                        {workflow.roadmapDocs.generated ? 'Generated' : 'Not Started'}
+                      </div>
                     </div>
                   </div>
 
-                  {/* SOP-01 */}
-                  <div className="bg-slate-800/60 rounded-lg p-4 border border-slate-700">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-slate-400">2. Business Diagnostic</span>
-                      {workflow.sop01.generated ? (
-                        <span className="text-green-400">✓</span>
-                      ) : (
-                        <span className="text-slate-500">○</span>
-                      )}
-                    </div>
-                    <div className="text-2xl font-bold text-slate-100">
-                      {workflow.sop01.count}/{workflow.sop01.expectedCount}
-                    </div>
-                    <div className="text-xs text-slate-400 mt-1">
-                      {workflow.sop01.generated ? 'Generated' : 'Not Started'}
-                    </div>
+                  {/* Next Action Prompt */}
+                  <div className="mt-4 pt-4 border-t border-slate-800">
+                    {!workflow.intakes.allComplete ? (
+                      <p className="text-sm text-slate-300">
+                        <span className="text-blue-400 font-medium">Next:</span> Complete remaining intake forms
+                      </p>
+                    ) : !workflow.sop01.generated ? (
+                      <p className="text-sm text-slate-300">
+                        <span className="text-blue-400 font-medium">Next:</span> Generate business diagnostic (in progress)
+                      </p>
+                    ) : !workflow.discovery.hasNotes ? (
+                      <p className="text-sm text-slate-300">
+                        <span className="text-blue-400 font-medium">Next:</span> Schedule and complete discovery call
+                      </p>
+                    ) : !workflow.roadmapDocs.generated ? (
+                      <p className="text-sm text-slate-300">
+                        <span className="text-blue-400 font-medium">Next:</span> Roadmap generation in progress (Admin action required)
+                      </p>
+                    ) : (
+                      <p className="text-sm text-green-300">
+                        <span className="text-green-400 font-medium">✓</span> Roadmap generation workflow complete!
+                      </p>
+                    )}
                   </div>
-
-                  {/* Discovery Call */}
-                  <div className="bg-slate-800/60 rounded-lg p-4 border border-slate-700">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-slate-400">3. Discovery Call</span>
-                      {workflow.discovery.hasNotes ? (
-                        <span className="text-green-400">✓</span>
-                      ) : (
-                        <span className="text-slate-500">○</span>
-                      )}
-                    </div>
-                    <div className="text-2xl font-bold text-slate-100">
-                      {workflow.discovery.hasNotes ? '1' : '0'}/1
-                    </div>
-                    <div className="text-xs text-slate-400 mt-1">
-                      {workflow.discovery.hasNotes ? 'Notes Saved' : 'Pending'}
-                    </div>
-                  </div>
-
-                  {/* Roadmap */}
-                  <div className="bg-slate-800/60 rounded-lg p-4 border border-slate-700">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-slate-400">4. Strategic Roadmap</span>
-                      {workflow.roadmapDocs.generated ? (
-                        <span className="text-green-400">✓</span>
-                      ) : (
-                        <span className="text-slate-500">○</span>
-                      )}
-                    </div>
-                    <div className="text-2xl font-bold text-slate-100">
-                      {workflow.roadmapDocs.count}/{workflow.roadmapDocs.expectedCount}
-                    </div>
-                    <div className="text-xs text-slate-400 mt-1">
-                      {workflow.roadmapDocs.generated ? 'Generated' : 'Not Started'}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Next Action Prompt */}
-                <div className="mt-4 pt-4 border-t border-slate-800">
-                  {!workflow.intakes.allComplete ? (
-                    <p className="text-sm text-slate-300">
-                      <span className="text-blue-400 font-medium">Next:</span> Complete remaining intake forms
-                    </p>
-                  ) : !workflow.sop01.generated ? (
-                    <p className="text-sm text-slate-300">
-                      <span className="text-blue-400 font-medium">Next:</span> Generate business diagnostic (in progress)
-                    </p>
-                  ) : !workflow.discovery.hasNotes ? (
-                    <p className="text-sm text-slate-300">
-                      <span className="text-blue-400 font-medium">Next:</span> Schedule and complete discovery call
-                    </p>
-                  ) : !workflow.roadmapDocs.generated ? (
-                    <p className="text-sm text-slate-300">
-                      <span className="text-blue-400 font-medium">Next:</span> Roadmap generation in progress (Admin action required)
-                    </p>
-                  ) : (
-                    <p className="text-sm text-green-300">
-                      <span className="text-green-400 font-medium">✓</span> Roadmap generation workflow complete!
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Key Findings - only show when SOP-01 generated */}
-            {sop01Generated && keyFindings.length > 0 && (
-              <KeyFindingsPreview findings={keyFindings} />
-            )}
-
-            {/* Leadership Team Status */}
-            <LeadershipStatusTable
-              leaders={leadershipData}
-              onViewIntake={(role) => {
-                const intake = intakes.find(int => int.role === role);
-                if (intake) {
-                  setSelectedIntake(intake);
-                  setIntakeDetailsOpen(true);
-                }
-              }}
-              onManageInvites={() => {
-                const uninvitedRole = leadershipData.find(l => !l.email);
-                if (uninvitedRole) {
-                  setSelectedRole(uninvitedRole.role);
-                  setShowInviteModal(true);
-                }
-              }}
-              onResendInvite={(inviteId) => resendInviteMutation.mutate(inviteId)}
-              onRevokeInvite={(inviteId) => {
-                if (confirm('Are you sure you want to revoke this invitation?')) {
-                  revokeInviteMutation.mutate(inviteId);
-                }
-              }}
-            />
-
-            {/* Your Documents - Collapsible */}
-            <div className="bg-slate-900/40 rounded-xl border border-slate-800">
-              <button
-                onClick={() => setDocumentsExpanded(!documentsExpanded)}
-                className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-slate-900/40 transition-colors rounded-t-xl"
-              >
-                <h3 className="text-sm font-semibold text-slate-200">Your Documents</h3>
-                <svg
-                  className={`w-5 h-5 text-slate-400 transition-transform ${documentsExpanded ? 'rotate-180' : ''}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              
-              {documentsExpanded && (
-                <div className="px-6 pb-6">
-                  {docsLoading ? (
-                    <div className="text-sm text-slate-400">Loading...</div>
-                  ) : documents.length === 0 ? (
-                    <div className="text-sm text-slate-400">No documents yet.</div>
-                  ) : (
-                    <div className="space-y-3">
-                      {documents.map((doc: any) => {
-                        const { title: displayTitle, subtitle: displaySubtitle } = getOwnerDocumentLabel(doc);
-                        return (
-                        <div
-                          key={doc.id}
-                          className="border border-slate-800 rounded-lg p-4 bg-slate-900/60 hover:bg-slate-900 transition-colors"
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="font-medium text-slate-100 text-sm">
-                                {displayTitle}
-                              </div>
-                              <div className="text-sm text-slate-400 mt-2">
-                                {displaySubtitle}
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => setLocation(`/owner/case-study/${doc.id}`)}
-                              className="ml-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors whitespace-nowrap"
-                            >
-                              View
-                            </button>
-                          </div>
-                          <div className="text-xs text-slate-500 mt-3">
-                            {(doc.fileSize / 1024).toFixed(1)} KB • Uploaded {new Date(doc.createdAt).toLocaleDateString()}
-                          </div>
-                        </div>
-                        );
-                      })}
-                    </div>
-                  )}
                 </div>
               )}
-            </div>
-          </div>
 
-          {/* Right column: Status & Context */}
-          <div className="space-y-6">
-            {/* Need Support */}
-            {allIntakesComplete && (
-              <div className="bg-slate-900/40 rounded-xl border border-slate-800 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-medium text-slate-100">Need Support?</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Schedule a call or send us a message</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setLocation('/agents/inbox')}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs rounded-lg transition-colors"
+              {/* Key Findings - only show when SOP-01 generated */}
+              {sop01Generated && keyFindings.length > 0 && (
+                <KeyFindingsPreview findings={keyFindings} />
+              )}
+
+              {/* Leadership Team Status */}
+              <LeadershipStatusTable
+                leaders={leadershipData}
+                onViewIntake={(role) => {
+                  const intake = intakes.find(int => int.role === role);
+                  if (intake) {
+                    setSelectedIntake(intake);
+                    setIntakeDetailsOpen(true);
+                  }
+                }}
+                onManageInvites={() => {
+                  const uninvitedRole = leadershipData.find(l => !l.email);
+                  if (uninvitedRole) {
+                    setSelectedRole(uninvitedRole.role);
+                    setShowInviteModal(true);
+                  }
+                }}
+                onResendInvite={(inviteId) => resendInviteMutation.mutate(inviteId)}
+                onRevokeInvite={(inviteId) => {
+                  if (confirm('Are you sure you want to revoke this invitation?')) {
+                    revokeInviteMutation.mutate(inviteId);
+                  }
+                }}
+              />
+
+              {/* Your Documents - Collapsible */}
+              <div className="bg-slate-900/40 rounded-xl border border-slate-800">
+                <button
+                  onClick={() => setDocumentsExpanded(!documentsExpanded)}
+                  className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-slate-900/40 transition-colors rounded-t-xl"
+                >
+                  <h3 className="text-sm font-semibold text-slate-200">Your Documents</h3>
+                  <svg
+                    className={`w-5 h-5 text-slate-400 transition-transform ${documentsExpanded ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    Agent Inbox
-                  </button>
-                </div>
-              </div>
-            )}
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
 
-            {/* Transformation Metrics */}
-            <div className="bg-slate-900/40 rounded-xl border border-slate-800 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-200">
-                    Transformation Metrics
-                  </h2>
-                  <p className="text-sm text-slate-400 mt-1">
-                    Track ROI, KPIs, and performance trends
-                  </p>
-                </div>
-                <span className="text-2xl">📈</span>
+                {documentsExpanded && (
+                  <div className="px-6 pb-6">
+                    {docsLoading ? (
+                      <div className="text-sm text-slate-400">Loading...</div>
+                    ) : documents.length === 0 ? (
+                      <div className="text-sm text-slate-400">No documents yet.</div>
+                    ) : (
+                      <div className="space-y-3">
+                        {documents.map((doc: any) => {
+                          const { title: displayTitle, subtitle: displaySubtitle } = getOwnerDocumentLabel(doc);
+                          return (
+                            <div
+                              key={doc.id}
+                              className="border border-slate-800 rounded-lg p-4 bg-slate-900/60 hover:bg-slate-900 transition-colors"
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <div className="font-medium text-slate-100 text-sm">
+                                    {displayTitle}
+                                  </div>
+                                  <div className="text-sm text-slate-400 mt-2">
+                                    {displaySubtitle}
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => setLocation(`/owner/case-study/${doc.id}`)}
+                                  className="ml-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors whitespace-nowrap"
+                                >
+                                  View
+                                </button>
+                              </div>
+                              <div className="text-xs text-slate-500 mt-3">
+                                {(doc.fileSize / 1024).toFixed(1)} KB • Uploaded {new Date(doc.createdAt).toLocaleDateString()}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              <button
-                onClick={() => setLocation('/owner/transformation')}
-                className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-              >
-                View Transformation Dashboard
-              </button>
             </div>
 
-            {/* ROI Insights Module */}
-            <ROICard />
+            {/* Right column: Status & Context */}
+            <div className="space-y-6">
+              {/* Need Support */}
+              {allIntakesComplete && (
+                <div className="bg-slate-900/40 rounded-xl border border-slate-800 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-medium text-slate-100">Need Support?</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">Schedule a call or send us a message</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setLocation('/agents/inbox')}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs rounded-lg transition-colors"
+                    >
+                      Agent Inbox
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Transformation Metrics */}
+              <div className="bg-slate-900/40 rounded-xl border border-slate-800 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-200">
+                      Transformation Metrics
+                    </h2>
+                    <p className="text-sm text-slate-400 mt-1">
+                      Track ROI, KPIs, and performance trends
+                    </p>
+                  </div>
+                  <span className="text-2xl">📈</span>
+                </div>
+                <button
+                  onClick={() => setLocation('/owner/transformation')}
+                  className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                >
+                  View Transformation Dashboard
+                </button>
+              </div>
+
+              {/* ROI Insights Module */}
+              <ROICard />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Agent Chat Widget */}
-      <AgentChatPanel />
 
-      {/* Modals */}
-      {showInviteModal && selectedRole && (
-        <InviteModal
-          role={selectedRole}
-          roleLabel={profile.roleLabels[selectedRole]}
-          onClose={() => {
-            setShowInviteModal(false);
-            setSelectedRole(null);
-          }}
-          onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ['invites'] });
-            setShowInviteModal(false);
-            setSelectedRole(null);
-          }}
-        />
-      )}
 
-      {intakeDetailsOpen && selectedIntake && (
-        <IntakeDetailsModal
-          intake={selectedIntake}
-          onClose={() => {
-            setIntakeDetailsOpen(false);
-            setSelectedIntake(null);
-          }}
-        />
-      )}
+        {/* Modals */}
+        {showInviteModal && selectedRole && (
+          <InviteModal
+            role={selectedRole}
+            roleLabel={profile.roleLabels[selectedRole]}
+            onClose={() => {
+              setShowInviteModal(false);
+              setSelectedRole(null);
+            }}
+            onSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ['invites'] });
+              setShowInviteModal(false);
+              setSelectedRole(null);
+            }}
+          />
+        )}
+
+        {intakeDetailsOpen && selectedIntake && (
+          <IntakeDetailsModal
+            intake={selectedIntake}
+            onClose={() => {
+              setIntakeDetailsOpen(false);
+              setSelectedIntake(null);
+            }}
+          />
+        )}
       </div>
     </div>
   );
 }
 
 // Reuse modals from DashboardV4
-function InviteModal({ 
-  role, 
-  roleLabel, 
-  onClose, 
-  onSuccess 
-}: { 
+function InviteModal({
+  role,
+  roleLabel,
+  onClose,
+  onSuccess
+}: {
   role: string;
   roleLabel: string;
   onClose: () => void;

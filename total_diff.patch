@@ -1,0 +1,498 @@
+diff --git a/backend/src/routes/superadmin.routes.ts b/backend/src/routes/superadmin.routes.ts
+index b2520e7..dc975c6 100644
+--- a/backend/src/routes/superadmin.routes.ts
++++ b/backend/src/routes/superadmin.routes.ts
+@@ -6,6 +6,8 @@ import { AuthorityCategory, RoleToAuthorityMap } from '@roadmap/shared';
+ import * as superadminController from '../controllers/superadmin.controller';
+ import * as intakeVectorController from '../controllers/intakeVector.controller';
+ import * as executiveBriefController from '../controllers/executiveBrief.controller';
++import * as stakeholderRepairController from '../controllers/stakeholderRepair.controller';
++import * as stakeholderMetadataUpdateController from '../controllers/stakeholderMetadataUpdate.controller';
+ 
+ import * as snapshotController from '../controllers/snapshot.controller';
+ 
+@@ -103,6 +105,12 @@ router.post('/firms/:tenantId/generate-sop01', async (req, res, next) => {
+   return generateSop01ForFirm(req, res, next);
+ });
+ 
++// POST /api/superadmin/diagnostic/rerun-sop01/:tenantId - Re-run SOP-01 (zero-ticket recovery)
++router.post('/diagnostic/rerun-sop01/:tenantId', async (req, res, next) => {
++  const { rerunSop01ForFirm } = require('../controllers/diagnosticRerun.controller');
++  return rerunSop01ForFirm(req, res, next);
++});
++
+ // GET/POST discovery notes - REMOVED
+ 
+ // POST /api/superadmin/firms/:tenantId/discovery/acknowledge - REMOVED (Legacy)
+@@ -160,6 +168,29 @@ router.post('/firms/:tenantId/metrics/compute-outcome', superadminController.com
+ // POST /api/superadmin/tickets/reject - Reject tickets — PHASE 1: DELEGATE OR HIGHER
+ // router.post('/tickets/reject', requireDelegateOrHigher(), ticketModerationController.rejectDiagnosticTickets);
+ 
++// GET /api/superadmin/tickets/:tenantId/:diagnosticId - Get tickets for moderation (ACTIVE)
++// Canonical route expected by FE - thin handler delegates to service
++router.get('/tickets/:tenantId/:diagnosticId', async (req, res) => {
++  try {
++    const { tenantId, diagnosticId } = req.params;
++
++    if (!tenantId || !diagnosticId) {
++      return res.status(400).json({ error: 'Missing tenantId or diagnosticId' });
++    }
++
++    // Delegate to existing service (no SQL in routes)
++    const { getTicketsForDiagnostic } = await import('../services/ticketModeration.service');
++    const tickets = await getTicketsForDiagnostic(tenantId, diagnosticId);
++
++    // 404-as-state: return empty array for "no tickets yet", never throw
++    return res.status(200).json({ tickets: tickets ?? [] });
++  } catch (error) {
++    console.error('[SuperAdminTickets] Failed to load diagnostic tickets:', error);
++    return res.status(500).json({ error: 'Internal server error' });
++  }
++});
++
++
+ /*
+ import { getDeprecationPhase, DeprecationPhase, getDeprecationWarning } from '../services/sunset.service';
+ 
+@@ -185,14 +216,14 @@ router.get('/snapshot/:tenantId', requireExecutive(), snapshotController.getTena
+ // EXECUTIVE BRIEF ROUTES (v0)
+ // ============================================================================
+ 
+-// GET /api/superadmin/tenants/:tenantId/executive-brief - Get existing brief
+-router.get('/tenants/:tenantId/executive-brief', requireExecutive(), executiveBriefController.getExecutiveBrief);
++// GET /api/superadmin/firms/:tenantId/executive-brief - Get existing brief
++router.get('/firms/:tenantId/executive-brief', requireExecutive(), executiveBriefController.getExecutiveBrief);
+ 
+-// POST /api/superadmin/tenants/:tenantId/executive-brief/generate - Generate new brief
+-router.post('/tenants/:tenantId/executive-brief/generate', requireExecutive(), executiveBriefController.generateExecutiveBrief);
++// POST /api/superadmin/firms/:tenantId/executive-brief/generate - Generate new brief
++router.post('/firms/:tenantId/executive-brief/generate', requireExecutive(), executiveBriefController.generateExecutiveBrief);
+ 
+-// POST /api/superadmin/tenants/:tenantId/executive-brief/approve - Approve brief + close intake
+-router.post('/tenants/:tenantId/executive-brief/approve', requireExecutive(), executiveBriefController.approveExecutiveBrief);
++// POST /api/superadmin/firms/:tenantId/executive-brief/approve - Approve brief + close intake
++router.post('/firms/:tenantId/executive-brief/approve', requireExecutive(), executiveBriefController.approveExecutiveBrief);
+ 
+ // Webinar Registration Management
+ // GET /api/superadmin/webinar/registrations - View all webinar registrations
+@@ -228,6 +259,12 @@ router.post('/intake-vectors/:id/send-invite', intakeVectorController.sendIntake
+ // POST /api/superadmin/intakes/:intakeId/reopen - Re-open completed intake
+ router.post('/intakes/:intakeId/reopen', requireExecutive(), superadminController.reopenIntake);
+ 
++// POST /api/superadmin/tenants/:tenantId/repair-stakeholders - Backfill intake_vectors from legacy intakes (EXECUTIVE ONLY)
++router.post('/tenants/:tenantId/repair-stakeholders', requireExecutive(), stakeholderRepairController.repairStakeholdersForTenant);
++
++// POST /api/superadmin/tenants/:tenantId/update-stakeholder-metadata - Backfill name/email on existing vectors (EXECUTIVE ONLY)
++router.post('/tenants/:tenantId/update-stakeholder-metadata', requireExecutive(), stakeholderMetadataUpdateController.updateStakeholderMetadata);
++
+ // PHASE 7: Diagnostic Artifacts - REMOVED
+ 
+ export default router;
+diff --git a/backend/src/services/diagnosticIngestion.service.ts b/backend/src/services/diagnosticIngestion.service.ts
+index caa599b..f84d748 100644
+--- a/backend/src/services/diagnosticIngestion.service.ts
++++ b/backend/src/services/diagnosticIngestion.service.ts
+@@ -71,7 +71,15 @@ export async function ingestDiagnostic(diagnosticMap: any, sop01Content: Sop01Ou
+         discoveryQuestionsMarkdown: sop01Content.sop01DiscoveryQuestionsMarkdown,
+     };
+ 
+-    const derivedInventory: SelectedInventoryTicket[] = extractInventoryFromArtifacts(promptArtifacts);
++    const derivedInventory: SelectedInventoryTicket[] = extractInventoryFromArtifacts(sop01Content);
++
++    if (process.env.DEBUG_TICKETS_PIPELINE === '1') {
++        console.log(`[DEBUG_TICKETS_PIPELINE] Probing artifacts for ${tenantId}:`, {
++            keys: Object.keys(sop01Content),
++            diagLength: sop01Content.sop01DiagnosticMarkdown?.length,
++            skeletonLength: sop01Content.sop01RoadmapSkeletonMarkdown?.length
++        });
++    }
+ 
+     if (derivedInventory.length === 0) {
+         console.warn(`[DiagnosticIngestion] No inventory items extracted from artifacts for tenant ${tenantId}.`);
+@@ -170,13 +178,24 @@ export async function ingestDiagnostic(diagnosticMap: any, sop01Content: Sop01Ou
+     });
+ 
+     // 6. Observability
++    if (process.env.DEBUG_TICKETS_PIPELINE === '1') {
++        console.log(`[DEBUG_TICKETS_PIPELINE] Extraction Complete.`, {
++            tenantId,
++            diagnosticId,
++            derivedInventoryCount: derivedInventory.length,
++            finalTicketCount: tickets.length,
++            sampleTickets: tickets.slice(0, 2).map(t => ({ title: t.title, roi: t.roi_notes }))
++        });
++    }
++
+     console.log(`[TICKET_ARCHITECT] ${tenantId} ${diagnosticId} ${tickets.length} gpt-4-turbo-preview ${Date.now() - start}ms`);
+ 
+     return {
+         ticketCount: tickets.length,
+         roadmapSectionCount: 0,
+         diagnosticId,
+-        assistantProvisioned: true
++        assistantProvisioned: true,
++        ...(tickets.length === 0 ? { noFindingsReason: 'ZERO_EXTRACTED_FROM_ARTIFACTS' } : {})
+     };
+ }
+ 
+@@ -187,36 +206,64 @@ export async function ingestDiagnostic(diagnosticMap: any, sop01Content: Sop01Ou
+ function extractInventoryFromArtifacts(sop01Content: any): SelectedInventoryTicket[] {
+     const inventory: SelectedInventoryTicket[] = [];
+ 
+-    // Naive Extraction Strategy:
+-    // Look for Headers in Roadmap Skeleton that look like "Phase X: [System Name]"
+-    // Or bullet points in AI Leverage Map.
++    // --- Normalization Level 1: Check for explicit arrays in legacy/variant shapes ---
++    const explicitSource =
++        sop01Content.inventoryItems ||
++        sop01Content.tickets ||
++        sop01Content.findings ||
++        sop01Content.issues ||
++        sop01Content.output?.inventoryItems ||
++        sop01Content.output?.tickets ||
++        sop01Content.content?.inventoryItems ||
++        sop01Content.content?.tickets;
++
++    if (Array.isArray(explicitSource) && explicitSource.length > 0) {
++        if (process.env.DEBUG_TICKETS_PIPELINE === '1') {
++            console.log(`[DEBUG_TICKETS_PIPELINE] Normalizing explicit inventory source. Count: ${explicitSource.length}`);
++        }
++        return explicitSource.map((t: any) => ({
++            inventoryId: t.inventoryId || `INV-LEGACY-${nanoid(4)}`,
++            titleTemplate: t.title || t.name || t.titleTemplate || 'Untitled Finding',
++            category: t.category || 'General',
++            valueCategory: t.valueCategory || 'Efficiency',
++            ghlComponents: t.ghlComponents || [],
++            description: t.description || t.summary || '',
++            implementationStatus: t.implementationStatus || 'production-ready',
++            tier: t.tier || 'core',
++            sprint: t.sprint || 30
++        }));
++    }
+ 
++    // --- Normalization Level 2: Naive Markdown Parsing ---
+     const raw = sop01Content.sop01RoadmapSkeletonMarkdown || '';
+     const lines = raw.split('\n');
+     let currentSprint = 30;
+ 
+     const phaseRegex = /Phase (\d+): (.*)/i;
+     const systemRegex = /\*\*System\*\*: (.*)/i;
++    const itemRegex = /^\s*-\s*\*\*(.*?)\*\*/; // Match "- **Item Name**"
+ 
+     for (const line of lines) {
+         const pMatch = line.match(phaseRegex);
+         if (pMatch) {
+-            // infer sprint from phase? Phase 1 = 30, Phase 2 = 60
+             const phaseNum = parseInt(pMatch[1], 10);
+             currentSprint = (phaseNum * 30) as any;
++            continue;
+         }
+ 
+-        const sMatch = line.match(systemRegex);
++        const sMatch = line.match(systemRegex) || line.match(itemRegex);
+         if (sMatch) {
+             const sysName = sMatch[1].trim();
+-            // Add as inventory item
++            // dedupe
++            if (inventory.some(i => i.titleTemplate === sysName)) continue;
++
+             inventory.push({
+                 inventoryId: `INV-DERIVED-${nanoid(4)}`,
+                 titleTemplate: sysName,
+                 category: 'Implied',
+                 valueCategory: 'Efficiency',
+                 ghlComponents: [],
+-                description: `Implementation of ${sysName} as defined in roadmap.`,
++                description: `Implementation of ${sysName} as defined in roadmap skeleton.`,
+                 implementationStatus: 'production-ready',
+                 tier: 'core',
+                 sprint: currentSprint as any
+@@ -224,17 +271,18 @@ function extractInventoryFromArtifacts(sop01Content: any): SelectedInventoryTick
+         }
+     }
+ 
+-    // Fallback: If roadmap skeleton didn't parse well, try AI Leverage Map simple bullets
+-    if (inventory.length === 0 && sop01Content.sop01AiLeverageMarkdown) {
++    // Fallback: AI Leverage Map
++    if (inventory.length < 3 && sop01Content.sop01AiLeverageMarkdown) {
+         const levLines = sop01Content.sop01AiLeverageMarkdown.split('\n');
+-        const bulletRegex = /^\s*-\s*\*\*(.*?)\*\*/;
+-
+         for (const l of levLines) {
+-            const bMatch = l.match(bulletRegex);
++            const bMatch = l.match(itemRegex);
+             if (bMatch) {
++                const name = bMatch[1].trim();
++                if (inventory.some(i => i.titleTemplate === name)) continue;
++
+                 inventory.push({
+                     inventoryId: `INV-DERIVED-${nanoid(4)}`,
+-                    titleTemplate: bMatch[1].trim(),
++                    titleTemplate: name,
+                     category: 'Growth',
+                     valueCategory: 'Revenue',
+                     ghlComponents: [],
+@@ -247,6 +295,5 @@ function extractInventoryFromArtifacts(sop01Content: any): SelectedInventoryTick
+         }
+     }
+ 
+-    // Limit to reasonable pack size to avoid token overflow
+     return inventory.slice(0, 15);
+ }
+diff --git a/frontend/src/superadmin/api.ts b/frontend/src/superadmin/api.ts
+index 2f403ce..ecc7811 100644
+--- a/frontend/src/superadmin/api.ts
++++ b/frontend/src/superadmin/api.ts
+@@ -219,10 +219,32 @@ async function apiGet<T>(path: string): Promise<T> {
+   const res = await fetch(`${BASE}${path}`, {
+     headers: token ? { Authorization: `Bearer ${token}` } : {},
+   });
++
++  // Parse response body
++  const data = await res.json().catch(() => ({}));
++
+   if (!res.ok) {
+-    throw new Error(`SuperAdmin API error: ${res.status}`);
++    const err: any = new Error(data.message || data.error || `SuperAdmin API error: ${res.status}`);
++    err.status = res.status;
++    err.error = data.error || data.code;
++    err.prerequisites = data.prerequisites;
++    throw err;
+   }
+-  return res.json() as Promise<T>;
++
++  // Handle 200 OK with "not ready" codes as structured ERRORS? No, user says "return a typed NotReady result (do not throw)".
++  // So we pass it through as success data.
++  // The caller must check .code or specific fields.
++  /*
++  if (data.code && (data.code.includes('NOT_READY') || data.code.includes('NOT_FOUND'))) {
++    const err: any = new Error(data.message || data.code);
++    err.status = 200; // Still 200, but treated as an expected state
++    err.error = data.code;
++    err.prerequisites = data.prerequisites;
++    throw err;
++  }
++  */
++
++  return data as T;
+ }
+ 
+ async function apiPatch<T>(path: string, body: unknown): Promise<T> {
+@@ -274,9 +296,53 @@ async function downloadFile(path: string, filename: string): Promise<void> {
+   document.body.appendChild(a);
+   a.click();
+   window.URL.revokeObjectURL(url);
++  window.URL.revokeObjectURL(url);
+   document.body.removeChild(a);
+ }
+ 
++/**
++ * OPTION A: Normalize the brief artifact to bridge schema drift between backend and UI.
++ * Enforces contract alignment for SA-EXEC-BRIEF-RENDERING.
++ */
++function normalizeExecutiveBrief<T extends { brief?: any }>(res: T): T {
++  if (!res.brief) return res;
++
++  const brief = res.brief;
++
++  // 1. Structural normalization: Map 'content' to 'synthesis' if needed
++  if (!brief.synthesis && brief.content) {
++    brief.synthesis = brief.content;
++  }
++
++  // 2. Section key normalization: Ensure canonical synthesis keys exist
++  if (brief.synthesis) {
++    const s = brief.synthesis;
++    if (!s.executiveSummary && s.summary) s.executiveSummary = s.summary;
++    if (!s.operatingReality && (s.reality || s.operating_reality)) s.operatingReality = s.reality || s.operating_reality;
++    if (!s.alignmentSignals && (s.alignment || s.alignment_signals)) s.alignmentSignals = s.alignment || s.alignment_signals;
++    if (!s.blindSpotRisks && (s.risks || s.blind_spot_risks)) s.blindSpotRisks = s.risks || s.blind_spot_risks;
++    if (!s.riskSignals && s.risk) s.riskSignals = s.risk;
++    if (!s.readinessSignals && s.readiness) s.readinessSignals = s.readiness;
++
++    // Add top-level fallbacks if the UI expects them outside synthesis
++    brief.summary = brief.summary ?? s.executiveSummary;
++    brief.systemView = brief.systemView ?? brief.synthesis;
++  }
++
++  // 3. Signal normalization: Map legacy signal names to canonical ones
++  if (brief.signals) {
++    const sig = brief.signals;
++    if (!sig.constraintConsensusLevel && (sig.constraintConsensus || sig.consensus)) {
++      sig.constraintConsensusLevel = sig.constraintConsensus || sig.consensus;
++    }
++    if (!sig.executionRiskLevel && (sig.executionRisk || sig.risk)) {
++      sig.executionRiskLevel = sig.executionRisk || sig.risk;
++    }
++  }
++
++  return res;
++}
++
+ export const superadminApi = {
+   getOverview: () => apiGet<SuperAdminOverview>('/overview'),
+   getActivityFeed: (limit?: number) => apiGet<{ activities: any[] }>(`/activity-feed${limit ? `?limit=${limit}` : ''}`),
+@@ -328,7 +394,7 @@ export const superadminApi = {
+ 
+   // TM-2: Ticket Moderation APIs
+   getDiagnosticTickets: (tenantId: string, diagnosticId: string) =>
+-    apiGet<{ tickets: any[]; status: any }>(`/tickets/${tenantId}/${diagnosticId}`),
++    apiGet<{ tickets: any[] }>(`/tickets/${tenantId}/${diagnosticId}`),
+ 
+   getTicketModerationStatus: (tenantId: string, diagnosticId: string) =>
+     apiGet<{
+@@ -406,11 +472,77 @@ export const superadminApi = {
+   getCommandCenterActivity: (window?: number) =>
+     apiGet<{ events: any[] }>(`/command-center/activity?window=${window || 60}`),
+ 
++  // SOP-01 Re-run (zero-ticket recovery)
++  rerunSop01Diagnostic: async (tenantId: string) => {
++    try {
++      const res = await apiPost<{ success: boolean; diagnosticId: string; ticketStats: any; supersededDiagnosticId: string }>(
++        `/diagnostic/rerun-sop01/${tenantId}`,
++        {}
++      );
++      return { kind: 'SUCCESS' as const, data: res };
++    } catch (err: any) {
++      if (err.status === 409 || err.code === 'DIAGNOSTIC_NOT_ELIGIBLE_FOR_RERUN') {
++        return {
++          kind: 'BLOCKED' as const,
++          code: err.code || 'DIAGNOSTIC_NOT_ELIGIBLE_FOR_RERUN',
++          message: err.message || 'Diagnostic is not eligible for re-run',
++          ticketStats: err.ticketStats
++        };
++      }
++      if (err.status === 403) {
++        return { kind: 'BLOCKED' as const, code: 'INSUFFICIENT_AUTHORITY', message: err.message };
++      }
++      return { kind: 'ERROR' as const, message: err.message || 'Re-run failed' };
++    }
++  },
++
+ 
++  // Roadmap Generation APIs (Normalized - 404/409 as state)
++  getRoadmapLatest: async (tenantId: string) => {
++    try {
++      const res = await apiGet<{ roadmap: any; code?: string; message?: string }>(`/roadmap/latest/${tenantId}`);
+ 
+-  // Final Roadmap Assembly (Waterfall Step 5)
+-  assembleRoadmap: (tenantId: string) =>
+-    apiPost<{ success: boolean; roadmap: any }>(`/firms/${tenantId}/assemble-roadmap`),
++      if (res.code === 'ROADMAP_NOT_READY' || !res.roadmap) {
++        return { kind: 'NOT_READY' as const, code: res.code, message: res.message };
++      }
++
++      return { kind: 'READY' as const, roadmap: res.roadmap };
++    } catch (err: any) {
++      if (err.status === 404) {
++        return { kind: 'NOT_READY' as const, code: 'ROADMAP_NOT_READY', message: 'No roadmap found' };
++      }
++      return { kind: 'ERROR' as const, message: err.message || 'Failed to fetch roadmap' };
++    }
++  },
++
++  assembleRoadmap: async (tenantId: string) => {
++    try {
++      const res = await apiPost<{ success: boolean; roadmap: any; code?: string; prerequisites?: any }>(`/roadmap/assemble/${tenantId}`, {});
++      return { kind: 'SUCCESS' as const, roadmap: res.roadmap };
++    } catch (err: any) {
++      if (err.status === 409 || err.code === 'ROADMAP_PREREQUISITES_REQUIRED') {
++        return {
++          kind: 'BLOCKED' as const,
++          code: err.code || 'ROADMAP_PREREQUISITES_REQUIRED',
++          message: err.message,
++          prerequisites: err.prerequisites
++        };
++      }
++      return { kind: 'ERROR' as const, message: err.message || 'Assembly failed' };
++    }
++  },
++
++  publishRoadmap: async (tenantId: string) => {
++    try {
++      const res = await apiPost<{ success: boolean; roadmap: any }>(`/roadmap/publish/${tenantId}`, {});
++      return { kind: 'SUCCESS' as const, roadmap: res.roadmap };
++    } catch (err: any) {
++      if (err.status === 404) {
++        return { kind: 'BLOCKED' as const, code: 'ROADMAP_DRAFT_REQUIRED', message: 'No draft roadmap to publish' };
++      }
++      return { kind: 'ERROR' as const, message: err.message || 'Publish failed' };
++    }
++  },
+ 
+   previewFinalizeBatch: (tenantIds: string[]) =>
+     apiPost<{ eligible: any[]; ineligible: any[] }>(`/command-center/batch/roadmap/finalize/preview`, { tenantIds }),
+@@ -423,14 +555,55 @@ export const superadminApi = {
+     apiGet<{ data: any }>(`/snapshot/${tenantId}`),
+ 
+   // Executive Brief v0
+-  getExecutiveBrief: (tenantId: string) =>
+-    apiGet<{ brief: any }>(`/tenants/${tenantId}/executive-brief`),
++  getExecutiveBrief: async (tenantId: string) => {
++    try {
++      const res = await apiGet<{ brief?: any; prerequisites?: any; code?: string; message?: string }>(`/firms/${tenantId}/executive-brief`);
++      console.log('[API] getExecutiveBrief response:', res);
++
++      // Backend returns 200 OK with code: 'EXECUTIVE_BRIEF_NOT_READY' when brief doesn't exist
++      if (res.code === 'EXECUTIVE_BRIEF_NOT_READY' || (!res.brief && res.code)) {
++        return {
++          kind: 'NOT_READY' as const,
++          code: res.code || 'EXECUTIVE_BRIEF_NOT_READY',
++          prerequisites: res.prerequisites || {}
++        };
++      }
++
++      // If brief is undefined/null but prerequisites exist, treat as NOT_READY
++      if (!res.brief && res.prerequisites) {
++        return {
++          kind: 'NOT_READY' as const,
++          code: 'PREREQUISITES_NOT_MET',
++          prerequisites: res.prerequisites
++        };
++      }
++
++      console.log('[API] RAW Response for Brief:', res);
++      const normalized = normalizeExecutiveBrief({ kind: 'READY' as const, brief: res.brief });
++      console.log('[API] NORM Response for Brief:', normalized);
++      return normalized;
++    } catch (err: any) {
++      console.log('[API] getExecutiveBrief error:', err);
++      if (err.error === 'EXECUTIVE_BRIEF_NOT_READY' || err.status === 404) {
++        return {
++          kind: 'NOT_READY' as const,
++          code: err.error,
++          prerequisites: err.prerequisites
++        };
++      }
++      return { kind: 'ERROR' as const, message: err.message || 'Unknown error' };
++    }
++  },
+ 
+-  generateExecutiveBrief: (tenantId: string) =>
+-    apiPost<{ brief: any }>(`/tenants/${tenantId}/executive-brief/generate`, {}),
++  generateExecutiveBrief: async (tenantId: string) => {
++    const res = await apiPost<{ brief: any }>(`/firms/${tenantId}/executive-brief/generate`, {});
++    return normalizeExecutiveBrief(res);
++  },
+ 
+-  approveExecutiveBrief: (tenantId: string) =>
+-    apiPost<{ brief: any; intakeWindowState: string }>(`/tenants/${tenantId}/executive-brief/approve`, {}),
++  approveExecutiveBrief: async (tenantId: string) => {
++    const res = await apiPost<{ brief: any; intakeWindowState: string }>(`/firms/${tenantId}/executive-brief/approve`, {});
++    return normalizeExecutiveBrief(res);
++  },
+ 
+   closeIntakeWindow: (tenantId: string) =>
+     apiPost<{ ok: boolean }>(`/firms/${tenantId}/close-intake`),
+@@ -479,4 +652,11 @@ export const superadminApi = {
+ 
+   sendIntakeVectorInvite: (vectorId: string) =>
+     apiPost<{ vector: any }>(`/intake-vectors/${vectorId}/send-invite`),
++
++  // Data Repair (Executive Only)
++  repairStakeholders: (tenantId: string) =>
++    apiPost<{ message: string; created: number; total: number; details: any[] }>(`/tenants/${tenantId}/repair-stakeholders`, {}),
++
++  updateStakeholderMetadata: (tenantId: string) =>
++    apiPost<{ message: string; updated: number; details: any[] }>(`/tenants/${tenantId}/update-stakeholder-metadata`, {}),
+ };

@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { type ConversationMessage } from './flows';
-import { trustAgentMode } from './config';
+
 
 interface HomepageChatControlsProps {
     isLoading: boolean;
@@ -23,10 +23,7 @@ export function HomepageChatControls({
 }: HomepageChatControlsProps) {
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // STRICT: HomepageChatControls MUST NOT be rendered if trustAgentMode is 'feta'
-    if (trustAgentMode === 'feta') {
-        return null;
-    }
+
 
     return (
         <div className="p-6 border-t border-slate-800">

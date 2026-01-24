@@ -6,8 +6,8 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { db } from '../db';
-import { webinarSettings, webinarRegistrations } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { webinarSettings, webinarRegistrations, evidenceBindings, evidenceArtifacts } from '../db/schema';
+import { eq, and } from 'drizzle-orm';
 import {
     FETA_REGISTRY,
     isValidRole,
@@ -406,7 +406,7 @@ export async function generateTeamResults(req: Request, res: Response): Promise<
 
         // Reshape payloads for shared logic
         // --- EXTRACTED LOGIC START ---
-        const responseData = calculateBoardReadyPacket(sessionId, rolePayloads);
+        const responseData = await calculateBoardReadyPacket(sessionId, rolePayloads);
         // --- EXTRACTED LOGIC END ---
 
         // PHASE 4C: Compute Narrative Lattice
@@ -466,7 +466,15 @@ function calculateRoleAnswers(rolePayloads: any): Record<RoleId, RoleAnswers> {
  * Stateless calculator for Board-Ready Packet
  * Used by both JSON endpoint and PDF generator
  */
-export function calculateBoardReadyPacket(sessionId: string, rolePayloads: any): any {
+// Canonical Verdict Map for Evidence Parity
+const ROLE_VERDICTS: Record<string, string> = {
+    owner: "You are absorbing system failures instead of enforcing structure.",
+    sales: "Revenue depends on heroics instead of enforced follow-up.",
+    ops: "Execution speed exceeds system control.",
+    delivery: "Momentum decays after handoff due to unclear ownership."
+};
+
+export async function calculateBoardReadyPacket(sessionId: string, rolePayloads: any): Promise<any> {
     // 1. Reshape inputs
     const roleAnswers = {} as Record<RoleId, RoleAnswers>;
     const roleEvidence = {} as Record<RoleId, RoleEvidence>;
@@ -506,7 +514,7 @@ export function calculateBoardReadyPacket(sessionId: string, rolePayloads: any):
     // --- MAPPING ---
 
     // 1. Role Summaries
-    const roleSummaries = roles.map(role => {
+    const roleSummaries = await Promise.all(roles.map(async role => {
         const roleConfig = FETA_REGISTRY[role];
         const synthesisKey = roleConfig.selectSynthesis(roleAnswers[role]);
         const synth = roleConfig.synthesis[synthesisKey];
@@ -516,6 +524,8 @@ export function calculateBoardReadyPacket(sessionId: string, rolePayloads: any):
             ? Object.values(evidenceParam)[0]
             : null;
 
+        const verdict = ROLE_VERDICTS[role] || "System check required.";
+
         return {
             roleId: role,
             roleName: role.charAt(0).toUpperCase() + role.slice(1) + (role === 'owner' ? ' / Executive' : ''),
@@ -523,9 +533,16 @@ export function calculateBoardReadyPacket(sessionId: string, rolePayloads: any):
             signals: synth.signals,
             diagnosis: synth.diagnosis,
             evidenceObserved,
+            evidenceArtifact: await getEvidenceArtifact(role, roleAnswers[role], sessionId),
+            evidenceBlock: {
+                title: synth.headline,
+                bullets: synth.signals || [],
+                verdict,
+                diagnosis: synth.diagnosis
+            },
             impactVector: "Dragging on capacity vs generating lift" // Simplified default for MVP
         };
-    });
+    }));
 
     // 2. The Board (NOW / NEXT / LATER)
     const nowTickets = teamOutput.team.firstMoves.map(m => ({
@@ -615,4 +632,121 @@ export function calculateBoardReadyPacket(sessionId: string, rolePayloads: any):
 
 // Export session stores for PDF controller (INTERNAL USE ONLY - not exposed via API)
 export { WEBINAR_SESSIONS, TEAM_SESSIONS };
+
+// --- EVIDENCE SELECTION LOGIC ---
+
+function getSignalScore(role: RoleId, answers: RoleAnswers): number {
+    let score = 0;
+    const a1 = answers.Q1 || '';
+    const a2 = answers.Q2 || '';
+    const a3 = answers.Q3 || '';
+
+    // 1. Repetition / Manual Work
+    // (Owner: A1_CHAOS, Sales: S2_MANUAL, Ops: O2_MANUAL, Delivery: D1_REWORK)
+    if (['A1_CHAOS', 'S2_MANUAL', 'O2_MANUAL', 'D1_REWORK'].includes(a1) ||
+        ['S2_MANUAL', 'O2_MANUAL'].includes(a2)) {
+        score++;
+    }
+
+    // 2. Friction / Stall / Delay
+    // (Owner: A1_FU, A1_RESP; Sales: S2_SPEED; Ops: O3_DELAY; Delivery: D1_HANDOFF)
+    if (['A1_FU', 'A1_RESP', 'S2_SPEED', 'D1_HANDOFF'].includes(a1) ||
+        ['O3_DELAY'].includes(a3)) {
+        score++;
+    }
+
+    // 3. Ownership Ambiguity / Overload
+    // (Owner: A3_NONE, A3_FOUN; Sales: S2_AUTHORITY, S3_FOUNDER; Ops: O2_OWNERSHIP; Delivery: D2_PRIORITIES)
+    if (['A3_NONE', 'A3_FOUN', 'S3_FOUNDER'].includes(a3) ||
+        ['S2_AUTHORITY', 'O2_OWNERSHIP', 'D2_PRIORITIES'].includes(a2)) {
+        score++;
+    }
+
+    return score;
+}
+
+async function getEvidenceArtifact(role: RoleId, answers: RoleAnswers, teamSessionId: string) {
+    // 0. Try to fetch REAL artifact from DB first (Systemic Evidence v2)
+    try {
+        const bindings = await db.select().from(evidenceBindings)
+            .where(and(
+                eq(evidenceBindings.teamSessionId, teamSessionId),
+                eq(evidenceBindings.role, role),
+                eq(evidenceBindings.slotKey, 'primary') // V1: always grab primary for now
+            ))
+            .limit(1);
+
+        if (bindings.length > 0) {
+            const binding = bindings[0];
+            const artifact = await db.select().from(evidenceArtifacts)
+                .where(eq(evidenceArtifacts.id, binding.artifactId))
+                .limit(1);
+
+            if (artifact.length > 0) {
+                return {
+                    type: 'snapshot',
+                    caption: artifact[0].caption || "Evidence Snapshot",
+                    imageUrl: artifact[0].publicUrl,
+                    mimeType: artifact[0].mimeType,
+                    isRealArtifact: true
+                };
+            }
+        }
+    } catch (e) {
+        console.error("Failed to fetch real evidence artifact:", e);
+    }
+
+    // 1. Global Eligibility Filter (Must satisfy >= 2 signals)
+    const score = getSignalScore(role, answers);
+
+    if (score < 2) {
+        return {
+            type: 'fallback',
+            caption: "Pattern derived from cross-role intake responses."
+        };
+    }
+
+    // 2. Select Snapshot Claim based on Specific Role Logic
+    let caption = "High-friction point detected in workflow."; // Default
+
+    const a1 = answers.Q1 || '';
+    const a2 = answers.Q2 || '';
+    const a3 = answers.Q3 || '';
+
+    if (role === 'owner') {
+        if (a3 === 'A3_FOUN' || a2 === 'A2_FOUN') {
+            caption = "Owner absorbing operational overhead.";
+        } else if (a1 === 'A1_HAND') {
+            caption = "Owner bridging multiple role gaps.";
+        }
+    } else if (role === 'sales') {
+        if (a3 === 'S3_FOUNDER') {
+            caption = "Leadership covering manual follow-up.";
+        } else if (a1 === 'S1_FOLLOWUP' && a2 === 'S2_MANUAL') {
+            caption = "Stalled leads due to manual process.";
+        }
+    } else if (role === 'ops') {
+        if (a3 === 'O3_FIRE' || a3 === 'O3_HERO') {
+            caption = "Priority overrides disrupting flow.";
+        } else if (a2 === 'O2_OWNERSHIP' || a2 === 'O2_WORKAROUNDS') {
+            caption = "Tasks reassigned due to unclear ownership.";
+        }
+    } else if (role === 'delivery') {
+        if (a1 === 'D1_HANDOFF') {
+            caption = "Gap in post-sale requirement transfer.";
+        } else if (a2 === 'D2_PRIORITIES' || a2 === 'D2_CONTEXT') {
+            caption = "Delivery ownership ambiguous.";
+        }
+    }
+
+    // 3. Return Artifact
+    return {
+        type: 'snapshot',
+        caption,
+        // Placeholder for evidence snapshot
+        // In production, this would point to a generated visual based on the specific interaction
+        imageUrl: `https://dummyimage.com/600x300/f1f5f9/475569.png&text=${role.toUpperCase()}+Workflow+Snapshot`
+    };
+}
+
 
