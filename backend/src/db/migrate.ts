@@ -1,15 +1,13 @@
+import '../config/env'; // Ensure env is loaded before DB import
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { db } from './index';
-import * as dotenv from 'dotenv';
 import path from 'path';
-
-dotenv.config();
 
 async function main() {
   console.log('🔄 Running migrations...');
-  
+
   try {
-    const migrationsFolder = path.join(__dirname, '../../drizzle');
+    const migrationsFolder = path.join(__dirname, 'migrations');
     await migrate(db, { migrationsFolder });
     console.log('✅ Migrations complete');
     process.exit(0);

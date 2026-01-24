@@ -369,7 +369,7 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
     if (cta.type === 'book_call') {
       const params = generateBookingParams(visitorContext);
       // TODO: Replace with actual booking URL when available
-      const bookingUrl = `mailto:tony@scend.cash?subject=Strategic AI Roadmap - Discovery Call&body=Source: TrustAgent%0A${params ? `Context: ${params}` : ''}`;
+      const bookingUrl = `mailto:tony@scend.cash?subject=Strategic AI Roadmap - Discovery Call&body=Source: ${agentType === 'roadmap' ? 'TrustAgent' : 'TrustConsole'}%0A${params ? `Context: ${params}` : ''}`;
       window.open(bookingUrl, '_blank');
     } else if (cta.type === 'view_sample_roadmap') {
       setLocation('/cohort');
@@ -671,7 +671,7 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
           {/* Header */}
           <div className="p-6 border-b border-slate-800 flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-slate-100">{config.panel.title}</h3>
+              <h3 className="text-lg font-semibold text-slate-100">{agentType === 'roadmap' ? 'TrustAgent' : config.panel.title}</h3>
               <p className="text-xs text-slate-400">
                 {agentType === 'roadmap' ? 'Your Executive Roadmap Copilot' : config.panel.subtitle}
               </p>

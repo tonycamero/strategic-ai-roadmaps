@@ -1,0 +1,115 @@
+=== START VERIFICATION: CANONICAL V2 PIPELINE ===
+
+========== DRIZZLE SQL ==========
+select "id", "owner_user_id", "name", "cohort_label", "segment", "region", "status", "business_type", "team_headcount", "baseline_monthly_leads", "firm_size_tier", "discovery_complete", "last_diagnostic_id", "intake_window_state", "intake_snapshot_id", "intake_closed_at", "intake_locked_at", "intake_locked_by_user_id", "notes", "readiness_notes", "created_at", "updated_at", "slug", "domain", "discovery_acknowledged_at", "knowledge_base_ready_at", "roles_validated_at", "exec_ready_at" from "tenants" limit $1
+PARAMS: [ 1 ]
+=================================
+
+[PASS] Tenant Selected: Northshore Logistics Solutions (883a5307-6354-49ad-b8e3-765ff64dc1af)
+
+--- Validating Discovery Ingestion (D1-D3, F1-F4) ---
+[PASS] D1/D2: Schema Validation passed (Clean Keys).
+[FindingsService] Extracted 6 findings for tenant 883a5307-6354-49ad-b8e3-765ff64dc1af
+[PASS] F1: Generated 6 findings.
+[PASS] F3: Correctly split Friction Points (2 items).
+
+--- Validating Ticket Generation (T1-T5) ---
+
+========== DRIZZLE SQL ==========
+insert into "sop_tickets" ("id", "tenant_id", "diagnostic_id", "ticket_id", "title", "description", "category", "tier", "value_category", "owner", "priority", "sprint", "time_estimate_hours", "cost_estimate", "projected_hours_saved_weekly", "projected_leads_recovered_monthly", "approved", "admin_notes", "ticket_type", "roadmap_section", "inventory_id", "is_sidecar", "pain_source", "current_state", "target_state", "ai_design", "ghl_implementation", "implementation_steps", "dependencies", "moderation_status", "status", "success_metric", "roi_notes", "moderated_at", "moderated_by", "created_at", "updated_at") values ($1, $2, default, $3, $4, $5, $6, $7, default, default, default, $8, default, default, default, default, $9, default, $10, default, $11, default, $12, default, default, default, default, default, default, default, $13, default, default, default, default, $14, $15), ($16, $17, default, $18, $19, $20, $21, $22, default, default, default, $23, default, default, default, default, $24, default, $25, default, $26, default, $27, default, default, default, default, default, default, default, $28, default, default, default, default, $29, $30), ($31, $32, default, $33, $34, $35, $36, $37, default, default, default, $38, default, default, default, default, $39, default, $40, default, $41, default, $42, default, default, default, default, default, default, default, $43, default, default, default, default, $44, $45), ($46, $47, default, $48, $49, $50, $51, $52, default, default, default, $53, default, default, default, default, $54, default, $55, default, $56, default, $57, default, default, default, default, default, default, default, $58, default, default, default, default, $59, $60), ($61, $62, default, $63, $64, $65, $66, $67, default, default, default, $68, default, default, default, default, $69, default, $70, default, $71, default, $72, default, default, default, default, default, default, default, $73, default, default, default, default, $74, $75)
+PARAMS: [
+  'ed3d92d6-48b4-4d13-8409-36bb7c627b71',
+  '883a5307-6354-49ad-b8e3-765ff64dc1af',
+  'T-undefined-2',
+  'Investigate: Manual verification is slow....',
+  'Generated from Finding F-5c8aac44: "Manual verification is slow."',
+  'Core',
+  'core',
+  1,
+  false,
+  'Diagnostic',
+  'GENERATED',
+  '["F-5c8aac44"]',
+  'generated',
+  'Wed, 21 Jan 2026 20:12:08 GMT',
+  'Wed, 21 Jan 2026 20:12:08 GMT',
+  'f89f384e-423b-45fc-b7e8-712770967457',
+  '883a5307-6354-49ad-b8e3-765ff64dc1af',
+  'T-undefined-3',
+  'Investigate: Data consistency is hard....',
+  'Generated from Finding F-9dc52627: "Data consistency is hard."',
+  'Core',
+  'core',
+  1,
+  false,
+  'Diagnostic',
+  'GENERATED',
+  '["F-9dc52627"]',
+  'generated',
+  'Wed, 21 Jan 2026 20:12:08 GMT',
+  'Wed, 21 Jan 2026 20:12:08 GMT',
+  'f16d79d5-2b54-41a4-a701-41e8730a8bdd',
+  '883a5307-6354-49ad-b8e3-765ff64dc1af',
+  'T-undefined-4',
+  'Build Capability: Automated verification pipeline....',
+  'Generated from Finding F-1b850a21: "Automated verification pipeline."',
+  'Core',
+  'core',
+  1,
+  false,
+  'CapabilityBuild',
+  'GENERATED',
+  '["F-1b850a21"]',
+  'generated',
+  'Wed, 21 Jan 2026 20:12:08 GMT',
+  'Wed, 21 Jan 2026 20:12:08 GMT',
+  '43e1b55a-3c26-4d64-8330-e296413a5119',
+  '883a5307-6354-49ad-b8e3-765ff64dc1af',
+  'T-undefined-5',
+  'Build Capability: 100% test coverage....',
+  'Generated from Finding F-860cbfe3: "100% test coverage."',
+  'Core',
+  'core',
+  1,
+  false,
+  'CapabilityBuild',
+  'GENERATED',
+  '["F-860cbfe3"]',
+  'generated',
+  'Wed, 21 Jan 2026 20:12:08 GMT',
+  'Wed, 21 Jan 2026 20:12:08 GMT',
+  '793b9396-d607-4e65-98cf-8f410a7c3c2b',
+  '883a5307-6354-49ad-b8e3-765ff64dc1af',
+  'T-undefined-6',
+  'Verify Constraint: Must be done by noon....',
+  'Generated from Finding F-da314f04: "Must be done by noon."',
+  'Core',
+  'core',
+  1,
+  false,
+  'ConstraintCheck',
+  'GENERATED',
+  '["F-da314f04"]',
+  'generated',
+  'Wed, 21 Jan 2026 20:12:08 GMT',
+  'Wed, 21 Jan 2026 20:12:08 GMT'
+]
+=================================
+
+PostgresError: column "status" of relation "sop_tickets" does not exist
+    at ErrorResponse (/home/tonycamero/code/Strategic_AI_Roadmaps/node_modules/.pnpm/postgres@3.4.7/node_modules/postgres/cjs/src/connection.js:794:26)
+    at handle (/home/tonycamero/code/Strategic_AI_Roadmaps/node_modules/.pnpm/postgres@3.4.7/node_modules/postgres/cjs/src/connection.js:480:6)
+    at TLSSocket.data (/home/tonycamero/code/Strategic_AI_Roadmaps/node_modules/.pnpm/postgres@3.4.7/node_modules/postgres/cjs/src/connection.js:315:9)
+    at TLSSocket.emit (node:events:524:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at TLSWrap.onStreamRead (node:internal/stream_base_commons:191:23) {
+  severity_local: 'ERROR',
+  severity: 'ERROR',
+  code: '42703',
+  position: '514',
+  file: 'parse_target.c',
+  line: '1065',
+  routine: 'checkInsertTargets'
+}

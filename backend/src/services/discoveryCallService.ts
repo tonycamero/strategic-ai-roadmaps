@@ -1,6 +1,7 @@
 import { db } from '../db';
 import { discoveryCallNotes, tenants } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
+import { invalidateDownstreamArtifacts } from './compilerInvalidation.service';
 
 export async function saveDiscoveryCallNotes(params: {
   tenantId: string;
@@ -37,6 +38,9 @@ export async function saveDiscoveryCallNotes(params: {
     .update(tenants)
     .set({ discoveryComplete: true })
     .where(eq(tenants.id, tenantId));
+
+  // S3: Invalidation Cascade
+  await invalidateDownstreamArtifacts(tenantId, ownerUserId);
 }
 
 export async function getLatestDiscoveryCallNotes(tenantId: string) {

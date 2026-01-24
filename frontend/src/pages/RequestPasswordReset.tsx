@@ -57,7 +57,7 @@ export default function RequestPasswordReset() {
                 Check Your Email
               </h2>
               <p className="text-slate-400 mb-6">
-                If an account exists with <span className="text-slate-200">{email}</span>, 
+                If an account exists with <span className="text-slate-200">{email}</span>,
                 you'll receive a password reset link shortly.
               </p>
 
@@ -90,9 +90,9 @@ export default function RequestPasswordReset() {
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="bg-slate-900 rounded-xl shadow-2xl border border-slate-800 p-8">
+        <div className="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 p-8 card-glow-hover">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-semibold text-slate-100 mb-2">
+            <h2 className="text-2xl font-bold text-slate-100 mb-2">
               Reset Your Password
             </h2>
             <p className="text-slate-400 text-sm">
@@ -111,22 +111,22 @@ export default function RequestPasswordReset() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="you@example.com"
                 disabled={loading}
               />
             </div>
 
             {error && (
-              <div className="bg-red-900/20 border border-red-700/50 rounded-lg p-3">
-                <p className="text-sm text-red-200">{error}</p>
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                <p className="text-sm text-red-400">{error}</p>
               </div>
             )}
 
             <button
               type="submit"
               disabled={loading || !email}
-              className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:bg-slate-700 disabled:cursor-not-allowed transition-all"
+              className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Sending...' : 'Send Reset Link'}
             </button>
@@ -135,7 +135,7 @@ export default function RequestPasswordReset() {
               <button
                 type="button"
                 onClick={() => setLocation('/login')}
-                className="text-slate-400 hover:text-slate-200 text-sm transition-colors"
+                className="text-slate-500 hover:text-blue-500 text-sm transition-colors font-bold uppercase tracking-widest"
               >
                 ← Back to Login
               </button>

@@ -44,7 +44,7 @@ export async function createInvite(req: AuthRequest, res: Response) {
     }
 
     const token = generateInviteToken();
-    
+
     const [invite] = await db
       .insert(invites)
       .values({
@@ -65,7 +65,7 @@ export async function createInvite(req: AuthRequest, res: Response) {
 
     // Send invite email
     const inviteLink = `${process.env.FRONTEND_URL}/accept-invite/${token}`;
-    
+
     try {
       await sendInviteEmail({
         to: email,
@@ -84,12 +84,12 @@ export async function createInvite(req: AuthRequest, res: Response) {
       const tenant = tenantId ? await db.query.tenants.findFirst({
         where: eq(tenants.id, tenantId),
       }) : null;
-      
+
       if (tenant) {
         await onboardingProgressService.markStep(
           tenant.id,
           'INVITE_TEAM',
-          'COMPLETED'
+          'completed'
         );
       }
     } catch (error) {
@@ -164,7 +164,8 @@ export async function acceptInvite(req: Request, res: Response) {
     const authToken = generateToken({
       userId: newUser.id,
       email: newUser.email,
-      role: newUser.role,
+      role: newUser.role as any,
+      isInternal: false,
       tenantId: newUser.tenantId,
     });
 
@@ -248,7 +249,7 @@ export async function resendInvite(req: AuthRequest, res: Response) {
 
     // Resend invite email
     const inviteLink = `${process.env.FRONTEND_URL}/accept-invite/${invite.token}`;
-    
+
     try {
       await sendInviteEmail({
         to: invite.email,

@@ -34,7 +34,7 @@ export function HomepageChatBody({
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 {messages.length === 0 && !isLoading ? (
                     <div className="text-center text-slate-400 mt-8">
-                        <p className="mb-4">👋 Hi! I'm TrustAgent.</p>
+                        <p className="mb-4">👋 Hi! I'm TrustConsole.</p>
                         <p className="text-sm">Click a suggestion below to start chatting.</p>
                     </div>
                 ) : messages.length === 0 && isLoading ? (

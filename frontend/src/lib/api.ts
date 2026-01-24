@@ -9,8 +9,7 @@ import type {
   Intake,
 } from '@roadmap/shared';
 
-const API_URL = import.meta.env.VITE_API_URL || 
-  (import.meta.env.MODE === 'production' ? '' : 'http://localhost:3001');
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -24,7 +23,7 @@ async function fetchAPI<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const token = localStorage.getItem('token');
-  
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
@@ -124,8 +123,8 @@ export const api = {
     fetchAPI<{ tickets: any[] }>('/api/roadmap/tickets'),
 
   // Roadmap Q&A endpoint
-  askRoadmapQuestion: (payload: { 
-    question: string; 
+  askRoadmapQuestion: (payload: {
+    question: string;
     sectionKey?: string;
     currentSection?: {
       slug: string;

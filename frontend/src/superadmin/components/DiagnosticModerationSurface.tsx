@@ -36,6 +36,7 @@ export function DiagnosticModerationSurface({ tenantId, diagnosticId, onStatusCh
     const { isExecutive } = useSuperAdminAuthority();
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [status, setStatus] = useState<ModerationStatus | null>(null);
+    const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [processingId, setProcessingId] = useState<string | null>(null);
 
@@ -45,13 +46,19 @@ export function DiagnosticModerationSurface({ tenantId, diagnosticId, onStatusCh
 
     const loadTickets = async () => {
         setLoading(true);
+        setError(null);
         try {
             const res = await superadminApi.getDiagnosticTickets(tenantId, diagnosticId);
             setTickets(res.tickets);
             setStatus(res.status);
             if (onStatusChange) onStatusChange(res.status);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to load tickets', err);
+            // Extract detailed message if available (from our patched apiGet)
+            const msg = err.message || 'Failed to load tickets';
+            const code = err.errorCode ? ` [${err.errorCode}]` : '';
+            const details = err.details ? ` (${err.details})` : '';
+            setError(`${msg}${code}${details}`);
         } finally {
             setLoading(false);
         }
@@ -67,9 +74,9 @@ export function DiagnosticModerationSurface({ tenantId, diagnosticId, onStatusCh
             ));
 
             if (approved) {
-                await superadminApi.approveTickets(tenantId, diagnosticId, [ticketId]);
+                await superadminApi.approveTickets({ tenantId, diagnosticId, ticketIds: [ticketId] });
             } else {
-                await superadminApi.rejectTickets(tenantId, diagnosticId, [ticketId]);
+                await superadminApi.rejectTickets({ tenantId, diagnosticId, ticketIds: [ticketId] });
             }
 
             // Refresh purely for status/counts
@@ -91,6 +98,18 @@ export function DiagnosticModerationSurface({ tenantId, diagnosticId, onStatusCh
             setProcessingId(null);
         }
     };
+
+    if (error) {
+        return (
+            <div className="p-4 bg-red-900/10 border border-red-500/30 rounded-lg flex items-center gap-3 text-red-400 text-xs font-mono">
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>{error}</span>
+                <button onClick={loadTickets} className="ml-auto underline hover:text-red-300">Retry</button>
+            </div>
+        );
+    }
 
     if (loading) return <div className="text-slate-500 text-xs animate-pulse">Loading diagnostic tickets...</div>;
 
@@ -128,19 +147,21 @@ export function DiagnosticModerationSurface({ tenantId, diagnosticId, onStatusCh
             <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                 {tickets.map(ticket => (
                     <div key={ticket.id} className={`group relative p-3 rounded-lg border transition-all ${ticket.moderatedAt
-                            ? (ticket.approved
-                                ? 'bg-emerald-900/5 border-emerald-900/30'
-                                : 'bg-red-900/5 border-red-900/30 opacity-60 hover:opacity-100')
-                            : 'bg-slate-800/40 border-slate-700 hover:border-slate-600'
+                        ? (ticket.approved
+                            ? 'bg-emerald-900/5 border-emerald-900/30'
+                            : 'bg-red-900/5 border-red-900/30 opacity-60 hover:opacity-100')
+                        : 'bg-slate-800/40 border-slate-700 hover:border-slate-600'
                         }`}>
                         <div className="flex justify-between items-start gap-3">
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-[10px] font-mono text-slate-500 bg-slate-900 px-1.5 rounded">{ticket.ticketId}</span>
+                                    <span className="text-[10px] font-mono text-slate-500 bg-slate-900 px-1.5 rounded">
+                                        {ticket.ticketId.startsWith('ai-gen-') ? 'DRAFT' : ticket.ticketId}
+                                    </span>
                                     {ticket.tier && (
                                         <span className={`text-[9px] uppercase font-bold px-1.5 rounded border ${ticket.tier === 'critical' ? 'text-red-400 border-red-900/30 bg-red-900/10' :
-                                                ticket.tier === 'recommended' ? 'text-emerald-400 border-emerald-900/30 bg-emerald-900/10' :
-                                                    'text-blue-400 border-blue-900/30 bg-blue-900/10'
+                                            ticket.tier === 'recommended' ? 'text-emerald-400 border-emerald-900/30 bg-emerald-900/10' :
+                                                'text-blue-400 border-blue-900/30 bg-blue-900/10'
                                             }`}>
                                             {ticket.tier}
                                         </span>

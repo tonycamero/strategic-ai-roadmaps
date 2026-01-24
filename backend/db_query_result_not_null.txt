@@ -1,0 +1,4 @@
+ id | ticket_id | status | moderation_status | diagnostic_id 
+----+-----------+--------+-------------------+---------------
+(0 rows)
+
