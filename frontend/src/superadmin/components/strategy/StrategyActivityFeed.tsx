@@ -43,16 +43,16 @@ export function StrategyActivityFeed() {
         // Navigate based on activity type
         switch (activity.type) {
             case 'intake':
-                setLocation(`/superadmin/firms/${activity.tenantId}`);
+                setLocation(`/superadmin/execute/firms/${activity.tenantId}`);
                 break;
             case 'diagnostic':
-                setLocation(`/superadmin/firms/${activity.tenantId}#diagnostic`);
+                setLocation(`/superadmin/execute/firms/${activity.tenantId}#diagnostic`);
                 break;
             case 'roadmap':
-                setLocation(`/superadmin/execute/${activity.tenantId}`);
+                setLocation(`/superadmin/execute/firms/${activity.tenantId}`);
                 break;
             default:
-                setLocation(`/superadmin/firms/${activity.tenantId}`);
+                setLocation(`/superadmin/execute/firms/${activity.tenantId}`);
         }
     };
 

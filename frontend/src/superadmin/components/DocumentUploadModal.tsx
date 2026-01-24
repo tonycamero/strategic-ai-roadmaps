@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, FormEvent } from 'react';
 
 interface DocumentUploadModalProps {
   tenantId: string;
@@ -16,7 +16,7 @@ export function DocumentUploadModal({
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [formData, setFormData] = useState({
     category: 'sop_output',
     title: '',
@@ -26,7 +26,7 @@ export function DocumentUploadModal({
     isPublic: true,
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!file) {
       setError('Please select a file');

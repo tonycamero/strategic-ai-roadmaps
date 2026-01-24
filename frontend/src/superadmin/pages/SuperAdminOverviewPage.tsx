@@ -26,22 +26,22 @@ export default function SuperAdminOverviewPage() {
     );
   if (!data) return <div className="text-slate-400">No data available yet.</div>;
 
-  const tenantStatusCounts = data.statusStats.reduce((acc, s) => {
+  const tenantStatusCounts = (data.statusStats || []).reduce((acc, s) => {
     acc[s.status || 'unknown'] = s.count;
     return acc;
   }, {} as Record<string, number>);
 
-  const roadmapStatusCounts = data.roadmapStats.reduce((acc, s) => {
+  const roadmapStatusCounts = (data.roadmapStats || []).reduce((acc, s) => {
     acc[s.status || 'unknown'] = s.count;
     return acc;
   }, {} as Record<string, number>);
 
-  const pilotStageCounts = data.pilotStats.reduce((acc, s) => {
+  const pilotStageCounts = (data.pilotStats || []).reduce((acc, s) => {
     acc[s.pilotStage || 'none'] = s.count;
     return acc;
   }, {} as Record<string, number>);
 
-  const activeCohorts = data.cohortStats.filter((c) => c.cohortLabel).length;
+  const activeCohorts = (data.cohortStats || []).filter((c) => c.cohortLabel != null).length;
   const activeFirms = tenantStatusCounts['active'] || 0;
   const draftRoadmaps = roadmapStatusCounts['draft'] || 0;
   const deliveredRoadmaps = roadmapStatusCounts['delivered'] || 0;
@@ -97,7 +97,7 @@ export default function SuperAdminOverviewPage() {
               items={pilotStageCounts}
               tooltip="Pilot funnel across your cohorts."
               emptyMessage="No pilots currently progressing"
-              onClick={(stage) => setLocation('/superadmin/pipeline')}
+              onClick={(_stage) => setLocation('/superadmin/pipeline')}
             />
           </section>
 
@@ -152,14 +152,15 @@ export default function SuperAdminOverviewPage() {
                 </div>
               </div>
 
-              {data.cohortStats.length === 0 ? (
+              {(data.cohortStats || []).length === 0 ? (
                 <div className="text-xs text-slate-500 py-4">
                   No active cohorts yet.
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {data.cohortStats
-                    .filter((c) => c.cohortLabel)
+                  {(data.cohortStats || [])
+                    .filter((c) => c.cohortLabel != null) // Filter out nulls first
+                    .map(c => ({ ...c, cohortLabel: c.cohortLabel ?? 'Unlabeled' })) // Normalize
                     // Deduplicate by cohort label (case-insensitive)
                     .filter((cohort, index, self) =>
                       index === self.findIndex(c =>
@@ -205,8 +206,8 @@ export default function SuperAdminOverviewPage() {
             <StrategyActivityFeed />
           </div>
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }
 

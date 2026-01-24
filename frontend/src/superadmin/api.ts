@@ -1,4 +1,8 @@
-import { SuperAdminOverview, SuperAdminFirmRow, SuperAdminTenantDetail } from './types';
+import {
+  SuperAdminOverview,
+  SuperAdminFirmRow,
+  SuperAdminTenantDetail,
+} from './types';
 
 // V2: Comprehensive single-source-of-truth firm detail
 export interface FirmDetailResponseV2 {
@@ -216,19 +220,7 @@ async function apiGet<T>(path: string): Promise<T> {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (!res.ok) {
-    try {
-      const errBody = await res.json();
-      const message = errBody.message || errBody.error || `SuperAdmin API error: ${res.status}`;
-      // Attach extra props to the error object for UI consumption
-      const error = new Error(message);
-      (error as any).errorCode = errBody.errorCode;
-      (error as any).details = errBody.details;
-      throw error;
-    } catch (e) {
-      // If json parse fails, fall back to status text
-      if (e instanceof Error && (e as any).errorCode) throw e; // rethrow if it was our structured error
-      throw new Error(`SuperAdmin API error: ${res.status} ${res.statusText}`);
-    }
+    throw new Error(`SuperAdmin API error: ${res.status}`);
   }
   return res.json() as Promise<T>;
 }
@@ -320,13 +312,24 @@ export const superadminApi = {
   getFirmWorkflowStatus: (tenantId: string) =>
     apiGet<any>(`/firms/${tenantId}/workflow-status`),
 
+
+
   getDiscoveryNotes: (tenantId: string) =>
     apiGet<{ notes: string; updatedAt: string | null }>(`/firms/${tenantId}/discovery-notes`),
 
   saveDiscoveryNotes: (tenantId: string, notes: string) =>
     apiPost<{ ok: boolean }>(`/firms/${tenantId}/discovery-notes`, { notes }),
 
+
+
+
+
+
+
   // TM-2: Ticket Moderation APIs
+  generateTickets: (params: { tenantId: string; diagnosticId: string }) =>
+    apiPost<{ ticketCount: number }>(`/tickets/generate/${params.tenantId}/${params.diagnosticId}`),
+
   getDiagnosticTickets: (tenantId: string, diagnosticId: string) =>
     apiGet<{ tickets: any[]; status: any }>(`/tickets/${tenantId}/${diagnosticId}`),
 
@@ -338,9 +341,6 @@ export const superadminApi = {
       pending: number;
       readyForRoadmap: boolean;
     }>(`/tickets/${tenantId}/${diagnosticId}/status`),
-
-  generateTickets: (tenantId: string, diagnosticId: string) =>
-    apiPost<{ success: boolean; ticketCount: number }>(`/tickets/generate/${tenantId}/${diagnosticId}`, {}),
 
   approveTickets: (params: {
     tenantId: string;
@@ -360,9 +360,6 @@ export const superadminApi = {
 
   generateFinalRoadmap: (tenantId: string) =>
     apiPost<{ ok: boolean }>(`/firms/${tenantId}/generate-final-roadmap`),
-
-  generateSop01: (tenantId: string) =>
-    apiPost<{ ok: boolean }>(`/firms/${tenantId}/generate-sop01`),
 
   // SR-3: Roadmaps browser endpoints
   getRoadmaps: async (filters?: {
@@ -409,9 +406,7 @@ export const superadminApi = {
   getCommandCenterActivity: (window?: number) =>
     apiGet<{ events: any[] }>(`/command-center/activity?window=${window || 60}`),
 
-  // Final Roadmap Assembly (Waterfall Step 5)
-  assembleRoadmap: (tenantId: string) =>
-    apiPost<{ success: boolean; roadmap: any }>(`/firms/${tenantId}/assemble-roadmap`),
+
 
   previewFinalizeBatch: (tenantIds: string[]) =>
     apiPost<{ eligible: any[]; ineligible: any[] }>(`/command-center/batch/roadmap/finalize/preview`, { tenantIds }),
@@ -419,113 +414,32 @@ export const superadminApi = {
   executeFinalizeBatch: (params: { tenantIds: string[]; override?: boolean; overrideReason?: string }) =>
     apiPost<{ results: any[] }>(`/command-center/batch/roadmap/finalize/execute`, params),
 
+  previewReadinessBatch: (params: { tenantIds: string[]; flag: string; value: boolean }) =>
+    apiPost<{ eligible: any[]; ineligible: any[] }>(`/command-center/batch/readiness/preview`, params),
+
+  executeReadinessBatch: (params: {
+    tenantIds: string[];
+    flag: string;
+    value: boolean;
+    notes?: string;
+    overrideReason?: string;
+  }) =>
+    apiPost<{ results: any[] }>(`/command-center/batch/readiness/execute`, params),
+
   // Phase 7: SNAPSHOT (Ticket 8)
   getSnapshot: (tenantId: string) =>
     apiGet<{ data: any }>(`/snapshot/${tenantId}`),
 
-  // Executive Brief v0
-  getExecutiveBrief: (tenantId: string) =>
-    apiGet<{ brief: any }>(`/firms/${tenantId}/executive-brief`),
-
-  generateExecutiveBrief: (tenantId: string) =>
-    apiPost<{ brief: any }>(`/firms/${tenantId}/executive-brief/generate`, {}),
-
-  approveExecutiveBrief: (tenantId: string) =>
-    apiPost<{ brief: any; intakeWindowState: string }>(`/firms/${tenantId}/executive-brief/approve`, {}),
-
   closeIntakeWindow: (tenantId: string) =>
     apiPost<{ ok: boolean }>(`/firms/${tenantId}/close-intake`),
 
-  updateIntakeCoaching: (intakeId: string, coachingFeedback: Record<string, any>) =>
+
+
+  updateIntakeCoaching: (intakeId: string, coachingFeedback: string) =>
     apiPatch<{ ok: boolean }>(`/intakes/${intakeId}/coaching`, { coachingFeedback }),
 
   reopenIntake: (intakeId: string) =>
     apiPost<{ ok: boolean }>(`/intakes/${intakeId}/reopen`),
 
-  // SR-4: Readiness Batching
-  previewReadinessBatch: (tenantIds: string[]) =>
-    apiPost<{ eligible: any[]; ineligible: any[] }>(`/command-center/batch/readiness/preview`, { tenantIds }),
 
-  executeReadinessBatch: (params: { tenantIds: string[]; override?: boolean; overrideReason?: string }) =>
-    apiPost<{ results: any[] }>(`/command-center/batch/readiness/execute`, params),
-
-  signalReadiness: (tenantId: string, flags: any) =>
-    apiPatch<{ ok: boolean }>(`/firms/${tenantId}/readiness`, { flags }),
-
-  // Intake Vector Management (Unified Stakeholder System)
-  createIntakeVector: (tenantId: string, vector: {
-    roleLabel: string;
-    roleType: string;
-    perceivedConstraints: string;
-    anticipatedBlindSpots?: string;
-    recipientEmail?: string;
-    recipientName?: string;
-  }) =>
-    apiPost<{ vector: any }>(`/tenants/${tenantId}/intake-vectors`, vector),
-
-  getIntakeVectors: (tenantId: string) =>
-    apiGet<{ vectors: any[] }>(`/tenants/${tenantId}/intake-vectors`),
-
-  updateIntakeVector: (vectorId: string, updates: Partial<{
-    roleLabel: string;
-    roleType: string;
-    perceivedConstraints: string;
-    anticipatedBlindSpots: string;
-    recipientEmail: string;
-    recipientName: string;
-  }>) =>
-    apiPatch<{ vector: any }>(`/intake-vectors/${vectorId}`, updates),
-
-  sendIntakeVectorInvite: (vectorId: string) =>
-    apiPost<{ vector: any }>(`/intake-vectors/${vectorId}/send-invite`),
-
-  // Truth Probe (Lifecycle Integrity)
-  getTruthProbe: (tenantId: string) =>
-    apiGet<any>(`/truth-probe?tenantId=${tenantId}`),
-
-  // META-TICKET v2: Execution Pipeline Actions
-  lockIntake: (tenantId: string) =>
-    apiPost<{ success: boolean }>(`/firms/${tenantId}/lock-intake`),
-
-  generateDiagnostics: (tenantId: string) =>
-    apiPost<{ success: boolean; diagnosticId: string }>(`/firms/${tenantId}/generate-diagnostics`),
-
-  lockDiagnostic: (tenantId: string, diagnosticId: string) =>
-    apiPost<{ success: boolean }>(`/firms/${tenantId}/diagnostics/${diagnosticId}/lock`),
-
-  publishDiagnostic: (tenantId: string, diagnosticId: string) =>
-    apiPost<{ success: boolean }>(`/firms/${tenantId}/diagnostics/${diagnosticId}/publish`),
-
-  // Note: Diagnostic artifacts are currently embedded in sop_output table
-  // We'll use the firm detail endpoint's diagnostic data for now
-  getDiagnosticArtifacts: (diagnosticId: string) =>
-    apiGet<{ diagnostic: any; outputs: any }>(`/diagnostics/${diagnosticId}/artifacts`),
-
-  ingestDiscoveryNotes: (tenantId: string, notes: import('@roadmap/shared').CanonicalDiscoveryNotes) =>
-    apiPost<{ success: boolean }>(`/firms/${tenantId}/ingest-discovery`, { notes: JSON.stringify(notes) }),
-
-  getProposedFindings: (tenantId: string) =>
-    apiGet<{ items: any[]; requiresGeneration?: boolean }>(`/firms/${tenantId}/findings/proposed`),
-
-  generateAssistedProposals: (tenantId: string) =>
-    apiPost<{ items: any[]; version: string }>(`/firms/${tenantId}/assisted-synthesis/generate-proposals`, {}),
-
-  declareCanonicalFindings: (tenantId: string, findings: any[]) =>
-    apiPost<{ success: boolean }>(`/firms/${tenantId}/findings/declare`, { findings }),
-
-  // Stage 5 Assisted Synthesis Agent (Bounded Persistence)
-  getAgentSession: (tenantId: string, contextVersion: string) =>
-    apiGet<{ sessionId: string; messages: any[]; contextVersion: string; phaseState: string }>(`/firms/${tenantId}/assisted-synthesis/agent/session?contextVersion=${contextVersion}`),
-
-  sendAgentMessage: (tenantId: string, sessionId: string, message: string) =>
-    apiPost<{ reply: string; messageId: string; requestId: string }>(`/firms/${tenantId}/assisted-synthesis/agent/messages`, { sessionId, message }),
-
-  resetAgentSession: (tenantId: string, sessionId: string) =>
-    apiPost<{ success: boolean; requestId: string }>(`/firms/${tenantId}/assisted-synthesis/agent/reset`, { sessionId }),
-
-  activateTicketModeration: (tenantId: string) =>
-    apiPost<{ status: string; sessionId: string; draftTicketCount: number }>(`/firms/${tenantId}/ticket-moderation/activate`, {}),
-
-  getActiveModerationSession: (tenantId: string) =>
-    apiGet<{ session: any; tickets: any[] }>(`/firms/${tenantId}/ticket-moderation/active`),
 };

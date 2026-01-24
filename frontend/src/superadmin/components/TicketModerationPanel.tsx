@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSuperAdminAuthority } from '../../hooks/useSuperAdminAuthority';
-import { superadminApi } from '../api';
+import { api as superadminApi } from '../../lib/api';
 
 interface Ticket {
     id: string;
@@ -45,7 +45,7 @@ export function TicketModerationPanel({ tenantId, diagnosticId, onStatusChange }
     const loadTickets = async () => {
         setLoading(true);
         try {
-            const res = await superadminApi.getDiagnosticTickets(tenantId, diagnosticId);
+            const res = await superadminApi.getDiagnosticTickets({ tenantId, diagnosticId });
             setTickets(res.tickets);
             setStatus(res.status);
             if (onStatusChange) onStatusChange(res.status);
@@ -67,13 +67,13 @@ export function TicketModerationPanel({ tenantId, diagnosticId, onStatusChange }
             ));
 
             if (approved) {
-                await superadminApi.approveTickets(tenantId, diagnosticId, [ticketId]);
+                await superadminApi.approveTickets({ tenantId, diagnosticId, ticketIds: [ticketId] });
             } else {
-                await superadminApi.rejectTickets(tenantId, diagnosticId, [ticketId]);
+                await superadminApi.rejectTickets({ tenantId, diagnosticId, ticketIds: [ticketId] });
             }
 
             // Background refresh for consistency
-            const res = await superadminApi.getDiagnosticTickets(tenantId, diagnosticId);
+            const res = await superadminApi.getDiagnosticTickets({ tenantId, diagnosticId });
             setStatus(res.status);
             if (onStatusChange) onStatusChange(res.status);
 
@@ -206,8 +206,8 @@ function TicketCard({
 
     return (
         <div className={`p-3 rounded-lg border transition-all relative group ${isApproved ? 'bg-emerald-900/5 border-emerald-500/20' :
-                isRejected ? 'bg-slate-900/20 border-slate-800 opacity-60' :
-                    'bg-slate-800/40 border-slate-700 hover:border-slate-600'
+            isRejected ? 'bg-slate-900/20 border-slate-800 opacity-60' :
+                'bg-slate-800/40 border-slate-700 hover:border-slate-600'
             }`}>
             {isProcessing && (
                 <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-[1px] z-10 rounded-lg flex items-center justify-center">

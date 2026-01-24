@@ -1,0 +1,50 @@
+46eb666 HEAD@{0}: rebase (finish): returning to refs/heads/integrate/develop-onto-origin-main
+46eb666 HEAD@{1}: rebase (continue): chore: lock executive brief render + pdf contracts
+ff27e2f HEAD@{2}: rebase (continue): feat: executive brief approval, state sync, and pdf delivery pipeline
+88a428a HEAD@{3}: rebase (continue): fix(intake): handle no-brief-exists edge case + loading state
+e5956e9 HEAD@{4}: commit (amend): recovery: add exec brief surface + control plane firm detail (isolate execution surface recovery)
+06d335b HEAD@{5}: rebase (continue): recovery: add exec brief surface + control plane firm detail (isolate execution surface recovery)
+b863131 HEAD@{6}: commit (amend): Recovery baseline: isolate marketing + remove leaked secret (post-extraction) (#2)
+7316d3b HEAD@{7}: commit (amend): Recovery baseline: isolate marketing + remove leaked secret (post-extraction) (#2)
+022b03d HEAD@{8}: commit (amend): Recovery baseline: isolate marketing + remove leaked secret (post-extraction) (#2)
+5a1d863 HEAD@{9}: checkout: moving from 5a1d863b41f1a68f0356a768b7a3d00c2c63e515 to recover/surgical-restore-20260124-173343
+5a1d863 HEAD@{10}: rebase (start): checkout origin/main
+1e46cab HEAD@{11}: checkout: moving from develop to integrate/develop-onto-origin-main
+1e46cab HEAD@{12}: reset: moving to HEAD
+1e46cab HEAD@{13}: checkout: moving from 459aa9bf60bd9f1dd12b1d74150ba9ddf4c339a3 to develop
+459aa9b HEAD@{14}: checkout: moving from 3e6c39bb00e1740301aa8aec1d2cf03f2539be28 to 459aa9b
+3e6c39b HEAD@{15}: checkout: moving from master to v1.0.0-production-stable
+3e6c39b HEAD@{16}: reset: moving to v1.0.0-production-stable
+050672f HEAD@{17}: merge feature/wip-recover: Merge made by the 'ort' strategy.
+4377a2d HEAD@{18}: checkout: moving from feature/wip-recover to master
+49410cf HEAD@{19}: commit: chore(security): stop tracking vercel token file; ignore local secrets
+1ad33a9 HEAD@{20}: commit: chore(frontend): remove marketing pages from platform repo (boundary enforcement)
+afeeefb HEAD@{21}: reset: moving to HEAD
+afeeefb HEAD@{22}: commit: fix(frontend): Phase 1 - Remove styled-jsx usage (TS2322)
+55b3582 HEAD@{23}: reset: moving to HEAD
+55b3582 HEAD@{24}: checkout: moving from main to feature/wip-recover
+55b3582 HEAD@{25}: commit: fix(vercel): isolate backend tsc surface for serverless deploy
+459aa9b HEAD@{26}: reset: moving to origin/main
+40c06c1 HEAD@{27}: checkout: moving from main to main
+40c06c1 HEAD@{28}: rebase (abort): returning to refs/heads/main
+459aa9b HEAD@{29}: pull --rebase origin main (start): checkout 459aa9bf60bd9f1dd12b1d74150ba9ddf4c339a3
+40c06c1 HEAD@{30}: checkout: moving from main to main
+40c06c1 HEAD@{31}: commit: fix(vercel): isolate backend tsc surface for serverless deploy
+c864602 HEAD@{32}: checkout: moving from checkpoint/stage6-authority-v1.0.0 to main
+77f3b39 HEAD@{33}: commit: ci(trustagent): add verify_reveal shim for guard workflow
+7aa89e0 HEAD@{34}: checkout: moving from checkpoint/stage6-authority-v1.0.0 to checkpoint/stage6-authority-v1.0.0
+7aa89e0 HEAD@{35}: commit: ci(trustagent): fix guard root + reveal script resolution
+bb158bf HEAD@{36}: checkout: moving from checkpoint/stage6-authority-v1.0.0 to checkpoint/stage6-authority-v1.0.0
+bb158bf HEAD@{37}: commit: lock(stage6): freeze deterministic authority spine (v1.0.0)
+c864602 HEAD@{38}: checkout: moving from main to checkpoint/stage6-authority-v1.0.0
+c864602 HEAD@{39}: checkout: moving from feature/roadmap-assembly-v1 to main
+1443c2b HEAD@{40}: reset: moving to HEAD
+1443c2b HEAD@{41}: commit: Add superadmin truth-probe endpoint for tenant lifecycle visibility
+7b042b4 HEAD@{42}: reset: moving to HEAD~1
+58ba346 HEAD@{43}: commit: WIP: operator execution pipeline (checkpoint)
+7b042b4 HEAD@{44}: reset: moving to HEAD
+7b042b4 HEAD@{45}: commit: Add superadmin truth-probe endpoint for tenant lifecycle visibility
+0ab82e7 HEAD@{46}: commit: Fix superadmin overview Drizzle crash + harden verify script
+9758502 HEAD@{47}: commit: feat: implement canonical roadmap assembly contract + compiler + backend + ui + pdf
+7b7485b HEAD@{48}: checkout: moving from feature/roadmap-discovery to feature/roadmap-assembly-v1
+7b7485b HEAD@{49}: commit: docs: apply surgical fixes to roadmap discovery

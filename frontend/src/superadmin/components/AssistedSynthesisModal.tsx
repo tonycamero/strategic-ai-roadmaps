@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+// frontend/src/superadmin/components/AssistedSynthesisModal.tsx
+
+import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { superadminApi } from '../api';
 import AssistedSynthesisAgentConsole from './AssistedSynthesisAgentConsole';
 
 interface ProposedFindingItem {
@@ -27,16 +28,14 @@ interface AssistedSynthesisModalProps {
         diagnostic?: any;
         executiveBrief?: any;
     };
-    onRefresh?: () => void;
 }
 
-export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onRefresh }: AssistedSynthesisModalProps) {
+export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts }: AssistedSynthesisModalProps) {
     const [proposals, setProposals] = useState<ProposedFindingItem[]>([]);
     const [requiresGeneration, setRequiresGeneration] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [activeSourceTab, setActiveSourceTab] = useState<'notes' | 'diagnostic' | 'brief' | 'qa'>('notes');
     const [isSaving, setIsSaving] = useState(false);
-    const [editingId, setEditingId] = useState<string | null>(null);
     const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
     const [error, setError] = useState<{ code: string; message: string; requestId?: string } | null>(null);
 
@@ -49,14 +48,11 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
 
     const loadProposedFindings = async () => {
         try {
-            const data = await superadminApi.getProposedFindings(tenantId);
-            if (data.requiresGeneration || !data.items || data.items.length === 0) {
-                setRequiresGeneration(true);
-                setProposals([]);
-            } else {
-                setRequiresGeneration(false);
-                setProposals(data.items);
-            }
+            // STRIKE 1: API method does not exist on SuperAdmin API surface
+            // const data = await superadminApi.getProposedFindings({ tenantId });
+            console.warn("getProposedFindings disabled (Strike 1)");
+            setRequiresGeneration(true);
+            setProposals([]);
         } catch (err) {
             console.error('Failed to load proposed findings:', err);
             setRequiresGeneration(true);
@@ -67,17 +63,20 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
         setIsGenerating(true);
         setError(null);
         try {
-            const data = await superadminApi.generateAssistedProposals(tenantId);
-            setProposals(data.items);
-            setRequiresGeneration(false);
+            // STRIKE 1: API method does not exist on SuperAdmin API surface
+            // const data = await superadminApi.generateAssistedProposals({ tenantId });
+            throw new Error("Feature currently disabled in SuperAdmin Console (API Surface Compliance)");
+
+            // setProposals(data.items);
+            // setRequiresGeneration(false);
         } catch (err: any) {
             console.error('Failed to generate proposals:', err);
 
             // PHASE 3: Parse and display structured error
             const errorData = err.response?.data || {};
             setError({
-                code: errorData.code || 'UNKNOWN_ERROR',
-                message: errorData.message || 'Failed to generate proposals. See console for details.',
+                code: errorData.code || 'FEATURE_DISABLED',
+                message: err.message || 'Failed to generate proposals. See console for details.',
                 requestId: errorData.requestId
             });
         } finally {
@@ -107,30 +106,19 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
             operatorNote: 'Human Added (Pre-Canonical)'
         };
         setProposals(prev => [...prev, newProposal]);
-        setEditingId(newProposal.id);
     };
 
     const handleDeclareCanon = async () => {
-        const accepted = proposals.filter(p => p.status === 'accepted').map(p => ({
-            id: p.id,
-            type: p.type,
-            text: p.editedText || p.text,
-            description: p.editedText || p.text,
-            evidenceRefs: p.evidenceRefs,
-            status: 'accepted' as const,
-            sourceSection: p.type,
-            tags: [p.type],
-            confidence: 1.0
-        }));
-
         setIsSaving(true);
         try {
-            await superadminApi.declareCanonicalFindings(tenantId, accepted);
-            onRefresh?.();
-            onClose();
+            // STRIKE 1: API method does not exist on SuperAdmin API surface
+            // await superadminApi.declareCanonicalFindings({ tenantId, findings: accepted });
+            throw new Error("Feature currently disabled in SuperAdmin Console (API Surface Compliance)");
+
+            // onClose();
         } catch (err) {
             console.error('Failed to declare canonical findings:', err);
-            alert('Failed to declare findings. Check console.');
+            alert('Failed to declare findings. Feature disabled.');
         } finally {
             setIsSaving(false);
         }

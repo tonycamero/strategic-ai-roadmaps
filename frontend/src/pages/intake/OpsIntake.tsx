@@ -38,8 +38,7 @@ export default function OpsIntake() {
     queryFn: () => api.getMyIntake(),
   });
 
-  const coachingFeedback = intakeData?.intake?.coachingFeedback || {};
-
+const coachingFeedback = (intakeData as any)?.intake?.coachingFeedback ?? {};
   useEffect(() => {
     if (intakeData?.intake) {
       setIsUpdate(true);

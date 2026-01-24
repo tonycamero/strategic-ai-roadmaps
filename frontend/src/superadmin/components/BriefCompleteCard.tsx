@@ -1,11 +1,11 @@
-import React from 'react';
+import { FC } from 'react';
 
 interface BriefCompleteCardProps {
     status: string;
     onReview: () => void;
 }
 
-export const BriefCompleteCard: React.FC<BriefCompleteCardProps> = ({ status, onReview }) => {
+export const BriefCompleteCard: FC<BriefCompleteCardProps> = ({ status, onReview }) => {
     return (
         <div className="bg-slate-900 border border-emerald-500/20 rounded-xl p-6 flex items-center justify-between shadow-lg shadow-emerald-900/5">
             <div className="flex items-center gap-4">

@@ -1,0 +1,105 @@
+On branch integrate/develop-onto-origin-main
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	deleted:    "Client Engagemen Docs/Enterprise AI Architecture Sprint.pdf\357\200\272Zone.Identifier"
+	deleted:    "Client Engagemen Docs/How the Strategic AI Roadmap Works.pdf\357\200\272Zone.Identifier"
+	deleted:    "Client Engagemen Docs/Illustrative Enterprise AI Scope of Work.pdf\357\200\272Zone.Identifier"
+	deleted:    "Client Engagemen Docs/Preparing for an Enterprise AI Conversation.pdf\357\200\272Zone.Identifier"
+	deleted:    "Client Engagemen Docs/Two AI Opportunities at Ninkasi.pdf\357\200\272Zone.Identifier"
+	deleted:    "Client Engagemen Docs/What the Strategic AI Roadmap Is \342\200\224 and Is Not.pdf\357\200\272Zone.Identifier"
+	modified:   backend/package.json
+	modified:   backend/src/constants/auditEventTypes.ts
+	modified:   backend/src/controllers/auth.controller.ts
+	modified:   backend/src/controllers/diagnostic.controller.ts
+	modified:   backend/src/controllers/diagnosticRerun.controller.ts
+	modified:   backend/src/controllers/executiveBrief.controller.ts
+	modified:   backend/src/controllers/intake.controller.ts
+	modified:   backend/src/controllers/intakeVector.controller.ts
+	modified:   backend/src/controllers/invite.controller.ts
+	modified:   backend/src/controllers/onboarding.controller.ts
+	modified:   backend/src/controllers/roadmap.controller.ts
+	modified:   backend/src/controllers/superadmin.controller.ts
+	deleted:    backend/src/controllers/temp_controller.ts
+	modified:   backend/src/controllers/tenants.controller.ts
+	modified:   backend/src/controllers/ticketModeration.controller.ts
+	modified:   backend/src/db/schema.ts
+	modified:   backend/src/middleware/auth.ts
+	modified:   backend/src/routes/superadmin.routes.ts
+	modified:   backend/src/services/assistantProvisioning.service.ts
+	modified:   backend/src/services/diagnosticIngestion.service.ts
+	modified:   backend/src/services/email.service.ts
+	modified:   backend/src/services/executiveBriefDelivery.ts
+	modified:   backend/src/services/gate.service.ts
+	modified:   backend/src/services/onboardingProgress.service.ts
+	modified:   backend/src/services/onboardingState.service.ts
+	modified:   backend/src/services/sop01Persistence.ts
+	modified:   backend/src/trustagent/prompts/diagnosticToTickets.ts
+	modified:   backend/src/types/onboarding.ts
+	modified:   backend/src/utils/auth.ts
+	deleted:    "docs/Architecture Gap Analysis_ SirsiNexusApp vs Strategic AI Roadmaps (SAR).pdf\357\200\272Zone.Identifier"
+	deleted:    "docs/SAR Handoff Contract Spec (v1.pdf\357\200\272Zone.Identifier"
+	modified:   frontend/src/App.tsx
+	modified:   frontend/src/components/onboarding/IntakeVectorCard.tsx
+	modified:   frontend/src/components/onboarding/StakeholderModal.tsx
+	modified:   frontend/src/context/TenantContext.tsx
+	modified:   frontend/src/lib/api.ts
+	modified:   frontend/src/pages/AcceptInvite.tsx
+	modified:   frontend/src/pages/Auth.tsx
+	modified:   frontend/src/pages/Dashboard.tsx
+	modified:   frontend/src/pages/TeamIntakesReview.tsx
+	modified:   frontend/src/pages/intake/DeliveryIntake.tsx
+	modified:   frontend/src/pages/intake/OpsIntake.tsx
+	modified:   frontend/src/pages/intake/OwnerIntake.tsx
+	modified:   frontend/src/pages/intake/SalesIntake.tsx
+	modified:   frontend/src/pages/team/TeamMemberDashboard.tsx
+	modified:   frontend/src/superadmin/SuperAdminLayout.tsx
+	modified:   frontend/src/superadmin/api.ts
+	modified:   frontend/src/superadmin/components/DiagnosticModerationSurface.tsx
+	modified:   frontend/src/superadmin/components/ExecuteTenantRow.tsx
+	modified:   frontend/src/superadmin/components/ExecutiveBriefModal.tsx
+	modified:   frontend/src/superadmin/components/ExecutiveBriefPanel.tsx
+	deleted:    frontend/src/superadmin/components/ExecutiveBriefSurface.tsx
+	modified:   frontend/src/superadmin/components/ExecutiveBriefViews.tsx
+	modified:   frontend/src/superadmin/components/ExecutiveSnapshotPanel.tsx
+	modified:   frontend/src/superadmin/components/RoadmapReadinessPanel.tsx
+	modified:   frontend/src/superadmin/components/TicketModerationPanel.tsx
+	modified:   frontend/src/superadmin/pages/SuperAdminControlPlaneFirmDetailPage.tsx
+	modified:   frontend/src/superadmin/pages/SuperAdminFirmDetailPage.tsx
+	modified:   frontend/src/superadmin/pages/SuperAdminOverviewPage.tsx
+	modified:   frontend/src/superadmin/types.ts
+	modified:   pnpm-lock.yaml
+	modified:   shared/src/config/businessTypeProfiles.ts
+	modified:   shared/src/executiveBrief.contract.ts
+	modified:   shared/src/executiveBrief.ts
+	modified:   shared/src/index.ts
+	modified:   shared/src/types.ts
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	backend/src/scripts/fix-amanda-role.ts
+	backend/src/scripts/fix-intake-linking.ts
+	backend/src/scripts/force-regenerate-brief.ts
+	backend/src/scripts/reconcile-invite-status.ts
+	backend/src/scripts/send-missing-intake-invites.ts
+	backend/src/services/pdf/executiveBriefRenderer.ts
+	backend/test-pdfkit.js
+	diff_confirmed.txt
+	docs/meta-tickets/EXEC-AUDIT-LOG-007.md
+	docs/meta-tickets/EXEC-BRIEF-DELIVERY-ENDPOINT-003.md
+	docs/meta-tickets/EXEC-BRIEF-DELIVERY-SERVICE-002.md
+	docs/meta-tickets/EXEC-BRIEF-EMAIL-ASSEMBLY-004.md
+	docs/meta-tickets/EXEC-DIAGNOSTIC-GATE-006.md
+	docs/meta-tickets/EXEC-INTERNAL-UI-DELIVERY-005.md
+	docs/meta-tickets/EXEC-PDF-RENDERER-001.md
+	docs/meta-tickets/META-EXEC-BRIEF-PDF-DELIVERY-001.md
+	docs/meta-tickets/META-FIX-INVITE-EMAIL-DISPATCH-RESEND-001.md
+	docs/meta-tickets/META-FIX-ONBOARDING-JOURNEY-FLAGS-001.md
+	docs/meta-tickets/META-FIX-TS-SOP01-OUTPUTS-NAMES-001.md
+	docs/meta-tickets/META-LINK-INTAKE-VECTORS-AND-EXECUTIVE-FORM-001.md
+	docs/meta-tickets/META-RECONNECT-INTAKE-VECTORS-001.md
+	frontend/src/pages/intake/ExecutiveIntake.tsx
+	reflog.txt
+	status_dump.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")

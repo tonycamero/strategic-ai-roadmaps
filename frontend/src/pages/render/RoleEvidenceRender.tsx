@@ -1,38 +1,42 @@
-import React, { useMemo } from 'react';
+// frontend/src/pages/render/RoleEvidenceRender.tsx
 
-import { RoleEvidenceCard, RoleEvidenceCardProps } from '../../components/webinar/RoleEvidenceCard';
+import { useMemo } from "react";
+import {
+  RoleEvidenceCard,
+  type RoleEvidenceCardProps,
+} from "../../components/webinar/RoleEvidenceCard";
 
 export const RoleEvidenceRender = () => {
-    const props = useMemo(() => {
-        const params = new URLSearchParams(window.location.search);
-        const payload = params.get('payload');
+  const props = useMemo<RoleEvidenceCardProps | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payload = params.get("payload");
+    if (!payload) return null;
 
-        if (!payload) return null;
-        try {
-            const json = atob(payload);
-            return JSON.parse(json) as RoleEvidenceCardProps;
-        } catch (e) {
-            console.error('Failed to parse payload', e);
-            return null;
-        }
-    }, []);
+    try {
+      const json = atob(payload);
+      return JSON.parse(json) as RoleEvidenceCardProps;
+    } catch (e) {
+      console.error("Failed to parse payload", e);
+      return null;
+    }
+  }, []);
 
-    if (!props) return <div className="text-white p-4">Invalid Payload</div>;
-
+  if (!props) {
     return (
-        <div className="bg-slate-950 min-h-screen flex items-start justify-start p-4">
-            {/* 
-        Fixed width ensures consistent screenshot dimensions.
-        400px matches roughly the card width on desktop grid.
-      */}
-            <div
-                data-testid="role-evidence-card"
-                style={{ width: '400px' }}
-            >
-                <RoleEvidenceCard {...props} />
-            </div>
-        </div>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
+        <div className="text-slate-200 text-sm">Invalid payload.</div>
+      </div>
     );
+  }
+
+  return (
+    <div className="bg-slate-950 min-h-screen flex items-start justify-start p-4">
+      {/* Fixed width ensures consistent screenshot dimensions. */}
+      <div data-testid="role-evidence-card" style={{ width: 400 }}>
+        <RoleEvidenceCard {...props} />
+      </div>
+    </div>
+  );
 };
 
 export default RoleEvidenceRender;
