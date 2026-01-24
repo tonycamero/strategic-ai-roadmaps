@@ -2,8 +2,7 @@ import React, { createContext, useContext, ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useAuth } from './AuthContext';
-import type { BusinessType } from '@roadmap/shared';
-import { getBusinessTypeProfile, type BusinessTypeProfile } from '../../../shared/src/config/businessTypeProfiles';
+import { getBusinessTypeProfile, type BusinessTypeProfile, type BusinessType } from '@roadmap/shared';
 
 // ============================================================================
 // TYPES
@@ -48,7 +47,7 @@ export interface TenantProviderProps {
 
 export const TenantProvider: React.FC<TenantProviderProps> = ({ children }) => {
   const { isAuthenticated } = useAuth();
-  
+
   const { data: tenantData, isLoading } = useQuery({
     queryKey: ['tenant'],
     queryFn: () => api.getTenant(),
@@ -58,7 +57,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({ children }) => {
   });
 
   const tenant = tenantData?.tenant || null;
-  const businessType: BusinessType = 
+  const businessType: BusinessType =
     (tenant?.businessType as BusinessType) || 'default';
 
   return (

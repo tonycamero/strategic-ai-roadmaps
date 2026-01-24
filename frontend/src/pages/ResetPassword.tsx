@@ -77,7 +77,7 @@ export default function ResetPassword() {
       }
 
       setSuccess(true);
-      
+
       // Redirect to login after 3 seconds
       setTimeout(() => {
         setLocation('/login');
@@ -106,14 +106,14 @@ export default function ResetPassword() {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <div className="bg-slate-900 rounded-xl shadow-2xl border border-slate-800 p-8">
+          <div className="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 p-8 card-glow-hover">
             <div className="text-center">
-              <div className="w-16 h-16 bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-16 h-16 bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-semibold text-slate-100 mb-3">
+              <h2 className="text-2xl font-bold text-slate-100 mb-3">
                 Password Reset Successfully
               </h2>
               <p className="text-slate-400 mb-6">
@@ -121,7 +121,7 @@ export default function ResetPassword() {
               </p>
               <button
                 onClick={() => setLocation('/login')}
-                className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
+                className="text-blue-500 hover:text-blue-400 text-sm transition-colors font-bold uppercase tracking-widest"
               >
                 Go to Login Now →
               </button>
@@ -175,13 +175,13 @@ export default function ResetPassword() {
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="bg-slate-900 rounded-xl shadow-2xl border border-slate-800 p-8">
+        <div className="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 p-8 card-glow-hover">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-semibold text-slate-100 mb-2">
+            <h2 className="text-2xl font-bold text-slate-100 mb-2">
               Create New Password
             </h2>
             <p className="text-slate-400 text-sm">
-              For <span className="text-slate-200">{email}</span>
+              For <span className="text-slate-100 font-bold">{email}</span>
             </p>
           </div>
 
@@ -197,12 +197,12 @@ export default function ResetPassword() {
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
                 minLength={8}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="At least 8 characters"
                 disabled={loading}
               />
               {newPassword && newPassword.length < 8 && (
-                <p className="text-xs text-amber-400 mt-1">
+                <p className="text-xs text-red-400 mt-1 font-bold">
                   Password must be at least 8 characters
                 </p>
               )}
@@ -218,27 +218,27 @@ export default function ResetPassword() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="Re-enter your password"
                 disabled={loading}
               />
               {confirmPassword && newPassword !== confirmPassword && (
-                <p className="text-xs text-red-400 mt-1">
+                <p className="text-xs text-red-400 mt-1 font-bold">
                   Passwords do not match
                 </p>
               )}
             </div>
 
             {error && (
-              <div className="bg-red-900/20 border border-red-700/50 rounded-lg p-3">
-                <p className="text-sm text-red-200">{error}</p>
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                <p className="text-sm text-red-400">{error}</p>
               </div>
             )}
 
             <button
               type="submit"
               disabled={loading || !newPassword || !confirmPassword || newPassword !== confirmPassword}
-              className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:bg-slate-700 disabled:cursor-not-allowed transition-all"
+              className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Resetting...' : 'Reset Password'}
             </button>
@@ -247,7 +247,7 @@ export default function ResetPassword() {
               <button
                 type="button"
                 onClick={() => setLocation('/login')}
-                className="text-slate-400 hover:text-slate-200 text-sm transition-colors"
+                className="text-slate-500 hover:text-blue-500 text-sm transition-colors font-bold uppercase tracking-widest"
               >
                 ← Back to Login
               </button>

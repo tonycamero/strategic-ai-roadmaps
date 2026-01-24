@@ -40,3 +40,8 @@ drizzle/migrations/*.journal
 .eslintcache
 pnpm-store/
 *.tgz
+docs/vercel_token.SECRET
+docs/_secrets_local/
+
+# Windows ADS metadata
+*:Zone.Identifier

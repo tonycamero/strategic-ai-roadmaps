@@ -1,0 +1,168 @@
+# Strategic AI Roadmap Portal - System Profile
+
+## 1. System Overview
+The **Strategic AI Roadmap Portal** is an enterprise-grade orchestration platform designed to bridge the gap between "wanting AI" and "executing AI." It is not just a project management tool; it is a **Transformation Operating System**.
+
+The platform solves the core failure mode of digital transformation: **The Information Gap.**
+Most consultants interview the CEO and get a distorted view of reality. This system democratizes the discovery process, gathering structured intelligence from the front lines—Operations, Sales, and Delivery—before synthesizing it into a coherent, actionable AI strategy.
+
+**Core Philosophy:** "Distributed Intelligence, Centralized Strategy."
+
+**The System Comprises Two Planes:**
+1.  **The Client Portal (Frontend):** A psychological conversion engine that guides business leaders through the uncomfortable process of self-diagnosis. It uses gamification, progress psychology, and premium aesthetics to ensure high-fidelity data capture.
+2.  **The Command Center (Backend/SuperAdmin):** Pseudo-God-mode controls for the Consulting Agency. It turns the chaotic art of consulting into a repeatable, scalable manufacturing process (SOPs). It allows an agency to manage hundreds of clients with the precision of a software factory.
+
+---
+
+## 2. Features List & "Reason for Being"
+
+### For the Client (Business Owner & Leadership Team)
+
+| Feature | The "What" | The "Reason for Being" (Value) |
+| :--- | :--- | :--- |
+| **Role-Based Intake Engines** | Distinct, specialized questionnaires for Ops, Sales, and Delivery leads. | **Breaks the "CEO Echo Chamber."** Gets the truth from the people doing the work, revealing hidden bottlenecks the owner doesn't even know exist. |
+| **Psychological Progress Gating** | Dashboard tiles (Summary, Roadmap) are visually "locked" until the team completes their tasks. | **Social Engineering for Speed.** Uses curiosity and completion bias to force the Owner to become the enforcer, ensuring data is collected in days, not weeks. |
+| **TrustAgent™ Interface (Public)** | An AI-driven conversational interface that acts as a "pre-sales engineer" on the landing page. | **Scalable Trust.** Demonstrates the competence of the firm before a human ever speaks. It validates the prospect's pain points instantly. |
+| **Executive Roadmap Copilot (TrustAgent Portal Mode)** | An authenticated, context-aware AI assistant that answers questions about the client's specific roadmap, tickets, KPIs, and implementation strategy. | **Instant Strategic Intelligence.** Eliminates the "Where do I find this?" problem. The Owner and team can ask natural language questions and get grounded answers from their actual roadmap data—no searching through PDFs or waiting for consultant callbacks. |
+| **Dynamic "Truth-Probe" Dashboards** | Real-time visualization of team engagement (who has accepted, who has submitted). | **Radical Transparency.** Removes the "black box" of consulting. The client knows exactly where the project stands at all times. |
+| **Digital Twin "AI Roadmap"** | A living, interactive artifact—not just a static PDF. Contains the Executive Summary, Initiatives, and Architecture. | **Living Strategy.** Static PDFs die in email inboxes. A web-based roadmap is a destination that stays relevant and accessible. |
+
+### For the Agency (The Operator)
+
+| Feature | The "What" | The "Reason for Being" (Value) |
+| :--- | :--- | :--- |
+| **Multi-Tenant Command Center** | A single pane of glass to view every client's status in the 20 -> 10 funnel. | **Portfolio Velocity.** Allows a small team to manage high-volume cohorts without dropping the ball. |
+| **Standardized SOP Injection** | Pre-built "Diagnostic" and "Discovery" modules (SOP-01, SOP-02) that can be run on any client. | **Productized Consulting.** Moves away from "hourly work" to "asset delivery." Ensures every client gets the same high standard of analysis. |
+| **Impersonation Mode** | "View As" capability for any user in the system. | **White-Glove Support.** When a client is stuck, the operator can see exactly what they see and fix it instantly. "Let me handle that for you." |
+| **Automated "Discovery Synthesis"** | AI agents analyze the raw intake data to generate the "First Draft" of the strategy. | **Intelligence Amplification.** Does 80% of the cognitive heavy lifting, allowing the human consultant to focus on the top 20% of high-value nuance. |
+| **Strict Workflow Gating** | The system prevents a Roadmap from being generated until the Discovery phase is certified complete. | **Quality Assurance.** Prevents "garbage in, garbage out." Enforces the integrity of the consulting methodology via code. |
+
+---
+
+## 3. End User Walkthrough (The "Client" Experience)
+
+**Persona:** Sarah, CEO of a mid-sized Logistics Firm.
+**Goal:** Wants to modernize her business but is overwhelmed by the complexity of AI.
+
+### Phase 1: The Invitation (The Hook)
+Sarah receives an invite. It’s not a Calendly link—it’s a portal access token. She logs in.
+*   **Visuals:** Clean, premium aesthetics. Dark mode options. "Space-age" glassmorphism. It feels expensive.
+*   **The Dashboard:** She sees her firm's name at the top. Below, three empty slots: "Operations Lead," "Sales Lead," "Delivery Lead."
+*   **The Call to Action:** A pulsing button: "Activate Your Intelligence Network."
+
+### Phase 2: The Delegation (The "Aha" Moment)
+Sarah realizes she doesn't have to answer everything herself.
+*   She clicks "Invite Ops Lead" and enters Mike's email.
+*   The system updates instantly: "Invite Sent." A progress bar ticks up: 33%.
+*   **Psychology:** She feels a dopamine hit. She’s already making progress. She invites the others.
+
+### Phase 3: The Gathering (The Wait)
+*   The Dashboard changes. It now monitors her team.
+*   She sees Mike has "Accepted."
+*   She sees the Sales Lead is "In Progress."
+*   She sees the **"AI Roadmap"** tile is locked with a padlock icon. Text overlay: *"Waiting for Team Intelligence..."*
+*   **Reaction:** She pings her Sales Lead. "Hey, finish that form so we can unlock the roadmap." (The system has turned her into the project manager).
+
+### Phase 4: The Unlock (The Payoff)
+*   The final team member submits.
+*   **Animation:** The padlock shatters. The "Leadership Summary" tile glows green.
+*   She clicks it. She sees a synthesized view of her own company—problems she knew about, and *problems she didn't*.
+*   **The Roadmap Reveal:** A few days later (after the Agency works their magic), the "AI Roadmap" tile unlocks. She sees the Master Plan: "Automated Dispatch," "Predictive Inventory," "Sales Agent Swarm."
+*   It is structured, costed, and ready to execute.
+
+### Phase 5: The Copilot (The "Always-On Strategist")
+*   Sarah is reviewing her roadmap. She has questions:
+    *   "Which tickets should we tackle first?"
+    *   "What's the ROI on the lead routing fix?"
+    *   "How much time will this save my ops team per week?"
+*   **The Copilot Appears:** In the bottom-right corner, a floating avatar pulses. "TrustAgent - Your Executive Roadmap Copilot."
+*   She clicks it. A chat panel slides in.
+*   **She asks:** "What's the biggest bottleneck in my sales process?"
+*   **Instant Answer:** "Sarah, your biggest choke point is lead response time. Right now, leads wait an average of 4.2 hours for follow-up. Your roadmap includes a ticket (S1-T3: Automated Lead Router) that cuts this to under 15 minutes. Projected recovery: $12,400/year in lost deals."
+*   **The Magic:** The answer is grounded in *her actual data*—her intake responses, her approved tickets, her KPIs. Not generic consulting fluff.
+*   **The Voice:** Sharp, confident, operator-minded. No corporate jargon. No "How can I assist you today?" Just direct, strategic intelligence.
+*   **The Result:** Sarah doesn't need to wait for a consultant callback. She doesn't need to search through a 40-page PDF. She has a strategic co-pilot that knows her business inside-out, available 24/7.
+
+---
+
+## 4. The "Backend" Case: Controls for the Authority Brand
+
+**Persona:** "The Architect" (Agency Owner / SuperAdmin)
+**Goal:** Deliver 20 high-value roadmaps in 30 days with a generic team.
+
+The Backend is built on the premise that **Chaos is the Enemy**. To scale a consulting agency, you cannot rely on individual genius; you must rely on **Systemic Process**.
+
+### Control 1: The Global "Truth" Watchtower
+The SuperAdmin Dashboard doesn't just show "User Lists." It shows **Lifecycle State**.
+*   *Who is stuck in Intake?* (Filter: `Intake Status: Stalled`)
+*   *Who is ready for Discovery?* (Filter: `Intake: Complete`)
+*   *Who has their Roadmap delivered?*
+The Operator can see the entire battlefield at a glance. No spreadsheets. No "checking in." The code reports the truth.
+
+### Control 2: The "Surgical" Intervention
+A client emails: "I can't edit my intake."
+*   **Amateur Agency:** "Send me a screenshot." (Days of back and forth).
+*   **Authority Agency:** The Operator hits **"Impersonate Tenant."** They instantly *become* the client in the browser. They fix the typo. They click save. They return to Admin mode.
+*   **Result:** Solved in 30 seconds. The client feels taken care of by a powerful infrastructure.
+
+### Control 3: The "SOP Engine" (The Manufacturing Line)
+When a client finishes their Intakes, the Operator doesn't "open a Word doc."
+*   They go to the **Firm Detail Page**.
+*   They see the **"Workflow"** card.
+*   Item 1: `Intakes Complete` (Check).
+*   Item 2: `SOP-01 Diagnostic` (Pending).
+*   Action: They click **"Generate SOP-01"**.
+*   **The Machine Works:** The system pulls the 150 answers from the client's team, feeds them into a specialized AI Agent chain, and generates the "Diagnostic Output"—a 20-page analysis of the firm's bottlenecks.
+*   The Operator reviews it, approves it, and moves to the next step.
+
+### Control 4: The "Gatekeeper" Logic
+The system protects the Brand's reputation.
+*   An Operator *cannot* generate a Roadmap if the Discovery Phase isn't marked "Complete."
+*   The system throws a `RoadmapPrereqError`.
+*   **Case-Making:** This is crucial for Authority Brands. It prevents junior consultants from skipping steps. It ensures that *every* Roadmap delivered bears the hallmarks of the proprietary methodology. It enforces excellence via code constraints.
+
+### Control 5: The "Copilot Intelligence Layer" (The Secret Weapon)
+This is where the system becomes truly differentiated.
+
+**The Problem:** Most consulting firms deliver a roadmap and then... silence. The client has questions. They email. They wait. The consultant is busy with other clients. The roadmap sits unused.
+
+**The Solution:** The Executive Roadmap Copilot.
+
+**How It Works (Operator View):**
+1.  **Automatic Context Injection:** When a Roadmap is generated, the system automatically creates a "Roadmap Q&A Context" for that tenant. This includes:
+    *   All approved tickets (with IDs, titles, descriptions, ROI projections, sprint assignments)
+    *   Owner profile (name, role, KPIs, capacity constraints, change readiness)
+    *   Current user profile (the person asking the question—could be owner or team member)
+    *   Ticket rollup (total projected savings, hours saved, leads recovered)
+    *   Section metadata (if the user is viewing a specific roadmap section)
+
+2.  **Auth-Gated API:** The copilot is *not* public. It requires authentication (`/api/roadmap/qna`). Only users with `requireTenantAccess()` can use it. This means:
+    *   The Owner can ask questions about their roadmap.
+    *   Team members (Ops, Sales, Delivery) can ask questions about their roadmap.
+    *   **Superadmins cannot access it** (they have their own agent).
+    *   **Unauthenticated users cannot access it** (they get the public TrustAgent instead).
+
+3.  **Voice Enforcement:** The copilot speaks in the "TrustAgent Voice"—sharp, confident, operator-minded. No corporate jargon. No assistant boilerplate. The system prompt includes a 200+ line "Voice Kernel" that enforces:
+    *   Short sentences. Minimal filler.
+    *   Direct, modern language.
+    *   No "How can I assist you today?" or "I'm here to help."
+    *   Personalization using the user's first name from their profile.
+    *   Grounded answers tied to actual ticket IDs, ROI numbers, and sprint assignments.
+
+4.  **Anomaly Handling:** The copilot can handle off-topic or playful inputs with humor, then pivot back to the roadmap. Example:
+    *   User: "My dog ate my homework."
+    *   Copilot: "If your dog ate your homework, Sarah, that pup has excellent instincts. The real problem isn't the dog—it's your lead routing. So let's talk about what's actually breaking. Where does your follow-up usually stall?"
+
+5.  **Zero Operator Maintenance:** Once the Roadmap is delivered, the Copilot "just works." The Operator doesn't need to:
+    *   Manually update the agent's knowledge base.
+    *   Train the agent on new data.
+    *   Monitor conversations (though audit logs are available).
+    *   The system automatically syncs the agent's context when tickets are updated or roadmap sections change.
+
+**The Case-Making:**
+*   **Scalability:** One consultant can support 50+ clients simultaneously because the Copilot handles 80% of "Where do I find this?" questions.
+*   **Client Satisfaction:** Clients feel supported 24/7. They don't feel abandoned after the roadmap is delivered.
+*   **Premium Positioning:** This is not a chatbot. This is a strategic co-pilot. It reinforces the Authority Brand's positioning as "cutting-edge" and "tech-enabled."
+*   **Data Moat:** Every conversation trains the system to understand common client questions, allowing the Agency to refine their roadmap templates and ticket packs over time.
+
+---

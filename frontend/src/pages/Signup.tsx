@@ -20,7 +20,7 @@ function getRoleBasedRoute(role: string): string {
 export default function Signup() {
   const [, setLocation] = useLocation();
   const { login, isAuthenticated, user } = useAuth();
-  
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,12 +42,12 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      const response = await api.register({ 
-        email, 
-        password, 
-        name, 
-        company, 
-        industry 
+      const response = await api.register({
+        email,
+        password,
+        name,
+        company,
+        industry
       });
       login(response.token, response.user);
       // Small delay to ensure auth state is set before redirect
@@ -66,21 +66,21 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4 font-sans">
       <div className="max-w-md w-full">
-        <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-xl p-8">
+        <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-8 card-glow-hover">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-slate-100 mb-2">
               Create Your Roadmap
             </h1>
             <p className="text-slate-400">
-              Start building your Strategic AI Roadmap
+              Start building your <span className="text-blue-500 font-semibold">Strategic AI</span> Roadmap
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-slate-200 mb-2">
+              <label htmlFor="name" className="block text-sm font-medium text-slate-300 mb-2">
                 Full Name
               </label>
               <input
@@ -88,14 +88,14 @@ export default function Signup() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="John Smith"
                 required
               />
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-200 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
                 Email
               </label>
               <input
@@ -103,14 +103,14 @@ export default function Signup() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="john@example.com"
                 required
               />
             </div>
 
             <div>
-              <label htmlFor="company" className="block text-sm font-medium text-slate-200 mb-2">
+              <label htmlFor="company" className="block text-sm font-medium text-slate-300 mb-2">
                 Business Name
               </label>
               <input
@@ -118,21 +118,21 @@ export default function Signup() {
                 type="text"
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="Your Business Name"
                 required
               />
             </div>
 
             <div>
-              <label htmlFor="industry" className="block text-sm font-medium text-slate-200 mb-2">
+              <label htmlFor="industry" className="block text-sm font-medium text-slate-300 mb-2">
                 Industry
               </label>
               <select
                 id="industry"
                 value={industry}
                 onChange={(e) => setIndustry(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none cursor-pointer"
                 required
               >
                 <option value="">Select your industry</option>
@@ -156,7 +156,7 @@ export default function Signup() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-200 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
                 Password
               </label>
               <input
@@ -164,7 +164,7 @@ export default function Signup() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="Minimum 8 characters"
                 required
                 minLength={8}
@@ -172,7 +172,7 @@ export default function Signup() {
             </div>
 
             {error && (
-              <div className="bg-red-900/20 border border-red-800 text-red-300 px-4 py-3 rounded-lg text-sm">
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg text-sm font-medium">
                 {error}
               </div>
             )}
@@ -180,19 +180,19 @@ export default function Signup() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-lg transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Creating Account...' : 'Create Account'}
             </button>
           </form>
 
           <div className="mt-6 text-center">
-            <a
-              href="/login"
-              className="text-blue-400 hover:text-blue-300 text-sm font-medium"
+            <button
+              onClick={() => setLocation('/login')}
+              className="text-blue-500 hover:text-blue-400 text-sm font-bold transition-colors uppercase tracking-wide"
             >
               Already have an account? Sign in
-            </a>
+            </button>
           </div>
         </div>
       </div>

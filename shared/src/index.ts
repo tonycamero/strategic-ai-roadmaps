@@ -12,3 +12,32 @@ export { FETA_REGISTRY, isValidRole, type RoleId, type RoleConfig } from './feta
 export { FETA_CANONICAL_TAXONOMY, FETA_CANONICAL_SYNTHESIS } from './feta/canonical';
 export { getNextStep, selectSynthesis, isValidAnswer } from './feta/logic';
 export * from './feta/team';
+// Executive Brief Exports
+export {
+  normalizeText,
+  isMeaningfulValue,
+  splitSentences,
+  normalizeToMetric,
+  projectToSystem,
+  validateSection,
+  missingSignalsToHuman,
+  mapSynthesisToSections,
+  projectSections
+} from './executiveBrief';
+
+// Roadmap Contract Exports
+export { SECTION_CONFIG } from './roadmap.contract';
+
+// Roadmap Logic Exports
+export { assembleRoadmap, projectRoadmap } from './roadmap';
+
+// Canonical Schema Exports
+export type {
+  CanonicalDiscoveryNotes,
+  CanonicalFinding,
+  CanonicalFindingsObject,
+  CanonicalTicket,
+  CanonicalRoadmap,
+  TicketClass,
+  RoadmapSectionType
+} from './canon';

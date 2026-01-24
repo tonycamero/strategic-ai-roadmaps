@@ -30,6 +30,7 @@ export function buildDiagnosticToTicketsPrompt(
     diagnosticMarkdown?: string;
     aiLeverageMarkdown?: string;
     roadmapSkeletonMarkdown?: string;
+    discoveryQuestionsMarkdown?: string;
     discoveryNotesMarkdown?: string;
   },
   tenantName: string,
@@ -40,10 +41,10 @@ export function buildDiagnosticToTicketsPrompt(
 ): string {
   const diagnosticJson = JSON.stringify(diagnosticMap, null, 2);
   const inventoryJson = JSON.stringify(selectedInventory, null, 2);
-  const dateString = diagnosticDate.toLocaleDateString('en-US', { 
-    month: 'long', 
-    day: 'numeric', 
-    year: 'numeric' 
+  const dateString = diagnosticDate.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
   });
 
   // Dynamic ticket count based on actual selection
@@ -214,7 +215,7 @@ Assign each ticket to ONE specific value area:
 Each ticket MUST include realistic projections:
 - **projected_hours_saved_weekly**: How many hours/week this saves the team (0-20 range)
 - **projected_leads_recovered_monthly**: How many leads/month this recovers or captures (0-30 range)
-- **roi_notes**: Specific explanation of how value is realized (100-200 words)
+- **roi_notes**: Specific explanation of how value is realized (50-100 words)
 
 **ROI Calibration:**
 - Time savings value: $35/hour (team labor cost)
@@ -230,7 +231,7 @@ Return a JSON array with exactly **${targetCount}**. Each ticket must have:
 {
   inventoryId: string;        // MUST match one of the inventory items exactly
   ticketId: string;           // Local ticket ID, e.g. "T001", "T002" (you assign)
-  title: string;              // Specific, action-oriented (50-80 chars), based on titleTemplate
+  title: string;              // IMPERATIVE Verb-Noun (e.g. "Configure Automations", "Deploy CRM"). NO prefixes like "Proposed:" or "Finding:".
   category: string;           // From inventory
   value_category: string;     // From inventory
   tier: "core" | "recommended" | "advanced";  // From inventory
@@ -239,24 +240,23 @@ Return a JSON array with exactly **${targetCount}**. Each ticket must have:
   isSidecar: boolean;         // From inventory (default false)
   sidecarCategory?: string;   // If provided in inventory
 
-  pain_source: string;        // Direct quote or synthesis from diagnostic/discovery (100-200 words)
-  description: string;        // What this ticket accomplishes (200-300 words)
-  current_state: string;      // How ${tenantName} operates today (150-250 words)
-  target_state: string;       // How ${tenantName} will operate after implementation (150-250 words)
-  ai_design: string;          // AI/automation strategy (200-300 words)
-  ghl_implementation: string; // Specific GHL technical implementation (200-300 words)
+  pain_source: string;        // Direct quote or synthesis from diagnostic/discovery (50-100 words)
+  description: string;        // What this ticket accomplishes (50-100 words)
+  current_state: string;      // How ${tenantName} operates today (50-100 words)
+  target_state: string;       // How ${tenantName} will operate after implementation (50-100 words)
+  ai_design: string;          // AI/automation strategy (50-100 words)
+  ghl_implementation: string; // Specific GHL technical implementation (50-100 words)
   implementation_steps: string[]; // 6-10 discrete steps
   owner: string;              // "Owner" | "Ops Manager" | "TC" | "Admin"
   dependencies: string[];     // Array of ticketIds this depends on (empty array if none)
   time_estimate_hours: number; // 5-15 hours (must match tier expectations)
   cost_estimate: number;      // time_estimate_hours * $125
-  success_metric: string;     // Measurable outcome definition (100-150 words)
+  success_metric: string;     // Measurable outcome definition (50-100 words)
   roadmap_section: string;    // "diagnostic" | "architecture" | "high_leverage" | "implementation"
   priority: string;           // "critical" | "high" | "medium"
-  sprint: number;             // 30 | 60 | 90
   projected_hours_saved_weekly: number;    // 0-20 range
   projected_leads_recovered_monthly: number; // 0-30 range
-  roi_notes: string;          // Specific ROI explanation (100-200 words)
+  roi_notes: string;          // Specific ROI explanation (50-100 words)
 }
 \`\`\`
 

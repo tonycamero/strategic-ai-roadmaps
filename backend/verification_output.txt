@@ -1,3 +1,23 @@
+<<<<<<< HEAD
+/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/db/index.ts:8
+  throw new Error('DATABASE_URL environment variable is not set');
+        ^
+
+
+Error: DATABASE_URL environment variable is not set
+    at postgres (/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/db/index.ts:8:9)
+    at Object.<anonymous> (/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/db/index.ts:35:2)
+    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+    at Object.transformer (/home/tonycamero/code/Strategic_AI_Roadmaps/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/register-D46fvsV_.cjs:3:1104)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Module.require (node:internal/modules/cjs/loader:1289:19)
+    at require (node:internal/modules/helpers:182:18)
+    at <anonymous> (/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/scripts/verify_canonical_v2.ts:5:20)
+    at Object.<anonymous> (/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/scripts/verify_canonical_v2.ts:123:2)
+
+Node.js v20.19.5
+=======
 🔒 Verifying Phase 3: Readiness Signals & Onboarding State...
 
 ========== DRIZZLE SQL ==========
@@ -228,3 +248,4 @@ PARAMS: [ '49a64536-b151-4abc-9575-73a787ec3e5f', 1 ]
    Flags: {"intakeWindowClosed":true,"briefResolved":false,"ticketsModerated":false,"knowledgeBaseReady":true,"rolesValidated":true,"execReady":true,"roadmapFinalized":false}
 
 ✅ Phase 3 Verification Complete: Readiness Signals & Onboarding State logic holds.
+>>>>>>> c864602 (chore: stabilize SuperAdmin routing & UI baseline)

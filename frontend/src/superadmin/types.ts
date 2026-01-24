@@ -3,6 +3,8 @@ export interface IntakeRoleDefinition {
   roleLabel: string; // e.g. "Manufacturing Facilitator"
   roleType: 'FACILITATOR' | 'OPERATIONAL_LEAD' | 'EXECUTIVE' | 'OTHER';
   description?: string;
+  isAccepted?: boolean;
+  intakeId?: string;
 
   // Lead's Framing (Perception vs Reality)
   perceivedConstraints: string;
@@ -58,6 +60,8 @@ export interface SuperAdminTenantDetail {
     ownerEmail: string;
     ownerName: string;
     lastDiagnosticId?: string | null;
+    executiveBriefStatus?: 'DRAFT' | 'APPROVED' | 'ACKNOWLEDGED' | 'WAIVED' | null;
+    executionPhase?: 'INTAKE_OPEN' | 'EXEC_BRIEF_DRAFT' | 'EXEC_BRIEF_APPROVED' | 'INTAKE_CLOSED';
     intakeWindowState: 'OPEN' | 'CLOSED';
     intakeSnapshotId?: string | null;
     intakeClosedAt?: string | null;
@@ -140,6 +144,13 @@ export interface SuperAdminTenantDetail {
     rejected: number;
     readyForRoadmap: boolean;
   };
+  intakeVectors: any[];
+  latestDiagnostic?: {
+    id: string;
+    status: 'generated' | 'locked' | 'published' | 'archived';
+    createdAt: string;
+    updatedAt: string;
+  } | null;
 }
 
 export interface CommandCenterTenant {

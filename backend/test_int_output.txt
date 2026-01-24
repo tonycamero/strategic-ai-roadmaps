@@ -1,0 +1,26 @@
+🧪 Running Integration Test: Stage 6 Fail-Closed (SAR-STAGE6-PARSER-FIX-INV001-REV2)
+
+
+--- 1. Fail-Closed Path ---
+[DiagnosticIngestion] DiagnosticMap artifact=art1 source=content rawLength=16
+[DiagnosticIngestion] AiLeverage artifact=art2 source=content rawLength=8
+[DiagnosticIngestion] Skeleton artifact=art3 source=content rawLength=27
+[DiagnosticIngestion] Discovery artifact=art4 source=15 rawLength=15
+[DiagnosticIngestion] Parsing inventory items from 1 lines (extractInventoryFromArtifacts/v2)...
+[DiagnosticIngestion] No inventory items extracted from artifacts for tenant 5dc70c14-02fd-4946-ba25-a883878b94ab. FAIL CLOSED.
+✅ PASS: Correctly threw InventoryEmptyError on empty inventory
+✅ PASS: Error payload includes Skeleton artifact ID
+✅ PASS: Error payload counts are correct
+✅ PASS: Error payload has correct parser signature
+
+--- 2. Missing Artifact Path ---
+[DiagnosticIngestion] DiagnosticMap artifact=? source=none rawLength=0
+[DiagnosticIngestion] AiLeverage artifact=? source=none rawLength=0
+[DiagnosticIngestion] Skeleton artifact=? source=none rawLength=0
+[DiagnosticIngestion] Discovery artifact=? source=0 rawLength=0
+[DiagnosticIngestion] Missing required SOP-01 artifacts content for tenant 5dc70c14-02fd-4946-ba25-a883878b94ab
+✅ PASS: Correctly threw ArtifactNotFoundError on missing artifacts
+
+Tests Complete. Failures: 0
+
+🌟 ALL INTEGRATION TESTS PASSED

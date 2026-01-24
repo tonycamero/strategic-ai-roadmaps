@@ -106,7 +106,7 @@ export default function CaseStudyViewer() {
 
   const handleBack = () => {
     if (saParams) {
-      setLocation(`/superadmin/firms/${saParams.tenantId}`);
+      setLocation(`/superadmin/execute/firms/${saParams.tenantId}`);
     } else {
       setLocation('/dashboard');
     }
@@ -190,9 +190,8 @@ export default function CaseStudyViewer() {
                     <button
                       key={idx}
                       onClick={() => scrollToHeading(item.id)}
-                      className={`block w-full text-left text-sm text-slate-400 hover:text-blue-400 transition-colors ${
-                        item.level === 1 ? 'font-medium' : ''
-                      }`}
+                      className={`block w-full text-left text-sm text-slate-400 hover:text-blue-400 transition-colors ${item.level === 1 ? 'font-medium' : ''
+                        }`}
                       style={{ paddingLeft: `${(item.level - 1) * 12}px` }}
                     >
                       {item.text}
@@ -210,17 +209,17 @@ export default function CaseStudyViewer() {
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
-                    h1: ({node, ...props}) => <h1 className="text-2xl md:text-3xl font-semibold text-slate-100 mt-2 mb-4" {...props} />,
-                    h2: ({node, ...props}) => <h2 className="text-xl md:text-2xl font-semibold text-slate-100 mt-3 mb-3" {...props} />,
-                    h3: ({node, ...props}) => <h3 className="text-lg font-semibold text-slate-100 mt-3 mb-2" {...props} />,
-                    p: ({node, ...props}) => <p className="text-slate-300 leading-7 mb-3" {...props} />,
-                    ul: ({node, ...props}) => <ul className="list-disc pl-6 space-y-1 mb-3" {...props} />,
-                    ol: ({node, ...props}) => <ol className="list-decimal pl-6 space-y-1 mb-3" {...props} />,
-                    li: ({node, ...props}) => <li className="text-slate-300" {...props} />,
-                    blockquote: ({node, ...props}) => (
+                    h1: ({ node, ...props }) => <h1 className="text-2xl md:text-3xl font-semibold text-slate-100 mt-2 mb-4" {...props} />,
+                    h2: ({ node, ...props }) => <h2 className="text-xl md:text-2xl font-semibold text-slate-100 mt-3 mb-3" {...props} />,
+                    h3: ({ node, ...props }) => <h3 className="text-lg font-semibold text-slate-100 mt-3 mb-2" {...props} />,
+                    p: ({ node, ...props }) => <p className="text-slate-300 leading-7 mb-3" {...props} />,
+                    ul: ({ node, ...props }) => <ul className="list-disc pl-6 space-y-1 mb-3" {...props} />,
+                    ol: ({ node, ...props }) => <ol className="list-decimal pl-6 space-y-1 mb-3" {...props} />,
+                    li: ({ node, ...props }) => <li className="text-slate-300" {...props} />,
+                    blockquote: ({ node, ...props }) => (
                       <blockquote className="border-l-4 border-slate-700 pl-4 text-slate-300 italic my-3" {...props} />
                     ),
-                    code: ({node, inline, className, children, ...props}: any) => (
+                    code: ({ node, inline, className, children, ...props }: any) => (
                       inline ? (
                         <code className="bg-slate-800/80 text-slate-200 px-1.5 py-0.5 rounded" {...props}>{children}</code>
                       ) : (
@@ -231,14 +230,14 @@ export default function CaseStudyViewer() {
                         </pre>
                       )
                     ),
-                    table: ({node, ...props}) => (
+                    table: ({ node, ...props }) => (
                       <div className="overflow-x-auto my-3">
                         <table className="w-full text-left border-collapse" {...props} />
                       </div>
                     ),
-                    th: ({node, ...props}) => <th className="border-b border-slate-700 px-3 py-2 text-slate-200" {...props} />,
-                    td: ({node, ...props}) => <td className="border-b border-slate-800 px-3 py-2 text-slate-300" {...props} />,
-                    hr: ({node, ...props}) => <hr className="border-slate-800 my-6" {...props} />,
+                    th: ({ node, ...props }) => <th className="border-b border-slate-700 px-3 py-2 text-slate-200" {...props} />,
+                    td: ({ node, ...props }) => <td className="border-b border-slate-800 px-3 py-2 text-slate-300" {...props} />,
+                    hr: ({ node, ...props }) => <hr className="border-slate-800 my-6" {...props} />,
                   }}
                 >
                   {docData.content}

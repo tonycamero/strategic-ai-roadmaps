@@ -1,13 +1,13 @@
 import { useEffect } from 'react';
-import { Router, Route, Switch, useLocation, Redirect } from 'wouter';
+import { Router, Route, Switch, useLocation } from 'wouter';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { TenantProvider } from './context/TenantContext';
 import { OnboardingProvider } from './context/OnboardingContext';
 import { RoadmapProvider } from './context/RoadmapContext';
 import ProtectedRoute from './components/ProtectedRoute';
+
 import Auth from './pages/Auth';
 import Signup from './pages/Signup';
-import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import TransformationDashboard from './pages/owner/TransformationDashboard';
 import CaseStudyViewer from './pages/CaseStudyViewer';
@@ -21,8 +21,6 @@ import AgentInbox from './pages/owner/AgentInbox';
 import { SuperAdminLayout } from './superadmin/SuperAdminLayout';
 import RoadmapViewer from './pages/RoadmapViewer';
 import TicketModeration from './components/TicketModeration';
-import TonyCameroLanding from './pages/TonyCameroLanding';
-import Onepager from './pages/Onepager';
 import BusinessProfile from './pages/BusinessProfile';
 import OrganizationType from './pages/OrganizationType';
 import InviteTeam from './pages/InviteTeam';
@@ -33,8 +31,6 @@ import RequestPasswordReset from './pages/RequestPasswordReset';
 import ResetPassword from './pages/ResetPassword';
 import { OnboardingLayout } from './layouts/OnboardingLayout';
 import { TrustAgentShell as SmartShell } from './trustagent/TrustAgentShell';
-import { Webinar } from './pages/Webinar';
-import RoleEvidenceRender from './pages/render/RoleEvidenceRender';
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -46,36 +42,25 @@ function ScrollToTop() {
   return null;
 }
 
-function HomepageTrustAgent() {
+function RootRedirect() {
+  const [location, setLocation] = useLocation();
   const { isAuthenticated } = useAuth();
-  const [location] = useLocation();
 
-  // Only show on public marketing routes when NOT authenticated
-  const isPublicMarketingRoute =
-    location === '/' ||
-    location === '/home' ||
-    location === '/cohort' ||
-    location === '/ai' ||
-    location === '/eugene-2026';
+  useEffect(() => {
+    if (location !== '/') return;
+    setLocation(isAuthenticated ? '/dashboard' : '/login', { replace: true });
+  }, [location, isAuthenticated, setLocation]);
 
-  if (isAuthenticated || !isPublicMarketingRoute) return null;
-
-  return (
-    <SmartShell enabled={true} />
-  );
+  return null;
 }
 
 function PortalTrustAgent() {
   const { isAuthenticated, user } = useAuth();
 
-  // Hide for unauthenticated or superadmin users
   if (!isAuthenticated || user?.role === 'superadmin') return null;
 
-  return (
-    <SmartShell enabled={true} agentType="roadmap" />
-  );
+  return <SmartShell enabled={true} agentType="roadmap" />;
 }
-
 
 function App() {
   return (
@@ -85,99 +70,89 @@ function App() {
           <RoadmapProvider>
             <Router>
               <ScrollToTop />
-              {/* Public homepage agent for non-authenticated users */}
-              <HomepageTrustAgent />
-              {/* Portal TrustAgent for authenticated owners */}
+              <RootRedirect />
               <PortalTrustAgent />
+
               <Switch>
-                <Route path="/">{() => { return <TonyCameroLanding />; }}</Route>
-                <Route path="/__render/role-evidence" component={RoleEvidenceRender} />
-
-                {/* Strategic AI Roadmaps SaaS Homepage - Consolidated */}
-                <Route path="/ai" component={LandingPage} />
-
-                {/* Redirect old routes to /ai */}
-                <Route path="/home">{() => { window.location.href = '/ai'; return null; }}</Route>
-                <Route path="/cohort">{() => { window.location.href = '/ai'; return null; }}</Route>
-                <Route path="/eugene-2026">{() => { window.location.href = '/ai'; return null; }}</Route>
-
-                <Route path="/onepager" component={Onepager} />
-                <Route path="/diagnostic" component={Webinar} />
+                {/* Auth */}
                 <Route path="/login" component={Auth} />
                 <Route path="/signup" component={Signup} />
                 <Route path="/request-reset" component={RequestPasswordReset} />
                 <Route path="/reset-password/:token" component={ResetPassword} />
                 <Route path="/accept-invite/:token" component={AcceptInvite} />
 
-                {/* Onboarding routes with persistent Journey Sidebar */}
+                {/* Onboarding (with sidebar) */}
                 <ProtectedRoute path="/dashboard">
                   <OnboardingLayout><Dashboard /></OnboardingLayout>
                 </ProtectedRoute>
+
                 <ProtectedRoute path="/organization-type">
                   <OnboardingLayout><OrganizationType /></OnboardingLayout>
                 </ProtectedRoute>
+
                 <ProtectedRoute path="/business-profile">
                   <OnboardingLayout><BusinessProfile /></OnboardingLayout>
                 </ProtectedRoute>
+
                 <ProtectedRoute path="/invite-team">
                   <OnboardingLayout><InviteTeam /></OnboardingLayout>
                 </ProtectedRoute>
+
                 <ProtectedRoute path="/intake/owner">
                   <OnboardingLayout><OwnerIntake /></OnboardingLayout>
                 </ProtectedRoute>
+
                 <ProtectedRoute path="/intake/ops">
                   <OnboardingLayout><OpsIntake /></OnboardingLayout>
                 </ProtectedRoute>
+
                 <ProtectedRoute path="/intake/sales">
                   <OnboardingLayout><SalesIntake /></OnboardingLayout>
                 </ProtectedRoute>
+
                 <ProtectedRoute path="/intake/delivery">
                   <OnboardingLayout><DeliveryIntake /></OnboardingLayout>
                 </ProtectedRoute>
+
                 <ProtectedRoute path="/team-intakes">
                   <OnboardingLayout><TeamIntakesReview /></OnboardingLayout>
                 </ProtectedRoute>
+
                 <ProtectedRoute path="/diagnostic-review">
                   <OnboardingLayout><DiagnosticReview /></OnboardingLayout>
                 </ProtectedRoute>
+
                 <ProtectedRoute path="/discovery-call">
                   <OnboardingLayout><DiscoveryCallScheduler /></OnboardingLayout>
                 </ProtectedRoute>
+
                 <ProtectedRoute path="/roadmap">
                   <OnboardingLayout><RoadmapViewer /></OnboardingLayout>
                 </ProtectedRoute>
+
                 <ProtectedRoute path="/owner/case-study/:docId">
                   <OnboardingLayout><CaseStudyViewer /></OnboardingLayout>
                 </ProtectedRoute>
 
-                {/* Non-onboarding routes (no sidebar) */}
+                {/* Non-onboarding */}
                 <ProtectedRoute path="/owner/transformation" component={TransformationDashboard} />
                 <ProtectedRoute path="/owner/summary" component={LeadershipSummaryPage} />
                 <ProtectedRoute path="/agents/inbox" component={AgentInbox} />
                 <ProtectedRoute path="/case-study/:docId" component={CaseStudyViewer} />
 
-                <ProtectedRoute path="/superadmin/firms/:tenantId/case-study/:docId" component={CaseStudyViewer} />
-                <ProtectedRoute path="/superadmin/tickets/:tenantId/:diagnosticId" component={TicketModeration} />
+                {/* Superadmin */}
                 <ProtectedRoute path="/superadmin" component={SuperAdminLayout} />
-                <ProtectedRoute path="/superadmin/execute" component={SuperAdminLayout} />
-
-                {/* Redirects for legacy semantic names */}
-                <Route path="/superadmin/command-center">
-                  <Redirect to="/superadmin/execute" />
-                </Route>
-                <Route path="/superadmin/strategy-center">
-                  <Redirect to="/superadmin" />
-                </Route>
-
                 <ProtectedRoute path="/superadmin/roadmaps" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/firms" component={SuperAdminLayout} />
-                <ProtectedRoute path="/superadmin/execute/firms/:tenantId" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/firms/:tenantId" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/leads" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/agent" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/tenant/:tenantId/roadmap" component={SuperAdminLayout} />
-                <ProtectedRoute path="/superadmin/pipeline/:cohortLabel?" component={SuperAdminLayout} />
+                <ProtectedRoute path="/superadmin/pipeline" component={SuperAdminLayout} />
+                <ProtectedRoute path="/superadmin/firms/:tenantId/case-study/:docId" component={CaseStudyViewer} />
+                <ProtectedRoute path="/superadmin/tickets/:tenantId/:diagnosticId" component={TicketModeration} />
 
+                {/* 404 */}
                 <Route>
                   <div className="min-h-screen flex items-center justify-center bg-gray-50">
                     <div className="text-center">

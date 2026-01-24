@@ -101,7 +101,7 @@ export default function OwnerIntake() {
     queryFn: () => api.getMyIntake(),
   });
 
-  const coachingFeedback = intakeData?.intake?.coachingFeedback || {};
+const coachingFeedback = (intakeData as any)?.intake?.coachingFeedback ?? {};
 
   // Load existing intake data into form when editing
   useEffect(() => {

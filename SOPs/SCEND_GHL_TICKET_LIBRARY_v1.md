@@ -1,4 +1,10 @@
-# SCEND INTERNAL GHL IMPLEMENTATION TICKET LIBRARY (v1.0)
+# [DEPRECATED] SCEND INTERNAL GHL IMPLEMENTATION TICKET LIBRARY (v1.0)
+> **WARNING: THIS DOCUMENT IS DEPRECATED AND NON-CANONICAL.**
+> **DO NOT USE FOR TICKET GENERATION.**
+> 
+> The authoritative source for SOP tickets is: `docs/sop-ticket-inventories/`
+> Reference META-TICKET: SOP-TICKET-LIBRARY-CANON-CORRECTION-1
+
 
 ### *Master catalog of all internal GHL automation tickets used to execute Strategic AI Roadmaps during pilot deployments and beyond.*
 

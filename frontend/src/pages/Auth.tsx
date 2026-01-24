@@ -57,12 +57,12 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4 font-sans">
       <div className="max-w-md w-full">
-        <div className="bg-slate-900 rounded-2xl shadow-xl border border-slate-800 p-8">
+        <div className="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 p-8 card-glow-hover">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-slate-100 mb-2">
-              Strategic AI Roadmap Portal
+              <span className="text-blue-500">Strategic</span> AI Roadmap Portal
             </h1>
             <p className="text-slate-400">
               Welcome back
@@ -71,7 +71,7 @@ export default function Auth() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-200 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
                 Email
               </label>
               <input
@@ -79,20 +79,20 @@ export default function Auth() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 required
               />
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label htmlFor="password" className="block text-sm font-medium text-slate-200">
+                <label htmlFor="password" className="block text-sm font-medium text-slate-300">
                   Password
                 </label>
                 <button
                   type="button"
                   onClick={() => setLocation('/request-reset')}
-                  className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                  className="text-sm text-blue-500 hover:text-blue-400 transition-colors font-medium"
                 >
                   Forgot Password?
                 </button>
@@ -102,14 +102,14 @@ export default function Auth() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 required
                 minLength={6}
               />
             </div>
 
             {error && (
-              <div className="bg-red-900/20 border border-red-800 text-red-300 px-4 py-3 rounded-lg text-sm">
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg text-sm font-medium">
                 {error}
               </div>
             )}
@@ -117,19 +117,19 @@ export default function Auth() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-lg transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Please wait...' : 'Sign In'}
             </button>
           </form>
 
           <div className="mt-6 text-center">
-            <a
-              href="/signup"
-              className="text-blue-400 hover:text-blue-300 text-sm font-medium"
+            <button
+              onClick={() => setLocation('/signup')}
+              className="text-blue-500 hover:text-blue-400 text-sm font-bold transition-colors uppercase tracking-wide"
             >
               Don't have an account? Sign up
-            </a>
+            </button>
           </div>
         </div>
       </div>

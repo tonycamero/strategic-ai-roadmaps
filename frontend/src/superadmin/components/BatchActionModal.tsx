@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, FC } from 'react';
 import { superadminApi } from '../api';
 
 interface BatchActionModalProps {
@@ -11,7 +11,7 @@ interface BatchActionModalProps {
     onSuccess: () => void;
 }
 
-export const BatchActionModal: React.FC<BatchActionModalProps> = ({
+export const BatchActionModal: FC<BatchActionModalProps> = ({
     isOpen,
     onClose,
     tenantIds,

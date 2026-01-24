@@ -327,6 +327,9 @@ export const superadminApi = {
 
 
   // TM-2: Ticket Moderation APIs
+  generateTickets: (params: { tenantId: string; diagnosticId: string }) =>
+    apiPost<{ ticketCount: number }>(`/tickets/generate/${params.tenantId}/${params.diagnosticId}`),
+
   getDiagnosticTickets: (tenantId: string, diagnosticId: string) =>
     apiGet<{ tickets: any[]; status: any }>(`/tickets/${tenantId}/${diagnosticId}`),
 
@@ -410,6 +413,18 @@ export const superadminApi = {
 
   executeFinalizeBatch: (params: { tenantIds: string[]; override?: boolean; overrideReason?: string }) =>
     apiPost<{ results: any[] }>(`/command-center/batch/roadmap/finalize/execute`, params),
+
+  previewReadinessBatch: (params: { tenantIds: string[]; flag: string; value: boolean }) =>
+    apiPost<{ eligible: any[]; ineligible: any[] }>(`/command-center/batch/readiness/preview`, params),
+
+  executeReadinessBatch: (params: {
+    tenantIds: string[];
+    flag: string;
+    value: boolean;
+    notes?: string;
+    overrideReason?: string;
+  }) =>
+    apiPost<{ results: any[] }>(`/command-center/batch/readiness/execute`, params),
 
   // Phase 7: SNAPSHOT (Ticket 8)
   getSnapshot: (tenantId: string) =>

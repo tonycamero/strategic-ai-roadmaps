@@ -11,7 +11,7 @@ export default function SuperAdminFirmsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [, setLocation] = useLocation();
-  const { isExecutive, isDelegate } = useSuperAdminAuthority();
+  const { isExecutive } = useSuperAdminAuthority();
 
   useEffect(() => {
     superadminApi

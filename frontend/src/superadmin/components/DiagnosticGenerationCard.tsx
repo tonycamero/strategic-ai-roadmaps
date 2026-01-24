@@ -1,5 +1,5 @@
 
-import React from 'react';
+import { FC } from 'react';
 
 interface DiagnosticGenerationCardProps {
     onGenerate: () => void;
@@ -8,7 +8,7 @@ interface DiagnosticGenerationCardProps {
     disabledReason?: string;
 }
 
-export function DiagnosticGenerationCard({ onGenerate, isGenerating, disabled, disabledReason }: DiagnosticGenerationCardProps) {
+export const DiagnosticGenerationCard: FC<DiagnosticGenerationCardProps> = ({ onGenerate, isGenerating, disabled, disabledReason }) => {
     return (
         <div className="bg-slate-950/40 border border-slate-900 rounded-xl p-8 shadow-inner text-center">
             <h4 className="text-xs uppercase font-black tracking-widest text-slate-500 mb-6">

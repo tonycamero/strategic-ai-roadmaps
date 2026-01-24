@@ -1,3 +1,4 @@
+import { } from 'react';
 import { Route, Switch, Link, useLocation, Redirect } from 'wouter';
 import { useAuth } from '../context/AuthContext';
 import { useSuperAdminAuthority } from '../hooks/useSuperAdminAuthority';
@@ -6,13 +7,15 @@ import { AuthorityCategory } from '@roadmap/shared';
 // Pages
 import SuperAdminOverviewPage from './pages/SuperAdminOverviewPage';
 import SuperAdminFirmsPage from './pages/SuperAdminFirmsPage';
-import SuperAdminFirmDetailPage from './pages/SuperAdminFirmDetailPage';
-import SuperAdminExecuteFirmDetailPage from './pages/SuperAdminExecuteFirmDetailPage';
+// import SuperAdminFirmDetailPage from './pages/SuperAdminFirmDetailPage'; // DELETED
 import SuperAdminAgentPage from './pages/SuperAdminAgentPage';
 import EugeneCohortPage from './pages/EugeneCohortPage';
 import SuperAdminRoadmapViewerPage from './pages/SuperAdminRoadmapViewerPage';
 import SuperAdminLeadsPage from './pages/SuperAdminLeadsPage';
 import SuperAdminExecutePage from './pages/SuperAdminExecutePage';
+
+// Replacement for deprecated SuperAdminExecuteFirmDetailPage
+import SuperAdminControlPlaneFirmDetailPage from './pages/SuperAdminControlPlaneFirmDetailPage';
 
 export function SuperAdminLayout() {
   const [location] = useLocation();
@@ -34,10 +37,14 @@ export function SuperAdminLayout() {
   // Human-readable Authority Label
   const getAuthorityLabel = () => {
     switch (category) {
-      case AuthorityCategory.EXECUTIVE: return 'Authority: Executive';
-      case AuthorityCategory.DELEGATE: return 'Authority: Delegate';
-      case AuthorityCategory.OPERATOR: return 'Authority: Operator';
-      default: return 'Role: Unknown';
+      case AuthorityCategory.EXECUTIVE:
+        return 'Authority: Executive';
+      case AuthorityCategory.DELEGATE:
+        return 'Authority: Delegate';
+      case AuthorityCategory.OPERATOR:
+        return 'Authority: Operator';
+      default:
+        return 'Role: Unknown';
     }
   };
 
@@ -45,27 +52,28 @@ export function SuperAdminLayout() {
     <div className="min-h-screen flex bg-slate-950 text-slate-100 font-sans selection:bg-indigo-500/30">
       {/* Sidebar Navigation */}
       <aside className="w-52 border-r border-slate-900 bg-slate-950 flex flex-col fixed inset-y-0 z-50">
-
         {/* Context Branding */}
         <div className="p-6 pb-4 border-b border-slate-900/50">
           <div className="flex items-center gap-2 mb-2">
-            <div className={`w-2 h-2 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.5)] ${category === AuthorityCategory.EXECUTIVE ? 'bg-purple-500 shadow-purple-500/50' : 'bg-indigo-500'
-              }`}></div>
+            <div
+              className={`w-2 h-2 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.5)] ${category === AuthorityCategory.EXECUTIVE
+                ? 'bg-purple-500 shadow-purple-500/50'
+                : 'bg-indigo-500'
+                }`}
+            ></div>
             <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-indigo-400">
               SuperAdmin
             </span>
           </div>
-          <div className="font-bold text-lg tracking-tight text-slate-100">
-            Strategy
-          </div>
-          <div className="text-[10px] text-slate-500 font-mono mt-1 truncate">
-            {user?.email}
-          </div>
-          <div className={`mt-2 inline-flex items-center px-1.5 py-0.5 rounded border text-[9px] font-bold uppercase tracking-wide
+          <div className="font-bold text-lg tracking-tight text-slate-100">Strategy</div>
+          <div className="text-[10px] text-slate-500 font-mono mt-1 truncate">{user?.email}</div>
+          <div
+            className={`mt-2 inline-flex items-center px-1.5 py-0.5 rounded border text-[9px] font-bold uppercase tracking-wide
             ${category === AuthorityCategory.EXECUTIVE
-              ? 'bg-purple-900/20 border-purple-800 text-purple-300'
-              : 'bg-slate-900 border-slate-800 text-slate-400'
-            }`}>
+                ? 'bg-purple-900/20 border-purple-800 text-purple-300'
+                : 'bg-slate-900 border-slate-800 text-slate-400'
+              }`}
+          >
             {getAuthorityLabel()}
           </div>
         </div>
@@ -148,15 +156,16 @@ export function SuperAdminLayout() {
       <main className="flex-1 ml-52 min-w-0 bg-slate-950 relative">
         {/* Top Context Bar (Mobile/Immersive reinforcement) */}
         {!isOperator && (
-          <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r z-40 pointer-events-none ${category === AuthorityCategory.EXECUTIVE
-            ? 'from-purple-900/50 via-indigo-900/50 to-slate-900/50'
-            : 'from-indigo-900/50 via-slate-800/50 to-slate-900/50'
-            }`} />
+          <div
+            className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r z-40 pointer-events-none ${category === AuthorityCategory.EXECUTIVE
+              ? 'from-purple-900/50 via-indigo-900/50 to-slate-900/50'
+              : 'from-indigo-900/50 via-slate-800/50 to-slate-900/50'
+              }`}
+          />
         )}
 
         <div className="h-full">
           <Switch>
-
             {/* Cohort Pipeline (primary Kanban board) */}
             <Route path="/superadmin/pipeline/:cohortLabel?" component={EugeneCohortPage} />
 
@@ -167,18 +176,13 @@ export function SuperAdminLayout() {
 
             {/* EXECUTION Firm Detail (New UX) - Protected Route */}
             <Route path="/superadmin/execute/firms/:tenantId">
-              {(params) => (
-                isOperator
-                  ? <Redirect to="/superadmin" />
-                  : <SuperAdminExecuteFirmDetailPage />
-              )}
+              {isOperator ? <Redirect to="/superadmin" /> : <SuperAdminControlPlaneFirmDetailPage />}
             </Route>
 
-            {/* LEGACY Firm Detail (Preserved for Operational Admin) */}
-            <Route
-              path="/superadmin/firms/:tenantId"
-              component={SuperAdminFirmDetailPage}
-            />
+            {/* LEGACY Firm Detail (Redirect to V2) */}
+            <Route path="/superadmin/firms/:tenantId">
+              {(params) => <Redirect to={`/superadmin/execute/firms/${params.tenantId}`} />}
+            </Route>
 
             {/* Strategy (Portfolio Overview) */}
             <Route path="/superadmin" component={SuperAdminOverviewPage} />
@@ -193,10 +197,7 @@ export function SuperAdminLayout() {
             <Route path="/superadmin/agent" component={SuperAdminAgentPage} />
 
             {/* Supporting routes */}
-            <Route
-              path="/superadmin/tenant/:tenantId/roadmap"
-              component={SuperAdminRoadmapViewerPage}
-            />
+            <Route path="/superadmin/tenant/:tenantId/roadmap" component={SuperAdminRoadmapViewerPage} />
 
             {/* Redirects */}
             <Route path="/superadmin/cohort-pipeline">
@@ -211,7 +212,7 @@ export function SuperAdminLayout() {
           </Switch>
         </div>
       </main>
-    </div >
+    </div>
   );
 }
 
@@ -219,18 +220,28 @@ export function SuperAdminLayout() {
 function NavItem({ href, active, icon, label, description }: any) {
   return (
     <Link href={href}>
-      <div className={`
+      <div
+        className={`
                 group flex items-start gap-2 px-3 py-1.5 rounded-lg cursor-pointer transition-all duration-200 border border-transparent
                 ${active
-          ? 'bg-slate-900/80 border-slate-800 text-slate-100 shadow-sm'
-          : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
-        }
-            `}>
-        <span className={`mt-0.5 text-sm ${active ? 'grayscale-0' : 'grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all'}`}>
+            ? 'bg-slate-900/80 border-slate-800 text-slate-100 shadow-sm'
+            : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+          }
+            `}
+      >
+        <span
+          className={`mt-0.5 text-sm ${active
+            ? 'grayscale-0'
+            : 'grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all'
+            }`}
+        >
           {icon}
         </span>
         <div>
-          <div className={`text-xs font-bold leading-none mb-1 ${active ? 'text-indigo-300' : 'text-slate-300 group-hover:text-white'}`}>
+          <div
+            className={`text-xs font-bold leading-none mb-1 ${active ? 'text-indigo-300' : 'text-slate-300 group-hover:text-white'
+              }`}
+          >
             {label}
           </div>
           {description && (
@@ -241,5 +252,5 @@ function NavItem({ href, active, icon, label, description }: any) {
         </div>
       </div>
     </Link>
-  )
+  );
 }

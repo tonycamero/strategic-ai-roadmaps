@@ -27,6 +27,7 @@ export const AUDIT_EVENT_TYPES = {
 
     // Intakes (Phase 7)
     INTAKE_REOPENED: 'INTAKE_REOPENED',
+    TICKET_MODERATION_ACTIVATED: 'TICKET_MODERATION_ACTIVATED',
 } as const;
 
 export type AuditEventType = typeof AUDIT_EVENT_TYPES[keyof typeof AUDIT_EVENT_TYPES];
