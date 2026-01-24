@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Router, Route, Switch, useLocation, Redirect } from 'wouter';
+import { Router, Route, Switch, useLocation } from 'wouter';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { TenantProvider } from './context/TenantContext';
 import { OnboardingProvider } from './context/OnboardingContext';
@@ -21,6 +21,7 @@ import AgentInbox from './pages/owner/AgentInbox';
 import { SuperAdminLayout } from './superadmin/SuperAdminLayout';
 import RoadmapViewer from './pages/RoadmapViewer';
 import TicketModeration from './components/TicketModeration';
+import TonyCameroLanding from './pages/TonyCameroLanding';
 import Onepager from './pages/Onepager';
 import BusinessProfile from './pages/BusinessProfile';
 import OrganizationType from './pages/OrganizationType';
@@ -33,12 +34,6 @@ import ResetPassword from './pages/ResetPassword';
 import { OnboardingLayout } from './layouts/OnboardingLayout';
 import { TrustAgentShell as SmartShell } from './trustagent/TrustAgentShell';
 import { Webinar } from './pages/Webinar';
-import RoleEvidenceRender from './pages/render/RoleEvidenceRender';
-import SmbSales from './pages/public/SmbSales';
-import AuthorityEconomics from './pages/public/AuthorityEconomics';
-import AuthorityPartner from './pages/public/AuthorityPartner';
-import CertifiedOperator from './pages/public/CertifiedOperator';
-import Features from './pages/public/Features';
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -94,19 +89,15 @@ function App() {
               {/* Portal TrustAgent for authenticated owners */}
               <PortalTrustAgent />
               <Switch>
-                <Route path="/" component={LandingPage} />
-                <Route path="/smb" component={SmbSales} />
-                <Route path="/economics" component={AuthorityEconomics} />
-                <Route path="/partner" component={AuthorityPartner} />
-                <Route path="/operator" component={CertifiedOperator} />
-                <Route path="/features" component={Features} />
-                <Route path="/__render/role-evidence" component={RoleEvidenceRender} />
+                <Route path="/">{() => { return <TonyCameroLanding />; }}</Route>
 
-                {/* Legacy Redirects */}
-                <Route path="/ai">{() => { window.location.href = '/'; return null; }}</Route>
-                <Route path="/home">{() => { window.location.href = '/'; return null; }}</Route>
-                <Route path="/cohort">{() => { window.location.href = '/'; return null; }}</Route>
-                <Route path="/eugene-2026">{() => { window.location.href = '/'; return null; }}</Route>
+                {/* Strategic AI Roadmaps SaaS Homepage - Consolidated */}
+                <Route path="/ai" component={LandingPage} />
+
+                {/* Redirect old routes to /ai */}
+                <Route path="/home">{() => { window.location.href = '/ai'; return null; }}</Route>
+                <Route path="/cohort">{() => { window.location.href = '/ai'; return null; }}</Route>
+                <Route path="/eugene-2026">{() => { window.location.href = '/ai'; return null; }}</Route>
 
                 <Route path="/onepager" component={Onepager} />
                 <Route path="/diagnostic" component={Webinar} />
@@ -163,27 +154,16 @@ function App() {
                 <ProtectedRoute path="/agents/inbox" component={AgentInbox} />
                 <ProtectedRoute path="/case-study/:docId" component={CaseStudyViewer} />
 
-                <ProtectedRoute path="/superadmin/firms/:tenantId/case-study/:docId" component={CaseStudyViewer} />
-                <ProtectedRoute path="/superadmin/tickets/:tenantId/:diagnosticId" component={TicketModeration} />
                 <ProtectedRoute path="/superadmin" component={SuperAdminLayout} />
-                <ProtectedRoute path="/superadmin/execute" component={SuperAdminLayout} />
-
-                {/* Redirects for legacy semantic names */}
-                <Route path="/superadmin/command-center">
-                  <Redirect to="/superadmin/execute" />
-                </Route>
-                <Route path="/superadmin/strategy-center">
-                  <Redirect to="/superadmin" />
-                </Route>
-
                 <ProtectedRoute path="/superadmin/roadmaps" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/firms" component={SuperAdminLayout} />
-                <ProtectedRoute path="/superadmin/execute/firms/:tenantId" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/firms/:tenantId" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/leads" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/agent" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/tenant/:tenantId/roadmap" component={SuperAdminLayout} />
-                <ProtectedRoute path="/superadmin/pipeline/:cohortLabel?" component={SuperAdminLayout} />
+                <ProtectedRoute path="/superadmin/pipeline" component={SuperAdminLayout} />
+                <ProtectedRoute path="/superadmin/firms/:tenantId/case-study/:docId" component={CaseStudyViewer} />
+                <ProtectedRoute path="/superadmin/tickets/:tenantId/:diagnosticId" component={TicketModeration} />
 
                 <Route>
                   <div className="min-h-screen flex items-center justify-center bg-gray-50">
