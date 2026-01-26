@@ -31,7 +31,6 @@ export async function login(req: Request, res: Response) {
 
     const token = generateToken({
       userId: user.id,
-      id: user.id,
       email: user.email,
       role: user.role,
       isInternal: user.isInternal,
@@ -109,7 +108,6 @@ export async function register(req: Request, res: Response) {
 
     const token = generateToken({
       userId: newUser.id,
-      id: newUser.id,
       email: newUser.email,
       role: newUser.role,
       isInternal: newUser.isInternal,

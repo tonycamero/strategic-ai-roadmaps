@@ -29,12 +29,8 @@ interface OwnerIntakeForm {
   display_name: string;
   preferred_reference: string;
   top_3_issues: string[];
-  top_3_goals_next_90_days: string[];
-  if_nothing_else_changes_but_X_this_was_worth_it: string;
   primary_kpis: string[];
   kpi_baselines: Record<string, string>;
-  non_goals: string[];
-  do_not_automate: string[];
   change_readiness: ChangeReadiness;
   weekly_capacity_for_implementation_hours: number;
   biggest_risk_if_we_push_too_fast: string;
@@ -82,12 +78,8 @@ export default function OwnerIntake() {
     display_name: user?.name || '',
     preferred_reference: user?.name || '',
     top_3_issues: ['', '', ''],
-    top_3_goals_next_90_days: ['', '', ''],
-    if_nothing_else_changes_but_X_this_was_worth_it: '',
     primary_kpis: ['', '', ''],
     kpi_baselines: {},
-    non_goals: ['', ''],
-    do_not_automate: ['', ''],
     change_readiness: 'medium',
     weekly_capacity_for_implementation_hours: 0,
     biggest_risk_if_we_push_too_fast: '',
@@ -101,7 +93,7 @@ export default function OwnerIntake() {
     queryFn: () => api.getMyIntake(),
   });
 
-const coachingFeedback = (intakeData as any)?.intake?.coachingFeedback ?? {};
+  const coachingFeedback = (intakeData as any)?.intake?.coachingFeedback ?? {};
 
   // Load existing intake data into form when editing
   useEffect(() => {
@@ -114,16 +106,10 @@ const coachingFeedback = (intakeData as any)?.intake?.coachingFeedback ?? {};
         if (merged.top_3_issues.length < 3) {
           merged.top_3_issues = [...merged.top_3_issues, ...Array(3 - merged.top_3_issues.length).fill('')];
         }
-        merged.top_3_goals_next_90_days = (merged.top_3_goals_next_90_days || ['', '', '']).slice(0, 3);
-        if (merged.top_3_goals_next_90_days.length < 3) {
-          merged.top_3_goals_next_90_days = [...merged.top_3_goals_next_90_days, ...Array(3 - merged.top_3_goals_next_90_days.length).fill('')];
-        }
         merged.primary_kpis = (merged.primary_kpis || ['', '', '']).slice(0, 3);
         if (merged.primary_kpis.length < 3) {
           merged.primary_kpis = [...merged.primary_kpis, ...Array(3 - merged.primary_kpis.length).fill('')];
         }
-        merged.non_goals = (merged.non_goals || ['', '']).slice(0, 2);
-        merged.do_not_automate = (merged.do_not_automate || ['', '']).slice(0, 2);
         merged.kpi_baselines = merged.kpi_baselines || {};
         return merged;
       });
@@ -150,9 +136,23 @@ const coachingFeedback = (intakeData as any)?.intake?.coachingFeedback ?? {};
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const payload: OwnerIntakeForm = {
-      ...formData,
-      chamberRole: isChamber && chamberRole ? chamberRole : formData.chamberRole,
+
+    // Clean payload: Remove chamber fields if not chamber, remove empty strings from arrays
+    const cleanAnswers = { ...formData };
+
+    if (!isChamber) {
+      delete (cleanAnswers as any).chamberRole;
+      delete (cleanAnswers as any).chamber_exec_membership_pressure;
+      delete (cleanAnswers as any).chamber_exec_board_engagement;
+    }
+
+    // Filter out empty strings from arrays
+    cleanAnswers.top_3_issues = cleanAnswers.top_3_issues.filter(it => it.trim() !== '');
+    cleanAnswers.primary_kpis = cleanAnswers.primary_kpis.filter(it => it.trim() !== '');
+
+    const payload = {
+      ...cleanAnswers,
+      chamberRole: isChamber && chamberRole ? chamberRole : cleanAnswers.chamberRole,
     };
     submitMutation.mutate({ role: 'owner', answers: payload });
   };

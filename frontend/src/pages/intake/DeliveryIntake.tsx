@@ -38,7 +38,7 @@ export default function DeliveryIntake() {
     queryFn: () => api.getMyIntake(),
   });
 
-const coachingFeedback = (intakeData as any)?.intake?.coachingFeedback ?? {};
+  const coachingFeedback = (intakeData as any)?.intake?.coachingFeedback ?? {};
 
   useEffect(() => {
     if (intakeData?.intake) {
@@ -67,9 +67,18 @@ const coachingFeedback = (intakeData as any)?.intake?.coachingFeedback ?? {};
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+
+    // Clean payload: Remove chamber fields if not chamber
+    const cleanAnswers = { ...formData } as any;
+    if (!isChamber) {
+      delete cleanAnswers.chamberRole;
+      delete cleanAnswers.pe_event_bottlenecks;
+      delete cleanAnswers.pe_sponsorships;
+    }
+
     const payload = {
-      ...formData,
-      chamberRole: isChamber && chamberRole ? chamberRole : formData.chamberRole,
+      ...cleanAnswers,
+      chamberRole: isChamber && chamberRole ? chamberRole : cleanAnswers.chamberRole,
     };
     submitMutation.mutate({ role: 'delivery', answers: payload });
   };

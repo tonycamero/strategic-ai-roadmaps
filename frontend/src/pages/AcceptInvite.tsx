@@ -30,6 +30,8 @@ export default function AcceptInvite() {
       const role = response.user.role;
       if (role === 'ops' || role === 'sales' || role === 'delivery') {
         window.location.href = `/intake/${role}`;
+      } else if (role === 'exec_sponsor') {
+        window.location.href = '/intake/executive';
       } else {
         window.location.href = '/dashboard';
       }

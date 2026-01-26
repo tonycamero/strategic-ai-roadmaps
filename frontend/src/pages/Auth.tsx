@@ -5,13 +5,13 @@ import { api, ApiError } from '../lib/api';
 
 function getRoleBasedRoute(role: string): string {
   if (role === 'ops' || role === 'sales' || role === 'delivery') {
-    return `/intake/${role}`;
+    return `/ intake / ${role} `;
+  }
+  if (role === 'exec_sponsor') {
+    return '/intake/exec_sponsor';
   }
   if (role === 'superadmin') {
     return '/superadmin/firms';
-  }
-  if (role === 'owner') {
-    return '/dashboard';
   }
   return '/dashboard';
 }

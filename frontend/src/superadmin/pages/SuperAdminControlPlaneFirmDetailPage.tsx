@@ -1,15 +1,3 @@
-<<<<<<< HEAD
-import { useEffect, useState } from 'react';
-import { AuthorityCategory } from '@roadmap/shared';
-import { useRoute } from 'wouter';
-import { useSuperAdminAuthority } from '../../hooks/useSuperAdminAuthority';
-import { AuthorityGuard } from '../../components/AuthorityGuard';
-import { DiagnosticModerationSurface } from '../components/DiagnosticModerationSurface';
-import { DiagnosticCompleteCard } from '../components/DiagnosticCompleteCard';
-import { RoadmapReadinessPanel } from '../components/RoadmapReadinessPanel';
-import { BaselineSummaryPanel } from '../components/BaselineSummaryPanel';
-import { superadminApi, FirmDetailResponseV2 } from '../api';
-=======
 import React, { useEffect, useState } from 'react';
 import { AuthorityCategory } from '@roadmap/shared';
 import { useRoute } from 'wouter';
@@ -17,13 +5,21 @@ import { useAuth } from '../../context/AuthContext';
 import { useSuperAdminAuthority } from '../../hooks/useSuperAdminAuthority';
 import { AuthorityGuard } from '../../components/AuthorityGuard';
 import { DiagnosticModerationSurface } from '../components/DiagnosticModerationSurface';
+import { DiagnosticCompleteCard } from '../components/DiagnosticCompleteCard';
 
 import { RoadmapReadinessPanel } from '../components/RoadmapReadinessPanel';
 import { ExecutiveSnapshotPanel, SnapshotData } from '../components/ExecutiveSnapshotPanel';
 import { ExecutiveBriefPanel } from '../components/ExecutiveBriefPanel';
-import { DiagnosticReviewModal } from '../components/phase7/DiagnosticReviewModal';
+import { ExecutiveBriefModal } from '../components/ExecutiveBriefModal';
+import { DiagnosticReviewModal } from '../components/DiagnosticReviewModal';
 import { StakeholderModal } from '../../components/onboarding/StakeholderModal';
 import { IntakeModal } from '../components/IntakeModal';
+import { TruthProbeCard, TruthProbeData } from '../components/TruthProbeCard';
+import { BriefCompleteCard } from '../components/BriefCompleteCard';
+import { DiscoveryNotesModal } from '../components/DiscoveryNotesModal';
+import { AssistedSynthesisModal } from '../components/AssistedSynthesisModal';
+import { BaselineSummaryPanel } from '../components/BaselineSummaryPanel';
+// @ANCHOR:SA_FIRM_DETAIL_IMPORTS_END
 
 import { superadminApi } from '../api';
 import { SuperAdminTenantDetail, IntakeRoleDefinition } from '../types';
@@ -48,7 +44,7 @@ type FirmDetailResponse = {
         intakeSnapshotId?: string | null;
         intakeClosedAt?: string | null;
         discoveryComplete?: boolean;
-        executiveBriefStatus?: 'DRAFT' | 'APPROVED' | null;
+        executiveBriefStatus?: 'DRAFT' | 'APPROVED' | 'ACKNOWLEDGED' | 'WAIVED' | null;
         executionPhase?: 'INTAKE_OPEN' | 'EXEC_BRIEF_DRAFT' | 'EXEC_BRIEF_APPROVED' | 'INTAKE_CLOSED';
     };
     owner: {
@@ -75,27 +71,17 @@ type FirmDetailResponse = {
         rejected: number;
         readyForRoadmap: boolean;
     };
+    latestDiagnostic: {
+        id: string;
+        status: 'generated' | 'locked' | 'published' | 'archived';
+        createdAt: string;
+        updatedAt: string;
+    } | null;
 };
->>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
 
 export default function SuperAdminControlPlaneFirmDetailPage() {
     const [, params] = useRoute<{ tenantId: string }>('/superadmin/execute/firms/:tenantId');
 
-<<<<<<< HEAD
-    const [loading, setLoading] = useState(true);
-    const [data, setData] = useState<FirmDetailResponseV2 | null>(null);
-    const [error, setError] = useState<string | null>(null);
-
-    const [moderationStatus, setModerationStatus] = useState<{ readyForRoadmap: boolean; pending: number; approved: number } | null>(null);
-    useSuperAdminAuthority();
-
-    const refreshData = async () => {
-        if (!params?.tenantId) return;
-        setLoading(true);
-        try {
-            const firmResponse = await superadminApi.getFirmDetailV2(params.tenantId);
-            setData(firmResponse);
-=======
 
     const [loading, setLoading] = useState(true);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -113,16 +99,50 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     const [snapshotLoading, setSnapshotLoading] = useState(false);
     const { category } = useSuperAdminAuthority();
 
-    // Phase 8: Diagnostic Review Modal (RECOVERY)
-    const [reviewOpen, setReviewOpen] = useState(false);
-    const [diagnosticData, setDiagnosticData] = useState<any>(null);
+    // Truth Probe State
+    const [truthProbe, setTruthProbe] = useState<TruthProbeData | null>(null);
+    const [truthProbeLoading, setTruthProbeLoading] = useState(false);
+    const [truthProbeError, setTruthProbeError] = useState<string | null>(null);
+
+
+    // Phase 8: Intake Modal
     const [selectedIntake, setSelectedIntake] = useState<any>(null);
     const [intakeModalOpen, setIntakeModalOpen] = useState(false);
+
+    // Phase 6C: Truth Probe Collapse
+    const [showTruthProbe, setShowTruthProbe] = useState(false);
+
+    // Phase 6D: ROI Baseline Collapse
+    const [showBaselinePanel, setShowBaselinePanel] = useState(false);
+
+    // Phase 6E: Strategic Context & Capacity ROI Collapse
+    const [showROIPanel, setShowROIPanel] = useState(false);
+
+    // Phase 6E: Modal-based Review (ONLY paradigm)
+    const [isExecBriefOpen, setExecBriefOpen] = useState(false);
+    const [isDiagOpen, setDiagOpen] = useState(false);
+
+    // Modal data states
+    const [execBriefData, setExecBriefData] = useState<any>(null);
+    const [execBriefLoading, setExecBriefLoading] = useState(false);
+    const [execBriefError, setExecBriefError] = useState<string | null>(null);
+
+    const [diagData, setDiagData] = useState<any>(null);
+    const [diagLoading, setDiagLoading] = useState(false);
+    const [diagError, setDiagError] = useState<string | null>(null);
+
+    const [isDiscoveryOpen, setDiscoveryOpen] = useState(false);
+    const [discoverySaving, setDiscoverySaving] = useState(false);
+
+    const [isSynthesisOpen, setSynthesisOpen] = useState(false);
+    const [synthesisNotes, setSynthesisNotes] = useState<string | null>(null);
+    // @ANCHOR:SA_FIRM_DETAIL_STATE_END
 
     const refreshData = async () => {
         if (!params?.tenantId) return;
 
         setLoading(true);
+        setTruthProbeLoading(true);
 
         // Fetch both detail and vectors for a complete truth picture
         try {
@@ -161,6 +181,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                 latestRoadmap: firmDetail.latestRoadmap,
                 recentActivity: firmDetail.recentActivity,
                 diagnosticStatus: firmDetail.diagnosticStatus,
+                latestDiagnostic: firmDetail.latestDiagnostic,  // ✅ Wire diagnostic state
             };
 
             setData(detailData);
@@ -181,167 +202,111 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                 // Definition: accepted = email exists in teamMembers
                 isAccepted: firmDetail.teamMembers.some((m: any) => m.email === v.recipientEmail)
             }));
+
+            // Synthesis: If Owner exists but isn't in vectors, add them as a virtual EXECUTIVE stakeholder
+            if (firmDetail.owner && !mappedRoles.some(r => r.recipientEmail === firmDetail.owner?.email)) {
+                const ownerIntake = firmDetail.intakes.find(i => i.role === 'owner' || i.userEmail === firmDetail.owner?.email);
+                mappedRoles.unshift({
+                    id: `owner-${firmDetail.owner.id}`,
+                    intakeId: ownerIntake?.id,
+                    roleLabel: (ownerIntake?.answers as any)?.role_label || 'Strategic Owner',
+                    roleType: 'EXECUTIVE',
+                    recipientName: firmDetail.owner.name,
+                    recipientEmail: firmDetail.owner.email,
+                    inviteStatus: 'SENT',
+                    intakeStatus: ownerIntake?.status === 'completed' ? 'COMPLETED' :
+                        ownerIntake?.status === 'in_progress' ? 'IN_PROGRESS' : 'NOT_STARTED',
+                    perceivedConstraints: 'Business Continuity & Strategic Roadmap',
+                    anticipatedBlindSpots: 'Internal execution bottlenecks',
+                    isAccepted: true
+                });
+            }
+
             setIntakeRoles(mappedRoles);
->>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
         } catch (err: any) {
             setError(err.message);
         } finally {
             setLoading(false);
         }
+
+        // Fetch Truth Probe
+        superadminApi.getTruthProbe(params.tenantId)
+            .then((data: any) => {
+                console.log(`[TruthProbe UI] Loaded for tenant ${params.tenantId}`);
+                setTruthProbe(data);
+                setTruthProbeError(null);
+            })
+            .catch(err => {
+                console.error('[TruthProbe UI] Failed:', err);
+                setTruthProbeError(err.message || 'Data temporarily unavailable');
+            })
+            .finally(() => setTruthProbeLoading(false));
     };
 
     useEffect(() => {
         refreshData();
     }, [params?.tenantId]);
 
-<<<<<<< HEAD
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
-            </div>
-        );
-    }
-
-    if (error || !data) {
-        return (
-            <div className="bg-red-900/10 border border-red-900/20 rounded-lg p-6 text-center">
-                <div className="text-red-500 font-bold mb-2">Failed to load firm details</div>
-                <div className="text-red-400 text-sm">{error || 'Data unavailable'}</div>
-                <button onClick={refreshData} className="mt-4 text-indigo-400 hover:text-indigo-300 font-medium">Retry</button>
-            </div>
-        );
-    }
-
-    const { tenant, roadmaps } = data;
-    const latestRoadmap = roadmaps?.lastRoadmap;
-
-    return (
-        <div className="max-w-7xl mx-auto px-4 py-8">
-            <header className="mb-8">
-                <div className="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-[0.2em] mb-2 font-mono">
-                    SuperAdmin Control Plane // Firm Detail
-                </div>
-                <div className="flex items-end justify-between">
-                    <div>
-                        <h1 className="text-4xl font-black text-white tracking-tighter leading-none mb-2">
-                            {tenant.name}
-                        </h1>
-                        <div className="flex items-center gap-4 text-slate-500 text-sm">
-                            <span className="flex items-center gap-1.5">
-                                <span className={`w-2 h-2 rounded-full ${tenant.status === 'pilot_active' ? 'bg-emerald-500' : 'bg-slate-700'}`} />
-                                {tenant.status.toUpperCase()}
-                            </span>
-                            <span className="text-slate-700">/</span>
-                            <span>{tenant.cohortLabel || 'No Cohort'}</span>
-                            <span className="text-slate-700">/</span>
-                            <span>{new Date(tenant.createdAt).toLocaleDateString()}</span>
-                        </div>
-                    </div>
-
-                    <div className="flex gap-4">
-                        {/* Intake Window controls disabled/removed due to legacy field dependency */}
-                    </div>
-                </div>
-            </header>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-8">
-                    {/* Execution Pipeline Overview */}
-                    <section className="space-y-4">
-                        <BaselineSummaryPanel tenantId={tenant.id} hasRoadmap={!!latestRoadmap} />
-
-                        {/* ExecutiveSnapshotPanel removed due to dependency on legacy intakeWindowState */}
-
-                        {/* BriefCompleteCard removed due to dependency on legacy executiveBriefStatus */}
-
-                        {data.diagnostics?.lastDiagnosticId && (
-                            <DiagnosticCompleteCard status="GENERATED" onReview={async () => { }} />
-                        )}
-
-                        {/* Discovery & Synthesis section removed due to dependency on legacy intakeWindowState */}
-
-                        {data.diagnostics?.lastDiagnosticId && (
-                            <AuthorityGuard requiredCategory={AuthorityCategory.EXECUTIVE}>
-                                <div className="space-y-4">
-                                    <div className="text-[10px] text-slate-500 uppercase font-extrabold mb-2">Ticket Moderation</div>
-                                    <DiagnosticModerationSurface
-                                        tenantId={tenant.id}
-                                        diagnosticId={data.diagnostics.lastDiagnosticId}
-                                        onStatusChange={setModerationStatus}
-                                    />
-                                </div>
-                            </AuthorityGuard>
-                        )}
-                    </section>
-                </div>
-
-                <aside className="space-y-6">
-                    <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
-                        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4">Firm Context</h3>
-                        <dl className="space-y-4">
-                            <div>
-                                <dt className="text-[10px] text-slate-600 uppercase font-bold mb-0.5">Owner</dt>
-                                <dd className="text-sm font-medium text-slate-200">{data.owner?.name}</dd>
-                                <dd className="text-[11px] text-slate-500 italic">{data.owner?.email}</dd>
-                            </div>
-                            <div>
-                                <dt className="text-[10px] text-slate-600 uppercase font-bold mb-0.5">Execution Stage</dt>
-                                {/* Legacy executionPhase removed */}
-                                <dd className="text-sm font-medium text-slate-200">UNKNOWN</dd>
-                            </div>
-                        </dl>
-                    </div>
-
-                    {moderationStatus?.readyForRoadmap && (
-                        <RoadmapReadinessPanel
-                            tenantId={tenant.id}
-                            intakeWindowState={'CLOSED'} // Hardcoded fallback or must derive from intakes
-                            briefStatus={'APPROVED'} // Hardcoded fallback or derived
-                            moderationStatus={moderationStatus}
-                            roadmapStatus={latestRoadmap?.status || null}
-                            onFinalize={async () => { }}
-                            isGenerating={false}
-                            readinessFlags={{
-                                knowledgeBaseReady: !!data.diagnostics?.lastDiagnosticId,
-                                rolesValidated: true,
-                                execReady: true // Fallback
-                            }}
-                        />
-                    )}
-                </aside>
-=======
     // ============================================================================
     // CANONICAL STATUS SYSTEM (LOCKED, READY, COMPLETE)
     // ============================================================================
 
     const getCanonicalStatus = (stage: number): 'LOCKED' | 'READY' | 'COMPLETE' => {
         if (!data) return 'LOCKED';
-        const { tenant, latestRoadmap, diagnosticStatus } = data;
+        const { tenant, latestRoadmap } = data; // diagnosticStatus removed if unused, or kept if needed.
 
         // s1: Intake (Source: intakeWindowState)
         const s1 = tenant.intakeWindowState === 'CLOSED' ? 'COMPLETE' : 'READY';
         if (stage === 1) return s1;
 
-        // s2: Executive Brief (Source: executive_briefs.status)
-        const s2Fact = tenant.executiveBriefStatus === 'APPROVED';
-        const s2 = (s2Fact && s1 === 'COMPLETE') ? 'COMPLETE' : (s1 === 'COMPLETE' ? 'READY' : 'LOCKED');
+        // s2: Executive Brief (Consultation Anchor)
+        // Decoupled: Can generate brief while intake is OPEN.
+        const s2Fact = ['APPROVED', 'ACKNOWLEDGED', 'WAIVED'].includes(tenant.executiveBriefStatus || '');
+        const hasOwnerIntake = data.intakes.some(i => (i.role === 'owner' || i.userRole === 'owner' || i.userEmail === data.owner?.email) && i.completedAt);
+        const hasStakeholders = intakeRoles.length > 0;
+
+        let s2: 'LOCKED' | 'READY' | 'COMPLETE' = 'LOCKED';
+        if (s2Fact) {
+            s2 = 'COMPLETE';
+        } else if (hasOwnerIntake && hasStakeholders) {
+            s2 = 'READY';
+        }
+
         if (stage === 2) return s2;
 
-        // s3: Diagnostic (Source: lastDiagnosticId)
-        const s3Fact = !!tenant.lastDiagnosticId;
-        const s3 = (s3Fact && s2 === 'COMPLETE') ? 'COMPLETE' : (s2 === 'COMPLETE' ? 'READY' : 'LOCKED');
+        // s3: Diagnostic (Source: latestDiagnostic from diagnostics table)
+        const diagExists = !!data.latestDiagnostic;
+        const diagPublished = data.latestDiagnostic?.status === 'published';
+        // Requirement: "Diagnostics generation requires ONLY: intake locked."
+        // Checks s1 ONLY.
+        const s3 = (diagExists && s1 === 'COMPLETE') ? 'COMPLETE' : (s1 === 'COMPLETE' ? 'READY' : 'LOCKED');
         if (stage === 3) return s3;
 
-        // s4: Ticket Moderation (Source: diagnosticStatus.readyForRoadmap)
-        const s4Fact = diagnosticStatus?.readyForRoadmap === true;
-        const s4 = (s4Fact && s3 === 'COMPLETE') ? 'COMPLETE' : (s3 === 'COMPLETE' ? 'READY' : 'LOCKED');
+        // s4: Discovery NOTES (Step 4)
+        const s4Fact = truthProbe?.discovery?.exists || false;
+        const s4 = (s4Fact && diagPublished) ? 'COMPLETE' : (diagPublished ? 'READY' : 'LOCKED');
         if (stage === 4) return s4;
 
-        // s5: Roadmap Generation (Source: latest roadmap artifact status)
-        const s5Fact = !!latestRoadmap;
+        // s5: Assisted Synthesis & Findings Declaration (Step 5)
+        const s5Fact = truthProbe?.findings?.exists || false;
         const s5 = (s5Fact && s4 === 'COMPLETE') ? 'COMPLETE' : (s4 === 'COMPLETE' ? 'READY' : 'LOCKED');
         if (stage === 5) return s5;
+
+        // s6: Ticket Moderation (Step 6)
+        const ticketsExist = (truthProbe?.tickets?.total || 0) > 0;
+        const moderationComplete = ticketsExist && (truthProbe?.tickets?.pending || 0) === 0;
+        if (stage === 6) {
+            if (s5 !== 'COMPLETE') return 'LOCKED';
+            if (moderationComplete) return 'COMPLETE';
+            return 'READY';
+        }
+
+        // s7: Roadmap Generation (Step 7)
+        const s7Fact = !!latestRoadmap;
+        if (stage === 7) {
+            if (!moderationComplete) return 'LOCKED';
+            return s7Fact ? 'COMPLETE' : 'READY';
+        }
 
         return 'LOCKED';
     };
@@ -483,6 +448,130 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         }
     };
 
+    // ============================================================================
+    // META-TICKET V2: EXECUTION HANDLERS
+    // ============================================================================
+
+    const handleLockIntake = async () => {
+        if (!params?.tenantId) return;
+        if (!window.confirm('Confirm Intake Lock? This freezes the intake window.')) return;
+        setIsGenerating(true);
+        try {
+            await superadminApi.lockIntake(params.tenantId);
+            await refreshData();
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleGenerateDiagnostic = async () => {
+        if (!params?.tenantId) return;
+        if (isGenerating) return;  // ✅ Guard against double-click
+        setIsGenerating(true);
+        try {
+            await superadminApi.generateDiagnostics(params.tenantId);
+            await refreshData();
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    // Lock & Publish Diagnostic require diagnosticId
+    const handleGenerateTickets = async () => {
+        if (!params?.tenantId || !data?.tenant?.lastDiagnosticId) return;
+        if (isGenerating) return;
+        setIsGenerating(true);
+        try {
+            await superadminApi.generateTickets(params.tenantId, data.tenant.lastDiagnosticId);
+            await refreshData();
+        } catch (err: any) {
+            console.error('Ticket Generation Error:', err);
+            setError(err.message || 'Failed to generate tickets');
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleActivateModeration = async () => {
+        console.log('[DEBUG] handleActivateModeration triggered for tenant:', params?.tenantId);
+        if (!params?.tenantId) {
+            console.error('[DEBUG] Missing tenantId in params');
+            return;
+        }
+
+        const confirmed = window.confirm('This will start a new moderation cycle tied to the current canonical findings. Legacy tickets will not be used. Proceed?');
+        console.log('[DEBUG] User confirmation:', confirmed);
+        if (!confirmed) return;
+
+        console.log('[DEBUG] Setting isGenerating=true');
+        setIsGenerating(true);
+        try {
+            console.log('[DEBUG] Calling superadminApi.activateTicketModeration...');
+            const result = await superadminApi.activateTicketModeration(params.tenantId);
+            console.log('[DEBUG] Activation result:', result);
+            await refreshData();
+            console.log('[DEBUG] Refresh done');
+        } catch (err: any) {
+            console.error('[DEBUG] Moderation Activation Error:', err);
+            setError(err.message || 'Failed to activate moderation');
+        } finally {
+            console.log('[DEBUG] Setting isGenerating=false');
+            setIsGenerating(false);
+        }
+    };
+
+    const handleLockDiagnostic = async () => {
+        if (!params?.tenantId || !data?.latestDiagnostic?.id) return;
+        if (!window.confirm('Lock Diagnostic? This prevents further regeneration.')) return;
+        setIsGenerating(true);
+        try {
+            await superadminApi.lockDiagnostic(params.tenantId, data.latestDiagnostic.id);
+            await refreshData();
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handlePublishDiagnostic = async () => {
+        if (!params?.tenantId || !data?.latestDiagnostic?.id) return;
+        if (!window.confirm('Publish Diagnostic? This makes artifacts visible to Discovery.')) return;
+        setIsGenerating(true);
+        try {
+            await superadminApi.publishDiagnostic(params.tenantId, data.latestDiagnostic.id);
+            await refreshData();
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleIngestDiscovery = async (notes: import('@roadmap/shared').CanonicalDiscoveryNotes) => {
+        if (!params?.tenantId) return;
+
+        setDiscoverySaving(true);
+        try {
+            await superadminApi.ingestDiscoveryNotes(params.tenantId, notes);
+            setDiscoveryOpen(false);
+            await refreshData();
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message);
+        } finally {
+            setDiscoverySaving(false);
+        }
+    };
+
 
     const handleCloseIntake = async () => {
         if (!params?.tenantId) return;
@@ -499,6 +588,186 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
             setIsGenerating(false);
         }
     };
+
+    const handleGenerateExecutiveBrief = async () => {
+        if (!params?.tenantId) return;
+        if (isGenerating) return;
+        setIsGenerating(true);
+        try {
+            await superadminApi.generateExecutiveBrief(params.tenantId);
+            await refreshData();
+        } catch (err: any) {
+            console.error('Failed to generate executive brief:', err);
+            // If it already exists, just refresh data and let the UI state resolve
+            if (err.message === 'EXECUTIVE_BRIEF_ALREADY_EXISTS') {
+                await refreshData();
+            } else {
+                setError(`Generation Error: ${err.message}`);
+            }
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleApproveExecutiveBrief = async () => {
+        if (!params?.tenantId) return;
+        if (isGenerating) return;
+        setIsGenerating(true);
+        try {
+            await superadminApi.approveExecutiveBrief(params.tenantId);
+            await refreshData();
+            setExecBriefOpen(false);
+        } catch (err: any) {
+            console.error('Failed to approve executive brief:', err);
+            setError(`Approval Error: ${err.message}`);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleDeliverExecutiveBrief = async () => {
+        if (!params?.tenantId) return;
+        if (isGenerating) return;
+        setIsGenerating(true);
+        try {
+            await superadminApi.deliverExecutiveBrief(params.tenantId);
+            await loadExecBriefData();
+            // Don't close modal, just refresh state to show "Delivered" if applicable
+            await refreshData();
+        } catch (err: any) {
+            console.error('Failed to deliver executive brief:', err);
+            window.alert(`Delivery Error: ${err.message}`);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleGenerateExecutiveBriefPdf = async () => {
+        if (!params?.tenantId) return;
+        if (isGenerating) return;
+        setIsGenerating(true);
+        try {
+            await superadminApi.generateExecutiveBriefPDF(params.tenantId);
+            await loadExecBriefData();
+            // window.alert('PDF Generated Successfully'); // Optional feedback
+        } catch (err: any) {
+            console.error('Failed to generate PDF:', err);
+            window.alert(`Generation Error: ${err.message}`);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    // Modal Data Fetch Functions
+    const loadExecBriefData = async () => {
+        if (!params?.tenantId) return;
+        setExecBriefLoading(true);
+        setExecBriefError(null);
+        try {
+            const response = await superadminApi.getExecutiveBrief(params.tenantId);
+            const { brief, hasPdf } = response;
+
+            if (!brief) {
+                setExecBriefError('No executive brief found');
+                setExecBriefData(null);
+                return;
+            }
+
+            // Map backend structure to modal-expected format
+            // The brief has a 'synthesis' JSONB field with sections
+            setExecBriefData({
+                status: brief.status,
+                synthesis: brief.synthesis, // Pass the whole synthesis object for tabs
+                createdAt: brief.generatedAt || brief.createdAt,
+                approvedAt: brief.approvedAt,
+                hasPdf: !!hasPdf,
+            });
+        } catch (err: any) {
+            console.error('Failed to load executive brief:', err);
+            setExecBriefError(err.message || 'Failed to load executive brief');
+            setExecBriefData(null);
+        } finally {
+            setExecBriefLoading(false);
+        }
+    };
+
+    const loadDiagnosticData = async () => {
+        if (!data?.latestDiagnostic?.id) {
+            setDiagError('No diagnostic available');
+            return;
+        }
+        setDiagLoading(true);
+        setDiagError(null);
+        try {
+            const response = await superadminApi.getDiagnosticArtifacts(data.latestDiagnostic.id);
+
+            // Map backend response to modal format
+            setDiagData({
+                status: response.diagnostic.status,
+                createdAt: response.diagnostic.createdAt,
+                outputs: {
+                    overview: response.outputs.overview,
+                    aiOpportunities: response.outputs.aiOpportunities,
+                    roadmapSkeleton: response.outputs.roadmapSkeleton,
+                    discoveryQuestions: response.outputs.discoveryQuestions,
+                },
+            });
+        } catch (err: any) {
+            console.error('Failed to load diagnostic:', err);
+            setDiagError(err.message || 'Failed to load diagnostic');
+            setDiagData(null);
+        } finally {
+            setDiagLoading(false);
+        }
+    };
+
+    // Modal Open Handlers
+    const openExecBriefModal = async () => {
+        setExecBriefOpen(true);
+        await loadExecBriefData();
+    };
+
+    const openDiagnosticModal = async () => {
+        setDiagOpen(true);
+        await loadDiagnosticData();
+    };
+
+    // Modal Close Handlers
+    const closeExecBriefModal = async () => {
+        setExecBriefOpen(false);
+        setExecBriefData(null);
+        setExecBriefError(null);
+        await refreshData(); // Refresh in case any actions were taken
+    };
+
+    const openDiscoveryModal = async () => {
+        setDiscoveryOpen(true);
+        if (!diagData && data?.latestDiagnostic?.id) {
+            await loadDiagnosticData();
+        }
+    };
+
+    const openSynthesisModal = async () => {
+        setSynthesisOpen(true);
+        // Load discovery notes
+        try {
+            const res = await superadminApi.getDiscoveryNotes(params.tenantId);
+            setSynthesisNotes(res.notes);
+        } catch (err) {
+            console.error('Failed to load discovery notes for synthesis:', err);
+        }
+        // Ensure other artifacts are loaded
+        if (!diagData) await loadDiagnosticData();
+        if (!execBriefData) await loadExecBriefData();
+    };
+
+    const closeDiagnosticModal = async () => {
+        setDiagOpen(false);
+        setDiagData(null);
+        setDiagError(null);
+        await refreshData(); // Refresh in case any actions were taken
+    };
+
 
     if (loading) return <div className="flex items-center justify-center min-h-screen text-slate-400">Loading firm details...</div>;
     if (error) return (
@@ -526,7 +795,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         <div className="flex min-h-screen bg-slate-950">
 
             {/* Main Content - Right Side */}
-            <div className="flex-1 space-y-8 p-8 max-w-7xl mx-auto">
+            <div className="flex-1 space-y-6 p-8 max-w-7xl mx-auto">
                 {/* PANEL 1: Identity & Status */}
                 <section id="panel-identity-status">
                     <header className="border-b border-slate-800 pb-6 flex items-start justify-between">
@@ -558,17 +827,34 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                         </div>
                     </header>
 
-                    {/* KPI Row */}
-                    <div className="grid grid-cols-5 gap-4 mt-6">
-                        <KPICard label="Firm Status" value={tenant.status} />
-                        <KPICard label="Engagement Cohort" value={tenant.cohortLabel || '—'} />
-                        <KPICard
-                            label="Market Region" value={tenant.region || '—'} />
-                        <KPICard
-                            label="Operational Intake"
-                            value={tenant.intakeWindowState === 'CLOSED' ? 'CLOSED' : `${intakes.filter(i => i.status === 'completed').length}/${intakes.length} COMPLETE`}
-                        />
-                        <KPICard label="Stakeholders" value={intakeRoles.length} />
+                    {/* Compact Summary Strip */}
+                    <div className="mt-4 py-2 px-3 bg-slate-900/30 border border-slate-800 rounded-lg flex items-center gap-6 text-[11px] text-slate-400">
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-slate-500 font-medium">Status:</span>
+                            <span className="text-slate-300">{tenant.status}</span>
+                        </div>
+                        <div className="w-px h-3 bg-slate-800" />
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-slate-500 font-medium">Cohort:</span>
+                            <span className="text-slate-300">{tenant.cohortLabel || '—'}</span>
+                        </div>
+                        <div className="w-px h-3 bg-slate-800" />
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-slate-500 font-medium">Market:</span>
+                            <span className="text-slate-300">{tenant.region || '—'}</span>
+                        </div>
+                        <div className="w-px h-3 bg-slate-800" />
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-slate-500 font-medium">Intake:</span>
+                            <span className="text-slate-300">
+                                {tenant.intakeWindowState === 'CLOSED' ? 'CLOSED' : `${intakes.filter(i => i.status === 'completed').length}/${intakes.length} COMPLETE`}
+                            </span>
+                        </div>
+                        <div className="w-px h-3 bg-slate-800" />
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-slate-500 font-medium">Stakeholders:</span>
+                            <span className="text-slate-300">{intakeRoles.length}</span>
+                        </div>
                     </div>
                 </section>
 
@@ -588,11 +874,51 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                 </AuthorityGuard>
 
                 {/* MAIN EXECUTION GRID: Simple spine + contextual panels */}
-                <div className="grid grid-cols-[240px_1fr] gap-6">
+                <div className="grid grid-cols-[240px_1fr] gap-4">
 
 
                     {/* LEFT: Dynamic Authority Spine */}
-                    <aside>
+                    <aside className="space-y-4">
+                        {/* TRUTH PROBE - Collapsed by default */}
+                        {truthProbe && (
+                            showTruthProbe ? (
+                                <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="flex justify-end mb-1">
+                                        <button
+                                            onClick={() => setShowTruthProbe(false)}
+                                            className="text-[9px] text-slate-500 hover:text-slate-300 flex items-center gap-1 uppercase tracking-wider font-bold"
+                                        >
+                                            Hide <span className="text-base leading-none">×</span>
+                                        </button>
+                                    </div>
+                                    <TruthProbeCard data={truthProbe} />
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={() => setShowTruthProbe(true)}
+                                    className="w-full text-left py-2 px-3 bg-slate-900/30 border border-slate-800 hover:border-slate-700 rounded-lg transition-colors group"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-[10px] text-slate-400 space-y-0.5">
+                                            <div className="font-bold uppercase tracking-widest text-slate-500 mb-1">Truth</div>
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span>Brief: <span className="text-slate-300">{truthProbe.brief?.status || 'N/A'}</span></span>
+                                                <span className="text-slate-700">•</span>
+                                                <span>Diag: <span className="text-slate-300">{truthProbe.diagnostic?.status || 'N/A'}</span></span>
+                                                <span className="text-slate-700">•</span>
+                                                <span>Tickets: <span className="text-slate-300">{truthProbe.tickets?.approved || 0}/{truthProbe.tickets?.total || 0}</span></span>
+                                            </div>
+                                        </div>
+                                        <svg className="w-3 h-3 text-slate-600 group-hover:text-slate-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </div>
+                                </button>
+                            )
+                        )}
+                        {truthProbeLoading && <div className="text-xs text-slate-500 text-center animate-pulse py-2">Checking lifecycle...</div>}
+                        {truthProbeError && <div className="text-[10px] text-red-500 bg-red-900/10 p-2 rounded border border-red-900/20">{truthProbeError}</div>}
+
                         <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-4">
                             Execution Authority
                         </div>
@@ -602,11 +928,188 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                             {(() => {
                                 // Define gates inline for this section
                                 const gates = [
-                                    { id: 1, label: 'Intake', status: getCanonicalStatus(1) },
-                                    { id: 2, label: 'Executive Brief', status: getCanonicalStatus(2) },
-                                    { id: 3, label: 'Diagnostic', status: getCanonicalStatus(3) },
-                                    { id: 4, label: 'Ticket Moderation', status: getCanonicalStatus(4) },
-                                    { id: 5, label: 'Roadmap Generation', status: getCanonicalStatus(5) }
+                                    {
+                                        id: 1,
+                                        label: 'Intake',
+                                        status: getCanonicalStatus(1),
+                                        action: getCanonicalStatus(1) === 'READY' ? (
+                                            <button
+                                                onClick={handleLockIntake}
+                                                className="mt-2 text-[10px] uppercase font-bold text-indigo-400 hover:text-indigo-300 border border-indigo-900/50 bg-indigo-950/30 px-3 py-1.5 rounded transition-colors"
+                                            >
+                                                Lock Intake
+                                            </button>
+                                        ) : null
+                                    },
+                                    {
+                                        id: 2,
+                                        label: 'Executive Brief',
+                                        status: getCanonicalStatus(2),
+                                        action: (() => {
+                                            const status = getCanonicalStatus(2);
+                                            const briefStatus = tenant.executiveBriefStatus;
+
+                                            if (status === 'READY') {
+                                                if (!briefStatus) {
+                                                    return (
+                                                        <button
+                                                            onClick={handleGenerateExecutiveBrief}
+                                                            className="mt-2 text-[10px] uppercase font-bold text-indigo-400 hover:text-indigo-300 border border-indigo-900/50 bg-indigo-950/30 px-3 py-1.5 rounded transition-colors"
+                                                        >
+                                                            Generate
+                                                        </button>
+                                                    );
+                                                }
+                                                return (
+                                                    <button
+                                                        onClick={openExecBriefModal}
+                                                        className="mt-2 text-[10px] uppercase font-bold text-orange-400 hover:text-orange-300 border border-orange-900/50 bg-orange-950/30 px-3 py-1.5 rounded transition-colors"
+                                                    >
+                                                        Review Draft
+                                                    </button>
+                                                );
+                                            }
+                                            return null;
+                                        })()
+                                    },
+                                    {
+                                        id: 3,
+                                        label: 'Diagnostic',
+                                        status: getCanonicalStatus(3),
+                                        // Complex Action Logic for Diagnostic
+                                        action: (() => {
+                                            const status = getCanonicalStatus(3);
+                                            const granularStatus = data.latestDiagnostic?.status || 'generated';
+
+                                            // V2 Canon: Intake Locked -> Generate.
+                                            if (status === 'READY') {
+                                                return (
+                                                    <button
+                                                        onClick={handleGenerateDiagnostic}
+                                                        className="mt-2 text-[10px] uppercase font-bold text-indigo-400 hover:text-indigo-300 border border-indigo-900/50 bg-indigo-950/30 px-3 py-1.5 rounded transition-colors"
+                                                    >
+                                                        Generate
+                                                    </button>
+                                                );
+                                            }
+
+                                            // If COMPLETE (Generated), rely on TruthProbe state
+                                            if (status === 'COMPLETE') {
+                                                if (granularStatus === 'generated') {
+                                                    return (
+                                                        <div className="flex gap-2 mt-2">
+                                                            <button
+                                                                onClick={handleLockDiagnostic}
+                                                                disabled={isGenerating}
+                                                                className="text-[10px] uppercase font-bold text-amber-400 hover:text-amber-300 border border-amber-900/50 bg-amber-950/30 px-3 py-1.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            >
+                                                                Lock
+                                                            </button>
+                                                            <button
+                                                                onClick={handleGenerateDiagnostic}
+                                                                disabled={isGenerating}
+                                                                className="text-[10px] uppercase font-bold text-indigo-400 hover:text-indigo-300 border border-indigo-900/50 bg-indigo-950/30 px-3 py-1.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            >
+                                                                Regen
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                }
+                                                if (granularStatus === 'locked') {
+                                                    return (
+                                                        <button
+                                                            onClick={handlePublishDiagnostic}
+                                                            className="mt-2 text-[10px] uppercase font-bold text-emerald-400 hover:text-emerald-300 border border-emerald-900/50 bg-emerald-950/30 px-3 py-1.5 rounded transition-colors"
+                                                        >
+                                                            Publish
+                                                        </button>
+                                                    );
+                                                }
+                                                if (granularStatus === 'published') {
+                                                    // Allow re-generation?
+                                                    return (
+                                                        <div className="flex gap-2 mt-2">
+                                                            <span className="text-[10px] font-bold text-emerald-500 py-1.5">PUBLISHED</span>
+                                                            <button
+                                                                onClick={handleGenerateDiagnostic}
+                                                                className="text-[10px] uppercase font-bold text-indigo-400 hover:text-indigo-300 px-2 py-1.5 border border-indigo-900/30 rounded"
+                                                            >
+                                                                Regen
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                }
+                                            }
+                                            return null;
+                                        })()
+                                    },
+                                    {
+                                        id: 4,
+                                        label: 'Discovery Notes (Raw)',
+                                        status: getCanonicalStatus(4),
+                                        action: (() => {
+                                            const status = getCanonicalStatus(4);
+                                            if (status === 'READY' || status === 'COMPLETE') {
+                                                return (
+                                                    <button
+                                                        onClick={openDiscoveryModal}
+                                                        className="mt-2 text-[10px] uppercase font-bold text-indigo-400 hover:text-indigo-300 border border-indigo-900/50 bg-indigo-950/30 px-3 py-1.5 rounded transition-colors"
+                                                    >
+                                                        {status === 'COMPLETE' ? 'Edit Raw Notes' : 'Ingest Notes (Raw)'}
+                                                    </button>
+                                                );
+                                            }
+                                            return null;
+                                        })()
+                                    },
+                                    {
+                                        id: 5,
+                                        label: 'Assisted Synthesis',
+                                        status: getCanonicalStatus(5),
+                                        action: (() => {
+                                            const status = getCanonicalStatus(5);
+                                            if (status === 'READY' || status === 'COMPLETE') {
+                                                return (
+                                                    <button
+                                                        onClick={openSynthesisModal}
+                                                        className="mt-2 text-[10px] uppercase font-bold text-indigo-400 hover:text-indigo-300 border border-indigo-900/50 bg-indigo-950/30 px-3 py-1.5 rounded transition-colors"
+                                                    >
+                                                        Review & Reason With Agent
+                                                    </button>
+                                                );
+                                            }
+                                            return null;
+                                        })()
+                                    },
+                                    {
+                                        id: 6,
+                                        label: 'Ticket Moderation',
+                                        status: getCanonicalStatus(6),
+                                        action: (() => {
+                                            const status = getCanonicalStatus(6);
+                                            const ticketsExist = (truthProbe?.tickets?.total || 0) > 0;
+
+                                            if (status === 'READY' && !ticketsExist) {
+                                                return (
+                                                    <button
+                                                        onClick={handleActivateModeration}
+                                                        disabled={isGenerating}
+                                                        className="mt-2 text-[10px] uppercase font-bold text-amber-400 hover:text-amber-300 border border-amber-900/50 bg-amber-950/30 px-3 py-1.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                                                    >
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                                        {isGenerating ? 'Activating...' : 'Begin Ticket Moderation'}
+                                                    </button>
+                                                );
+                                            }
+                                            return null;
+                                        })()
+                                    },
+                                    {
+                                        id: 7,
+                                        label: 'Roadmap Generation',
+                                        status: getCanonicalStatus(7),
+                                        action: null
+                                    }
                                 ];
 
                                 return gates.map((gate) => {
@@ -614,15 +1117,23 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                     return (
                                         <div
                                             key={gate.id}
-                                            className={`p-4 rounded-xl border-2 flex items-center gap-4 ${styles.container}`}
+                                            className={`p-4 rounded-xl border-2 flex flex-col gap-2 ${styles.container}`}
                                         >
-                                            <div className={`w-3 h-3 rounded-full shrink-0 ${styles.dot}`} />
-                                            <div>
-                                                <div className="font-bold tracking-tight text-white">{gate.label}</div>
-                                                <div className="text-[10px] uppercase font-bold tracking-widest opacity-70">
-                                                    {gate.status}
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-3 h-3 rounded-full shrink-0 ${styles.dot}`} />
+                                                <div>
+                                                    <div className="font-bold tracking-tight text-white">{gate.label}</div>
+                                                    <div className="text-[10px] uppercase font-bold tracking-widest opacity-70">
+                                                        {gate.id === 4 && gate.status === 'COMPLETE' ? 'INGESTED (RAW)' : gate.status}
+                                                    </div>
                                                 </div>
                                             </div>
+                                            {/* Action Area */}
+                                            {gate.action && (
+                                                <div className="pl-7">
+                                                    {gate.action}
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 });
@@ -644,25 +1155,102 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                     </aside>
 
                     {/* RIGHT: Contextual panels */}
-                    <main className="space-y-6">
+                    <main className="space-y-4">
 
-
-                        {/* 1. Executive Snapshot (when available) */}
-                        {tenant.intakeWindowState === 'CLOSED' && (
-                            <ExecutiveSnapshotPanel
-                                data={snapshotData}
-                                loading={snapshotLoading}
-                            />
+                        {/* 0. ROI Baseline Summary - Collapsible */}
+                        {showBaselinePanel ? (
+                            <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                                <div className="flex justify-end mb-1">
+                                    <button
+                                        onClick={() => setShowBaselinePanel(false)}
+                                        className="text-[9px] text-slate-500 hover:text-slate-300 flex items-center gap-1 uppercase tracking-wider font-bold"
+                                    >
+                                        Hide <span className="text-base leading-none">×</span>
+                                    </button>
+                                </div>
+                                <BaselineSummaryPanel
+                                    tenantId={tenant.id}
+                                    hasRoadmap={!!latestRoadmap}
+                                />
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => setShowBaselinePanel(true)}
+                                className="w-full text-left py-2 px-3 bg-slate-900/30 border border-slate-800 hover:border-slate-700 rounded-lg transition-colors group"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="text-[10px] text-slate-400">
+                                        <div className="font-bold uppercase tracking-widest text-slate-500 mb-0.5">ROI Baseline Summary</div>
+                                        <div className="text-[9px] text-slate-600">Owner intake metrics</div>
+                                    </div>
+                                    <svg className="w-3 h-3 text-slate-600 group-hover:text-slate-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </button>
                         )}
 
-                        {/* 2. Executive Brief (when available) */}
+                        {/* 1. Strategic Context & Capacity ROI - Collapsed by default */}
+                        {tenant.intakeWindowState === 'CLOSED' && (
+                            showROIPanel ? (
+                                <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="flex justify-end mb-1">
+                                        <button
+                                            onClick={() => setShowROIPanel(false)}
+                                            className="text-[9px] text-slate-500 hover:text-slate-300 flex items-center gap-1 uppercase tracking-wider font-bold"
+                                        >
+                                            Hide <span className="text-base leading-none">×</span>
+                                        </button>
+                                    </div>
+                                    <ExecutiveSnapshotPanel
+                                        data={snapshotData}
+                                        loading={snapshotLoading}
+                                    />
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={() => setShowROIPanel(true)}
+                                    className="w-full text-left py-2 px-3 bg-slate-900/30 border border-slate-800 hover:border-slate-700 rounded-lg transition-colors group"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-[10px] text-slate-400">
+                                            <div className="font-bold uppercase tracking-widest text-slate-500 mb-0.5">Strategic Context & ROI</div>
+                                            <div className="text-[9px] text-slate-600">No active signals yet</div>
+                                        </div>
+                                        <span className="text-slate-600 group-hover:text-slate-500 transition-colors">▸</span>
+                                    </div>
+                                </button>
+                            )
+                        )}
+
+                        {/* 2. Executive Brief (modal-only review) */}
                         <AuthorityGuard requiredCategory={AuthorityCategory.EXECUTIVE}>
-                            <ExecutiveBriefPanel
-                                tenantId={tenant.id}
-                                onApproved={refreshData}
-                            />
+                            {(() => {
+                                const status = tenant.executiveBriefStatus;
+                                const isComplete = status && ['APPROVED', 'ACKNOWLEDGED', 'WAIVED'].includes(status);
+
+                                if (!isComplete) return null;
+
+                                return (
+                                    <BriefCompleteCard
+                                        status={status}
+                                        onReview={openExecBriefModal}
+                                    />
+                                );
+                            })()}
                         </AuthorityGuard>
 
+
+
+                        {/* @ANCHOR:SA_FIRM_DETAIL_DIAGNOSTIC_REVIEW_SLOT */}
+
+                        {/* 3.5 Diagnostic Review (modal-only) */}
+                        {tenant.lastDiagnosticId && (
+                            <DiagnosticCompleteCard
+                                status="GENERATED"
+                                onReview={openDiagnosticModal}
+                            />
+                        )}
                         {/* 3. Ticket Moderation (Waterfall Step 4) */}
                         {tenant.intakeWindowState === 'CLOSED' && (
                             <AuthorityGuard requiredCategory={AuthorityCategory.EXECUTIVE}>
@@ -670,11 +1258,32 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                     <div className="text-[10px] text-slate-500 uppercase font-extrabold mb-2">Ticket Moderation {tenant.lastDiagnosticId ? '(Active)' : '(Pending)'}</div>
 
                                     {tenant.lastDiagnosticId ? (
-                                        <DiagnosticModerationSurface
-                                            tenantId={tenant.id}
-                                            diagnosticId={tenant.lastDiagnosticId}
-                                            onStatusChange={setModerationStatus}
-                                        />
+                                        <div className="space-y-4">
+                                            {/* Stage 6 Activation Trigger */}
+                                            {getCanonicalStatus(5) === 'COMPLETE' && !truthProbe?.tickets?.isDraft && (
+                                                <div className="p-6 bg-indigo-900/10 border border-indigo-500/30 rounded-xl mb-4">
+                                                    <div className="flex items-center justify-between gap-6">
+                                                        <div className="flex-1">
+                                                            <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-tight">Stage 6: Ticket Moderation Required</h3>
+                                                            <p className="text-xs text-slate-400 mt-1">Assisted synthesis is complete. Materialize findings into draft tickets to begin moderation.</p>
+                                                        </div>
+                                                        <button
+                                                            onClick={handleActivateModeration}
+                                                            disabled={isGenerating}
+                                                            className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all shadow-lg shadow-indigo-600/20"
+                                                        >
+                                                            {isGenerating ? 'Activating...' : 'Begin Ticket Moderation'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <DiagnosticModerationSurface
+                                                tenantId={tenant.id}
+                                                diagnosticId={tenant.lastDiagnosticId}
+                                                onStatusChange={setModerationStatus}
+                                            />
+                                        </div>
                                     ) : (
                                         <div className="p-6 border border-slate-800 border-dashed rounded-lg flex flex-col items-center justify-center text-center opacity-60">
                                             <div className="w-10 h-10 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center mb-3">
@@ -691,6 +1300,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                 </div>
                             </AuthorityGuard>
                         )}
+
 
                         {/* 4. Roadmap Readiness (when available) */}
                         {tenant.intakeWindowState === 'CLOSED' && moderationStatus?.readyForRoadmap && (
@@ -721,6 +1331,50 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                 {/* Role Simulation Control (V2 - Verification Tool) */}
                 <RoleSimulator />
 
+                {/* @ANCHOR:SA_FIRM_DETAIL_MODAL_MOUNT */}
+                {/* Review Modals */}
+                <ExecutiveBriefModal
+                    open={isExecBriefOpen}
+                    onClose={closeExecBriefModal}
+                    data={execBriefData}
+                    status={execBriefData?.status || tenant.executiveBriefStatus}
+                    onApprove={handleApproveExecutiveBrief}
+                    isApproving={isGenerating}
+                    tenantId={params?.tenantId || ''}
+                    onDeliver={handleDeliverExecutiveBrief}
+                    isDelivering={isGenerating}
+                    hasPdf={execBriefData?.hasPdf}
+                    onGeneratePdf={handleGenerateExecutiveBriefPdf}
+                />
+
+                <DiagnosticReviewModal
+                    open={isDiagOpen}
+                    onClose={closeDiagnosticModal}
+                    data={diagData}
+                    status={diagData?.status || data?.latestDiagnostic?.status || 'GENERATED'}
+                />
+
+                <DiscoveryNotesModal
+                    open={isDiscoveryOpen}
+                    onClose={() => setDiscoveryOpen(false)}
+                    onSave={handleIngestDiscovery}
+                    isSaving={discoverySaving}
+                    referenceQuestions={diagData?.outputs?.discoveryQuestions}
+                />
+
+                <AssistedSynthesisModal
+                    open={isSynthesisOpen}
+                    onClose={() => setSynthesisOpen(false)}
+                    tenantId={params.tenantId}
+                    artifacts={{
+                        discoveryNotes: synthesisNotes,
+                        diagnostic: diagData,
+                        executiveBrief: execBriefData
+                    }}
+                    onRefresh={refreshData}
+                />
+
+
                 {/* Intake Modal */}
                 {intakeModalOpen && selectedIntake && (
                     <IntakeModal
@@ -736,13 +1390,10 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                         }}
                     />
                 )}
->>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)
             </div>
         </div>
     );
 }
-<<<<<<< HEAD
-=======
 
 // Sub-components for clean structure
 
@@ -785,9 +1436,10 @@ function StrategicStakeholdersPanel({
 
     return (
         <>
-            <div className="bg-slate-900/30 border border-slate-800 rounded-lg p-6">
-                <h3 className="text-sm font-bold text-slate-200 mb-4">Strategic Stakeholders</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Flattened: No container, just label + cards */}
+            <div>
+                <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">Strategic Stakeholders</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                     {roles.map(role => {
                         const intakeComplete = role.intakeStatus === 'COMPLETED';
 
@@ -915,4 +1567,3 @@ function RoleSimulator() {
         </div>
     );
 }
->>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)

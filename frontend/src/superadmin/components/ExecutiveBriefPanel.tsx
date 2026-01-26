@@ -7,7 +7,7 @@ interface ExecutiveBriefPanelProps {
     onApproved?: () => void;
 }
 
-type BriefState = 'LOADING' | 'NOT_READY' | 'READY_TO_GENERATE' | 'DRAFT' | 'APPROVED' | 'ERROR';
+type BriefState = 'LOADING' | 'NOT_READY' | 'READY_TO_GENERATE' | 'DRAFT' | 'APPROVED' | 'DELIVERED' | 'ERROR';
 type ExecutiveBriefView = 'PRIVATE_LEADERSHIP' | 'SYSTEM';
 
 export function ExecutiveBriefPanel({ tenantId, onApproved }: ExecutiveBriefPanelProps) {
@@ -24,7 +24,9 @@ export function ExecutiveBriefPanel({ tenantId, onApproved }: ExecutiveBriefPane
             const response = await superadminApi.getExecutiveBrief(tenantId);
             setBrief(response.brief);
 
-            if (response.brief.status === 'APPROVED') {
+            if (response.brief.status === 'DELIVERED') {
+                setState('DELIVERED');
+            } else if (response.brief.status === 'APPROVED') {
                 setState('APPROVED');
             } else {
                 setState('DRAFT');
@@ -86,6 +88,29 @@ export function ExecutiveBriefPanel({ tenantId, onApproved }: ExecutiveBriefPane
             } else {
                 setError(err?.message || 'Failed to approve executive brief');
             }
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleDeliver = async () => {
+        const confirmed = window.confirm(
+            "This document contains interpretive leadership insights intended for executive review.\n\n" +
+            "Once delivered, it becomes the reference point for diagnostic and discovery.\n\n" +
+            "Are you sure you want to deliver this Executive Brief?"
+        );
+
+        if (!confirmed) return;
+
+        try {
+            setActionLoading(true);
+            await superadminApi.deliverExecutiveBrief(tenantId);
+            // Re-fetch to confirm state change and get updated stamps
+            await fetchBrief();
+            // Assuming fetchBrief updates state to DELIVERED if backend status updated
+        } catch (err: any) {
+            console.error('[ExecutiveBrief] Delivery error:', err);
+            setError(err?.message || 'Failed to deliver executive brief');
         } finally {
             setActionLoading(false);
         }
@@ -284,10 +309,11 @@ export function ExecutiveBriefPanel({ tenantId, onApproved }: ExecutiveBriefPane
         );
     }
 
-    if (state === 'APPROVED' && brief) {
+    if ((state === 'APPROVED' || state === 'DELIVERED') && brief) {
         const synthesis = brief.synthesis || {};
         const signals = brief.signals || {};
         const verification = signals.verification || {};
+        const isDelivered = state === 'DELIVERED';
 
         return (
             <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
@@ -297,34 +323,73 @@ export function ExecutiveBriefPanel({ tenantId, onApproved }: ExecutiveBriefPane
                         <div>
                             <h3 className="text-sm font-bold text-slate-300 tracking-wider">Executive Brief</h3>
                             <p className="text-[10px] text-slate-500 font-mono mt-1">
-                                APPROVED \u00b7 {brief.approvedAt ? new Date(brief.approvedAt).toLocaleDateString() : ''}
+                                {isDelivered ? `DELIVERED` : `APPROVED`} · {brief.approvedAt ? new Date(brief.approvedAt).toLocaleDateString() : ''}
                             </p>
                         </div>
-                        <div className="px-2 py-1 bg-green-900/20 border border-green-500/30 text-green-400 text-[10px] font-bold rounded uppercase">
-                            Approved \u00b7 Intake Closed
+                        <div className={`px-2 py-1 border text-[10px] font-bold rounded uppercase ${isDelivered
+                                ? 'bg-purple-900/20 border-purple-500/30 text-purple-400'
+                                : 'bg-green-900/20 border-green-500/30 text-green-400'
+                            }`}>
+                            {isDelivered ? 'Delivered' : 'Approved · Intake Closed'}
                         </div>
                     </div>
 
-                    {/* Tab Switcher */}
-                    <div className="flex gap-4">
-                        <button
-                            onClick={() => setActiveView('PRIVATE_LEADERSHIP')}
-                            className={`px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest rounded-full transition-all border ${activeView === 'PRIVATE_LEADERSHIP'
-                                ? 'bg-white text-slate-950 border-white shadow-lg'
-                                : 'bg-transparent text-slate-500 border-slate-700/50 hover:text-slate-300 hover:border-slate-500'
-                                }`}
-                        >
-                            Private Leadership
-                        </button>
-                        <button
-                            onClick={() => setActiveView('SYSTEM')}
-                            className={`px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest rounded-full transition-all border ${activeView === 'SYSTEM'
-                                ? 'bg-white text-slate-950 border-white shadow-lg'
-                                : 'bg-transparent text-slate-500 border-slate-700/50 hover:text-slate-300 hover:border-slate-500'
-                                }`}
-                        >
-                            System View
-                        </button>
+                    <div className="flex justify-between items-center">
+                        {/* Tab Switcher */}
+                        <div className="flex gap-4">
+                            <button
+                                onClick={() => setActiveView('PRIVATE_LEADERSHIP')}
+                                className={`px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest rounded-full transition-all border ${activeView === 'PRIVATE_LEADERSHIP'
+                                    ? 'bg-white text-slate-950 border-white shadow-lg'
+                                    : 'bg-transparent text-slate-500 border-slate-700/50 hover:text-slate-300 hover:border-slate-500'
+                                    }`}
+                            >
+                                Private Leadership
+                            </button>
+                            <button
+                                onClick={() => setActiveView('SYSTEM')}
+                                className={`px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest rounded-full transition-all border ${activeView === 'SYSTEM'
+                                    ? 'bg-white text-slate-950 border-white shadow-lg'
+                                    : 'bg-transparent text-slate-500 border-slate-700/50 hover:text-slate-300 hover:border-slate-500'
+                                    }`}
+                            >
+                                System View
+                            </button>
+                        </div>
+
+                        {/* ACTION BUTTON: Deliver Executive Brief */}
+                        {state === 'APPROVED' && (
+                            <button
+                                onClick={handleDeliver}
+                                disabled={actionLoading}
+                                className="px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest bg-purple-600 hover:bg-purple-500 text-white rounded-full transition-colors flex items-center gap-2"
+                            >
+                                {actionLoading ? (
+                                    <>
+                                        <svg className="animate-spin h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Delivering...
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                        </svg>
+                                        Deliver to Client
+                                    </>
+                                )}
+                            </button>
+                        )}
+                        {state === 'DELIVERED' && (
+                            <div className="text-[10px] font-mono text-purple-400 flex items-center gap-1 opacity-70">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Emailed
+                            </div>
+                        )}
                     </div>
                 </div>
 

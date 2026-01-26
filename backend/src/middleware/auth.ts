@@ -18,7 +18,7 @@ export interface AuthRequest<
   authorityCategory?: AuthorityCategory;
 }
 
-const TENANT_ROLES: UserRole[] = ['owner', 'ops', 'sales', 'delivery', 'staff'];
+const TENANT_ROLES: UserRole[] = ['owner', 'ops', 'sales', 'delivery', 'staff', 'exec_sponsor'];
 
 export function authenticate(req: AuthRequest, res: Response, next: NextFunction) {
   try {

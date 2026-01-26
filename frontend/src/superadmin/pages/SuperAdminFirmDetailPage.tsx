@@ -37,6 +37,7 @@ import { IntakeModal } from '../components/IntakeModal';
 import { DocumentUploadModal } from '../components/DocumentUploadModal';
 import { MetricsCard } from '../components/MetricsCard';
 import { TicketModerationCard } from '../components/TicketModerationCard';
+import { ExecutiveBriefPanel } from '../components/ExecutiveBriefPanel';
 
 export default function SuperAdminFirmDetailPage() {
   const [, params] = useRoute<{ tenantId: string }>(
@@ -311,6 +312,14 @@ export default function SuperAdminFirmDetailPage() {
       {/* Intakes + Roadmaps + Activity */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 text-sm">
         <div className="lg:col-span-2 space-y-4">
+          <ExecutiveBriefPanel
+            tenantId={params.tenantId}
+            onApproved={() => {
+              fetchWorkflowStatus();
+              fetchDocuments();
+            }}
+          />
+
           {/* Ticket Moderation Cockpit (TM-3a) */}
           {workflowStatus?.sop01?.complete && data?.tenant?.lastDiagnosticId && (
             <TicketModerationCard
