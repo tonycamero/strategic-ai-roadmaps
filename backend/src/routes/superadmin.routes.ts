@@ -110,7 +110,7 @@ router.get('/firms/:tenantId/workflow-status', superadminController.getFirmWorkf
 // POST /api/superadmin/firms/:tenantId/generate-sop01 - Diagnostic Engine (RBAC Gated)
 router.post('/firms/:tenantId/generate-sop01', async (req, res, next) => {
   // Use lazy import to avoid circular dependency loop with temp_controller -> auth -> routes
-  const { generateSop01ForFirm } = require('../controllers/temp_controller');
+  const { generateSop01ForFirm } = require('../controllers/superadmin.controller');
   return generateSop01ForFirm(req, res, next);
 });
 
@@ -132,7 +132,7 @@ router.post('/tenants/:tenantId/refresh-vector-store', superadminController.refr
 
 // POST /api/superadmin/firms/:tenantId/assemble-roadmap - Stage 5: Assembly
 router.post('/firms/:tenantId/assemble-roadmap', async (req, res, next) => {
-  const { assembleRoadmapForFirm } = require('../controllers/temp_controller');
+  const { assembleRoadmapForFirm } = require('../controllers/superadmin.controller')
   return assembleRoadmapForFirm(req, res, next);
 });
 
