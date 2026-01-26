@@ -92,16 +92,54 @@ export default function TeamIntakesReview() {
                 </div>
 
                 <div className="grid gap-8 md:grid-cols-2">
-                  {Object.entries((intake.answers || {}) as any).map(([key, value]) => (
-                    <div key={key} className="space-y-2">
-                      <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                        {key.replace(/_/g, ' ')}
+                  {Object.entries((intake.answers || {}) as any)
+                    .filter(([key, value]) => {
+                      // 1. Filter out "Bad fields" (leaks)
+                      const skipKeys = ['non_goals', 'do_not_automate', 'chamberRole', 'primary_kpis'];
+                      if (skipKeys.includes(key)) return false;
+
+                      // 2. Filter out empty arrays or arrays of empty strings
+                      if (Array.isArray(value)) {
+                        return value.some(v => v !== null && v !== undefined && v !== '');
+                      }
+
+                      // 3. Filter out chamber fields if they are empty
+                      if (key.startsWith('chamber_') || key.startsWith('md_') || key.startsWith('ce_')) {
+                        return !!value;
+                      }
+
+                      return value !== null && value !== undefined && value !== '';
+                    })
+                    .map(([key, value]) => (
+                      <div key={key} className="space-y-2">
+                        <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                          {key === 'kpi_baselines' ? 'KPIs & Current Baselines' : key.replace(/_/g, ' ')}
+                        </div>
+                        <div className="text-sm text-slate-300 leading-relaxed bg-slate-950/50 p-4 rounded-xl border border-slate-800/50">
+                          {Array.isArray(value) ? (
+                            <div className="space-y-1">
+                              {value.filter(v => !!v).map((item, i) => (
+                                <div key={i} className="flex gap-2">
+                                  <span className="text-blue-500">•</span>
+                                  <span>{item}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : typeof value === 'object' ? (
+                            <div className="space-y-2">
+                              {Object.entries(value as object).map(([k, v]) => (
+                                <div key={k} className="flex flex-col gap-0.5">
+                                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">{k.replace(/_/g, ' ')}</span>
+                                  <span className="text-slate-300">{String(v)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            String(value)
+                          )}
+                        </div>
                       </div>
-                      <div className="text-sm text-slate-300 leading-relaxed bg-slate-950/50 p-4 rounded-xl border border-slate-800/50">
-                        {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
-                      </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               </div>
             ))}

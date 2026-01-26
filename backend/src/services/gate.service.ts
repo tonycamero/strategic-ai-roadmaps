@@ -36,8 +36,8 @@ export async function canLockIntake(tenantId: string): Promise<GateCheckResult> 
         return { allowed: false, reason: 'Intake is already locked' };
     }
 
-    if (tenant.intakeWindowState !== 'CLOSED') {
-        return { allowed: false, reason: 'Intake Window must be CLOSED' };
+    if (tenant.intakeWindowState !== 'OPEN') {
+        return { allowed: false, reason: 'Intake Window must be OPEN to lock it' };
     }
 
     const [brief] = await db
@@ -51,9 +51,9 @@ export async function canLockIntake(tenantId: string): Promise<GateCheckResult> 
     }
 
     // "REVIEWED" status on brief is the key consultation signal
-    // (Legacy support for 'APPROVED')
-    if (brief.status !== 'REVIEWED' && brief.status !== 'APPROVED') {
-        return { allowed: false, reason: 'Executive Brief must be marked as REVIEWED (Consultation Complete)' };
+    // (Legacy support for 'APPROVED', and allow DELIVERED as it implies approved)
+    if (brief.status !== 'REVIEWED' && brief.status !== 'APPROVED' && brief.status !== 'DELIVERED') {
+        return { allowed: false, reason: 'Executive Brief must be marked as REVIEWED or APPROVED' };
     }
 
     return { allowed: true };
@@ -69,6 +69,17 @@ export async function canGenerateDiagnostics(tenantId: string): Promise<GateChec
 
     if (!tenant.intakeClosedAt) {
         return { allowed: false, reason: 'Intake must be locked before generating diagnostics' };
+    }
+
+    // New Requirement: Executive Brief MUST be delivered
+    const [brief] = await db
+        .select()
+        .from(executiveBriefs)
+        .where(eq(executiveBriefs.tenantId, tenantId))
+        .limit(1);
+
+    if (!brief || brief.status !== 'DELIVERED') {
+        return { allowed: false, reason: 'Executive Brief must be delivered before generating diagnostics.' };
     }
 
     return { allowed: true };

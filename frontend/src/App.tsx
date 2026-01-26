@@ -16,6 +16,7 @@ import OpsIntake from './pages/intake/OpsIntake';
 import SalesIntake from './pages/intake/SalesIntake';
 import DeliveryIntake from './pages/intake/DeliveryIntake';
 import OwnerIntake from './pages/intake/OwnerIntake';
+import ExecutiveIntake from './pages/intake/ExecutiveIntake';
 import { LeadershipSummaryPage } from './pages/owner/LeadershipSummaryPage';
 import AgentInbox from './pages/owner/AgentInbox';
 import { SuperAdminLayout } from './superadmin/SuperAdminLayout';
@@ -114,6 +115,10 @@ function App() {
                   <OnboardingLayout><DeliveryIntake /></OnboardingLayout>
                 </ProtectedRoute>
 
+                <ProtectedRoute path="/intake/exec_sponsor">
+                  <OnboardingLayout><ExecutiveIntake /></OnboardingLayout>
+                </ProtectedRoute>
+
                 <ProtectedRoute path="/team-intakes">
                   <OnboardingLayout><TeamIntakesReview /></OnboardingLayout>
                 </ProtectedRoute>
@@ -145,12 +150,17 @@ function App() {
                 <ProtectedRoute path="/superadmin/roadmaps" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/firms" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/firms/:tenantId" component={SuperAdminLayout} />
+                <ProtectedRoute path="/superadmin/execute" component={SuperAdminLayout} />
+                <ProtectedRoute path="/superadmin/execute/firms/:tenantId" component={SuperAdminLayout} />
+
                 <ProtectedRoute path="/superadmin/leads" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/agent" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/tenant/:tenantId/roadmap" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/pipeline" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/firms/:tenantId/case-study/:docId" component={CaseStudyViewer} />
                 <ProtectedRoute path="/superadmin/tickets/:tenantId/:diagnosticId" component={TicketModeration} />
+
+
 
                 {/* 404 */}
                 <Route>

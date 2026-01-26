@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
 import { db } from '../db';
 import { onboardingStates } from '../db/schema';
 import { inArray, eq } from 'drizzle-orm';
@@ -32,51 +30,4 @@ export async function invalidateOnboardingStateCache(tenantId: string) {
     await db.update(onboardingStates)
         .set({ updatedAt: new Date() })
         .where(eq(onboardingStates.tenantId, tenantId));
-=======
-import { onboardingProgressService } from './onboardingProgress.service';
-
-export async function getManyOnboardingStates(tenantIds: string[]): Promise<Record<string, any>> {
-    const results: Record<string, any> = {};
-
-    // For now, we'll do this sequentially as the service methods are already optimized per-tenant
-    // but in a high-load scenario we'd want to batch the DB queries.
-    for (const id of tenantIds) {
-        try {
-            results[id] = await onboardingProgressService.getState(id);
-        } catch (e) {
-            console.error(`Error fetching onboarding state for tenant ${id}:`, e);
-            results[id] = null;
-        }
-    }
-
-    return results;
 }
-
-export async function invalidateOnboardingStateCache(tenantId: string): Promise<void> {
-    // Stub
->>>>>>> 02e8d03 (feat: executive brief approval, state sync, and pdf delivery pipeline)
-}
-=======
-import { onboardingProgressService } from './onboardingProgress.service';
-
-export async function getManyOnboardingStates(tenantIds: string[]): Promise<Record<string, any>> {
-    const results: Record<string, any> = {};
-
-    // For now, we'll do this sequentially as the service methods are already optimized per-tenant
-    // but in a high-load scenario we'd want to batch the DB queries.
-    for (const id of tenantIds) {
-        try {
-            results[id] = await onboardingProgressService.getState(id);
-        } catch (e) {
-            console.error(`Error fetching onboarding state for tenant ${id}:`, e);
-            results[id] = null;
-        }
-    }
-
-    return results;
-}
-
-export async function invalidateOnboardingStateCache(tenantId: string): Promise<void> {
-    // Stub
-}
->>>>>>> 1e46cab (chore: lock executive brief render + pdf contracts)

@@ -9,7 +9,7 @@ interface IntakeVectorCardProps {
         anticipatedBlindSpots?: string;
         recipientName?: string;
         recipientEmail?: string;
-        inviteStatus: 'NOT_SENT' | 'SENT' | 'FAILED';
+        inviteStatus: 'NOT_SENT' | 'SENT' | 'FAILED' | 'ACCEPTED';
         intakeStatus: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
     };
     onEdit: (vector: any) => void;
@@ -49,6 +49,12 @@ export function IntakeVectorCard({
                 text: 'text-red-300',
                 label: 'Failed'
             },
+            ACCEPTED: {
+                bg: 'bg-emerald-900/40',
+                border: 'border-emerald-800',
+                text: 'text-emerald-300',
+                label: 'Invite Accepted'
+            },
             NOT_SENT: {
                 bg: 'bg-slate-800',
                 border: 'border-slate-700',
@@ -71,6 +77,8 @@ export function IntakeVectorCard({
         const colors = {
             FACILITATOR: 'text-purple-400 bg-purple-900/20 border-purple-800',
             OPERATIONAL_LEAD: 'text-blue-400 bg-blue-900/20 border-blue-800',
+            SALES_LEAD: 'text-emerald-400 bg-emerald-900/20 border-emerald-800',
+            DELIVERY_LEAD: 'text-cyan-400 bg-cyan-900/20 border-cyan-800',
             EXECUTIVE: 'text-amber-400 bg-amber-900/20 border-amber-800',
             OTHER: 'text-slate-400 bg-slate-900/20 border-slate-700'
         };
@@ -91,7 +99,7 @@ export function IntakeVectorCard({
         !isLocked;
 
     const canResend =
-        vector.inviteStatus === 'SENT' &&
+        (vector.inviteStatus === 'SENT' || vector.inviteStatus === 'ACCEPTED') &&
         vector.intakeStatus !== 'COMPLETED' &&
         !isLocked;
 
@@ -150,8 +158,8 @@ export function IntakeVectorCard({
                         onClick={() => onEdit(vector)}
                         disabled={isLocked}
                         className={`p-1.5 rounded transition-all ${isLocked
-                                ? 'text-slate-700 cursor-not-allowed'
-                                : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800'
+                            ? 'text-slate-700 cursor-not-allowed'
+                            : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800'
                             }`}
                         title={isLocked ? 'Locked' : 'Edit stakeholder'}
                     >

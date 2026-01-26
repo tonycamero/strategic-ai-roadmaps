@@ -38,7 +38,7 @@ export default function OpsIntake() {
     queryFn: () => api.getMyIntake(),
   });
 
-const coachingFeedback = (intakeData as any)?.intake?.coachingFeedback ?? {};
+  const coachingFeedback = (intakeData as any)?.intake?.coachingFeedback ?? {};
   useEffect(() => {
     if (intakeData?.intake) {
       setIsUpdate(true);
@@ -66,9 +66,18 @@ const coachingFeedback = (intakeData as any)?.intake?.coachingFeedback ?? {};
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+
+    // Clean payload: Remove chamber fields if not chamber
+    const cleanAnswers = { ...formData } as any;
+    if (!isChamber) {
+      delete cleanAnswers.chamberRole;
+      delete cleanAnswers.md_member_retention;
+      delete cleanAnswers.md_member_value;
+    }
+
     const payload = {
-      ...formData,
-      chamberRole: isChamber && chamberRole ? chamberRole : formData.chamberRole,
+      ...cleanAnswers,
+      chamberRole: isChamber && chamberRole ? chamberRole : cleanAnswers.chamberRole,
     };
     submitMutation.mutate({ role: 'ops', answers: payload });
   };

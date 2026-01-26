@@ -19,8 +19,9 @@ export default function TeamMemberDashboard() {
     queryFn: () => api.getMyIntake(),
   });
 
+  // Ensure user.role is defined before accessing profile.roleLabels
   const roleLabel = user?.role
-    ? profile.roleLabels[user.role as keyof typeof profile.roleLabels]
+    ? (profile.roleLabels[user.role as keyof typeof profile.roleLabels] || 'Team Member')
     : 'Team Member';
 
   const hasCompletedIntake = !!intakeData?.intake;
@@ -57,7 +58,7 @@ export default function TeamMemberDashboard() {
             <h2 className="text-lg font-semibold text-slate-100 mb-4">
               Your Intake Status
             </h2>
-            
+
             {isLoading ? (
               <div className="text-slate-400">Loading...</div>
             ) : hasCompletedIntake ? (
@@ -69,7 +70,7 @@ export default function TeamMemberDashboard() {
                   <span className="font-medium">Intake Complete</span>
                 </div>
                 <p className="text-slate-400 text-sm">
-                  Your {roleLabel.toLowerCase()} intake has been submitted. The owner will review your responses and incorporate them into the strategic roadmap.
+                  Your {(roleLabel || 'team member').toLowerCase()} intake has been submitted. The owner will review your responses and incorporate them into the strategic roadmap.
                 </p>
                 <a
                   href={`/intake/${user?.role}`}
@@ -87,7 +88,7 @@ export default function TeamMemberDashboard() {
                   <span className="font-medium">Intake Pending</span>
                 </div>
                 <p className="text-slate-400 text-sm">
-                  Please complete your {roleLabel.toLowerCase()} intake to help shape the strategic roadmap.
+                  Please complete your {(roleLabel || 'team member').toLowerCase()} intake to help shape the strategic roadmap.
                 </p>
                 <a
                   href={`/intake/${user?.role}`}

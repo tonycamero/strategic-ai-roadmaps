@@ -56,21 +56,7 @@ export interface OnboardingState {
   maxPoints: number;
   steps: OnboardingStep[];
   badges: OnboardingBadge[];
-
-  // High-level state Label
-  onboardingState: string;
-
-  // Granular flags for Command Center
-  flags: {
-    knowledgeBaseReady: boolean;
-    rolesValidated: boolean;
-    execReady: boolean;
-    briefResolved: boolean;
-  };
-
-  // Why they are in this state / what is blocking
-  reasons: string[];
-
+  
   // UX helpers - computed fields
   nextStepId?: OnboardingStepId;
   nextStepLabel?: string;

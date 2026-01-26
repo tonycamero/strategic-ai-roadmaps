@@ -125,10 +125,10 @@ export function SystemExecutiveBriefView({ synthesis, signals, verification, onA
                         disabled={actionLoading}
                         className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white text-sm font-medium rounded transition-colors"
                     >
-                        {actionLoading ? 'Approving...' : 'Approve & Close Intake'}
+                        {actionLoading ? 'Approving...' : 'Approve Brief'}
                     </button>
                     <p className="text-xs text-slate-500 mt-2">
-                        Approval will permanently close the intake window. This action cannot be undone.
+                        Approval confirms the strategic narrative with the executive owner.
                     </p>
                 </div>
             </div>
