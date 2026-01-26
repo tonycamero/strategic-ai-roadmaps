@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { superadminApi } from '../api';
 import { BatchActionModal } from '../components/BatchActionModal';
-import { Link, useLocation } from 'wouter';
+import { useLocation } from 'wouter';
 import { ExecuteTenantRow } from '../components/ExecuteTenantRow';
 import { ExecutionContextPanel } from '../components/ExecutionContextPanel';
 import { CommandCenterTenant } from '../types';
 
 export default function SuperAdminExecutePage() {
-    const [location, setLocation] = useLocation();
+    const [, setLocation] = useLocation();
 
     // Data State
     // State
@@ -260,7 +260,7 @@ export default function SuperAdminExecutePage() {
                 <aside className="w-[38%] bg-slate-950 flex flex-col border-l border-slate-900 shadow-[-10px_0_30px_rgba(0,0,0,0.2)]">
                     <ExecutionContextPanel
                         tenant={focusedTenant}
-                        onViewFirm={(id) => setLocation(`/superadmin/firms/${id}`)}
+                        onViewFirm={(id) => setLocation(`/superadmin/execute/firms/${id}`)}
                         onViewRoadmap={(id) => setLocation(`/superadmin/firms/${id}/roadmap`)} // Simplified for now
                         onViewDiagnostics={(id) => setLocation(`/superadmin/firms/${id}/diagnostics`)}
                     />

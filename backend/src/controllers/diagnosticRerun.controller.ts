@@ -130,8 +130,8 @@ export async function rerunSop01ForFirm(req: AuthRequest, res: Response, next: N
         if (process.env.DEBUG_TICKETS_PIPELINE === '1') {
             console.log('[DEBUG_TICKETS_PIPELINE] SOP-01 Outputs Generated:', {
                 diagnosticKeys: Object.keys(outputs),
-                diagnosticLength: outputs.companyDiagnosticMap?.length,
-                skeletonLength: outputs.roadmapSkeleton?.length
+                diagnosticLength: outputs.sop01DiagnosticMarkdown?.length,
+                skeletonLength: outputs.sop01RoadmapSkeletonMarkdown?.length
             });
         }
 

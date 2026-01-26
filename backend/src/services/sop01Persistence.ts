@@ -14,10 +14,10 @@ export async function persistSop01OutputsForTenant(tenantId: string, outputs: So
 
     // 1. Strict Validation: All 4 must exist
     const requiredKeys: (keyof Sop01Outputs)[] = [
-        'companyDiagnosticMap',
-        'aiLeverageMap',
-        'discoveryCallQuestions',
-        'roadmapSkeleton'
+        'sop01DiagnosticMarkdown',
+        'sop01AiLeverageMarkdown',
+        'sop01DiscoveryQuestionsMarkdown',
+        'sop01RoadmapSkeletonMarkdown'
     ];
 
     for (const key of requiredKeys) {
@@ -38,27 +38,27 @@ export async function persistSop01OutputsForTenant(tenantId: string, outputs: So
         {
             type: 'DIAGNOSTIC_MAP',
             title: 'Company Diagnostic Map',
-            content: outputs.companyDiagnosticMap,
+            content: outputs.sop01DiagnosticMarkdown,
             filename: 'sop01_diagnostic_map.md'
         },
         {
             type: 'AI_LEVERAGE_MAP',
             title: 'AI Leverage & Opportunity Map',
-            content: outputs.aiLeverageMap,
+            content: outputs.sop01AiLeverageMarkdown,
             filename: 'sop01_ai_leverage_map.md'
         },
         {
             type: 'ROADMAP_SKELETON',
             title: 'Strategic Roadmap Skeleton',
-            content: outputs.roadmapSkeleton,
+            content: outputs.sop01RoadmapSkeletonMarkdown,
             filename: 'sop01_roadmap_skeleton.md'
         },
         {
             type: 'DISCOVERY_QUESTIONS',
             title: 'Discovery Call Preparation Questions',
-            content: Array.isArray(outputs.discoveryCallQuestions)
-                ? outputs.discoveryCallQuestions.join('\n\n')
-                : outputs.discoveryCallQuestions,
+            content: Array.isArray(outputs.sop01DiscoveryQuestionsMarkdown)
+                ? outputs.sop01DiscoveryQuestionsMarkdown.join('\n\n')
+                : outputs.sop01DiscoveryQuestionsMarkdown,
             filename: 'sop01_discovery_questions.md'
         }
     ];

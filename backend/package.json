@@ -43,6 +43,7 @@
     "pg": "^8.16.3",
     "postgres": "^3.4.3",
     "puppeteer-core": "^23.10.4",
+    "pdfkit": "^0.15.0",
     "resend": "^3.0.0",
     "zod": "^3.22.4"
   },
@@ -54,6 +55,7 @@
     "@types/minimist": "^1.2.5",
     "@types/multer": "^2.0.0",
     "@types/node": "^20.10.5",
+    "@types/pdfkit": "^0.13.4",
     "dotenv-cli": "^11.0.0",
     "drizzle-kit": "^0.20.6",
     "minimist": "^1.2.8",

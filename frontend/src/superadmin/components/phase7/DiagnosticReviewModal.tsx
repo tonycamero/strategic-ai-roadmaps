@@ -1,7 +1,7 @@
 
 
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 
 interface DiagnosticReviewModalProps {

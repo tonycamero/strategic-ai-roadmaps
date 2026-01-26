@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, FormEvent } from 'react';
 import { IntakeRoleDefinition } from '../types';
 
 interface LeadDefinedRoleSurfaceProps {
@@ -20,7 +20,7 @@ export function LeadDefinedRoleSurface({ roles, onAddRole, onInvite, readOnly = 
         recipientName: ''
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
         onAddRole({
             roleLabel: formData.roleLabel,

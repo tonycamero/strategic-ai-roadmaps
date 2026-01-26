@@ -152,25 +152,27 @@ export default function SuperAdminOverviewPage() {
                 </div>
               </div>
 
-              {data.cohortStats.length === 0 ? (
-                <div className="text-xs text-slate-500 py-4">
-                  No active cohorts yet.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {data.cohortStats
-                    .filter((c) => c.cohortLabel)
-                    // Deduplicate by cohort label (case-insensitive)
-                    .filter((cohort, index, self) =>
-                      index === self.findIndex(c =>
-                        c.cohortLabel.toLowerCase() === cohort.cohortLabel.toLowerCase()
-                      )
-                    )
-                    .map((cohort) => (
-                      <div
-                        key={cohort.cohortLabel}
-                        className="flex items-center justify-between py-2 text-xs border-b border-slate-800 last:border-0"
-                      >
+{data.cohortStats.length === 0 ? (
+  <div className="text-xs text-slate-500 py-4">No active cohorts yet.</div>
+) : (
+  <div className="space-y-2">
+    {data.cohortStats
+      .filter(c => typeof c.cohortLabel === 'string' && c.cohortLabel.trim().length > 0)
+      // Deduplicate by cohort label (case-insensitive)
+      .filter((cohort, index, self) => {
+        const label = (cohort.cohortLabel ?? '').toLowerCase();
+        return (
+          index ===
+          self.findIndex(c => (c.cohortLabel ?? '').toLowerCase() === label)
+        );
+      })
+      .map((cohort, index) => (
+        <div
+          key={(cohort.cohortLabel ?? `cohort-${index}`) as string}
+          className="flex items-center justify-between py-2 text-xs"
+        >
+          {/* keep your existing row contents here */}
+
                         <div className="flex items-center gap-2">
                           <div>
                             <div className="font-medium text-slate-100">

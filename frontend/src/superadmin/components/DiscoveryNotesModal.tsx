@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, ChangeEvent } from 'react';
 import { type CanonicalDiscoveryNotes } from '@roadmap/shared';
 
 interface DiscoveryNotesModalProps {
@@ -50,7 +50,7 @@ export function DiscoveryNotesModal({ open, onClose, onSave, isSaving, reference
     };
 
     const updateMetadata = (field: keyof CanonicalDiscoveryNotes['sessionMetadata'], value: string) => {
-        setNotes((prev: CanonicalDiscoveryNotes) => ({
+        setNotes(prev => ({
             ...prev,
             sessionMetadata: { ...prev.sessionMetadata, [field]: value }
         }));
@@ -127,7 +127,7 @@ export function DiscoveryNotesModal({ open, onClose, onSave, isSaving, reference
                                         type="date"
                                         className="w-full bg-slate-900 border border-slate-800 rounded p-2 text-slate-300 text-xs"
                                         value={notes.sessionMetadata.date}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateMetadata('date', e.target.value)}
+                                        onChange={(e: ChangeEvent<HTMLInputElement>) => updateMetadata('date', e.target.value)}
                                     />
                                 </div>
                                 <div>
@@ -137,7 +137,7 @@ export function DiscoveryNotesModal({ open, onClose, onSave, isSaving, reference
                                         placeholder="e.g. 60 min"
                                         className="w-full bg-slate-900 border border-slate-800 rounded p-2 text-slate-300 text-xs"
                                         value={notes.sessionMetadata.duration}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateMetadata('duration', e.target.value)}
+                                        onChange={(e: ChangeEvent<HTMLInputElement>) => updateMetadata('duration', e.target.value)}
                                     />
                                 </div>
                                 <div>
@@ -147,7 +147,7 @@ export function DiscoveryNotesModal({ open, onClose, onSave, isSaving, reference
                                         placeholder="Client names, roles..."
                                         className="w-full bg-slate-900 border border-slate-800 rounded p-2 text-slate-300 text-xs"
                                         value={notes.sessionMetadata.attendees}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateMetadata('attendees', e.target.value)}
+                                        onChange={(e: ChangeEvent<HTMLInputElement>) => updateMetadata('attendees', e.target.value)}
                                     />
                                 </div>
                             </div>
@@ -164,7 +164,7 @@ export function DiscoveryNotesModal({ open, onClose, onSave, isSaving, reference
                                 className="w-full flex-1 bg-slate-950 border border-slate-800 rounded-lg p-5 text-slate-300 text-xs focus:ring-1 focus:ring-indigo-500/50 font-mono leading-relaxed resize-none"
                                 placeholder="Paste transcripts or long-form notes here..."
                                 value={rawNotesBlob}
-                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setRawNotesBlob(e.target.value)}
+                                onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setRawNotesBlob(e.target.value)}
                             />
                         </div>
                     </div>

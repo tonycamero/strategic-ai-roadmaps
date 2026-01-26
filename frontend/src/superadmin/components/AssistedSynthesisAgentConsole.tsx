@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { superadminApi } from '../api';
+// frontend/src/superadmin/components/AssistedSynthesisAgentConsole.tsx
+
+import { useState, useEffect, useRef } from 'react';
 
 interface AgentMessage {
     id: string;
@@ -61,44 +62,27 @@ export default function AssistedSynthesisAgentConsole({
     const loadSession = async () => {
         try {
             setError(null);
-            const session = await superadminApi.getAgentSession(tenantId, contextVersion);
-            setSessionId(session.sessionId);
-            setMessages(session.messages);
-        } catch (err: any) {
+            // STRIKE 1: API method does not exist on SuperAdmin API surface
+            // const session = await superadminApi.getAgentSession({ tenantId, kind: contextVersion });
+            // setSessionId(session.sessionId);
+            // setMessages(session.messages);
+            setMessages([{
+                id: 'system-disabled',
+                role: 'assistant',
+                content: 'Agent features are currently disabled in the SuperAdmin Console.',
+                createdAt: new Date()
+            }]);
+        } catch (err) {
             console.error('[AgentConsole] Failed to load session:', err);
-
-            // Extract error details from different error formats
-            let errorData: any = {};
-
-            // Check if this is a fetch Response error with JSON
-            if (err.response?.data) {
-                errorData = err.response.data; // Axios-style
-            } else if (err.message) {
-                // Parse SuperAdmin API error format: "SuperAdmin API error: 404"
-                const statusMatch = err.message.match(/SuperAdmin API error: (\d+)/);
-                if (statusMatch) {
-                    errorData = {
-                        code: `HTTP_${statusMatch[1]}`,
-                        message: `API returned ${statusMatch[1]} error`
-                    };
-                } else {
-                    errorData = {
-                        code: 'NETWORK_ERROR',
-                        message: err.message
-                    };
-                }
-            }
-
             setError({
-                code: errorData.code || 'LOAD_FAILED',
-                message: errorData.message || 'Failed to load agent session.',
-                requestId: errorData.requestId
+                code: 'LOAD_FAILED',
+                message: err instanceof Error ? err.message : 'Failed to load agent session.'
             });
         }
     };
 
     const handleSendMessage = async () => {
-        if (!inputValue.trim() || !sessionId || isLoading) return;
+        if (!inputValue.trim() || isLoading) return;
 
         const userMessage = inputValue.trim();
         setInputValue('');
@@ -115,8 +99,12 @@ export default function AssistedSynthesisAgentConsole({
         setMessages(prev => [...prev, optimisticMessage]);
 
         try {
-            const result = await superadminApi.sendAgentMessage(tenantId, sessionId, userMessage);
+            // STRIKE 1: API method does not exist on SuperAdmin API surface
+            // const result = await superadminApi.sendAgentMessage({ tenantId, message: userMessage, kind: contextVersion });
 
+            throw new Error("Feature currently disabled in SuperAdmin Console (API Surface Compliance)");
+
+            /*
             // Replace optimistic + add assistant
             setMessages(prev => [
                 ...prev.filter(m => m.id !== optimisticMessage.id),
@@ -128,15 +116,14 @@ export default function AssistedSynthesisAgentConsole({
                     createdAt: new Date()
                 }
             ]);
-        } catch (err: any) {
+            */
+        } catch (err) {
             // Remove optimistic message on error
             setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
 
-            const errorData = err.response?.data || {};
             setError({
-                code: errorData.code || 'SEND_FAILED',
-                message: errorData.message || 'Failed to send message.',
-                requestId: errorData.requestId
+                code: 'SEND_FAILED',
+                message: err instanceof Error ? err.message : 'Failed to send message.'
             });
         } finally {
             setIsLoading(false);
@@ -144,10 +131,11 @@ export default function AssistedSynthesisAgentConsole({
     };
 
     const handleAutoReset = async () => {
-        if (!sessionId) return;
-
         try {
-            await superadminApi.resetAgentSession(tenantId, sessionId);
+            // STRIKE 1: API method does not exist on SuperAdmin API surface
+            // await superadminApi.resetAgentSession({ tenantId, kind: contextVersion });
+            console.warn("resetAgentSession disabled (Strike 1)");
+
             setMessages([]);
             setSessionId(null);
             setIsExpanded(false);
@@ -229,9 +217,9 @@ export default function AssistedSynthesisAgentConsole({
                     </div>
                 )}
 
-                {messages.map(msg => (
+                {messages.map((msg, idx) => (
                     <div
-                        key={msg.id}
+                        key={msg.id || idx}
                         className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                         <div
@@ -256,12 +244,12 @@ export default function AssistedSynthesisAgentConsole({
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
                         placeholder="Ask about source artifacts..."
-                        disabled={isLoading || !sessionId}
+                        disabled={isLoading}
                         className="flex-1 px-3 py-2 bg-slate-950 border border-slate-700 rounded text-xs text-slate-300 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
                     />
                     <button
                         onClick={handleSendMessage}
-                        disabled={!inputValue.trim() || isLoading || !sessionId}
+                        disabled={!inputValue.trim() || isLoading}
                         className="px-4 py-2 bg-indigo-900/30 border border-indigo-500/30 rounded text-xs font-bold text-indigo-300 hover:bg-indigo-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                         {isLoading ? '...' : 'Send'}

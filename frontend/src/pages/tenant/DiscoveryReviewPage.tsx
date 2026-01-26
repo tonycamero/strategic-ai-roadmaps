@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+// frontend/src/pages/tenant/DiscoveryReviewPage.tsx
+
+import { useEffect, useState } from "react";
 import {
   CheckCircle,
   XCircle,
@@ -7,11 +9,11 @@ import {
   RefreshCw,
   ThumbsUp,
   Edit3,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface SelectedInventoryItem {
   inventoryId: string;
-  tier: 'core' | 'recommended' | 'advanced';
+  tier: "core" | "recommended" | "advanced";
   sprint: 30 | 60 | 90;
   notes?: string;
 }
@@ -23,7 +25,7 @@ interface DiscoverySynthesis {
   selectedInventory: SelectedInventoryItem[];
   exclusions: string[];
   operatorNotes: string;
-  confidenceLevel: 'high' | 'medium' | 'low';
+  confidenceLevel: "high" | "medium" | "low";
 }
 
 interface DiscoveryNote {
@@ -32,7 +34,7 @@ interface DiscoveryNote {
   diagnosticId: string;
   notes: string;
   synthesisJson: DiscoverySynthesis;
-  approvalState: 'pending' | 'approved' | 'changes_requested';
+  approvalState: "pending" | "approved" | "changes_requested";
   approvedBy: string | null;
   approvedAt: string | null;
   rejectionReason: string | null;
@@ -53,10 +55,11 @@ export function DiscoveryReviewPage({ tenantId, onApprove, onRequestChanges }: P
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [showChangeRequestModal, setShowChangeRequestModal] = useState(false);
-  const [changeReason, setChangeReason] = useState('');
+  const [changeReason, setChangeReason] = useState("");
 
   useEffect(() => {
     loadDiscoveryNote();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId]);
 
   async function loadDiscoveryNote() {
@@ -66,13 +69,13 @@ export function DiscoveryReviewPage({ tenantId, onApprove, onRequestChanges }: P
     try {
       const response = await fetch(`/api/discovery/${tenantId}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
 
       if (!response.ok) {
         if (response.status === 404) {
-          throw new Error('No discovery synthesis found for this tenant');
+          throw new Error("No discovery synthesis found for this tenant");
         }
         throw new Error(`Failed to load discovery: ${response.statusText}`);
       }
@@ -80,7 +83,7 @@ export function DiscoveryReviewPage({ tenantId, onApprove, onRequestChanges }: P
       const data = await response.json();
       setDiscoveryNote(data);
     } catch (err: any) {
-      setError(err.message || 'Failed to load discovery synthesis');
+      setError(err?.message || "Failed to load discovery synthesis");
     } finally {
       setLoading(false);
     }
@@ -94,10 +97,10 @@ export function DiscoveryReviewPage({ tenantId, onApprove, onRequestChanges }: P
 
     try {
       const response = await fetch(`/api/discovery/${tenantId}/approve`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify({
           diagnosticId: discoveryNote.diagnosticId,
@@ -111,7 +114,7 @@ export function DiscoveryReviewPage({ tenantId, onApprove, onRequestChanges }: P
       await loadDiscoveryNote();
       onApprove?.();
     } catch (err: any) {
-      setError(err.message || 'Failed to approve discovery synthesis');
+      setError(err?.message || "Failed to approve discovery synthesis");
     } finally {
       setActionLoading(false);
     }
@@ -119,7 +122,7 @@ export function DiscoveryReviewPage({ tenantId, onApprove, onRequestChanges }: P
 
   async function handleRequestChanges() {
     if (!discoveryNote || !changeReason.trim()) {
-      setError('Please provide a reason for requesting changes');
+      setError("Please provide a reason for requesting changes");
       return;
     }
 
@@ -128,10 +131,10 @@ export function DiscoveryReviewPage({ tenantId, onApprove, onRequestChanges }: P
 
     try {
       const response = await fetch(`/api/discovery/${tenantId}/request-changes`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify({
           diagnosticId: discoveryNote.diagnosticId,
@@ -144,11 +147,11 @@ export function DiscoveryReviewPage({ tenantId, onApprove, onRequestChanges }: P
       }
 
       setShowChangeRequestModal(false);
-      setChangeReason('');
+      setChangeReason("");
       await loadDiscoveryNote();
       onRequestChanges?.();
     } catch (err: any) {
-      setError(err.message || 'Failed to request changes');
+      setError(err?.message || "Failed to request changes");
     } finally {
       setActionLoading(false);
     }
@@ -156,16 +159,17 @@ export function DiscoveryReviewPage({ tenantId, onApprove, onRequestChanges }: P
 
   function getApprovalBadge(state: string) {
     const config = {
-      pending: { label: 'Pending Review', className: 'badge-pending', icon: AlertCircle },
-      approved: { label: 'Approved', className: 'badge-approved', icon: CheckCircle },
+      pending: { label: "Pending Review", className: "badge-pending", icon: AlertCircle },
+      approved: { label: "Approved", className: "badge-approved", icon: CheckCircle },
       changes_requested: {
-        label: 'Changes Requested',
-        className: 'badge-changes',
+        label: "Changes Requested",
+        className: "badge-changes",
         icon: XCircle,
       },
     };
 
-    const { label, className, icon: Icon } = config[state as keyof typeof config] || config.pending;
+    const { label, className, icon: Icon } =
+      (config as any)[state] ?? config.pending;
 
     return (
       <span className={`approval-badge ${className}`}>
@@ -177,12 +181,12 @@ export function DiscoveryReviewPage({ tenantId, onApprove, onRequestChanges }: P
 
   function getTierBadge(tier: string) {
     const classMap = {
-      core: 'tier-core',
-      recommended: 'tier-recommended',
-      advanced: 'tier-advanced',
+      core: "tier-core",
+      recommended: "tier-recommended",
+      advanced: "tier-advanced",
     };
 
-    return <span className={`tier-badge ${classMap[tier as keyof typeof classMap]}`}>{tier}</span>;
+    return <span className={`tier-badge ${(classMap as any)[tier]}`}>{tier}</span>;
   }
 
   if (loading) {
@@ -219,7 +223,7 @@ export function DiscoveryReviewPage({ tenantId, onApprove, onRequestChanges }: P
   }
 
   const synthesis = discoveryNote.synthesisJson;
-  const canTakeAction = discoveryNote.approvalState !== 'approved';
+  const canTakeAction = discoveryNote.approvalState !== "approved";
 
   return (
     <div className="discovery-review-page">
@@ -248,7 +252,7 @@ export function DiscoveryReviewPage({ tenantId, onApprove, onRequestChanges }: P
           {getApprovalBadge(discoveryNote.approvalState)}
         </div>
 
-        {discoveryNote.approvalState === 'changes_requested' && discoveryNote.rejectionReason && (
+        {discoveryNote.approvalState === "changes_requested" && discoveryNote.rejectionReason && (
           <div className="rejection-reason">
             <MessageSquare size={16} />
             <div>
@@ -258,7 +262,7 @@ export function DiscoveryReviewPage({ tenantId, onApprove, onRequestChanges }: P
           </div>
         )}
 
-        {discoveryNote.approvalState === 'approved' && (
+        {discoveryNote.approvalState === "approved" && (
           <div className="approval-info">
             <CheckCircle size={16} />
             <div>
@@ -289,7 +293,7 @@ export function DiscoveryReviewPage({ tenantId, onApprove, onRequestChanges }: P
       <div className="synthesis-content">
         <div className="content-section">
           <h3>Operator Notes</h3>
-          <div className="notes-box">{synthesis.operatorNotes || 'No notes provided'}</div>
+          <div className="notes-box">{synthesis.operatorNotes || "No notes provided"}</div>
         </div>
 
         <div className="content-section">
@@ -347,13 +351,9 @@ export function DiscoveryReviewPage({ tenantId, onApprove, onRequestChanges }: P
             <Edit3 size={18} />
             Request Changes
           </button>
-          <button
-            className="btn-approve"
-            onClick={handleApprove}
-            disabled={actionLoading}
-          >
+          <button className="btn-approve" onClick={handleApprove} disabled={actionLoading}>
             <ThumbsUp size={18} />
-            {actionLoading ? 'Approving...' : 'Approve Synthesis'}
+            {actionLoading ? "Approving..." : "Approve Synthesis"}
           </button>
         </div>
       )}
@@ -375,7 +375,7 @@ export function DiscoveryReviewPage({ tenantId, onApprove, onRequestChanges }: P
                 className="btn-cancel"
                 onClick={() => {
                   setShowChangeRequestModal(false);
-                  setChangeReason('');
+                  setChangeReason("");
                 }}
                 disabled={actionLoading}
               >
@@ -386,7 +386,7 @@ export function DiscoveryReviewPage({ tenantId, onApprove, onRequestChanges }: P
                 onClick={handleRequestChanges}
                 disabled={actionLoading || !changeReason.trim()}
               >
-                {actionLoading ? 'Submitting...' : 'Submit Request'}
+                {actionLoading ? "Submitting..." : "Submit Request"}
               </button>
             </div>
           </div>

@@ -18,8 +18,8 @@ export default function Dashboard() {
     return <DashboardV6 />;
   }
 
-  // Team members (ops, sales, delivery) get simplified view
-  if (['ops', 'sales', 'delivery'].includes(user.role)) {
+  // Team members (ops, sales, delivery, exec_sponsor) get simplified view
+  if (['ops', 'sales', 'delivery', 'exec_sponsor'].includes(user.role)) {
     return <TeamMemberDashboard />;
   }
 

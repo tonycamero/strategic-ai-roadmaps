@@ -33,7 +33,6 @@ export async function getOnboardingState(req: AuthRequest, res: Response) {
     }
 
     const state = await onboardingProgressService.getState(tenant.id);
-    console.log('[Onboarding] getState response for tenant', tenant.id, ':', JSON.stringify(state, null, 2));
     return res.json(state);
   } catch (error) {
     console.error('Get onboarding state error:', error);

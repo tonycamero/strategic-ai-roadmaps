@@ -152,6 +152,27 @@ export const api = {
   // Advisor threads (shared Tap-In threads)
   listAdvisorThreads: () =>
     fetchAPI<{ threads: Array<{ id: string; roleType: string; createdAt: string; lastActivityAt: string; preview: string }> }>('/api/dashboard/owner/advisor-threads'),
+
+  // Intake Vector endpoints
+  listIntakeVectors: (tenantId: string) =>
+    fetchAPI<{ vectors: any[] }>(`/api/tenants/${tenantId}/intake-vectors`),
+
+  createIntakeVector: (tenantId: string, data: any) =>
+    fetchAPI<{ vector: any }>(`/api/tenants/${tenantId}/intake-vectors`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateIntakeVector: (vectorId: string, data: any) =>
+    fetchAPI<{ vector: any }>(`/api/tenants/intake-vectors/${vectorId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  sendIntakeVectorInvite: (vectorId: string) =>
+    fetchAPI<{ vector: any }>(`/api/tenants/intake-vectors/${vectorId}/send-invite`, {
+      method: 'POST',
+    }),
 };
 
 export { ApiError };

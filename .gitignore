@@ -42,3 +42,16 @@ pnpm-store/
 *.tgz
 docs/vercel_token.SECRET
 docs/_secrets_local/
+
+# Windows ADS metadata
+*:Zone.Identifier
+backend/verification_output.txt
+
+# local debug/build dumps
+build_all.txt
+build_output.txt
+conflict_list.txt
+frontend_build_output.txt
+frontend_tsc_errors.txt
+frontend_tsc_errors_v2.txt
+shared/shared_build_errors.txt

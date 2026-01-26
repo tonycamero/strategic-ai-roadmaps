@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import { FirmDetailResponseV2 } from '../api';
 import { X } from 'lucide-react';
 
@@ -35,11 +36,11 @@ export function FirmDrawer({ open, onClose, detail, loading, onStatusChange }: F
     );
   }
 
-  const { tenant, owner, onboarding, engagementSummary, intakes, discovery, diagnostics, roadmaps, tickets, implementation, documents, agents } = detail;
+  const { tenant, owner, onboarding, engagementSummary, intakes, discovery, diagnostics, roadmaps, tickets, documents, agents, outcomes } = detail;
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-black/40" onClick={onClose}>
-      <div 
+      <div
         className="h-full w-full max-w-5xl bg-slate-950 border-l border-slate-800 shadow-2xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
@@ -111,7 +112,7 @@ export function FirmDrawer({ open, onClose, detail, loading, onStatusChange }: F
         {/* Content - 3 Column Layout */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-            
+
             {/* Column 1: Profile & Pipeline */}
             <div className="md:col-span-4 space-y-4">
               <SectionCard title="Firm Profile">
@@ -155,12 +156,12 @@ export function FirmDrawer({ open, onClose, detail, loading, onStatusChange }: F
                     const entry = intakes.byRole[role];
                     const status = entry?.status ?? 'not_started';
                     const label = role.charAt(0).toUpperCase() + role.slice(1);
-                    
-                    const color = status === 'completed' 
+
+                    const color = status === 'completed'
                       ? 'bg-emerald-900/40 text-emerald-200 border-emerald-600/60'
                       : status === 'in_progress'
-                      ? 'bg-amber-900/30 text-amber-200 border-amber-600/60'
-                      : 'bg-slate-900 text-slate-400 border-slate-700';
+                        ? 'bg-amber-900/30 text-amber-200 border-amber-600/60'
+                        : 'bg-slate-900 text-slate-400 border-slate-700';
 
                     return (
                       <div key={role} className={`border rounded-lg px-2 py-1.5 ${color}`}>
@@ -214,12 +215,12 @@ export function FirmDrawer({ open, onClose, detail, loading, onStatusChange }: F
               </SectionCard>
 
               <SectionCard title="ROI Snapshot">
-                {implementation.outcomes?.realizedRoi ? (
+                {outcomes?.realizedRoi ? (
                   <div className="space-y-1 text-xs">
                     <div className="flex justify-between">
                       <span className="text-slate-400">Net ROI</span>
                       <span className="text-emerald-300">
-                        {implementation.outcomes.realizedRoi.net_roi_percent?.toFixed(0)}%
+                        {outcomes.realizedRoi.net_roi_percent?.toFixed(0)}%
                       </span>
                     </div>
                   </div>
@@ -251,7 +252,7 @@ export function FirmDrawer({ open, onClose, detail, loading, onStatusChange }: F
 }
 
 // Helper component for section cards
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+function SectionCard({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="border border-slate-800 rounded-xl p-4 bg-slate-950/60">
       <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wide mb-3">

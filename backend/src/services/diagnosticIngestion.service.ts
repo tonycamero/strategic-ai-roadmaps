@@ -248,15 +248,15 @@ export async function generateRawTickets(
 
     // 1. Normalize Artifacts & Strict Validation
     // We handle both raw artifact objects (new) and legacy strings (backward compat)
-    const diagInfo = getArtifactRawText(artifacts.companyDiagnosticMap || artifacts.diagnosticMap);
-    const aiInfo = getArtifactRawText(artifacts.aiLeverageMap || artifacts.aiLeverageMap);
-    const skeletonInfo = getArtifactRawText(artifacts.roadmapSkeleton || artifacts.roadmapSkeleton);
-    const discoveryInfo = getArtifactRawText(artifacts.discoveryCallQuestions || artifacts.discoveryQuestions);
+    const diagInfo = getArtifactRawText(artifacts.sop01DiagnosticMarkdown || artifacts.companyDiagnosticMap);
+    const aiInfo = getArtifactRawText(artifacts.sop01AiLeverageMarkdown || artifacts.aiLeverageMap);
+    const skeletonInfo = getArtifactRawText(artifacts.sop01RoadmapSkeletonMarkdown || artifacts.roadmapSkeleton);
+    const discoveryInfo = getArtifactRawText(artifacts.sop01DiscoveryQuestionsMarkdown || artifacts.discoveryCallQuestions);
 
     // Standardized Logging (Truth Source Assertion)
     console.log(`[DiagnosticIngestion] DiagnosticMap artifact=${artifacts.diagnosticMap?.id || '?'} type=DIAGNOSTIC_MAP source=${diagInfo.source} rawLength=${diagInfo.length} reason=${diagInfo.reason || 'ok'}`);
-    console.log(`[DiagnosticIngestion] AiLeverage artifact=${artifacts.aiLeverageMap?.id || '?'} type=AI_LEVERAGE_MAP source=${aiInfo.source} rawLength=${aiInfo.length} reason=${aiInfo.reason || 'ok'}`);
-    console.log(`[DiagnosticIngestion] Skeleton artifact=${artifacts.roadmapSkeleton?.id || '?'} type=ROADMAP_SKELETON source=${skeletonInfo.source} rawLength=${skeletonInfo.length} reason=${skeletonInfo.reason || 'ok'}`);
+    console.log(`[DiagnosticIngestion] AiLeverage artifact=${artifacts.sop01AiLeverageMarkdown?.id || '?'} type=AI_LEVERAGE_MAP source=${aiInfo.source} rawLength=${aiInfo.length} reason=${aiInfo.reason || 'ok'}`);
+    console.log(`[DiagnosticIngestion] Skeleton artifact=${artifacts.sop01RoadmapSkeletonMarkdown?.id || '?'} type=ROADMAP_SKELETON source=${skeletonInfo.source} rawLength=${skeletonInfo.length} reason=${skeletonInfo.reason || 'ok'}`);
     console.log(`[DiagnosticIngestion] Discovery artifact=${artifacts.discoveryQuestions?.id || '?'} type=DISCOVERY_QUESTIONS source=${discoveryInfo.source} rawLength=${discoveryInfo.length} reason=${discoveryInfo.reason || 'ok'}`);
 
     if (diagInfo.length === 0 || aiInfo.length === 0 || skeletonInfo.length === 0 || discoveryInfo.length === 0) {
@@ -273,15 +273,15 @@ export async function generateRawTickets(
     const promptArtifacts = {
         diagnosticMarkdown: diagInfo.raw,
         aiLeverageMarkdown: aiInfo.raw,
-        roadmapSkeletonMarkdown: skeletonInfo.raw,
+        sop01RoadmapSkeletonMarkdown: skeletonInfo.raw,
         discoveryQuestionsMarkdown: discoveryInfo.raw,
     };
 
     const derivedInventory: SelectedInventoryTicket[] = extractInventoryFromArtifacts({
-        companyDiagnosticMap: diagInfo.raw,
-        aiLeverageMap: aiInfo.raw,
-        roadmapSkeleton: skeletonInfo.raw,
-        discoveryCallQuestions: discoveryInfo.raw.split('\n\n'),
+        sop01DiagnosticMarkdown: diagInfo.raw,
+        sop01AiLeverageMarkdown: aiInfo.raw,
+        sop01RoadmapSkeletonMarkdown: skeletonInfo.raw,
+        sop01DiscoveryQuestionsMarkdown: discoveryInfo.raw,
     });
 
     // Final Extraction Proof
@@ -292,8 +292,8 @@ export async function generateRawTickets(
         throw new InventoryEmptyError({
             artifactIds: [
                 artifacts.diagnosticMap?.id || artifacts.sop01DiagnosticMarkdown?.id,
-                artifacts.aiLeverageMap?.id || artifacts.sop01AiLeverageMarkdown?.id,
-                artifacts.roadmapSkeleton?.id || artifacts.sop01RoadmapSkeletonMarkdown?.id,
+                artifacts.sop01AiLeverageMarkdown?.id || artifacts.sop01AiLeverageMarkdown?.id,
+                artifacts.sop01RoadmapSkeletonMarkdown?.id || artifacts.sop01RoadmapSkeletonMarkdown?.id,
                 artifacts.discoveryQuestions?.id || artifacts.sop01DiscoveryQuestionsMarkdown?.id
             ].filter(Boolean),
             countsByArtifactType: {
@@ -396,7 +396,7 @@ export function getArtifactRawText(artifact: any): { raw: string; source: string
 export function extractInventoryFromArtifacts(sop01Content: Sop01Outputs): SelectedInventoryTicket[] {
     const rawInventory: SelectedInventoryTicket[] = [];
 
-    const raw = sop01Content.roadmapSkeleton || '';
+    const raw = sop01Content.sop01RoadmapSkeletonMarkdown || '';
     const lines = raw.split('\n');
     let currentSprint = 30;
 

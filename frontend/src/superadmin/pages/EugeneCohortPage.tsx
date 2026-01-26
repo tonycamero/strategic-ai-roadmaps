@@ -287,8 +287,8 @@ function KanbanColumn({
       <div
         ref={setNodeRef}
         className={`border-x border-b rounded-b-xl p-3 space-y-2.5 min-h-[500px] transition-colors ${isOver
-            ? 'border-blue-500 bg-slate-900/60'
-            : 'border-slate-800 bg-slate-950/30'
+          ? 'border-blue-500 bg-slate-900/60'
+          : 'border-slate-800 bg-slate-950/30'
           }`}
       >
         <div className="text-[10px] text-slate-500 mb-3">{config.description}</div>

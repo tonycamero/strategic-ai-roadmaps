@@ -37,6 +37,7 @@ import { IntakeModal } from '../components/IntakeModal';
 import { DocumentUploadModal } from '../components/DocumentUploadModal';
 import { MetricsCard } from '../components/MetricsCard';
 import { TicketModerationCard } from '../components/TicketModerationCard';
+import { ExecutiveBriefPanel } from '../components/ExecutiveBriefPanel';
 
 export default function SuperAdminFirmDetailPage() {
   const [, params] = useRoute<{ tenantId: string }>(
@@ -70,26 +71,35 @@ export default function SuperAdminFirmDetailPage() {
       .then((response) => {
         const firmDetail = response as unknown as FirmDetailResponse;
         // Map FirmDetailResponse to SuperAdminTenantDetail format
-        setData({
-          tenant: {
-            id: firmDetail.tenantSummary.id,
-            name: firmDetail.tenantSummary.name,
-            cohortLabel: firmDetail.tenantSummary.cohortLabel,
-            segment: firmDetail.tenantSummary.segment,
-            region: firmDetail.tenantSummary.region,
-            status: firmDetail.tenantSummary.status,
-            notes: firmDetail.tenantSummary.notes,
-            createdAt: firmDetail.tenantSummary.createdAt,
-            ownerEmail: firmDetail.owner?.email || '',
-            ownerName: firmDetail.owner?.name || '',
-            lastDiagnosticId: firmDetail.tenantSummary.lastDiagnosticId,
-          },
-          owner: firmDetail.owner,
-          teamMembers: firmDetail.teamMembers,
-          intakes: firmDetail.intakes,
-          roadmaps: firmDetail.roadmaps,
-          recentActivity: firmDetail.recentActivity,
-        });
+       setData({
+  tenant: {
+    id: firmDetail.tenantSummary.id,
+    name: firmDetail.tenantSummary.name,
+    cohortLabel: firmDetail.tenantSummary.cohortLabel,
+    segment: firmDetail.tenantSummary.segment,
+    region: firmDetail.tenantSummary.region,
+    status: firmDetail.tenantSummary.status,
+    notes: firmDetail.tenantSummary.notes,
+    createdAt: firmDetail.tenantSummary.createdAt,
+    ownerEmail: firmDetail.owner?.email || '',
+    ownerName: firmDetail.owner?.name || '',
+    lastDiagnosticId: firmDetail.tenantSummary.lastDiagnosticId,
+
+    // required by SuperAdminTenantDetail
+    intakeWindowState: (firmDetail.tenantSummary as any).intakeWindowState ?? 'OPEN',
+    discoveryComplete: (firmDetail.tenantSummary as any).discoveryComplete ?? false,
+  diagnosticStatus: (firmDetail as any).diagnosticStatus ?? null,
+executiveBriefStatus: (firmDetail as any).executiveBriefStatus ?? null,
+
+  },
+
+  owner: firmDetail.owner,
+  teamMembers: firmDetail.teamMembers,
+  intakes: firmDetail.intakes,
+  roadmaps: firmDetail.roadmaps,
+  recentActivity: firmDetail.recentActivity,
+} as any);
+
       })
       .catch((err) => setError(err.message));
 
@@ -133,7 +143,7 @@ export default function SuperAdminFirmDetailPage() {
   // Phase 2: Redirect to Control Plane
   function goControlPlane(hash: string) {
     if (!params?.tenantId) return;
-    navigate(`/superadmin/control-plane/firms/${params.tenantId}#${hash}`);
+    setLocation(`/superadmin/control-plane/firms/${params.tenantId}#${hash}`);
   }
 
   // PHASE 2: DISABLED - Mutations moved to Control Plane
@@ -309,6 +319,14 @@ export default function SuperAdminFirmDetailPage() {
       {/* Intakes + Roadmaps + Activity */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 text-sm">
         <div className="lg:col-span-2 space-y-4">
+          <ExecutiveBriefPanel
+            tenantId={params.tenantId}
+            onApproved={() => {
+              fetchWorkflowStatus();
+              fetchDocuments();
+            }}
+          />
+
           {/* Ticket Moderation Cockpit (TM-3a) */}
           {workflowStatus?.sop01?.complete && data?.tenant?.lastDiagnosticId && (
             <TicketModerationCard
@@ -593,6 +611,7 @@ export default function SuperAdminFirmDetailPage() {
       {selectedIntake && (
         <IntakeModal
           intake={selectedIntake}
+          intakeWindowState={tenant.intakeWindowState || 'OPEN'}
           onClose={() => setSelectedIntake(null)}
         />
       )}

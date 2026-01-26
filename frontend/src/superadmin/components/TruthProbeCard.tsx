@@ -1,4 +1,4 @@
-import React from 'react';
+
 
 export interface TruthProbeData {
     tenantId: string;
@@ -9,6 +9,7 @@ export interface TruthProbeData {
     executiveBrief: { exists: boolean; state: string | null; };
     diagnostic: { exists: boolean; state: string | null; };
     discovery: { exists: boolean; state: string | null; };
+    findings: { exists: boolean; state: string | null; };
     tickets: {
         total: number;
         pending: number;

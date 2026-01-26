@@ -1,5 +1,5 @@
 
-import React from 'react';
+
 import { AuthorityCategory } from '@roadmap/shared';
 import { useSuperAdminAuthority } from '../hooks/useSuperAdminAuthority';
 
@@ -19,7 +19,6 @@ interface ReadinessChecklistCardProps {
 }
 
 export function ReadinessChecklistCard({
-    tenantId,
     flags,
     timestamps,
     onSignal

@@ -17,7 +17,7 @@ interface WebinarRegistration {
 }
 
 export default function SuperAdminLeadsPage() {
-  const [registrations, setRegistrations] = useState<WebinarRegistration[]>([]);
+  const [registrations] = useState<WebinarRegistration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -28,7 +28,7 @@ export default function SuperAdminLeadsPage() {
   const [saving, setSaving] = useState(false);
 
   // Password management
-  const [passwordVersion, setPasswordVersion] = useState<number>(1);
+  const [passwordVersion] = useState<number>(1);
   const [newPassword, setNewPassword] = useState('');
   const [updatingPassword, setUpdatingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
@@ -41,6 +41,10 @@ export default function SuperAdminLeadsPage() {
   async function fetchRegistrations() {
     setLoading(true);
     setError(null);
+    // TODO: Unauthorized direct fetch. Migrate to ApiClient.
+    console.warn('Action disabled: direct fetch unauthorized. Migrate to ApiClient.');
+    setLoading(false);
+    /*
     try {
       const token = localStorage.getItem('token');
       const params = new URLSearchParams();
@@ -62,9 +66,13 @@ export default function SuperAdminLeadsPage() {
     } finally {
       setLoading(false);
     }
+    */
   }
 
   async function fetchPasswordSettings() {
+    // TODO: Unauthorized direct fetch. Migrate to ApiClient.
+    console.warn('Action disabled: direct fetch unauthorized. Migrate to ApiClient.');
+    /*
     try {
       const token = localStorage.getItem('token');
       const res = await fetch('/api/superadmin/webinar/settings', {
@@ -78,6 +86,7 @@ export default function SuperAdminLeadsPage() {
     } catch (err) {
       console.error('Failed to fetch password settings:', err);
     }
+    */
   }
 
   async function handleUpdatePassword() {
@@ -89,6 +98,10 @@ export default function SuperAdminLeadsPage() {
     setUpdatingPassword(true);
     setPasswordMessage(null);
 
+    // TODO: Unauthorized direct fetch. Migrate to ApiClient.
+    console.warn('Action disabled: direct fetch unauthorized. Migrate to ApiClient.');
+    setUpdatingPassword(false);
+    /*
     try {
       const token = localStorage.getItem('token');
       const res = await fetch('/api/superadmin/webinar/password', {
@@ -115,10 +128,15 @@ export default function SuperAdminLeadsPage() {
     } finally {
       setUpdatingPassword(false);
     }
+    */
   }
 
-  async function handleSave(registrationId: string) {
+  async function handleSave(_registrationId: string) {
     setSaving(true);
+    // TODO: Unauthorized direct fetch. Migrate to ApiClient.
+    console.warn('Action disabled: direct fetch unauthorized. Migrate to ApiClient.');
+    setSaving(false);
+    /*
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`/api/superadmin/webinar/registrations/${registrationId}`, {
@@ -147,6 +165,7 @@ export default function SuperAdminLeadsPage() {
     } finally {
       setSaving(false);
     }
+    */
   }
 
   function startEdit(registration: WebinarRegistration) {
@@ -363,14 +382,14 @@ export default function SuperAdminLeadsPage() {
                     ) : (
                       <span
                         className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${registration.status === 'pending'
-                            ? 'bg-yellow-900/30 text-yellow-400'
-                            : registration.status === 'reviewed'
-                              ? 'bg-blue-900/30 text-blue-400'
-                              : registration.status === 'contacted'
-                                ? 'bg-purple-900/30 text-purple-400'
-                                : registration.status === 'converted'
-                                  ? 'bg-green-900/30 text-green-400'
-                                  : 'bg-red-900/30 text-red-400'
+                          ? 'bg-yellow-900/30 text-yellow-400'
+                          : registration.status === 'reviewed'
+                            ? 'bg-blue-900/30 text-blue-400'
+                            : registration.status === 'contacted'
+                              ? 'bg-purple-900/30 text-purple-400'
+                              : registration.status === 'converted'
+                                ? 'bg-green-900/30 text-green-400'
+                                : 'bg-red-900/30 text-red-400'
                           }`}
                       >
                         {registration.status}

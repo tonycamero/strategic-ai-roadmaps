@@ -247,6 +247,15 @@ router.post('/firms/:tenantId/executive-brief/generate', requireExecutive(), exe
 // POST /api/superadmin/firms/:tenantId/executive-brief/approve - Approve brief + close intake
 router.post('/firms/:tenantId/executive-brief/approve', requireExecutive(), executiveBriefController.approveExecutiveBrief);
 
+// POST /api/superadmin/firms/:tenantId/executive-brief/deliver - Deliver PDF to tenant (Internal only)
+router.post('/firms/:tenantId/executive-brief/deliver', requireExecutive(), executiveBriefController.deliverExecutiveBrief);
+
+// POST /api/superadmin/firms/:tenantId/executive-brief/generate-pdf - Generate PDF without emailing
+router.post('/firms/:tenantId/executive-brief/generate-pdf', requireExecutive(), executiveBriefController.generateExecutiveBriefPDF);
+
+// GET /api/superadmin/firms/:tenantId/executive-brief/download - Download generated PDF
+router.get('/firms/:tenantId/executive-brief/download', requireExecutive(), executiveBriefController.downloadExecutiveBrief);
+
 // Webinar Registration Management
 // GET /api/superadmin/webinar/registrations - View all webinar registrations
 router.get('/webinar/registrations', superadminController.getWebinarRegistrations);

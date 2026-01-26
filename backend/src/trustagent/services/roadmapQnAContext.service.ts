@@ -136,9 +136,9 @@ async function getOwnerProfile(tenantId: string): Promise<EnrichedProfile | null
   const answers = intake.answers as any;
 
   // Only return if we have enriched fields (check if at least one key field exists)
-  const hasEnrichedData = answers.display_name || answers.role_label || 
+  const hasEnrichedData = answers.display_name || answers.role_label ||
     (answers.top_3_issues && answers.top_3_issues.some(Boolean));
-  
+
   if (!hasEnrichedData) {
     console.log(`[RoadmapQnAContext] Owner intake exists but no enriched profile data`);
     return null;
@@ -149,17 +149,17 @@ async function getOwnerProfile(tenantId: string): Promise<EnrichedProfile | null
     departmentKey: answers.department_key || 'owner',
     displayName: answers.display_name || undefined,
     preferredReference: answers.preferred_reference || answers.display_name || undefined,
-    
+
     top3Issues: answers.top_3_issues?.filter(Boolean) || undefined,
     top3GoalsNext90Days: answers.top_3_goals_next_90_days?.filter(Boolean) || undefined,
     oneThingOutcome: answers.if_nothing_else_changes_but_X_this_was_worth_it || undefined,
-    
+
     primaryKpis: answers.primary_kpis?.filter(Boolean) || undefined,
     kpiBaselines: answers.kpi_baselines || undefined,
-    
+
     nonGoals: answers.non_goals?.filter(Boolean) || undefined,
     doNotAutomate: answers.do_not_automate?.filter(Boolean) || undefined,
-    
+
     changeReadiness: answers.change_readiness || undefined,
     weeklyCapacityHours: answers.weekly_capacity_for_implementation_hours ?? undefined,
     biggestRiskIfTooFast: answers.biggest_risk_if_we_push_too_fast || undefined
@@ -245,7 +245,7 @@ export async function buildRoadmapQnAContext(
     implementationSteps: JSON.stringify(t.implementationSteps) ?? '',
 
     owner: t.owner ?? 'Owner',
-    dependencies: (t.dependencies as string[]) || [],
+    dependencies: (t.dependencies as any as string[]) || [],
 
     timeEstimateHours: t.timeEstimateHours ?? 0,
     costEstimate: t.costEstimate ?? 0,

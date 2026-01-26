@@ -202,6 +202,26 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                 // Definition: accepted = email exists in teamMembers
                 isAccepted: firmDetail.teamMembers.some((m: any) => m.email === v.recipientEmail)
             }));
+
+            // Synthesis: If Owner exists but isn't in vectors, add them as a virtual EXECUTIVE stakeholder
+            if (firmDetail.owner && !mappedRoles.some(r => r.recipientEmail === firmDetail.owner?.email)) {
+                const ownerIntake = firmDetail.intakes.find(i => i.role === 'owner' || i.userEmail === firmDetail.owner?.email);
+                mappedRoles.unshift({
+                    id: `owner-${firmDetail.owner.id}`,
+                    intakeId: ownerIntake?.id,
+                    roleLabel: (ownerIntake?.answers as any)?.role_label || 'Strategic Owner',
+                    roleType: 'EXECUTIVE',
+                    recipientName: firmDetail.owner.name,
+                    recipientEmail: firmDetail.owner.email,
+                    inviteStatus: 'SENT',
+                    intakeStatus: ownerIntake?.status === 'completed' ? 'COMPLETED' :
+                        ownerIntake?.status === 'in_progress' ? 'IN_PROGRESS' : 'NOT_STARTED',
+                    perceivedConstraints: 'Business Continuity & Strategic Roadmap',
+                    anticipatedBlindSpots: 'Internal execution bottlenecks',
+                    isAccepted: true
+                });
+            }
+
             setIntakeRoles(mappedRoles);
         } catch (err: any) {
             setError(err.message);
@@ -240,9 +260,21 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         if (stage === 1) return s1;
 
         // s2: Executive Brief (Consultation Anchor)
-        // Requirement: "Brief Reviewed" or "Approved"
-        const s2Fact = ['APPROVED', 'REVIEWED'].includes(tenant.executiveBriefStatus || '');
-        const s2 = (s2Fact && s1 === 'COMPLETE') ? 'COMPLETE' : (s1 === 'COMPLETE' ? 'READY' : 'LOCKED');
+        // Decoupled: Can generate brief while intake is OPEN.
+        const s2Fact = ['APPROVED', 'ACKNOWLEDGED', 'WAIVED'].includes(tenant.executiveBriefStatus || '');
+const hasOwnerIntake = data.intakes.some((i: any) =>
+  (i.role === 'owner' || i.userRole === 'owner' || i.userEmail === data.owner?.email) &&
+  i.completedAt
+);
+        const hasStakeholders = intakeRoles.length > 0;
+
+        let s2: 'LOCKED' | 'READY' | 'COMPLETE' = 'LOCKED';
+        if (s2Fact) {
+            s2 = 'COMPLETE';
+        } else if (hasOwnerIntake && hasStakeholders) {
+            s2 = 'READY';
+        }
+
         if (stage === 2) return s2;
 
         // s3: Diagnostic (Source: latestDiagnostic from diagnostics table)
@@ -560,6 +592,75 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         }
     };
 
+    const handleGenerateExecutiveBrief = async () => {
+        if (!params?.tenantId) return;
+        if (isGenerating) return;
+        setIsGenerating(true);
+        try {
+            await superadminApi.generateExecutiveBrief(params.tenantId);
+            await refreshData();
+        } catch (err: any) {
+            console.error('Failed to generate executive brief:', err);
+            // If it already exists, just refresh data and let the UI state resolve
+            if (err.message === 'EXECUTIVE_BRIEF_ALREADY_EXISTS') {
+                await refreshData();
+            } else {
+                setError(`Generation Error: ${err.message}`);
+            }
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleApproveExecutiveBrief = async () => {
+        if (!params?.tenantId) return;
+        if (isGenerating) return;
+        setIsGenerating(true);
+        try {
+            await superadminApi.approveExecutiveBrief(params.tenantId);
+            await refreshData();
+            setExecBriefOpen(false);
+        } catch (err: any) {
+            console.error('Failed to approve executive brief:', err);
+            setError(`Approval Error: ${err.message}`);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleDeliverExecutiveBrief = async () => {
+        if (!params?.tenantId) return;
+        if (isGenerating) return;
+        setIsGenerating(true);
+        try {
+            await superadminApi.deliverExecutiveBrief(params.tenantId);
+            await loadExecBriefData();
+            // Don't close modal, just refresh state to show "Delivered" if applicable
+            await refreshData();
+        } catch (err: any) {
+            console.error('Failed to deliver executive brief:', err);
+            window.alert(`Delivery Error: ${err.message}`);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleGenerateExecutiveBriefPdf = async () => {
+        if (!params?.tenantId) return;
+        if (isGenerating) return;
+        setIsGenerating(true);
+        try {
+            await superadminApi.generateExecutiveBriefPDF(params.tenantId);
+            await loadExecBriefData();
+            // window.alert('PDF Generated Successfully'); // Optional feedback
+        } catch (err: any) {
+            console.error('Failed to generate PDF:', err);
+            window.alert(`Generation Error: ${err.message}`);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     // Modal Data Fetch Functions
     const loadExecBriefData = async () => {
         if (!params?.tenantId) return;
@@ -567,7 +668,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         setExecBriefError(null);
         try {
             const response = await superadminApi.getExecutiveBrief(params.tenantId);
-            const brief = response.brief;
+            const { brief, hasPdf } = response;
 
             if (!brief) {
                 setExecBriefError('No executive brief found');
@@ -582,6 +683,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                 synthesis: brief.synthesis, // Pass the whole synthesis object for tabs
                 createdAt: brief.generatedAt || brief.createdAt,
                 approvedAt: brief.approvedAt,
+                hasPdf: !!hasPdf,
             });
         } catch (err: any) {
             console.error('Failed to load executive brief:', err);
@@ -648,19 +750,25 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         }
     };
 
-    const openSynthesisModal = async () => {
-        setSynthesisOpen(true);
-        // Load discovery notes
-        try {
-            const res = await superadminApi.getDiscoveryNotes(params.tenantId);
-            setSynthesisNotes(res.notes);
-        } catch (err) {
-            console.error('Failed to load discovery notes for synthesis:', err);
-        }
-        // Ensure other artifacts are loaded
-        if (!diagData) await loadDiagnosticData();
-        if (!execBriefData) await loadExecBriefData();
-    };
+ const openSynthesisModal = async () => {
+  const tenantId = params?.tenantId;
+  if (!tenantId) return;
+
+  setSynthesisOpen(true);
+
+  // Load discovery notes
+  try {
+    const res = await superadminApi.getDiscoveryNotes(tenantId);
+    setSynthesisNotes(res.notes);
+  } catch (err) {
+    console.error('Failed to load discovery notes for synthesis:', err);
+  }
+
+  // Ensure other artifacts are loaded
+  if (!diagData) await loadDiagnosticData();
+  if (!execBriefData) await loadExecBriefData();
+};
+
 
     const closeDiagnosticModal = async () => {
         setDiagOpen(false);
@@ -803,11 +911,45 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                         <div className="text-[10px] text-slate-400 space-y-0.5">
                                             <div className="font-bold uppercase tracking-widest text-slate-500 mb-1">Truth</div>
                                             <div className="flex items-center gap-2 flex-wrap">
-                                                <span>Brief: <span className="text-slate-300">{truthProbe.brief?.status || 'N/A'}</span></span>
-                                                <span className="text-slate-700">•</span>
-                                                <span>Diag: <span className="text-slate-300">{truthProbe.diagnostic?.status || 'N/A'}</span></span>
-                                                <span className="text-slate-700">•</span>
-                                                <span>Tickets: <span className="text-slate-300">{truthProbe.tickets?.approved || 0}/{truthProbe.tickets?.total || 0}</span></span>
+                                                
+<div className="flex items-center justify-between">
+  <div className="text-[10px] text-slate-400 space-y-0.5">
+    <div className="font-bold uppercase tracking-widest text-slate-500 mb-1">
+      Truth
+    </div>
+
+    <div className="flex items-center gap-2 flex-wrap">
+      <span>
+        Brief:{' '}
+        <span className="text-slate-300">
+{(truthProbe as any)?.executiveBrief?.status ?? (truthProbe as any)?.brief?.status ?? 'N/A'}
+        </span>
+      </span>
+
+      <span className="text-slate-700">•</span>
+
+      <span>
+        Diag:{' '}
+        <span className="text-slate-300">
+{(truthProbe as any)?.diagnostic?.status ?? 'N/A'}
+        </span>
+      </span>
+
+      <span className="text-slate-700">•</span>
+
+      <span>
+        Tickets:{' '}
+        <span className="text-slate-300">
+         {((truthProbe as any)?.tickets?.approved ?? 0)}/{((truthProbe as any)?.tickets?.total ?? 0)}
+
+        </span>
+      </span>
+    </div>
+  </div>
+</div>
+
+
+
                                             </div>
                                         </div>
                                         <svg className="w-3 h-3 text-slate-600 group-hover:text-slate-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -846,7 +988,32 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                         id: 2,
                                         label: 'Executive Brief',
                                         status: getCanonicalStatus(2),
-                                        action: null // Brief approval happens in modal
+                                        action: (() => {
+                                            const status = getCanonicalStatus(2);
+                                            const briefStatus = tenant.executiveBriefStatus;
+
+                                            if (status === 'READY') {
+                                                if (!briefStatus) {
+                                                    return (
+                                                        <button
+                                                            onClick={handleGenerateExecutiveBrief}
+                                                            className="mt-2 text-[10px] uppercase font-bold text-indigo-400 hover:text-indigo-300 border border-indigo-900/50 bg-indigo-950/30 px-3 py-1.5 rounded transition-colors"
+                                                        >
+                                                            Generate
+                                                        </button>
+                                                    );
+                                                }
+                                                return (
+                                                    <button
+                                                        onClick={openExecBriefModal}
+                                                        className="mt-2 text-[10px] uppercase font-bold text-orange-400 hover:text-orange-300 border border-orange-900/50 bg-orange-950/30 px-3 py-1.5 rounded transition-colors"
+                                                    >
+                                                        Review Draft
+                                                    </button>
+                                                );
+                                            }
+                                            return null;
+                                        })()
                                     },
                                     {
                                         id: 3,
@@ -1214,6 +1381,13 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                     onClose={closeExecBriefModal}
                     data={execBriefData}
                     status={execBriefData?.status || tenant.executiveBriefStatus}
+                    onApprove={handleApproveExecutiveBrief}
+                    isApproving={isGenerating}
+                    tenantId={params?.tenantId || ''}
+                    onDeliver={handleDeliverExecutiveBrief}
+                    isDelivering={isGenerating}
+                    hasPdf={execBriefData?.hasPdf}
+                    onGeneratePdf={handleGenerateExecutiveBriefPdf}
                 />
 
                 <DiagnosticReviewModal

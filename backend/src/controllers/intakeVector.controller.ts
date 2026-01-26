@@ -1,8 +1,10 @@
 import { Response } from 'express';
 import { db } from '../db';
-import { intakeVectors, intakes, users, tenants } from '../db/schema';
+import { intakeVectors, intakes, users, tenants, invites } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { AuthRequest } from '../middleware/auth';
+import { generateInviteToken } from '../utils/auth';
+import * as emailService from '../services/email.service';
 
 /**
  * Create a new intake vector (stakeholder role definition)
@@ -227,7 +229,7 @@ export async function sendIntakeVectorInvite(req: AuthRequest, res: Response) {
 
         const { id } = req.params;
 
-        // Get the vector
+        // 1. Fetch vector + tenant
         const [vector] = await db
             .select()
             .from(intakeVectors)
@@ -238,13 +240,18 @@ export async function sendIntakeVectorInvite(req: AuthRequest, res: Response) {
             return res.status(404).json({ error: 'Intake vector not found' });
         }
 
-        // 🛑 CR-UX-5: Intake Freeze Gate
-        const tenant = await db.query.tenants.findFirst({
-            where: eq(tenants.id, vector.tenantId),
-            columns: { intakeWindowState: true }
-        });
+        const [tenant] = await db
+            .select()
+            .from(tenants)
+            .where(eq(tenants.id, vector.tenantId))
+            .limit(1);
 
-        if (tenant?.intakeWindowState === 'CLOSED') {
+        if (!tenant) {
+            return res.status(404).json({ error: 'Tenant context lost' });
+        }
+
+        // 🛑 CR-UX-5: Intake Freeze Gate
+        if (tenant.intakeWindowState === 'CLOSED') {
             return res.status(403).json({
                 error: 'Intake window is closed',
                 message: 'Invites are frozen for this cycle.'
@@ -255,28 +262,159 @@ export async function sendIntakeVectorInvite(req: AuthRequest, res: Response) {
             return res.status(400).json({ error: 'No recipient email specified' });
         }
 
-        // TODO: Implement actual invite sending logic (email, etc.)
-        // For now, just update the status
+        // 2. Deterministic Invite Retrieval/Creation
+        const role = mapRoleTypeToUserRole(vector.roleType);
 
-        const [updated] = await db
-            .update(intakeVectors)
-            .set({
-                inviteStatus: 'SENT',
-                updatedAt: new Date()
-            })
-            .where(eq(intakeVectors.id, id))
-            .returning();
+        // Find existing pending invite for this email+tenant
+        let [existingInvite] = await db
+            .select()
+            .from(invites)
+            .where(and(
+                eq(invites.email, vector.recipientEmail),
+                eq(invites.tenantId, tenant.id)
+            ))
+            .limit(1);
 
-        const intakeStatus = updated.intakeId ? 'COMPLETED' : 'IN_PROGRESS';
+        if (existingInvite?.accepted) {
+            // Role Sync Logic: If user already exists but role is wrong (e.g. they were promoted to Executive)
+            // Fix their role in the users table so they get the right intake/dashboard
+            try {
+                const targetRole = role;
+                const [existingUser] = await db
+                    .select()
+                    .from(users)
+                    .where(and(
+                        eq(users.email, vector.recipientEmail),
+                        eq(users.tenantId, tenant.id)
+                    ))
+                    .limit(1);
 
-        return res.json({
-            vector: {
-                ...updated,
-                intakeStatus
+                if (existingUser && existingUser.role !== targetRole) {
+                    await db
+                        .update(users)
+                        .set({ role: targetRole })
+                        .where(eq(users.id, existingUser.id));
+                    console.log(`[RoleSync] Upgraded ${vector.recipientEmail} to ${targetRole}`);
+                }
+
+                // Also ensure the vector status shows ACCEPTED
+                const [updated] = await db
+                    .update(intakeVectors)
+                    .set({
+                        inviteStatus: 'ACCEPTED',
+                        updatedAt: new Date()
+                    })
+                    .where(eq(intakeVectors.id, id))
+                    .returning();
+
+                // Build enriched vector (left join logic equivalent)
+                const [intake] = await db
+                    .select()
+                    .from(intakes)
+                    .where(eq(intakes.id, updated.intakeId || ''))
+                    .limit(1);
+
+                const intakeStatus = (updated.intakeId && intake) ? 'COMPLETED' : 'NOT_STARTED';
+
+                return res.json({
+                    ok: true,
+                    message: "Stakeholder already accepted. Role synced to latest definition.",
+                    vector: {
+                        ...updated,
+                        intakeStatus
+                    }
+                });
+            } catch (syncError) {
+                console.error('[RoleSync] Failed to sync existing user role:', syncError);
+                return res.status(400).json({ error: 'Stakeholder has already accepted an invite' });
             }
-        });
+        }
+
+        let inviteToken = existingInvite?.token;
+        if (!inviteToken) {
+            inviteToken = generateInviteToken();
+            const [newInvite] = await db
+                .insert(invites)
+                .values({
+                    email: vector.recipientEmail,
+                    role,
+                    token: inviteToken,
+                    tenantId: tenant.id,
+                    accepted: false,
+                })
+                .returning();
+            existingInvite = newInvite;
+        }
+
+        // 3. Dispatch via Resend
+        const [ownerUser] = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, tenant.ownerUserId || ''))
+            .limit(1);
+
+        const inviterName = ownerUser?.name || 'Your Team Lead';
+        const emailDomain = vector.recipientEmail.split('@')[1];
+        const redactedTo = `${vector.recipientEmail.slice(0, 2)}***@${emailDomain}`;
+
+        try {
+            const result = await emailService.sendInviteEmail(
+                vector.recipientEmail,
+                inviteToken,
+                inviterName,
+                tenant.name,
+                vector.roleLabel
+            );
+
+            // 4. Update Status + Audit Log
+            const [updated] = await db
+                .update(intakeVectors)
+                .set({
+                    inviteStatus: 'SENT',
+                    updatedAt: new Date()
+                })
+                .where(eq(intakeVectors.id, id))
+                .returning();
+
+            console.log(`[Email] Dispatch successful: tenant=${tenant.id} vector=${vector.id} domain=${emailDomain} msgId=${result?.id}`);
+
+            // Determine intake status (same derivation as getIntakeVectors)
+            // Since we just sent the invite, it's either COMPLETED (if linked) or NOT_STARTED
+            const intakeStatus = updated.intakeId ? 'COMPLETED' : 'NOT_STARTED';
+
+            return res.json({
+                ok: true,
+                messageId: result?.id,
+                to: redactedTo,
+                vector: {
+                    ...updated,
+                    intakeStatus
+                }
+            });
+        } catch (dispatchError: any) {
+            console.error(`[Email] Dispatch FAILED: tenant=${tenant.id} vector=${vector.id} domain=${emailDomain} error=${dispatchError.message}`);
+            return res.status(502).json({
+                error: "EMAIL_DISPATCH_FAILED",
+                provider: "resend",
+                details: dispatchError.message
+            });
+        }
     } catch (error) {
         console.error('Send intake vector invite error:', error);
         return res.status(500).json({ error: 'Internal server error' });
+    }
+}
+
+/**
+ * Helper to map Stakeholder Vector roleType to core UI UserRole
+ */
+function mapRoleTypeToUserRole(roleType: string): any {
+    switch (roleType) {
+        case 'SALES_LEAD': return 'sales';
+        case 'DELIVERY_LEAD': return 'delivery';
+        case 'EXECUTIVE': return 'exec_sponsor';
+        case 'FACILITATOR': return 'ops';
+        case 'OPERATIONAL_LEAD': return 'ops';
+        default: return 'ops';
     }
 }

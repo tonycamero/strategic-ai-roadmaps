@@ -2940,6 +2940,7 @@ export async function lockIntake(req: AuthRequest, res: Response) {
 
     await db.update(tenants)
       .set({
+        intakeWindowState: 'CLOSED',
         intakeClosedAt: new Date(),
       })
       .where(eq(tenants.id, tenantId));
@@ -2992,10 +2993,15 @@ export async function generateDiagnostics(req: AuthRequest, res: Response) {
       tenantId,
       sopVersion: 'SOP-01',
       status: 'generated' as const,
-      overview: { markdown: outputs.companyDiagnosticMap },
-      aiOpportunities: { markdown: outputs.aiLeverageMap },
-      roadmapSkeleton: { markdown: outputs.roadmapSkeleton },
-      discoveryQuestions: { list: outputs.discoveryCallQuestions },
+      overview: { markdown: outputs.sop01DiagnosticMarkdown },
+      aiOpportunities: { markdown: outputs.sop01AiLeverageMarkdown },
+      roadmapSkeleton: { markdown: outputs.sop01RoadmapSkeletonMarkdown },
+      discoveryQuestions: {
+        list: outputs.sop01DiscoveryQuestionsMarkdown
+          .split('\n')
+          .map(q => q.trim())
+          .filter(Boolean)
+      },
       generatedByUserId: req.user!.id || null,
       updatedAt: new Date()
     };

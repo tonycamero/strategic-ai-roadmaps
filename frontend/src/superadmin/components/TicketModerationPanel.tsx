@@ -66,11 +66,20 @@ export function TicketModerationPanel({ tenantId, diagnosticId, onStatusChange }
                 t.id === ticketId ? { ...t, approved, moderatedAt: new Date().toISOString() } : t
             ));
 
-            if (approved) {
-                await superadminApi.approveTickets(tenantId, diagnosticId, [ticketId]);
-            } else {
-                await superadminApi.rejectTickets(tenantId, diagnosticId, [ticketId]);
-            }
+           if (approved) {
+  await superadminApi.approveTickets({
+    tenantId,
+    diagnosticId,
+    ticketIds: [ticketId],
+  });
+} else {
+  await superadminApi.rejectTickets({
+    tenantId,
+    diagnosticId,
+    ticketIds: [ticketId],
+  });
+}
+
 
             // Background refresh for consistency
             const res = await superadminApi.getDiagnosticTickets(tenantId, diagnosticId);

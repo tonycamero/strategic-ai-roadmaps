@@ -425,13 +425,19 @@ export const superadminApi = {
 
   // Executive Brief v0
   getExecutiveBrief: (tenantId: string) =>
-    apiGet<{ brief: any }>(`/firms/${tenantId}/executive-brief`),
+    apiGet<{ brief: any; hasPdf?: boolean }>(`/firms/${tenantId}/executive-brief`),
 
   generateExecutiveBrief: (tenantId: string) =>
     apiPost<{ brief: any }>(`/firms/${tenantId}/executive-brief/generate`, {}),
 
+  generateExecutiveBriefPDF: (tenantId: string) =>
+    apiPost<{ success: boolean; message: string }>(`/firms/${tenantId}/executive-brief/generate-pdf`, {}),
+
   approveExecutiveBrief: (tenantId: string) =>
     apiPost<{ brief: any; intakeWindowState: string }>(`/firms/${tenantId}/executive-brief/approve`, {}),
+
+  deliverExecutiveBrief: (tenantId: string) =>
+    apiPost<{ success: boolean; deliveredAt: string }>(`/firms/${tenantId}/executive-brief/deliver`, {}),
 
   closeIntakeWindow: (tenantId: string) =>
     apiPost<{ ok: boolean }>(`/firms/${tenantId}/close-intake`),

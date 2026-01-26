@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Plus, Trash2, Save, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface InventoryItem {
@@ -44,10 +44,10 @@ export function DiscoverySynthesisBuilder({
     const [selectedItems, setSelectedItems] = useState<SelectedInventoryItem[]>(
         existingSynthesis?.selectedInventory || []
     );
-    const [synthesizedSystems, setSynthesizedSystems] = useState<string[]>(
+    const [synthesizedSystems] = useState<string[]>(
         existingSynthesis?.synthesizedSystems || []
     );
-    const [exclusions, setExclusions] = useState<string[]>(
+    const [exclusions] = useState<string[]>(
         existingSynthesis?.exclusions || []
     );
     const [operatorNotes, setOperatorNotes] = useState(

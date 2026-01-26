@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../db';
-import { invites, users, tenants } from '../db/schema';
+import { invites, users, tenants, intakeVectors } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { generateInviteToken, hashPassword, generateToken } from '../utils/auth';
 import { sendInviteEmail } from '../utils/email';
@@ -160,6 +160,22 @@ export async function acceptInvite(req: Request, res: Response) {
       .update(invites)
       .set({ accepted: true })
       .where(eq(invites.id, invite.id));
+
+    // 🎯 Sync status back to Intake Vector (for Invite Team dashboard)
+    try {
+      await db
+        .update(intakeVectors)
+        .set({
+          inviteStatus: 'ACCEPTED',
+          updatedAt: new Date()
+        })
+        .where(and(
+          eq(intakeVectors.tenantId, invite.tenantId),
+          eq(intakeVectors.recipientEmail, invite.email)
+        ));
+    } catch (error) {
+      console.error('Failed to sync intake vector status on acceptance:', error);
+    }
 
     const authToken = generateToken({
       userId: newUser.id,

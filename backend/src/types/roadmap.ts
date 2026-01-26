@@ -7,10 +7,10 @@ export interface RoadmapContext {
   normalizedIntakes: NormalizedIntakeContext;
 
   sop01: {
-    companyDiagnosticMap: string;
-    aiLeverageMap: string;
-    discoveryCallQuestions: string;
-    roadmapSkeleton: string;
+    sop01DiagnosticMarkdown: string;
+    sop01AiLeverageMarkdown: string;
+    sop01DiscoveryQuestionsMarkdown: string;
+    sop01RoadmapSkeletonMarkdown: string;
   };
 
   discoveryNotes: string;

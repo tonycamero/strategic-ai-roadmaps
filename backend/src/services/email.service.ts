@@ -11,8 +11,9 @@
 import { Resend } from 'resend';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
+const FROM_EMAIL = process.env.FROM_EMAIL || process.env.RESEND_FROM || 'onboarding@resend.dev';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const REPLY_TO = process.env.RESEND_REPLY_TO;
 
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
@@ -33,6 +34,7 @@ function assertResendConfigured(opName: string) {
 // ============================================================================
 
 export async function sendPasswordResetEmail(to: string, resetToken: string) {
+  assertResendConfigured('sendPasswordResetEmail');
   const resetUrl = `${FRONTEND_URL}/reset-password/${resetToken}`;
 
   if (!resend) {
@@ -41,7 +43,7 @@ export async function sendPasswordResetEmail(to: string, resetToken: string) {
       console.warn(`[EmailService] Password reset URL for ${to}:`);
       console.warn(resetUrl);
     }
-    return;
+    return { id: 'dev-mode-reset' };
   }
 
   const { data, error } = await resend.emails.send({
@@ -78,6 +80,7 @@ export async function sendPasswordResetEmail(to: string, resetToken: string) {
   }
 
   console.log(`[EmailService] Password reset email sent to ${to}, ID: ${data?.id}`);
+  return data;
 }
 
 // ============================================================================
@@ -88,8 +91,10 @@ export async function sendInviteEmail(
   to: string,
   inviteToken: string,
   inviterName: string,
-  companyName: string
+  companyName: string,
+  roleLabel?: string
 ) {
+  assertResendConfigured('sendInviteEmail');
   const inviteUrl = `${FRONTEND_URL}/accept-invite/${inviteToken}`;
 
   if (!resend) {
@@ -98,17 +103,22 @@ export async function sendInviteEmail(
       console.warn(`[EmailService] Invite URL for ${to}:`);
       console.warn(inviteUrl);
     }
-    return;
+    return { id: 'dev-mode-invite' };
   }
+
+  const subject = roleLabel
+    ? `${inviterName} invited you to join ${companyName} as ${roleLabel}`
+    : `${inviterName} invited you to join ${companyName}`;
 
   const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
     to,
-    subject: `${inviterName} invited you to ${companyName}`,
+    reply_to: REPLY_TO,
+    subject,
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
         <h2>You've Been Invited!</h2>
-        <p><strong>${inviterName}</strong> has invited you to join <strong>${companyName}</strong> on Strategic AI Roadmaps.</p>
+        <p><strong>${inviterName}</strong> has invited you to join <strong>${companyName}</strong> on Strategic AI Roadmaps${roleLabel ? ` as <strong>${roleLabel}</strong>` : ''}.</p>
         <p>Click the button below to accept the invitation and create your account:</p>
         <p style="margin: 30px 0;">
           <a href="${inviteUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
@@ -129,6 +139,7 @@ export async function sendInviteEmail(
   }
 
   console.log(`[EmailService] Invite email sent to ${to}, ID: ${data?.id}`);
+  return data;
 }
 
 // ============================================================================
@@ -162,7 +173,7 @@ export async function sendEmail(args: {
       if (text) console.warn('[EmailService] text preview:', text.slice(0, 180));
       if (html) console.warn('[EmailService] html provided (length):', html.length);
     }
-    return;
+    return { id: 'dev-mode-generic' };
   }
 
   // In non-dev, fail closed if configured incorrectly (shouldn't happen here because resend truthy)
@@ -177,6 +188,7 @@ export async function sendEmail(args: {
   const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
     to,
+    reply_to: REPLY_TO,
     subject,
     text,
     html,
@@ -189,4 +201,5 @@ export async function sendEmail(args: {
   }
 
   console.log(`[EmailService] Email sent to ${to}, ID: ${data?.id}`);
+  return data;
 }

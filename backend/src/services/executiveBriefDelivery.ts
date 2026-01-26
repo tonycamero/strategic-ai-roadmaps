@@ -1,32 +1,18 @@
 // FILE: backend/src/services/executiveBriefDelivery.ts
-// DROP-IN REPLACEMENT (copy/paste entire file)
-// NOTE: PDF + Email delivery pipeline is preserved but DISABLED because:
-// - ./pdfGenerator does not exist in repo history
-// - email.service does not export sendEmail (contract drift)
-// This module now compiles and keeps artifact persistence logic isolated for future reactivation.
-
 import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 import { eq, and } from 'drizzle-orm';
 import { db } from '../db';
 import { executiveBriefArtifacts, users } from '../db/schema';
+import { renderPrivateLeadershipBriefToPDF } from './pdf/executiveBriefRenderer';
+import { sendEmail } from './email.service';
 
 /**
- * Executive Brief Delivery Service (Hardened Recovery)
- *
- * Current behavior (ACTIVE):
- * - Write-once guard: detect existing artifact
- * - Artifact persistence: store PDF buffer + immutable artifact record
- *
- * Disabled behavior (PRESERVED BUT INACTIVE):
- * - PDF rendering (pdfGenerator absent)
- * - Email delivery (email.service sendEmail export absent)
- *
- * Reactivation plan:
- * - Add a real PDF renderer module and wire it in
- * - Align email delivery to the actual email.service contract (or reintroduce sendEmail)
- * - Flip ENABLE_EXEC_BRIEF_PDF_DELIVERY=true and implement render+send
+ * Executive Brief Delivery Service
+ * 
+ * Manages the generation, persistence, and email delivery of the Executive Brief PDF.
+ * This is the ONLY way a tenant receives the brief (no UI access).
  */
 
 // ============================================================================
@@ -72,8 +58,8 @@ export class ExecBriefPDFRenderFailedError extends Error {
 const PDF_STORAGE_DIR =
   process.env.PDF_STORAGE_PATH || path.join(process.cwd(), 'uploads', 'executive-briefs');
 
-// Feature gate: keep delivery disabled until infra is restored.
-const ENABLE_EXEC_BRIEF_PDF_DELIVERY = process.env.ENABLE_EXEC_BRIEF_PDF_DELIVERY === 'true';
+// Default to true now that implementation is complete
+const ENABLE_EXEC_BRIEF_PDF_DELIVERY = true;
 
 // ============================================================================
 // HELPERS
@@ -95,7 +81,7 @@ function formatFileName(firmName: string): string {
   return `${safeFirmName}_Executive_Brief_${date}.pdf`;
 }
 
-// Persist artifact record + write PDF to disk (requires a pdfBuffer provided by caller)
+// Persist artifact record + write PDF to disk
 async function persistPDFArtifact({
   executiveBriefId,
   tenantId,
@@ -142,36 +128,46 @@ async function persistPDFArtifact({
   return artifact;
 }
 
-/* ============================================================================
-   PDF + EMAIL DELIVERY (DISABLED / PRESERVED)
-
-   The original pipeline depended on:
-   - renderPrivateLeadershipBriefToPDF(brief, tenantName)  (missing module)
-   - sendEmail(...) from email.service                      (export drift)
-
-   We preserve the intent for later reactivation, but it is not compiled into
-   the active execution path today (guarded by ENABLE_EXEC_BRIEF_PDF_DELIVERY).
-   ============================================================================ */
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function emailPrivateBriefToLead(_args: {
+async function emailPrivateBriefToLead(args: {
   tenant: any;
   artifact: any;
   pdfBuffer: Buffer;
 }): Promise<void> {
-  throw new Error(
-    'Email delivery disabled: restore email transport contract before enabling.'
-  );
-}
+  const { tenant, artifact, pdfBuffer } = args;
+  const leadEmail = await findTenantLeadEmail(tenant.id);
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function renderPrivateLeadershipBriefToPDF(_brief: any, _tenantName: string): Promise<Buffer> {
-  throw new Error('PDF rendering disabled: no renderer available in repo.');
-}
+  if (!leadEmail) {
+    throw new Error(`No owner/lead email found for tenant ${tenant.id}`);
+  }
 
-/* ============================================================================
-   END DISABLED / PRESERVED
-   ============================================================================ */
+  // Email Body per META-TICKET requirements
+  // "Describe document as interpretive leadership lens. NOT claim verbatim inputs."
+  const emailBody = `
+        <div style="font-family: sans-serif; max-width: 600px;">
+            <h2>Executive Brief: Operational Reality & Constraints</h2>
+            <p>Attached is your confidential Executive Brief.</p>
+            
+            <p>This document synthesizes the operational perspectives collected during the intake phase. 
+            It represents an interpretive lens on your current Constraint Landscape and potential Blind Spot Risks.</p>
+            
+            <p><strong>Note:</strong> This is a point-in-time leadership artifact used to anchor the upcoming 
+            Strategic Roadmap generation. It serves as our shared reference for the diagnostic phase.</p>
+
+            <p>Please review before our next strategy session.</p>
+        </div>
+    `;
+
+  await sendEmail({
+    to: leadEmail,
+    subject: `Executive Brief – Leadership Perspective for ${tenant.name}`,
+    html: emailBody,
+    attachments: [{
+      filename: artifact.fileName,
+      content: pdfBuffer,
+      contentType: 'application/pdf'
+    }]
+  });
+}
 
 // ============================================================================
 // PUBLIC API
@@ -180,18 +176,20 @@ async function renderPrivateLeadershipBriefToPDF(_brief: any, _tenantName: strin
 /**
  * generateAndDeliverPrivateBriefPDF
  *
- * ACTIVE behavior today:
- * - Write-once guard: if immutable artifact exists, no-op (or validate file exists)
- * - If delivery is disabled, this function returns after guard checks
- *
- * If ENABLE_EXEC_BRIEF_PDF_DELIVERY=true:
- * - Attempts to render PDF, persist artifact, and email tenant lead
- * - This requires restoring renderer + email contracts first
+ * Orchestrates rendering, persistence, and delivery.
+ * Idempotent: checks for existing immutable artifact first.
  */
-export async function generateAndDeliverPrivateBriefPDF(brief: any, tenant: any): Promise<void> {
-  console.log(`[PDF] Starting private brief delivery for brief=${brief?.id} tenant=${tenant?.id}`);
+/**
+ * generateAndDeliverPrivateBriefPDF
+ *
+ * Orchestrates rendering, persistence, and delivery.
+ * Idempotent: checks for existing immutable artifact first.
+ * If shouldEmail is true (default), it will send/resend the email.
+ */
+export async function generateAndDeliverPrivateBriefPDF(brief: any, tenant: any, shouldEmail: boolean = true): Promise<{ deliveredTo?: string } | void> {
+  console.log(`[PDF] Starting private brief delivery for brief=${brief?.id} tenant=${tenant?.id} email=${shouldEmail}`);
 
-  // STEP 1: Write-once guard for existing immutable artifact
+  // STEP 1: Check for existing immutable artifact
   const [existingArtifact] = await db
     .select()
     .from(executiveBriefArtifacts)
@@ -203,99 +201,88 @@ export async function generateAndDeliverPrivateBriefPDF(brief: any, tenant: any)
     )
     .limit(1);
 
+  let artifact = existingArtifact;
+  let pdfBuffer: Buffer;
+
   if (existingArtifact?.isImmutable) {
-    const deliveryStatus = existingArtifact.metadata?.deliveryStatus;
-    const emailedTo = existingArtifact.metadata?.emailedTo;
-
-    console.log(
-      `[PDF] Artifact exists (immutable=true). status=${deliveryStatus || 'unknown'} emailedTo=${
-        emailedTo || 'n/a'
-      }`
-    );
-
-    // If file missing, surface a typed error (helps forensics)
+    console.log(`[PDF] Artifact exists (immutable=true). Checking file integrity...`);
     try {
-      await fs.access(existingArtifact.filePath);
+      // Load the file into buffer for potential emailing
+      pdfBuffer = await fs.readFile(existingArtifact.filePath);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         throw new ExecBriefArtifactNotFoundError(existingArtifact.id, existingArtifact.filePath);
       }
       throw error;
     }
+  } else {
+    // STEP 2: Render PDF
+    try {
+      console.log('[PDF] Rendering PDF...');
+      pdfBuffer = await renderPrivateLeadershipBriefToPDF(brief, tenant.name);
+    } catch (error) {
+      throw new ExecBriefPDFRenderFailedError(brief.id, error as Error);
+    }
 
-    // With delivery disabled, we stop here (no resend attempts)
-    if (!ENABLE_EXEC_BRIEF_PDF_DELIVERY) return;
-
-    // If delivery re-enabled later, resend path would live here.
-    // For now, fail closed to prevent “half-enabled” behavior.
-    throw new Error(
-      'Delivery is enabled but resend logic is not implemented. Restore full pipeline before enabling.'
-    );
+    // STEP 3: Persist artifact
+    const fileName = formatFileName(tenant.name);
+    artifact = await persistPDFArtifact({
+      executiveBriefId: brief.id,
+      tenantId: tenant.id,
+      pdfBuffer,
+      fileName,
+    });
   }
 
-  // If delivery is disabled, we stop after guard check.
-  if (!ENABLE_EXEC_BRIEF_PDF_DELIVERY) {
-    console.log(
-      `[PDF] Delivery disabled (ENABLE_EXEC_BRIEF_PDF_DELIVERY!=true). No artifact created.`
-    );
-    return;
-  }
+  // STEP 4: Email to Tenant Lead (Optional)
+  if (shouldEmail) {
+    let deliveredTo = 'unknown';
+    try {
+      console.log('[PDF] Sending email...');
+      const leadEmail = await findTenantLeadEmail(tenant.id);
+      if (leadEmail) deliveredTo = leadEmail;
 
-  // NOTE: Below code path is intentionally fail-closed until renderer + email are restored.
-  // If you flip ENABLE_EXEC_BRIEF_PDF_DELIVERY=true without restoring those modules, this will throw.
+      await emailPrivateBriefToLead({ tenant, artifact, pdfBuffer });
 
-  // STEP 2: Render PDF
-  let pdfBuffer: Buffer;
-  try {
-    pdfBuffer = await renderPrivateLeadershipBriefToPDF(brief, tenant.name);
-  } catch (error) {
-    throw new ExecBriefPDFRenderFailedError(brief.id, error as Error);
-  }
+      // Update metadata to reflect success
+      const currentMetadata = (artifact.metadata as any) || {};
+      await db
+        .update(executiveBriefArtifacts)
+        .set({
+          metadata: {
+            ...currentMetadata,
+            emailedTo: deliveredTo,
+            emailedAt: new Date().toISOString(),
+            deliveryStatus: 'sent',
+          },
+        })
+        .where(eq(executiveBriefArtifacts.id, artifact.id));
 
-  // STEP 3: Persist artifact
-  const fileName = formatFileName(tenant.name);
-  const artifact = await persistPDFArtifact({
-    executiveBriefId: brief.id,
-    tenantId: tenant.id,
-    pdfBuffer,
-    fileName,
-  });
+      console.log(`[PDF] Delivery complete for brief ${brief.id}`);
+      return { deliveredTo };
+    } catch (error) {
+      // Email failed, artifact persisted
+      const currentMetadata = (artifact.metadata as any) || {};
+      await db
+        .update(executiveBriefArtifacts)
+        .set({
+          metadata: {
+            ...currentMetadata,
+            deliveryStatus: 'failed',
+            retryCount: (currentMetadata.retryCount || 0) + 1,
+          },
+        })
+        .where(eq(executiveBriefArtifacts.id, artifact.id));
 
-  // STEP 4: Email to Tenant Lead
-  try {
-    await emailPrivateBriefToLead({ tenant, artifact, pdfBuffer });
-
-    // Update metadata to reflect success
-    await db
-      .update(executiveBriefArtifacts)
-      .set({
-        metadata: {
-          emailedTo: (await findTenantLeadEmail(tenant.id)) || 'unknown',
-          emailedAt: new Date().toISOString(),
-          deliveryStatus: 'sent',
-        },
-      })
-      .where(eq(executiveBriefArtifacts.id, artifact.id));
-
-    console.log(`[PDF] Delivery complete for brief ${brief.id}`);
-  } catch (error) {
-    // Email failed, artifact persisted
-    await db
-      .update(executiveBriefArtifacts)
-      .set({
-        metadata: {
-          deliveryStatus: 'failed',
-          retryCount: ((artifact?.metadata as any)?.retryCount || 0) + 1,
-        },
-      })
-      .where(eq(executiveBriefArtifacts.id, artifact.id));
-
-    console.error('[PDF] Email send failed, artifact persisted for retry:', error);
-    throw new ExecBriefEmailSendFailedError(tenant?.ownerEmail || 'unknown', error as Error);
+      console.error('[PDF] Email send failed, artifact persisted for retry:', error);
+      throw new ExecBriefEmailSendFailedError(tenant?.ownerEmail || 'unknown', error as Error);
+    }
+  } else {
+    console.log(`[PDF] Generated artifact ${artifact.id} (email skipped).`);
   }
 }
 
-// Helper used only in the “enabled” path to avoid importing unused logic elsewhere
+// Helper
 async function findTenantLeadEmail(tenantId: string): Promise<string | null> {
   const [tenantLead] = await db
     .select()

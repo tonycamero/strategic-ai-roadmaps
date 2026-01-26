@@ -58,6 +58,7 @@ export interface SuperAdminTenantDetail {
     status: string;
     notes: string | null;
     createdAt: string;
+    discoveryComplete?: boolean;
     ownerEmail: string;
     ownerName: string;
     lastDiagnosticId?: string | null;
@@ -164,6 +165,7 @@ export interface SuperAdminTenantDetail {
     createdAt: string;
     updatedAt: string;
   } | null;
+  truthProbe?: any;
 }
 
 export interface CommandCenterTenant {

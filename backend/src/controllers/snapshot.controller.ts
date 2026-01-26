@@ -2,7 +2,7 @@
 import { Request, Response } from 'express';
 import { db } from '../db';
 import { eq, and, desc, sql } from 'drizzle-orm';
-import { tenants, intakes, invites, sopTickets, users } from '../db/schema';
+import { tenants, intakes, intakeVectors, sopTickets, users, executiveBriefs } from '../db/schema';
 
 // Helper for type safety
 interface AuthRequest extends Request {
@@ -28,24 +28,47 @@ export const getTenantSnapshot = async (req: AuthRequest, res: Response) => {
             return res.status(400).json({ error: 'Tenant ID is required' });
         }
 
+        console.log(`[Snapshot] Request for tenantId=${tenantId} by user=${currentUser?.userId} role=${currentUser?.role} isInternal=${currentUser?.isInternal}`);
+
         // 1. Authority Check: Executive/Consultant Only (CR-FIX-RBAC-2)
         // ALLOW: SuperAdmin (internal), Consulting Delegate (internal), OR Owner (tenant)
         const isInternalConsultant = currentUser?.isInternal && ['superadmin', 'delegate'].includes(currentUser.role);
         const isTenantOwner = !currentUser?.isInternal && currentUser?.role === 'owner';
 
         if (!isInternalConsultant && !isTenantOwner) {
-            console.warn(`[Snapshot] Unauthorized access attempt by ${currentUser?.role} (${currentUser?.userId}, isInternal: ${currentUser?.isInternal})`);
+            console.warn(`[Snapshot] 403 - Unauthorized access attempt by ${currentUser?.role} (${currentUser?.userId}, isInternal: ${currentUser?.isInternal})`);
             return res.status(403).json({ error: 'Snapshot access restricted to Executives.' });
         }
 
-        // 2. Aggregate Intake Coverage
-        // Invited vs Completed
-        const [inviteCount] = await db
-            .select({ count: sql<number>`count(*)` })
-            .from(invites)
-            .where(eq(invites.tenantId, tenantId));
+        // 2. Validate tenant exists and get intake window state
+        const [tenant] = await db
+            .select({
+                id: tenants.id,
+                intakeWindowState: tenants.intakeWindowState
+            })
+            .from(tenants)
+            .where(eq(tenants.id, tenantId))
+            .limit(1);
 
-        const [intakeCount] = await db
+        if (!tenant) {
+            console.warn(`[Snapshot] 404 - Tenant not found: ${tenantId}`);
+            return res.status(404).json({
+                error: 'Tenant not found',
+                details: 'The requested tenant does not exist.'
+            });
+        }
+
+        // 3. Check Prerequisites for Snapshot Generation
+        // Count intake vectors (new contract)
+        const [vectorCount] = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(intakeVectors)
+            .where(eq(intakeVectors.tenantId, tenantId));
+
+        const totalVectors = Number(vectorCount?.count || 0);
+
+        // Count completed intakes
+        const [completedIntakeCount] = await db
             .select({ count: sql<number>`count(*)` })
             .from(intakes)
             .where(and(
@@ -53,9 +76,56 @@ export const getTenantSnapshot = async (req: AuthRequest, res: Response) => {
                 eq(intakes.status, 'completed')
             ));
 
-        // 3. Aggregate Ticket Signals (The "Work")
+        const completedIntakes = Number(completedIntakeCount?.count || 0);
+
+        // Check if owner intake exists
+        const [ownerIntake] = await db
+            .select({ id: intakes.id })
+            .from(intakes)
+            .where(and(
+                eq(intakes.tenantId, tenantId),
+                eq(intakes.role, 'owner'),
+                eq(intakes.status, 'completed')
+            ))
+            .limit(1);
+
+        const hasOwnerIntake = !!ownerIntake;
+
+        console.log(`[Snapshot] Prerequisites: vectors=${totalVectors}, completedIntakes=${completedIntakes}, ownerIntake=${hasOwnerIntake}, intakeWindow=${tenant.intakeWindowState}`);
+
+        // 4. Fail-Closed: Return 404 if prerequisites not met
+        if (totalVectors === 0 || !hasOwnerIntake) {
+            console.warn(`[Snapshot] 404 - Prerequisites not met for ${tenantId}`);
+            return res.status(404).json({
+                error: 'SNAPSHOT_NOT_READY',
+                message: 'Snapshot not available until prerequisites are met.',
+                prerequisites: {
+                    hasVectors: totalVectors > 0,
+                    hasOwnerIntake,
+                    intakeWindowState: tenant.intakeWindowState || 'UNKNOWN',
+                    vectorCount: totalVectors,
+                    completedIntakeCount: completedIntakes
+                }
+            });
+        }
+
+        // 5. Aggregate Intake Coverage (using intake_vectors)
+        const rolesInvited = totalVectors;
+        const rolesCompleted = completedIntakes;
+
+        console.log(`[Snapshot] Aggregation: ${rolesCompleted}/${rolesInvited} intakes completed`);
+
+        // 6. Aggregate Ticket Signals (The "Work")
         const allTickets = await db
-            .select()
+            .select({
+                id: sopTickets.id,
+                title: sopTickets.title,
+                description: sopTickets.description,
+                category: sopTickets.category,
+                priority: sopTickets.priority,
+                moderationStatus: sopTickets.moderationStatus,
+                timeEstimateHours: sopTickets.timeEstimateHours,
+            })
             .from(sopTickets)
             .where(eq(sopTickets.tenantId, tenantId));
 
@@ -94,14 +164,41 @@ export const getTenantSnapshot = async (req: AuthRequest, res: Response) => {
             }
         }
 
-        // 4. Construct Snapshot Payload
+        console.log(`[Snapshot] Tickets: ${totalTickets} total, ${approvedCount} approved, ${rejectedCount} rejected`);
+
+        // 7. Fetch Executive Brief Status
+        const [execBrief] = await db
+            .select({
+                status: executiveBriefs.status
+            })
+            .from(executiveBriefs)
+            .where(eq(executiveBriefs.tenantId, tenantId))
+            .limit(1);
+
+        const briefStatus = execBrief?.status || null;
+
+        // 8. Derive Execution Phase
+        let executionPhase = 'INTAKE_OPEN';
+
+        if (briefStatus === 'APPROVED') {
+            executionPhase = 'EXEC_BRIEF_APPROVED';
+        } else if (briefStatus === 'DRAFT') {
+            executionPhase = 'EXEC_BRIEF_DRAFT';
+        } else if (tenant.intakeWindowState === 'OPEN') {
+            executionPhase = 'INTAKE_OPEN';
+        }
+
+        // 9. Construct Snapshot Payload
         // Strictly non-financial keys.
         const snapshot = {
+            executionPhase,
+            executiveBriefStatus: briefStatus,
+            intakeWindowState: tenant.intakeWindowState,
             coverage: {
-                rolesInvited: Number(inviteCount?.count || 0),
-                rolesCompleted: Number(intakeCount?.count || 0),
-                organizationInputPercent: Number(inviteCount?.count) > 0
-                    ? Math.round((Number(intakeCount?.count) / Number(inviteCount?.count)) * 100)
+                rolesInvited,
+                rolesCompleted,
+                organizationInputPercent: rolesInvited > 0
+                    ? Math.round((rolesCompleted / rolesInvited) * 100)
                     : 0
             },
             frictionMap: {
@@ -121,13 +218,18 @@ export const getTenantSnapshot = async (req: AuthRequest, res: Response) => {
             distribution: categoryDistribution
         };
 
+        console.log(`[Snapshot] 200 - Snapshot generated successfully for ${tenantId}`);
         return res.status(200).json({
             success: true,
             data: snapshot
         });
 
     } catch (error) {
-        console.error('[Snapshot] Error generating snapshot:', error);
-        return res.status(500).json({ error: 'Internal Server Error' });
+        console.error('[Snapshot] 500 - Unhandled error:', error);
+        console.error('[Snapshot] Stack:', error instanceof Error ? error.stack : 'No stack trace');
+        return res.status(500).json({
+            error: 'Internal Server Error',
+            details: 'Failed to generate snapshot. Please contact support.'
+        });
     }
 };

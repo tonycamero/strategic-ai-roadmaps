@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import { db } from '../db';
-import { eq, and, sql } from 'drizzle-orm';
-import { executiveBriefs, tenants, intakes, intakeVectors, users } from '../db/schema';
+import { eq, and, sql, desc } from 'drizzle-orm';
+import { executiveBriefs, tenants, intakes, intakeVectors, users, auditEvents, executiveBriefArtifacts } from '../db/schema';
+import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
 
 // Helper for type safety
 interface AuthRequest extends Request {
@@ -38,7 +39,17 @@ export const getExecutiveBrief = async (req: AuthRequest, res: Response) => {
             });
         }
 
-        return res.status(200).json({ brief });
+        // Check for PDF artifact
+        const [artifact] = await db
+            .select()
+            .from(executiveBriefArtifacts)
+            .where(and(
+                eq(executiveBriefArtifacts.executiveBriefId, brief.id),
+                eq(executiveBriefArtifacts.artifactType, 'PRIVATE_LEADERSHIP_PDF')
+            ))
+            .limit(1);
+
+        return res.status(200).json({ brief, hasPdf: !!artifact });
     } catch (error) {
         console.error('[ExecutiveBrief] Get error:', error);
         return res.status(500).json({
@@ -244,14 +255,15 @@ export const approveExecutiveBrief = async (req: AuthRequest, res: Response) => 
                 })
                 .where(eq(executiveBriefs.id, brief.id));
 
-            // Close intake window
-            await tx
-                .update(tenants)
-                .set({
-                    intakeWindowState: 'CLOSED',
-                    intakeClosedAt: new Date()
-                })
-                .where(eq(tenants.id, tenantId));
+            // The intake window closure logic has been moved to a separate, explicit action.
+            // This allows for more granular control and prevents accidental closure during brief approval.
+            // The `isClosingRequested` variable would typically come from `req.body` or `req.query`
+            // if this were a conditional operation. For this change, we assume it's a placeholder
+            // for a future explicit closure mechanism.
+            const isClosingRequested = false; // Placeholder, as per instruction context
+            if (isClosingRequested) {
+                console.log(`[ExecutiveBrief:Approve] Manual intake closure skip: Intake closure now managed by dedicated lock action.`);
+            }
         });
 
         // 3. Fetch updated brief
@@ -301,7 +313,7 @@ export const approveExecutiveBrief = async (req: AuthRequest, res: Response) => 
 
 // --- REFACTORED SYNTHESIS ENGINE (NON-CREATIVE, TRUTH-PRESERVING) ---
 
-function generateExecutiveBriefV0({ ownerIntake, vectors, tenantId }: {
+export function generateExecutiveBriefV0({ ownerIntake, vectors, tenantId }: {
     ownerIntake: any;
     vectors: any[];
     tenantId: string;
@@ -318,9 +330,16 @@ function generateExecutiveBriefV0({ ownerIntake, vectors, tenantId }: {
     const riskSignals = normalizedVectors.map(v => getBucket(v, 'riskSignals')).filter(Boolean).join('\n\n');
     const readinessSignals = normalizedVectors.map(v => getBucket(v, 'readinessSignals')).filter(Boolean).join('\n\n');
 
-    // Aggregate core vector fields literally
-    const perceivedConstraints = normalizedVectors.map(v => v.perceivedConstraints).filter(Boolean).join('\n\n');
-    const anticipatedBlindSpots = normalizedVectors.map(v => v.anticipatedBlindSpots).filter(Boolean).join('\n\n');
+    // Aggregate core vector fields literally, with attribution
+    const perceivedConstraints = normalizedVectors.map(v => {
+        if (!v.perceivedConstraints) return null;
+        return `**${v.roleLabel}:**\n${v.perceivedConstraints}`;
+    }).filter(Boolean).join('\n\n');
+
+    const anticipatedBlindSpots = normalizedVectors.map(v => {
+        if (!v.anticipatedBlindSpots) return null;
+        return `**${v.roleLabel}:**\n${v.anticipatedBlindSpots}`;
+    }).filter(Boolean).join('\n\n');
 
     // Simple facts for summary
     const roleCount = normalizedVectors.length;
@@ -412,3 +431,190 @@ function stableSortVectors(vectors: any[]): any[] {
 }
 
 // --- (Removed legacy generators to prevent re-introduction of bridge text) ---
+
+/**
+ * POST /api/superadmin/firms/:tenantId/executive-brief/deliver
+ * Explicitly triggers PDF generation and delivery
+ */
+export const deliverExecutiveBrief = async (req: AuthRequest, res: Response) => {
+    try {
+        const { tenantId } = req.params;
+        const currentUser = req.user;
+
+        if (!tenantId) {
+            return res.status(400).json({ error: 'Tenant ID is required' });
+        }
+
+        // Authority check: EXECUTIVE only
+        const isExecutive = currentUser?.isInternal && currentUser?.role === 'superadmin';
+        if (!isExecutive) {
+            return res.status(403).json({
+                error: 'AUTHORITY_REQUIRED',
+                message: 'Executive authority required to deliver brief.'
+            });
+        }
+
+        console.log(`[ExecutiveBrief] Deliver request for tenantId=${tenantId} by user=${currentUser?.userId}`);
+
+        // 1. Get existing brief
+        const [brief] = await db
+            .select()
+            .from(executiveBriefs)
+            .where(eq(executiveBriefs.tenantId, tenantId))
+            .limit(1);
+
+        if (!brief) {
+            return res.status(404).json({
+                error: 'EXECUTIVE_BRIEF_NOT_FOUND',
+                message: 'No executive brief exists for this tenant.'
+            });
+        }
+
+        if (brief.status !== 'APPROVED') {
+            return res.status(409).json({
+                error: 'EXECUTIVE_BRIEF_NOT_APPROVED',
+                message: 'Brief must be APPROVED before delivery.'
+            });
+        }
+
+        // 2. Get tenant details (for name/email)
+        const [tenant] = await db
+            .select()
+            .from(tenants)
+            .where(eq(tenants.id, tenantId))
+            .limit(1);
+
+        if (!tenant) {
+            return res.status(404).json({ error: 'Tenant not found' });
+        }
+
+        // 3. Trigger delivery (Async/await to ensure success before 200)
+        // Dynamically import to resolve circular dependencies/mocks if any
+        const { generateAndDeliverPrivateBriefPDF } = await import('../services/executiveBriefDelivery');
+        const deliveryResult = await generateAndDeliverPrivateBriefPDF(brief, tenant, true);
+
+        const deliveredTo = (deliveryResult && 'deliveredTo' in deliveryResult) ? deliveryResult.deliveredTo : 'unknown';
+
+        // 4. Update status to DELIVERED
+        await db
+            .update(executiveBriefs)
+            .set({
+                status: 'DELIVERED',
+                updatedAt: new Date()
+            })
+            .where(eq(executiveBriefs.id, brief.id));
+
+        // 5. Audit Log (Ticket EXEC-AUDIT-LOG-007)
+        await db.insert(auditEvents).values({
+            tenantId,
+            actorUserId: currentUser?.userId || 'system',
+            actorRole: currentUser?.role || 'system',
+            eventType: AUDIT_EVENT_TYPES.EXECUTIVE_BRIEF_DELIVERED,
+            entityType: 'executive_brief',
+            entityId: brief.id,
+            metadata: {
+                deliveredTo,
+                deliveredAt: new Date().toISOString()
+            }
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Executive Brief delivered successfully',
+            deliveredAt: new Date(),
+            deliveredTo
+        });
+
+    } catch (error) {
+        console.error('[ExecutiveBrief] Delivery error:', error);
+        return res.status(500).json({
+            error: 'Internal Server Error',
+            details: error instanceof Error ? error.message : 'Failed to deliver executive brief.'
+        });
+    }
+};
+
+/**
+ * POST /api/superadmin/firms/:tenantId/executive-brief/generate-pdf
+ * Generates the PDF artifact without emailing it.
+ */
+export const generateExecutiveBriefPDF = async (req: AuthRequest, res: Response) => {
+    try {
+        const { tenantId } = req.params;
+        const currentUser = req.user;
+
+        if (!tenantId) {
+            return res.status(400).json({ error: 'Tenant ID is required' });
+        }
+
+        // Authority check
+        const isExecutive = currentUser?.isInternal && currentUser?.role === 'superadmin';
+        if (!isExecutive) {
+            return res.status(403).json({ error: 'AUTHORITY_REQUIRED' });
+        }
+
+        const [brief] = await db.select().from(executiveBriefs).where(eq(executiveBriefs.tenantId, tenantId)).limit(1);
+        if (!brief || brief.status !== 'APPROVED') {
+            return res.status(409).json({ error: 'Brief must be APPROVED' });
+        }
+
+        const [tenant] = await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1);
+
+        const { generateAndDeliverPrivateBriefPDF } = await import('../services/executiveBriefDelivery');
+        await generateAndDeliverPrivateBriefPDF(brief, tenant, false);
+
+        return res.status(200).json({ success: true, message: 'PDF generated' });
+
+    } catch (error) {
+        console.error('Generate PDF error:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+/**
+ * GET /api/superadmin/firms/:tenantId/executive-brief/download
+ * Download the generated PDF
+ */
+export const downloadExecutiveBrief = async (req: AuthRequest, res: Response) => {
+    try {
+        const { tenantId } = req.params;
+
+        if (!tenantId) {
+            return res.status(400).json({ error: 'Tenant ID is required' });
+        }
+
+        // Get latest PDF artifact
+        const [artifact] = await db
+            .select()
+            .from(executiveBriefArtifacts)
+            .where(and(
+                eq(executiveBriefArtifacts.tenantId, tenantId),
+                eq(executiveBriefArtifacts.artifactType, 'PRIVATE_LEADERSHIP_PDF')
+            ))
+            .orderBy(desc(executiveBriefArtifacts.createdAt))
+            .limit(1);
+
+        if (!artifact) {
+            return res.status(404).json({
+                error: 'ARTIFACT_NOT_FOUND',
+                message: 'No PDF artifact found for this executive brief.'
+            });
+        }
+
+        return res.download(artifact.filePath, artifact.fileName, (err) => {
+            if (err) {
+                console.error('[ExecutiveBrief] Download error:', err);
+                if (!res.headersSent) {
+                    res.status(500).json({ error: 'Failed to download file' });
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('[ExecutiveBrief] Download setup error:', error);
+        return res.status(500).json({
+            error: 'Internal Server Error',
+            details: 'Failed to initiate download.'
+        });
+    }
+};

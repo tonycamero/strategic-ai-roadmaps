@@ -4,7 +4,7 @@ import { z } from 'zod';
 // BUSINESS TYPE
 // ============================================================================
 
-export const BusinessType = z.enum(['default', 'chamber']);
+export const BusinessType = z.enum(['default', 'chamber', 'manufacturing', 'enterprise']);
 export type BusinessType = z.infer<typeof BusinessType>;
 
 // ============================================================================

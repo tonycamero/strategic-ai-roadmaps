@@ -1,0 +1,4 @@
+[build]
+  base = "."
+  publish = "frontend/dist"
+  command = "pnpm install && pnpm --filter @roadmap/shared build && pnpm --filter @roadmap/frontend build"

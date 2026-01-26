@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { AuthorityCategory } from '@roadmap/shared';
 import { useSuperAdminAuthority } from '../../hooks/useSuperAdminAuthority';
 
 interface ExecutionAuthorityPanelProps {
-    tenantId: string;
     intakeWindowState: 'OPEN' | 'CLOSED';
     briefStatus: string | null;
     moderationStatus: {
@@ -16,11 +15,6 @@ interface ExecutionAuthorityPanelProps {
         rolesValidated: boolean;
         execReady: boolean;
     };
-    timestamps: {
-        knowledgeBaseReadyAt?: string | null;
-        rolesValidatedAt?: string | null;
-        execReadyAt?: string | null;
-    };
     roadmapStatus: string | null;
     onFinalize: () => Promise<void>;
     onSignal: (flag: string, value: boolean) => Promise<void>;
@@ -28,12 +22,10 @@ interface ExecutionAuthorityPanelProps {
 }
 
 export function ExecutionAuthorityPanel({
-    tenantId,
     intakeWindowState,
     briefStatus,
     moderationStatus,
     readinessFlags,
-    timestamps,
     roadmapStatus,
     onFinalize,
     onSignal,
@@ -52,7 +44,6 @@ export function ExecutionAuthorityPanel({
     // Gate 3: Moderation
     const isModerationReady = moderationStatus?.readyForRoadmap || false;
     const pendingCount = moderationStatus?.pending || 0;
-    const approvedCount = moderationStatus?.approved || 0;
 
     // Gate 4: Knowledge Base
     const isKBReady = readinessFlags.knowledgeBaseReady;
@@ -280,12 +271,12 @@ function GateRow({
                     onClick={onAction}
                     disabled={actionDisabled}
                     className={`px-3 py-1.5 rounded text-[9px] font-bold uppercase tracking-wider transition-all ${actionDisabled
-                            ? 'text-slate-700 cursor-not-allowed'
-                            : isReady
-                                ? 'bg-slate-800 text-slate-400 hover:text-red-400 hover:bg-red-900/10'
-                                : highlight
-                                    ? 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-900/20'
-                                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                        ? 'text-slate-700 cursor-not-allowed'
+                        : isReady
+                            ? 'bg-slate-800 text-slate-400 hover:text-red-400 hover:bg-red-900/10'
+                            : highlight
+                                ? 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-900/20'
+                                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                         }`}
                 >
                     {actionLabel}

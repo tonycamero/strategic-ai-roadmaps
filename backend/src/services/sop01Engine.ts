@@ -4,17 +4,17 @@ import { NormalizedIntakeContext } from '../types/intake';
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export interface Sop01Outputs {
-  companyDiagnosticMap: string;
-  aiLeverageMap: string;
-  discoveryCallQuestions: string[];
-  roadmapSkeleton: string;
+   sop01DiagnosticMarkdown: string;
+   sop01AiLeverageMarkdown: string;
+   sop01DiscoveryQuestionsMarkdown: string;
+   sop01RoadmapSkeletonMarkdown: string;
 }
 
 const SOP01_SYSTEM_PROMPT = `You are a senior AI consultant and strategic advisor specializing in operational diagnostics for service businesses.
 
 Your task is to analyze multi-role intake data and produce 4 critical outputs for SOP-01 (Discovery & Diagnostic Process):
 
-## OUTPUT 1: Company Diagnostic Map
+## OUTPUT 1: Company Diagnostic Map (sop01DiagnosticMarkdown)
 A structured markdown document analyzing the business across key dimensions:
 
 ### Structure:
@@ -73,7 +73,7 @@ A structured markdown document analyzing the business across key dimensions:
    - Resource constraints
    - Process maturity gaps
 
-## OUTPUT 2: AI Leverage Map
+## OUTPUT 2: AI Leverage Map (sop01AiLeverageMarkdown)
 A tactical markdown document identifying specific AI/automation opportunities:
 
 ### Structure:
@@ -100,10 +100,10 @@ A tactical markdown document identifying specific AI/automation opportunities:
    - Revenue impact potential
    - Cost considerations
 
-## OUTPUT 3: Discovery Call Questions (Array of 15 strings)
+## OUTPUT 3: Discovery Call Questions (sop01DiscoveryQuestionsMarkdown)
 Strategic questions to clarify gaps, validate hypotheses, and prioritize:
 
-Categories to cover:
+Coverage:
 - Priority confirmation (what matters most right now?)
 - Gap validation (is X really the bottleneck?)
 - Process details (walk me through what happens when...)
@@ -113,9 +113,9 @@ Categories to cover:
 - Success metrics (how do you measure X today?)
 - Urgency/timeline (what needs to happen in 30/60/90 days?)
 
-Return as array of 15 concise, actionable questions.
+Return as a clean Markdown list of exactly 15 questions.
 
-## OUTPUT 4: Roadmap Skeleton
+## OUTPUT 4: Roadmap Skeleton (sop01RoadmapSkeletonMarkdown)
 A high-level markdown outline of the strategic roadmap structure:
 
 ### Structure:
@@ -160,10 +160,10 @@ Return ONLY valid JSON with this exact structure:
 
 \`\`\`json
 {
-  "companyDiagnosticMap": "markdown string with full diagnostic",
-  "aiLeverageMap": "markdown string with AI opportunities",
-  "discoveryCallQuestions": ["question 1", "question 2", ... 15 total],
-  "roadmapSkeleton": "markdown string with roadmap outline"
+  "sop01DiagnosticMarkdown": "markdown string with full diagnostic",
+  "sop01AiLeverageMarkdown": "markdown string with AI opportunities",
+  "sop01DiscoveryQuestionsMarkdown": "markdown list of 15 questions",
+  "sop01RoadmapSkeletonMarkdown": "markdown string with roadmap outline"
 }
 \`\`\`
 
@@ -177,63 +177,64 @@ Return ONLY valid JSON with this exact structure:
 7. Return ONLY JSON - no preamble, no explanation`;
 
 export async function generateSop01Outputs(
-  context: NormalizedIntakeContext
+   context: NormalizedIntakeContext
 ): Promise<Sop01Outputs> {
-  console.log('[SOP-01 Engine] Generating diagnostic outputs for tenant:', context.tenantId);
+   console.log('[SOP-01 Engine] Generating diagnostic outputs for tenant:', context.tenantId);
 
-  const response = await openai.chat.completions.create({
-    model: process.env.SOP01_MODEL || 'gpt-4-1106-preview',
-    response_format: { type: 'json_object' },
-    messages: [
-      {
-        role: 'system',
-        content: SOP01_SYSTEM_PROMPT,
-      },
-      {
-        role: 'user',
-        content: JSON.stringify(context, null, 2),
-      },
-    ],
-    temperature: 0.3,
-  });
+   const response = await openai.chat.completions.create({
+      model: process.env.SOP01_MODEL || 'gpt-4-1106-preview',
+      response_format: { type: 'json_object' },
+      messages: [
+         {
+            role: 'system',
+            content: SOP01_SYSTEM_PROMPT,
+         },
+         {
+            role: 'user',
+            content: JSON.stringify(context, null, 2),
+         },
+      ],
+      temperature: 0.3,
+   });
 
-  const raw = response.choices[0]?.message?.content;
-  if (!raw) {
-    throw new Error('[SOP-01 Engine] No content returned from OpenAI');
-  }
+   const content = response.choices[0]?.message?.content;
 
-  let parsed: any;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (err) {
-    console.error('[SOP-01 Engine] Failed to parse JSON from model:', raw.substring(0, 500));
-    throw new Error('Failed to parse JSON response from SOP-01 engine');
-  }
+   if (!content) {
+      throw new Error('[SOP-01 Engine] No content returned from OpenAI');
+   }
 
-  // Validate schema
-  if (!parsed.companyDiagnosticMap || typeof parsed.companyDiagnosticMap !== 'string') {
-    throw new Error('Invalid SOP-01 output: missing or invalid companyDiagnosticMap');
-  }
-  if (!parsed.aiLeverageMap || typeof parsed.aiLeverageMap !== 'string') {
-    throw new Error('Invalid SOP-01 output: missing or invalid aiLeverageMap');
-  }
-  if (!Array.isArray(parsed.discoveryCallQuestions) || parsed.discoveryCallQuestions.length !== 15) {
-    throw new Error(`Invalid SOP-01 output: discoveryCallQuestions must be array of 15, got ${parsed.discoveryCallQuestions?.length || 0}`);
-  }
-  if (!parsed.roadmapSkeleton || typeof parsed.roadmapSkeleton !== 'string') {
-    throw new Error('Invalid SOP-01 output: missing or invalid roadmapSkeleton');
-  }
+   let parsed: any;
+   try {
+      parsed = JSON.parse(content);
+   } catch (err) {
+      console.error('[SOP-01 Engine] Failed to parse JSON from model:', content.substring(0, 500));
+      throw new Error('Failed to parse JSON response from SOP-01 engine');
+   }
 
-  console.log('[SOP-01 Engine] Successfully generated outputs:');
-  console.log(`  - Diagnostic Map: ${parsed.companyDiagnosticMap.length} chars`);
-  console.log(`  - AI Leverage Map: ${parsed.aiLeverageMap.length} chars`);
-  console.log(`  - Discovery Questions: ${parsed.discoveryCallQuestions.length} questions`);
-  console.log(`  - Roadmap Skeleton: ${parsed.roadmapSkeleton.length} chars`);
+   // Validate schema
+   if (!parsed.sop01DiagnosticMarkdown || typeof parsed.sop01DiagnosticMarkdown !== 'string') {
+      throw new Error('Invalid SOP-01 output: missing or invalid sop01DiagnosticMarkdown');
+   }
+   if (!parsed.sop01AiLeverageMarkdown || typeof parsed.sop01AiLeverageMarkdown !== 'string') {
+      throw new Error('Invalid SOP-01 output: missing or invalid sop01AiLeverageMarkdown');
+   }
+   if (!parsed.sop01DiscoveryQuestionsMarkdown || typeof parsed.sop01DiscoveryQuestionsMarkdown !== 'string') {
+      throw new Error('Invalid SOP-01 output: missing or invalid sop01DiscoveryQuestionsMarkdown');
+   }
+   if (!parsed.sop01RoadmapSkeletonMarkdown || typeof parsed.sop01RoadmapSkeletonMarkdown !== 'string') {
+      throw new Error('Invalid SOP-01 output: missing or invalid sop01RoadmapSkeletonMarkdown');
+   }
 
-  return {
-    companyDiagnosticMap: parsed.companyDiagnosticMap,
-    aiLeverageMap: parsed.aiLeverageMap,
-    discoveryCallQuestions: parsed.discoveryCallQuestions,
-    roadmapSkeleton: parsed.roadmapSkeleton,
-  };
+   console.log('[SOP-01 Engine] Successfully generated outputs:');
+   console.log(`  - Diagnostic Map: ${parsed.sop01DiagnosticMarkdown.length} chars`);
+   console.log(`  - AI Leverage Map: ${parsed.sop01AiLeverageMarkdown.length} chars`);
+   console.log(`  - Discovery Questions: ${parsed.sop01DiscoveryQuestionsMarkdown.length} chars`);
+   console.log(`  - Roadmap Skeleton: ${parsed.sop01RoadmapSkeletonMarkdown.length} chars`);
+
+   return {
+      sop01DiagnosticMarkdown: parsed.sop01DiagnosticMarkdown,
+      sop01AiLeverageMarkdown: parsed.sop01AiLeverageMarkdown,
+      sop01DiscoveryQuestionsMarkdown: parsed.sop01DiscoveryQuestionsMarkdown,
+      sop01RoadmapSkeletonMarkdown: parsed.sop01RoadmapSkeletonMarkdown,
+   };
 }
