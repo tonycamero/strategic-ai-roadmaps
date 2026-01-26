@@ -37,55 +37,55 @@ export const BatchActionModal: FC<BatchActionModalProps> = ({
         }
     }, [isOpen]);
 
-    const handlePreview = async () => {
-        setLoading(true);
-        try {
-            if (actionType === 'readiness') {
-                const data = await superadminApi.previewReadinessBatch({
-                    tenantIds,
-                    flag: flag!,
-                    value: value!
-                });
-                setPreviewData(data);
-            } else {
-                const data = await superadminApi.previewFinalizeBatch(tenantIds);
-                setPreviewData(data);
-            }
-        } catch (err) {
-            console.error('Batch preview error:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
+const handlePreview = async () => {
+  setLoading(true);
+  try {
+    if (actionType === 'readiness') {
+      const data = await superadminApi.previewReadinessBatch(tenantIds);
+      setPreviewData(data);
+    } else {
+      const data = await superadminApi.previewFinalizeBatch(tenantIds);
+      setPreviewData(data);
+    }
+  } catch (err) {
+    console.error('Batch preview error:', err);
+  } finally {
+    setLoading(false);
+  }
+};
 
-    const handleExecute = async () => {
-        setLoading(true);
-        setStep('executing');
-        try {
-            if (actionType === 'readiness') {
-                const data = await superadminApi.executeReadinessBatch({
-                    tenantIds: previewData?.eligible.map(e => e.tenantId) || [],
-                    flag: flag!,
-                    value: value!,
-                    notes,
-                    overrideReason
-                });
-                setResults(data.results);
-            } else {
-                const data = await superadminApi.executeFinalizeBatch({
-                    tenantIds: previewData?.eligible.map(e => e.tenantId) || [],
-                    override: !!overrideReason,
-                    overrideReason
-                });
-                setResults(data.results);
-            }
-            setStep('done');
-        } catch (err) {
-            console.error('Batch execution error:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
+const handleExecute = async () => {
+  setLoading(true);
+  setStep('executing');
+
+  try {
+    const eligibleIds = previewData?.eligible?.map((e: any) => e.tenantId) || [];
+
+    if (actionType === 'readiness') {
+      const data = await superadminApi.executeReadinessBatch({
+        tenantIds: eligibleIds,
+        // optional operator override controls (remove if you don't want override behavior)
+        override: notes.trim().length > 0 || overrideReason.trim().length > 0 ? true : undefined,
+        overrideReason: overrideReason.trim() || undefined,
+      });
+      setResults(data.results);
+    } else {
+      const data = await superadminApi.executeFinalizeBatch({
+        tenantIds: eligibleIds,
+      });
+      setResults(data.results);
+    }
+
+    setStep('done');
+    onSuccess();
+  } catch (err) {
+    console.error('Batch execute error:', err);
+    setStep('preview');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
     if (!isOpen) return null;
 

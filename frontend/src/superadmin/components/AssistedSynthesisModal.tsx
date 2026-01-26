@@ -28,9 +28,10 @@ interface AssistedSynthesisModalProps {
         diagnostic?: any;
         executiveBrief?: any;
     };
+    onRefresh?: () => void;
 }
 
-export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts }: AssistedSynthesisModalProps) {
+export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onRefresh }: AssistedSynthesisModalProps) {
     const [proposals, setProposals] = useState<ProposedFindingItem[]>([]);
     const [requiresGeneration, setRequiresGeneration] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -114,8 +115,9 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts }: A
             // STRIKE 1: API method does not exist on SuperAdmin API surface
             // await superadminApi.declareCanonicalFindings({ tenantId, findings: accepted });
             throw new Error("Feature currently disabled in SuperAdmin Console (API Surface Compliance)");
+            await onRefresh?.();
 
-            // onClose();
+            onClose();
         } catch (err) {
             console.error('Failed to declare canonical findings:', err);
             alert('Failed to declare findings. Feature disabled.');

@@ -42,7 +42,7 @@ export function IntakeModal({ intake, intakeWindowState, onClose, onRefresh }: I
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await superadminApi.updateIntakeCoaching(intake.id, JSON.stringify(feedback));
+      await superadminApi.updateIntakeCoaching(intake.id, feedback);
       setIsModified(false);
       if (onRefresh) onRefresh();
     } catch (err) {

@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock, AlertCircle, Edit2, Send, Mail } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Circle, Clock, Edit2, Send, Mail } from 'lucide-react';
 
 interface IntakeVectorCardProps {
     vector: {

@@ -152,7 +152,7 @@ export function RoadmapGenerationPanel({ tenantId, firmData, onRefresh }: Roadma
             if (!diagId) throw new Error('No diagnostic ID');
 
             // Expected API (shape may vary; we fail loudly if backend rejects)
-            const data = await superadminApi.generateTickets({ tenantId, diagnosticId: diagId });
+            const data = await superadminApi.generateTickets(tenantId, diagId);
 
             const ticketCount = data?.ticketCount ?? 0;
             setMessage(`✅ Generated ${ticketCount} tickets from Discovery.`);

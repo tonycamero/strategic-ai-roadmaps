@@ -23,6 +23,7 @@ interface OwnerIntakeForm {
   growth_barriers: string;
   volume_breaking_point: string;
   ai_opportunities: string;
+  if_nothing_else_changes_but_X_this_was_worth_it: string;
   // Section E: enriched profile
   role_label: string;
   department_key: 'owner';
@@ -73,6 +74,7 @@ export default function OwnerIntake() {
     volume_breaking_point: '',
     ai_opportunities: '',
     // Section E: Enriched Profile
+    if_nothing_else_changes_but_X_this_was_worth_it: '',
     role_label: 'Owner',
     department_key: 'owner',
     display_name: user?.name || '',

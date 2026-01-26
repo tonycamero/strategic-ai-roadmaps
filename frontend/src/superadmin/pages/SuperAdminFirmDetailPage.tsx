@@ -71,28 +71,35 @@ export default function SuperAdminFirmDetailPage() {
       .then((response) => {
         const firmDetail = response as unknown as FirmDetailResponse;
         // Map FirmDetailResponse to SuperAdminTenantDetail format
-        setData({
-          tenant: {
-            id: firmDetail.tenantSummary.id,
-            name: firmDetail.tenantSummary.name,
-            cohortLabel: firmDetail.tenantSummary.cohortLabel,
-            segment: firmDetail.tenantSummary.segment,
-            region: firmDetail.tenantSummary.region,
-            status: firmDetail.tenantSummary.status,
-            notes: firmDetail.tenantSummary.notes,
-            createdAt: firmDetail.tenantSummary.createdAt,
-            ownerEmail: firmDetail.owner?.email || '',
-            ownerName: firmDetail.owner?.name || '',
-            lastDiagnosticId: firmDetail.tenantSummary.lastDiagnosticId,
-            intakeWindowState: 'OPEN', // Default to OPEN for mapped legacy data
-            discoveryComplete: false, // Default for mapped legacy data
-          },
-          owner: firmDetail.owner,
-          teamMembers: firmDetail.teamMembers,
-          intakes: firmDetail.intakes,
-          roadmaps: firmDetail.roadmaps,
-          recentActivity: firmDetail.recentActivity,
-        });
+       setData({
+  tenant: {
+    id: firmDetail.tenantSummary.id,
+    name: firmDetail.tenantSummary.name,
+    cohortLabel: firmDetail.tenantSummary.cohortLabel,
+    segment: firmDetail.tenantSummary.segment,
+    region: firmDetail.tenantSummary.region,
+    status: firmDetail.tenantSummary.status,
+    notes: firmDetail.tenantSummary.notes,
+    createdAt: firmDetail.tenantSummary.createdAt,
+    ownerEmail: firmDetail.owner?.email || '',
+    ownerName: firmDetail.owner?.name || '',
+    lastDiagnosticId: firmDetail.tenantSummary.lastDiagnosticId,
+
+    // required by SuperAdminTenantDetail
+    intakeWindowState: (firmDetail.tenantSummary as any).intakeWindowState ?? 'OPEN',
+    discoveryComplete: (firmDetail.tenantSummary as any).discoveryComplete ?? false,
+  diagnosticStatus: (firmDetail as any).diagnosticStatus ?? null,
+executiveBriefStatus: (firmDetail as any).executiveBriefStatus ?? null,
+
+  },
+
+  owner: firmDetail.owner,
+  teamMembers: firmDetail.teamMembers,
+  intakes: firmDetail.intakes,
+  roadmaps: firmDetail.roadmaps,
+  recentActivity: firmDetail.recentActivity,
+} as any);
+
       })
       .catch((err) => setError(err.message));
 

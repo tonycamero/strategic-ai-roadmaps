@@ -4,7 +4,7 @@
 // Single source of truth for multi-vertical customization.
 // Controls labels, intakes, KPIs, and other business-type-specific UX.
 
-export type BusinessType = 'default' | 'chamber';
+export type BusinessType = 'default' | 'chamber' | 'manufacturing' | 'enterprise';
 
 export interface BusinessTypeProfile {
   id: BusinessType;
@@ -82,7 +82,48 @@ export const BUSINESS_TYPE_PROFILES: Record<BusinessType, BusinessTypeProfile> =
       'Sponsor revenue per quarter',
     ],
   },
+  manufacturing: {
+    id: 'manufacturing',
+    label: 'Manufacturing / Industrial',
+    description: 'Manufacturing facilities, industrial operations, and production companies.',
+    roleLabels: {
+      sales: 'Sales / Estimating',
+      ops: 'Operations / Logistics',
+      delivery: 'Production / Quality',
+      owner: 'Owner / CEO',
+      exec_sponsor: 'Executive Sponsor',
+    },
+    intakeCopy: {
+      salesIntro: 'Covers estimating, quoting, and client acquisition.',
+      opsIntro: 'Covers logistics, supply chain, and back-office.',
+      deliveryIntro: 'Covers shop floor, production planning, and quality control.',
+      ownerIntro: 'Covers strategy, capital allocation, and risk.',
+      execSponsorIntro: 'Covers board relations and enterprise value.',
+    },
+    kpis: ['OEE', 'Lead time', 'Defect rate', 'Revenue per workstation'],
+  },
+  enterprise: {
+    id: 'enterprise',
+    label: 'Enterprise',
+    description: 'Large-scale organizations with multiple departments.',
+    roleLabels: {
+      sales: 'Revenue / Sales',
+      ops: 'Operations / IT',
+      delivery: 'Product / Delivery',
+      owner: 'Executive Leadership',
+      exec_sponsor: 'Corporate Sponsor',
+    },
+    intakeCopy: {
+      salesIntro: 'Covers complex sales cycles and account management.',
+      opsIntro: 'Covers infrastructure, shared services, and compliance.',
+      deliveryIntro: 'Covers delivery at scale and cross-dept coordination.',
+      ownerIntro: 'Covers large-scale vision and shareholder value.',
+      execSponsorIntro: 'Covers governance and transformational alignment.',
+    },
+    kpis: ['LTV', 'CAC', 'Churn', 'NPS', 'Dept utilization'],
+  },
 };
+
 
 export const DEFAULT_BUSINESS_TYPE: BusinessType = 'default';
 

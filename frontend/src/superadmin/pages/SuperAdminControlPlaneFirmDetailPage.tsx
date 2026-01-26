@@ -262,7 +262,10 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         // s2: Executive Brief (Consultation Anchor)
         // Decoupled: Can generate brief while intake is OPEN.
         const s2Fact = ['APPROVED', 'ACKNOWLEDGED', 'WAIVED'].includes(tenant.executiveBriefStatus || '');
-        const hasOwnerIntake = data.intakes.some(i => (i.role === 'owner' || i.userRole === 'owner' || i.userEmail === data.owner?.email) && i.completedAt);
+const hasOwnerIntake = data.intakes.some((i: any) =>
+  (i.role === 'owner' || i.userRole === 'owner' || i.userEmail === data.owner?.email) &&
+  i.completedAt
+);
         const hasStakeholders = intakeRoles.length > 0;
 
         let s2: 'LOCKED' | 'READY' | 'COMPLETE' = 'LOCKED';
@@ -747,19 +750,25 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         }
     };
 
-    const openSynthesisModal = async () => {
-        setSynthesisOpen(true);
-        // Load discovery notes
-        try {
-            const res = await superadminApi.getDiscoveryNotes(params.tenantId);
-            setSynthesisNotes(res.notes);
-        } catch (err) {
-            console.error('Failed to load discovery notes for synthesis:', err);
-        }
-        // Ensure other artifacts are loaded
-        if (!diagData) await loadDiagnosticData();
-        if (!execBriefData) await loadExecBriefData();
-    };
+ const openSynthesisModal = async () => {
+  const tenantId = params?.tenantId;
+  if (!tenantId) return;
+
+  setSynthesisOpen(true);
+
+  // Load discovery notes
+  try {
+    const res = await superadminApi.getDiscoveryNotes(tenantId);
+    setSynthesisNotes(res.notes);
+  } catch (err) {
+    console.error('Failed to load discovery notes for synthesis:', err);
+  }
+
+  // Ensure other artifacts are loaded
+  if (!diagData) await loadDiagnosticData();
+  if (!execBriefData) await loadExecBriefData();
+};
+
 
     const closeDiagnosticModal = async () => {
         setDiagOpen(false);
@@ -902,11 +911,45 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                         <div className="text-[10px] text-slate-400 space-y-0.5">
                                             <div className="font-bold uppercase tracking-widest text-slate-500 mb-1">Truth</div>
                                             <div className="flex items-center gap-2 flex-wrap">
-                                                <span>Brief: <span className="text-slate-300">{truthProbe.brief?.status || 'N/A'}</span></span>
-                                                <span className="text-slate-700">•</span>
-                                                <span>Diag: <span className="text-slate-300">{truthProbe.diagnostic?.status || 'N/A'}</span></span>
-                                                <span className="text-slate-700">•</span>
-                                                <span>Tickets: <span className="text-slate-300">{truthProbe.tickets?.approved || 0}/{truthProbe.tickets?.total || 0}</span></span>
+                                                
+<div className="flex items-center justify-between">
+  <div className="text-[10px] text-slate-400 space-y-0.5">
+    <div className="font-bold uppercase tracking-widest text-slate-500 mb-1">
+      Truth
+    </div>
+
+    <div className="flex items-center gap-2 flex-wrap">
+      <span>
+        Brief:{' '}
+        <span className="text-slate-300">
+{(truthProbe as any)?.executiveBrief?.status ?? (truthProbe as any)?.brief?.status ?? 'N/A'}
+        </span>
+      </span>
+
+      <span className="text-slate-700">•</span>
+
+      <span>
+        Diag:{' '}
+        <span className="text-slate-300">
+{(truthProbe as any)?.diagnostic?.status ?? 'N/A'}
+        </span>
+      </span>
+
+      <span className="text-slate-700">•</span>
+
+      <span>
+        Tickets:{' '}
+        <span className="text-slate-300">
+         {((truthProbe as any)?.tickets?.approved ?? 0)}/{((truthProbe as any)?.tickets?.total ?? 0)}
+
+        </span>
+      </span>
+    </div>
+  </div>
+</div>
+
+
+
                                             </div>
                                         </div>
                                         <svg className="w-3 h-3 text-slate-600 group-hover:text-slate-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
