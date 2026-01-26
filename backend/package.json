@@ -45,6 +45,7 @@
     "puppeteer-core": "^23.10.4",
     "pdfkit": "^0.15.0",
     "resend": "^3.0.0",
+    "serverless-http": "^3.2.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
