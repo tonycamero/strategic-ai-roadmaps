@@ -22,7 +22,10 @@ export {
   validateSection,
   missingSignalsToHuman,
   mapSynthesisToSections,
-  projectSections
+  projectSections,
+  type ViewProjection,
+  type MetricBlock,
+  type ExecutiveBriefSection
 } from './executiveBrief';
 
 // Roadmap Contract Exports

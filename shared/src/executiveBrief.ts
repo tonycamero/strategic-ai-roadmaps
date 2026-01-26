@@ -1,5 +1,23 @@
 import { CONTRACT_LIMITS, getSectionTitle, VISIBILITY_RULES } from "./executiveBrief.contract";
 
+export type ViewProjection = 'SYSTEM' | 'PRIVATE';
+
+export interface MetricBlock {
+    level: string;
+    interpretation: string;
+    capacityScore?: number;
+}
+
+export interface ExecutiveBriefSection {
+    id: string;
+    title: string;
+    content: string | string[] | MetricBlock;
+    renderMode: 'PATTERN_LIST' | 'BULLET_LIST' | 'PROSE_NARRATIVE' | 'METRIC_CALLOUT';
+    intro?: string;
+    sublabel?: string;
+}
+
+
 /**
  * Pure helper for text normalization
  */
