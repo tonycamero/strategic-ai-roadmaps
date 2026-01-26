@@ -37,10 +37,11 @@ export async function submitIntake(req: AuthRequest, res: Response) {
     }
 
 // Check if intake already exists (scoped to tenant + role to avoid cross-tenant collisions)
-const tenantId = (req as any).tenantId as string;
-if (!tenantId) {
+const requestTenantId = (req as any).tenantId as string;
+if (!requestTenantId) {
   return res.status(400).json({ error: 'Missing tenant context' });
 }
+
 
 
 const [existing] = await db
