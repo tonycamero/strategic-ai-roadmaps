@@ -9,7 +9,16 @@ import type {
   Intake,
 } from '@roadmap/shared';
 
-const API_URL = import.meta.env.VITE_API_URL || '';
+const API_URL = import.meta.env.VITE_API_BASE_URL;
+
+if (!API_URL) {
+  throw new Error(
+    'VITE_API_BASE_URL is not defined. Did you forget to set it in Netlify?'
+  );
+}
+
+const API_BASE = API_URL.replace(/\/$/, '');
+
 
 class ApiError extends Error {
   constructor(public status: number, message: string) {
