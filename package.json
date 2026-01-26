@@ -1,7 +1,9 @@
+
 {
-  "name": "strategic-ai-roadmap-portal",
+"name": "strategic-ai-roadmap-portal",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@10.28.1",
   "workspaces": [
     "frontend",
     "backend",
@@ -18,7 +20,6 @@
     "db:studio": "pnpm --filter backend db:studio"
   },
   "devDependencies": {
-    "packageManager": "pnpm@9.15.4",
     "@vercel/node": "^5.5.8",
     "concurrently": "^8.2.2",
     "typescript": "^5.9.3"
