@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
+import { api, ApiError } from '../lib/api';
 
 export default function RequestPasswordReset() {
   const [, setLocation] = useLocation();
@@ -15,20 +16,7 @@ export default function RequestPasswordReset() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/request-reset', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || 'Failed to send reset link');
-        return;
-      }
+      const data = await api.requestPasswordReset(email);
 
       setSubmitted(true);
       // DEV ONLY: Store token for testing
@@ -36,7 +24,11 @@ export default function RequestPasswordReset() {
         setResetToken(data.resetToken);
       }
     } catch (err) {
-      setError('Failed to connect to server');
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Failed to connect to server');
+      }
     } finally {
       setLoading(false);
     }

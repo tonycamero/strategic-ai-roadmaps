@@ -182,6 +182,30 @@ export const api = {
     fetchAPI<{ vector: any }>(`/api/tenants/intake-vectors/${vectorId}/send-invite`, {
       method: 'POST',
     }),
+
+  // Password reset endpoints
+  requestPasswordReset: (email: string) =>
+    fetchAPI<{ success: boolean; message: string; resetToken?: string }>(
+      '/api/auth/request-reset',
+      {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      }
+    ),
+
+  validateResetToken: (token: string) =>
+    fetchAPI<{ valid: boolean; email: string; error?: string }>(
+      `/api/auth/validate-reset/${token}`
+    ),
+
+  resetPassword: (data: { token: string; newPassword: any }) =>
+    fetchAPI<{ success: boolean; message: string }>(
+      '/api/auth/reset-password',
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    ),
 };
 
 export { ApiError };

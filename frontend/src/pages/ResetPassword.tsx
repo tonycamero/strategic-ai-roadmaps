@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useRoute } from 'wouter';
+import { api, ApiError } from '../lib/api';
 
 export default function ResetPassword() {
   const [, setLocation] = useLocation();
@@ -19,8 +20,7 @@ export default function ResetPassword() {
   useEffect(() => {
     const validateToken = async () => {
       try {
-        const res = await fetch(`/api/auth/validate-reset/${token}`);
-        const data = await res.json();
+        const data = await api.validateResetToken(token);
 
         if (data.valid) {
           setValid(true);
@@ -29,7 +29,11 @@ export default function ResetPassword() {
           setError(data.error || 'Invalid or expired reset link');
         }
       } catch (err) {
-        setError('Failed to validate reset link');
+        if (err instanceof ApiError) {
+          setError(err.message);
+        } else {
+          setError('Failed to validate reset link');
+        }
       } finally {
         setValidating(false);
       }
@@ -61,20 +65,7 @@ export default function ResetPassword() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token, newPassword }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || 'Failed to reset password');
-        return;
-      }
+      await api.resetPassword({ token, newPassword });
 
       setSuccess(true);
 
@@ -83,7 +74,11 @@ export default function ResetPassword() {
         setLocation('/login');
       }, 3000);
     } catch (err) {
-      setError('Failed to connect to server');
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Failed to connect to server');
+      }
     } finally {
       setLoading(false);
     }
