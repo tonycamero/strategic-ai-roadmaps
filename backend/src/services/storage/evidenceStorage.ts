@@ -11,12 +11,19 @@ try {
     // soft fail, will error only if used
 }
 
-const UPLOAD_DIR = path.join(process.cwd(), 'uploads', 'evidence');
+const getEvidenceBaseDir = () => {
+    if (process.env.EVIDENCE_DIR) return process.env.EVIDENCE_DIR;
+    if (process.env.NETLIFY === "true") return path.join('/tmp', 'uploads', 'evidence');
+    return path.join(process.cwd(), 'uploads', 'evidence');
+};
 
-// Ensure local dir exists
-if (!fs.existsSync(UPLOAD_DIR)) {
-    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-}
+const ensureEvidenceDir = () => {
+    const dir = getEvidenceBaseDir();
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+    return dir;
+};
 
 export interface StoredArtifact {
     storageKey: string;
@@ -55,6 +62,7 @@ export async function putEvidenceArtifact(
         }
     } else {
         // LOCAL STRATEGY
+        const UPLOAD_DIR = ensureEvidenceDir();
         const uniqueName = `${Date.now()}-${filename}`;
         const filePath = path.join(UPLOAD_DIR, uniqueName);
         fs.writeFileSync(filePath, buffer);
@@ -86,6 +94,7 @@ export async function getEvidenceArtifactBytes(urlOrKey: string): Promise<Buffer
         if (filename.startsWith('/uploads/evidence/')) {
             filename = filename.replace('/uploads/evidence/', '');
         }
+        const UPLOAD_DIR = getEvidenceBaseDir();
         const filePath = path.join(UPLOAD_DIR, filename);
         if (!fs.existsSync(filePath)) throw new Error(`Local artifact not found at ${filePath}`);
         return fs.readFileSync(filePath);
