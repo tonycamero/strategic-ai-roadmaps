@@ -1,1 +1,3 @@
+/api/*  https://api.strategicai.app/api/:splat  200!
+/*      /index.html                             200
 /*    /index.html   200
