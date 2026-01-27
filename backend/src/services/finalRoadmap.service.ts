@@ -8,6 +8,7 @@
 import { db } from '../db';
 import { roadmaps, roadmapSections, sopTickets, tenants } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
+import crypto from 'crypto';
 import { assembleRoadmap } from './roadmapAssembly.service';
 import { RoadmapContext, DiagnosticMap } from '../types/diagnostic';
 
@@ -55,7 +56,7 @@ export async function generateFinalRoadmapForTenant(tenantId: string) {
 
   // 3. Ensure moderation completed (all tickets must be moderated)
   const unmoderatedTickets = allTickets.filter((t) => t.moderatedAt === null);
-  
+
   if (unmoderatedTickets.length > 0) {
     throw new Error(
       `[FinalRoadmap] Moderation incomplete. ${unmoderatedTickets.length} tickets still pending moderation. All tickets must be approved or rejected before final roadmap generation.`

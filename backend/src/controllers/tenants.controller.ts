@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { db } from '../db';
-import { tenants } from '../db/schema';
+import { tenants, diagnostics } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { onboardingProgressService } from '../services/onboardingProgress.service';
 
@@ -42,6 +42,20 @@ export async function getTenant(req: AuthRequest, res: Response) {
       return res.status(404).json({ error: 'Tenant not found' });
     }
 
+    let latestDiagnostic = null;
+    if (tenant.lastDiagnosticId) {
+      const diag = await db.query.diagnostics.findFirst({
+        where: eq(diagnostics.id, tenant.lastDiagnosticId),
+      });
+      if (diag) {
+        latestDiagnostic = {
+          id: diag.id,
+          status: diag.status,
+          generatedAt: diag.createdAt,
+        };
+      }
+    }
+
     const response = {
       tenant: {
         id: tenant.id,
@@ -52,6 +66,7 @@ export async function getTenant(req: AuthRequest, res: Response) {
         firmSizeTier: tenant.firmSizeTier,
         segment: tenant.segment,
         region: tenant.region,
+        latestDiagnostic,
       },
     };
     console.log('[Tenant] Returning tenant data:', response);

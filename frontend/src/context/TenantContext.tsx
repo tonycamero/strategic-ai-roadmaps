@@ -17,6 +17,11 @@ export interface Tenant {
   firmSizeTier?: string | null;
   segment?: string | null;
   region?: string | null;
+  latestDiagnostic?: {
+    id: string;
+    status: string;
+    generatedAt: string;
+  } | null;
 }
 
 interface TenantContextValue {

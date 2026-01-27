@@ -133,9 +133,9 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
 
     const [isDiscoveryOpen, setDiscoveryOpen] = useState(false);
     const [discoverySaving, setDiscoverySaving] = useState(false);
-
     const [isSynthesisOpen, setSynthesisOpen] = useState(false);
     const [synthesisNotes, setSynthesisNotes] = useState<string | null>(null);
+    const [gateLockedMessage, setGateLockedMessage] = useState<string | null>(null);
     // @ANCHOR:SA_FIRM_DETAIL_STATE_END
 
     const refreshData = async () => {
@@ -224,7 +224,15 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
 
             setIntakeRoles(mappedRoles);
         } catch (err: any) {
-            setError(err.message);
+            console.error('Error fetching firm detail:', err);
+            // If the failure is a business logic gate, show the lock panel instead of crashing the surface
+            if (err.errorCode === 'GATE_LOCKED' || err.status === 403) {
+                setGateLockedMessage(err.message || 'Next step is currently locked by business logic.');
+                setError(null);
+            } else {
+                setError(err.message);
+                setGateLockedMessage(null);
+            }
         } finally {
             setLoading(false);
         }
@@ -262,10 +270,10 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         // s2: Executive Brief (Consultation Anchor)
         // Decoupled: Can generate brief while intake is OPEN.
         const s2Fact = ['APPROVED', 'ACKNOWLEDGED', 'WAIVED'].includes(tenant.executiveBriefStatus || '');
-const hasOwnerIntake = data.intakes.some((i: any) =>
-  (i.role === 'owner' || i.userRole === 'owner' || i.userEmail === data.owner?.email) &&
-  i.completedAt
-);
+        const hasOwnerIntake = data.intakes.some((i: any) =>
+            (i.role === 'owner' || i.userRole === 'owner' || i.userEmail === data.owner?.email) &&
+            i.completedAt
+        );
         const hasStakeholders = intakeRoles.length > 0;
 
         let s2: 'LOCKED' | 'READY' | 'COMPLETE' = 'LOCKED';
@@ -280,9 +288,13 @@ const hasOwnerIntake = data.intakes.some((i: any) =>
         // s3: Diagnostic (Source: latestDiagnostic from diagnostics table)
         const diagExists = !!data.latestDiagnostic;
         const diagPublished = data.latestDiagnostic?.status === 'published';
-        // Requirement: "Diagnostics generation requires ONLY: intake locked."
-        // Checks s1 ONLY.
-        const s3 = (diagExists && s1 === 'COMPLETE') ? 'COMPLETE' : (s1 === 'COMPLETE' ? 'READY' : 'LOCKED');
+
+        // V2 Requirement: "Diagnostics generation requires: intake locked AND executive brief APPROVED."
+        const isExecBriefApproved = tenant.executiveBriefStatus === 'APPROVED';
+
+        const s3 = (diagExists && s1 === 'COMPLETE')
+            ? 'COMPLETE'
+            : (s1 === 'COMPLETE' && isExecBriefApproved ? 'READY' : 'LOCKED');
         if (stage === 3) return s3;
 
         // s4: Discovery NOTES (Step 4)
@@ -380,36 +392,40 @@ const hasOwnerIntake = data.intakes.some((i: any) =>
     };
 
     const handleFinalizeRoadmap = async () => {
-        if (!params?.tenantId) return;
-
+        if (!params?.tenantId || isGenerating) return;
         setIsGenerating(true);
-
+        setGateLockedMessage(null);
         try {
             await superadminApi.assembleRoadmap(params.tenantId);
             await refreshData();
         } catch (err: any) {
             console.error('Finalization error:', err);
-            // Handle 428 Precondition Required (Roadmap Not Ready)
-            // Note: checks both err.status and err.response.status for compatibility
-            const status = err?.status || err?.response?.status;
 
-            if (status === 428) {
-                const data = err.response?.data;
-                const details = data?.prerequisites
-                    ? [
-                        !data.prerequisites.hasApprovedBrief ? 'Executive Brief not valid' : null,
-                        !data.prerequisites.hasDiagnostic ? 'No Active Diagnostic found' : null,
-                        data.prerequisites.approvedTicketCount === 0 ? 'No Approved Tickets' : null
-                    ].filter(Boolean)
-                    : [];
-
-                const msg = details.length > 0
-                    ? `Roadmap Not Ready. Missing prerequisites:\n- ${details.join('\n- ')}`
-                    : (data?.message || 'Roadmap Not Ready: Prerequisites not met.');
-
-                window.alert(msg);
+            if (err.errorCode === 'GATE_LOCKED' || err.status === 403) {
+                setGateLockedMessage(err.message || 'Roadmap finalization is currently locked.');
             } else {
-                setError(`Finalization Error: ${err.message}`);
+                // Handle 428 Precondition Required (Roadmap Not Ready)
+                // Note: checks both err.status and err.response.status for compatibility
+                const status = err?.status || err?.response?.status;
+
+                if (status === 428) {
+                    const data = err.response?.data;
+                    const details = data?.prerequisites
+                        ? [
+                            !data.prerequisites.hasApprovedBrief ? 'Executive Brief not valid' : null,
+                            !data.prerequisites.hasDiagnostic ? 'No Active Diagnostic found' : null,
+                            data.prerequisites.approvedTicketCount === 0 ? 'No Approved Tickets' : null
+                        ].filter(Boolean)
+                        : [];
+
+                    const msg = details.length > 0
+                        ? `Roadmap Not Ready. Missing prerequisites:\n- ${details.join('\n- ')}`
+                        : (data?.message || 'Roadmap Not Ready: Prerequisites not met.');
+
+                    window.alert(msg);
+                } else {
+                    setError(`Finalization Error: ${err.message}`);
+                }
             }
         } finally {
             setIsGenerating(false);
@@ -459,12 +475,17 @@ const hasOwnerIntake = data.intakes.some((i: any) =>
         if (!params?.tenantId) return;
         if (!window.confirm('Confirm Intake Lock? This freezes the intake window.')) return;
         setIsGenerating(true);
+        setGateLockedMessage(null);
         try {
             await superadminApi.lockIntake(params.tenantId);
             await refreshData();
         } catch (err: any) {
-            console.error(err);
-            setError(err.message);
+            console.error('Lock Intake Error:', err);
+            if (err.errorCode === 'GATE_LOCKED' || err.status === 403) {
+                setGateLockedMessage(err.message || 'Intake locking is currently unavailable.');
+            } else {
+                setError(err.message);
+            }
         } finally {
             setIsGenerating(false);
         }
@@ -474,12 +495,18 @@ const hasOwnerIntake = data.intakes.some((i: any) =>
         if (!params?.tenantId) return;
         if (isGenerating) return;  // ✅ Guard against double-click
         setIsGenerating(true);
+        setGateLockedMessage(null); // Clear previous lock message
         try {
             await superadminApi.generateDiagnostics(params.tenantId);
             await refreshData();
         } catch (err: any) {
-            console.error(err);
-            setError(err.message);
+            console.error('Diagnostic Generation Error:', err);
+            // Handle GATE_LOCKED as a state, not a platform crash
+            if (err.errorCode === 'GATE_LOCKED' || err.status === 403) {
+                setGateLockedMessage(err.message || 'Next step is currently locked by business logic.');
+            } else {
+                setError(err.message);
+            }
         } finally {
             setIsGenerating(false);
         }
@@ -502,29 +529,24 @@ const hasOwnerIntake = data.intakes.some((i: any) =>
     };
 
     const handleActivateModeration = async () => {
-        console.log('[DEBUG] handleActivateModeration triggered for tenant:', params?.tenantId);
-        if (!params?.tenantId) {
-            console.error('[DEBUG] Missing tenantId in params');
-            return;
-        }
+        if (!params?.tenantId || isGenerating) return;
 
         const confirmed = window.confirm('This will start a new moderation cycle tied to the current canonical findings. Legacy tickets will not be used. Proceed?');
-        console.log('[DEBUG] User confirmation:', confirmed);
         if (!confirmed) return;
 
-        console.log('[DEBUG] Setting isGenerating=true');
         setIsGenerating(true);
+        setGateLockedMessage(null);
         try {
-            console.log('[DEBUG] Calling superadminApi.activateTicketModeration...');
-            const result = await superadminApi.activateTicketModeration(params.tenantId);
-            console.log('[DEBUG] Activation result:', result);
+            await superadminApi.activateTicketModeration(params.tenantId);
             await refreshData();
-            console.log('[DEBUG] Refresh done');
         } catch (err: any) {
-            console.error('[DEBUG] Moderation Activation Error:', err);
-            setError(err.message || 'Failed to activate moderation');
+            console.error('Moderation Activation Error:', err);
+            if (err.errorCode === 'GATE_LOCKED' || err.status === 403) {
+                setGateLockedMessage(err.message || 'Ticket moderation is currently locked.');
+            } else {
+                setError(err.message || 'Failed to activate moderation');
+            }
         } finally {
-            console.log('[DEBUG] Setting isGenerating=false');
             setIsGenerating(false);
         }
     };
@@ -533,12 +555,17 @@ const hasOwnerIntake = data.intakes.some((i: any) =>
         if (!params?.tenantId || !data?.latestDiagnostic?.id) return;
         if (!window.confirm('Lock Diagnostic? This prevents further regeneration.')) return;
         setIsGenerating(true);
+        setGateLockedMessage(null);
         try {
             await superadminApi.lockDiagnostic(params.tenantId, data.latestDiagnostic.id);
             await refreshData();
         } catch (err: any) {
-            console.error(err);
-            setError(err.message);
+            console.error('Lock Diagnostic Error:', err);
+            if (err.errorCode === 'GATE_LOCKED' || err.status === 403) {
+                setGateLockedMessage(err.message || 'Diagnostic locking is currently unavailable.');
+            } else {
+                setError(err.message);
+            }
         } finally {
             setIsGenerating(false);
         }
@@ -548,12 +575,17 @@ const hasOwnerIntake = data.intakes.some((i: any) =>
         if (!params?.tenantId || !data?.latestDiagnostic?.id) return;
         if (!window.confirm('Publish Diagnostic? This makes artifacts visible to Discovery.')) return;
         setIsGenerating(true);
+        setGateLockedMessage(null);
         try {
             await superadminApi.publishDiagnostic(params.tenantId, data.latestDiagnostic.id);
             await refreshData();
         } catch (err: any) {
-            console.error(err);
-            setError(err.message);
+            console.error('Publish Diagnostic Error:', err);
+            if (err.errorCode === 'GATE_LOCKED' || err.status === 403) {
+                setGateLockedMessage(err.message || 'Diagnostic publishing is currently locked.');
+            } else {
+                setError(err.message);
+            }
         } finally {
             setIsGenerating(false);
         }
@@ -596,13 +628,15 @@ const hasOwnerIntake = data.intakes.some((i: any) =>
         if (!params?.tenantId) return;
         if (isGenerating) return;
         setIsGenerating(true);
+        setGateLockedMessage(null);
         try {
             await superadminApi.generateExecutiveBrief(params.tenantId);
             await refreshData();
         } catch (err: any) {
-            console.error('Failed to generate executive brief:', err);
-            // If it already exists, just refresh data and let the UI state resolve
-            if (err.message === 'EXECUTIVE_BRIEF_ALREADY_EXISTS') {
+            console.error('Executive Brief Generation Error:', err);
+            if (err.errorCode === 'GATE_LOCKED' || err.status === 403) {
+                setGateLockedMessage(err.message || 'Executive Brief generation is currently locked.');
+            } else if (err.message === 'EXECUTIVE_BRIEF_ALREADY_EXISTS') {
                 await refreshData();
             } else {
                 setError(`Generation Error: ${err.message}`);
@@ -616,13 +650,18 @@ const hasOwnerIntake = data.intakes.some((i: any) =>
         if (!params?.tenantId) return;
         if (isGenerating) return;
         setIsGenerating(true);
+        setGateLockedMessage(null);
         try {
             await superadminApi.approveExecutiveBrief(params.tenantId);
             await refreshData();
             setExecBriefOpen(false);
         } catch (err: any) {
-            console.error('Failed to approve executive brief:', err);
-            setError(`Approval Error: ${err.message}`);
+            console.error('Executive Brief Approval Error:', err);
+            if (err.errorCode === 'GATE_LOCKED' || err.status === 403) {
+                setGateLockedMessage(err.message || 'Executive Brief approval is currently locked.');
+            } else {
+                setError(`Approval Error: ${err.message}`);
+            }
         } finally {
             setIsGenerating(false);
         }
@@ -750,24 +789,24 @@ const hasOwnerIntake = data.intakes.some((i: any) =>
         }
     };
 
- const openSynthesisModal = async () => {
-  const tenantId = params?.tenantId;
-  if (!tenantId) return;
+    const openSynthesisModal = async () => {
+        const tenantId = params?.tenantId;
+        if (!tenantId) return;
 
-  setSynthesisOpen(true);
+        setSynthesisOpen(true);
 
-  // Load discovery notes
-  try {
-    const res = await superadminApi.getDiscoveryNotes(tenantId);
-    setSynthesisNotes(res.notes);
-  } catch (err) {
-    console.error('Failed to load discovery notes for synthesis:', err);
-  }
+        // Load discovery notes
+        try {
+            const res = await superadminApi.getDiscoveryNotes(tenantId);
+            setSynthesisNotes(res.notes);
+        } catch (err) {
+            console.error('Failed to load discovery notes for synthesis:', err);
+        }
 
-  // Ensure other artifacts are loaded
-  if (!diagData) await loadDiagnosticData();
-  if (!execBriefData) await loadExecBriefData();
-};
+        // Ensure other artifacts are loaded
+        if (!diagData) await loadDiagnosticData();
+        if (!execBriefData) await loadExecBriefData();
+    };
 
 
     const closeDiagnosticModal = async () => {
@@ -805,6 +844,30 @@ const hasOwnerIntake = data.intakes.some((i: any) =>
 
             {/* Main Content - Right Side */}
             <div className="flex-1 space-y-6 p-8 max-w-7xl mx-auto">
+                {/* GATE LOCKED PANEL */}
+                {gateLockedMessage && (
+                    <div className="animate-in fade-in slide-in-from-top-2 duration-300 bg-amber-900/20 border border-amber-500/30 rounded-xl p-4 flex items-start gap-4 shadow-lg shadow-amber-900/10">
+                        <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                            <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m1-7l-1 1h4l-1-1m-2-2v2m0 0h2m-2 0H10" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="text-sm font-bold text-amber-400 uppercase tracking-tight">Next Step Locked</h3>
+                            <p className="text-xs text-slate-300 mt-1">{gateLockedMessage}</p>
+                        </div>
+                        <button
+                            onClick={() => setGateLockedMessage(null)}
+                            className="text-slate-500 hover:text-slate-300 p-1 rounded-lg hover:bg-slate-800 transition-colors"
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                )}
+
                 {/* PANEL 1: Identity & Status */}
                 <section id="panel-identity-status">
                     <header className="border-b border-slate-800 pb-6 flex items-start justify-between">
@@ -911,42 +974,42 @@ const hasOwnerIntake = data.intakes.some((i: any) =>
                                         <div className="text-[10px] text-slate-400 space-y-0.5">
                                             <div className="font-bold uppercase tracking-widest text-slate-500 mb-1">Truth</div>
                                             <div className="flex items-center gap-2 flex-wrap">
-                                                
-<div className="flex items-center justify-between">
-  <div className="text-[10px] text-slate-400 space-y-0.5">
-    <div className="font-bold uppercase tracking-widest text-slate-500 mb-1">
-      Truth
-    </div>
 
-    <div className="flex items-center gap-2 flex-wrap">
-      <span>
-        Brief:{' '}
-        <span className="text-slate-300">
-{(truthProbe as any)?.executiveBrief?.status ?? (truthProbe as any)?.brief?.status ?? 'N/A'}
-        </span>
-      </span>
+                                                <div className="flex items-center justify-between">
+                                                    <div className="text-[10px] text-slate-400 space-y-0.5">
+                                                        <div className="font-bold uppercase tracking-widest text-slate-500 mb-1">
+                                                            Truth
+                                                        </div>
 
-      <span className="text-slate-700">•</span>
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <span>
+                                                                Brief:{' '}
+                                                                <span className="text-slate-300">
+                                                                    {(truthProbe as any)?.executiveBrief?.status ?? (truthProbe as any)?.brief?.status ?? 'N/A'}
+                                                                </span>
+                                                            </span>
 
-      <span>
-        Diag:{' '}
-        <span className="text-slate-300">
-{(truthProbe as any)?.diagnostic?.status ?? 'N/A'}
-        </span>
-      </span>
+                                                            <span className="text-slate-700">•</span>
 
-      <span className="text-slate-700">•</span>
+                                                            <span>
+                                                                Diag:{' '}
+                                                                <span className="text-slate-300">
+                                                                    {(truthProbe as any)?.diagnostic?.status ?? 'N/A'}
+                                                                </span>
+                                                            </span>
 
-      <span>
-        Tickets:{' '}
-        <span className="text-slate-300">
-         {((truthProbe as any)?.tickets?.approved ?? 0)}/{((truthProbe as any)?.tickets?.total ?? 0)}
+                                                            <span className="text-slate-700">•</span>
 
-        </span>
-      </span>
-    </div>
-  </div>
-</div>
+                                                            <span>
+                                                                Tickets:{' '}
+                                                                <span className="text-slate-300">
+                                                                    {((truthProbe as any)?.tickets?.approved ?? 0)}/{((truthProbe as any)?.tickets?.total ?? 0)}
+
+                                                                </span>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
 
 
 
@@ -1290,7 +1353,7 @@ const hasOwnerIntake = data.intakes.some((i: any) =>
                         {/* 3.5 Diagnostic Review (modal-only) */}
                         {tenant.lastDiagnosticId && (
                             <DiagnosticCompleteCard
-                                status="GENERATED"
+                                status={data?.latestDiagnostic?.status || 'GENERATED'}
                                 onReview={openDiagnosticModal}
                             />
                         )}

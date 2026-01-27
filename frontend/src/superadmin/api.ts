@@ -223,10 +223,11 @@ async function apiGet<T>(path: string): Promise<T> {
       const error = new Error(message);
       (error as any).errorCode = errBody.errorCode;
       (error as any).details = errBody.details;
+      (error as any).status = res.status;
       throw error;
     } catch (e) {
       // If json parse fails, fall back to status text
-      if (e instanceof Error && (e as any).errorCode) throw e; // rethrow if it was our structured error
+      if (e instanceof Error && (e as any).status) throw e; // rethrow if it was our structured error
       throw new Error(`SuperAdmin API error: ${res.status} ${res.statusText}`);
     }
   }
@@ -244,7 +245,17 @@ async function apiPatch<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    throw new Error(`SuperAdmin API error: ${res.status}`);
+    try {
+      const errBody = await res.json();
+      const message = errBody.message || errBody.error || `SuperAdmin API error: ${res.status}`;
+      const error = new Error(message);
+      (error as any).errorCode = errBody.errorCode;
+      (error as any).status = res.status;
+      throw error;
+    } catch (e) {
+      if (e instanceof Error && (e as any).status) throw e;
+      throw new Error(`SuperAdmin API error: ${res.status} ${res.statusText}`);
+    }
   }
   return res.json() as Promise<T>;
 }
@@ -260,8 +271,17 @@ async function apiPost<T>(path: string, body?: unknown): Promise<T> {
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || `SuperAdmin API error: ${res.status}`);
+    try {
+      const errBody = await res.json();
+      const message = errBody.message || errBody.error || `SuperAdmin API error: ${res.status}`;
+      const error = new Error(message);
+      (error as any).errorCode = errBody.errorCode;
+      (error as any).status = res.status;
+      throw error;
+    } catch (e) {
+      if (e instanceof Error && (e as any).status) throw e;
+      throw new Error(`SuperAdmin API error: ${res.status} ${res.statusText}`);
+    }
   }
   return res.json() as Promise<T>;
 }

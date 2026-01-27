@@ -36,53 +36,53 @@ export async function submitIntake(req: AuthRequest, res: Response) {
       }
     }
 
-// Check if intake already exists (scoped to tenant + role to avoid cross-tenant collisions)
-const requestTenantId = (req as any).tenantId as string;
-if (!requestTenantId) {
-  return res.status(400).json({ error: 'Missing tenant context' });
-}
-
-
-
-const [existing] = await db
-  .select()
-  .from(intakes)
-  .where(
-    and(
-      eq(intakes.userId, req.user.userId),
-      eq(intakes.tenantId, tenantId),
-      eq(intakes.role, role)
-    )
-  )
-  .limit(1);
-
-if (existing) {
-  await db
-    .update(intakes)
-    .set({
-      answers,
-      role,
-      status: 'completed',
-      completedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(intakes.id, existing.id),
-        eq(intakes.tenantId, tenantId) // extra guard
-      )
-    );
-
-  // 🎯 Onboarding Hook: Mark Owner Intake complete (also on update)
-  if (role === 'owner') {
-    try {
-      // ... whatever you do here (markStep / etc)
-    } catch (e) {
-      // log but don't fail the request
+    // Check if intake already exists (scoped to tenant + role to avoid cross-tenant collisions)
+    const requestTenantId = (req as any).tenantId as string;
+    if (!requestTenantId) {
+      return res.status(400).json({ error: 'Missing tenant context' });
     }
-  }
 
-  return res.json({ ok: true });
-}
+
+
+    const [existing] = await db
+      .select()
+      .from(intakes)
+      .where(
+        and(
+          eq(intakes.userId, req.user.userId),
+          eq(intakes.tenantId, tenantId),
+          eq(intakes.role, role)
+        )
+      )
+      .limit(1);
+
+    if (existing) {
+      await db
+        .update(intakes)
+        .set({
+          answers,
+          role,
+          status: 'completed',
+          completedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(intakes.id, existing.id),
+            eq(intakes.tenantId, tenantId) // extra guard
+          )
+        );
+
+      // 🎯 Onboarding Hook: Mark Owner Intake complete (also on update)
+      if (role === 'owner') {
+        try {
+          // ... whatever you do here (markStep / etc)
+        } catch (e) {
+          // log but don't fail the request
+        }
+      }
+
+      return res.json({ ok: true });
+    }
 
 
     // Create new intake
@@ -152,7 +152,7 @@ if (existing) {
       }
     }
 
-    const resultIntake = intake || updated;
+    const resultIntake = intake || (existing ? { ...existing, answers, role, status: 'completed', completedAt: new Date() } : null);
 
     // 🎯 Onboarding Hook: Link back to Intake Vector (for status sync)
     try {

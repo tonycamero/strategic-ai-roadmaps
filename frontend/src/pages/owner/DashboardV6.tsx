@@ -13,7 +13,7 @@ import { canEdit } from '../../utils/roleAwareness';
 
 export default function DashboardV6() {
   const { user, logout } = useAuth();
-  const { businessType } = useTenant();
+  const { tenant, businessType } = useTenant();
   const [, setLocation] = useLocation();
 
   const { data: intakesData } = useQuery({
@@ -127,48 +127,77 @@ export default function DashboardV6() {
             <h2 className="text-lg font-semibold text-slate-200 mb-6">Your Documents</h2>
             {docsLoading ? (
               <div className="text-sm text-slate-400">Loading...</div>
-            ) : documents.length === 0 ? (
-              <div className="text-sm text-slate-400">No documents yet.</div>
             ) : (
               <div className="space-y-6">
-                {Object.entries(documentsByCategory).map(([category, categoryDocs]) => {
-                  if (categoryDocs.length === 0) return null;
-                  return (
-                    <div key={category}>
-                      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3 flex items-center gap-2">
-                        <FileText className="h-3.5 w-3.5" />
-                        {category}
-                      </h3>
-                      <div className="space-y-2">
-                        {categoryDocs.map((doc) => {
-                          const { title: displayTitle, subtitle: displaySubtitle } = getOwnerDocumentLabel(doc);
-                          return (
-                            <div
-                              key={doc.id}
-                              className="border border-slate-800 rounded-lg p-4 bg-slate-900/60 hover:bg-slate-900 transition-colors flex items-start justify-between gap-4"
-                            >
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium text-slate-100 text-sm mb-1">
-                                  {displayTitle}
-                                </div>
-                                <div className="text-xs text-slate-400 leading-relaxed">
-                                  {displaySubtitle}
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => setLocation(`/owner/case-study/${doc.id}`)}
-                                className="flex-shrink-0 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                                disabled={!canEdit(user?.role || '')}
-                              >
-                                {canEdit(user?.role || '') ? 'View' : 'View Only'}
-                              </button>
-                            </div>
-                          );
-                        })}
+                {/* Advisor Review Notice: Generated/Locked but not yet PUBLISHED */}
+                {tenant?.latestDiagnostic &&
+                  (tenant.latestDiagnostic.status === 'generated' || tenant.latestDiagnostic.status === 'locked') &&
+                  documentsByCategory['Diagnostic Outputs'].length === 0 && (
+                    <div className="border border-indigo-500/20 bg-indigo-900/10 rounded-xl p-6 mb-2">
+                      <div className="flex items-center gap-3 text-indigo-400 font-bold text-[10px] uppercase tracking-widest mb-2">
+                        <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                        {tenant.latestDiagnostic.status === 'generated' ? 'Advisor Review In Progress' : 'Finalizing for Release'}
                       </div>
+                      <p className="text-sm text-slate-300 leading-relaxed">
+                        {tenant.latestDiagnostic.status === 'generated'
+                          ? 'Your Strategic Diagnostic has been generated and is currently in advisor review.'
+                          : 'Your Strategic Diagnostic has been finalized by your advisor and is being prepared for release.'}
+                        {' '}It will appear here once ready.
+                      </p>
+                      {tenant.latestDiagnostic.generatedAt && (
+                        <p className="text-[10px] text-slate-500 mt-4 font-medium italic">
+                          Generated {new Date(tenant.latestDiagnostic.generatedAt).toLocaleDateString()}
+                        </p>
+                      )}
                     </div>
-                  );
-                })}
+                  )}
+
+                {documents.length === 0 ? (
+                  <div className="text-sm text-slate-400 border border-slate-800 border-dashed rounded-lg p-8 text-center bg-slate-900/20">
+                    No diagnostic documents available yet.
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {Object.entries(documentsByCategory).map(([category, categoryDocs]) => {
+                      if (categoryDocs.length === 0) return null;
+                      return (
+                        <div key={category}>
+                          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3 flex items-center gap-2">
+                            <FileText className="h-3.5 w-3.5" />
+                            {category}
+                          </h3>
+                          <div className="space-y-2">
+                            {categoryDocs.map((doc) => {
+                              const { title: displayTitle, subtitle: displaySubtitle } = getOwnerDocumentLabel(doc);
+                              return (
+                                <div
+                                  key={doc.id}
+                                  className="border border-slate-800 rounded-lg p-4 bg-slate-900/60 hover:bg-slate-900 transition-colors flex items-start justify-between gap-4"
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-slate-100 text-sm mb-1">
+                                      {displayTitle}
+                                    </div>
+                                    <div className="text-xs text-slate-400 leading-relaxed">
+                                      {displaySubtitle}
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => setLocation(`/owner/case-study/${doc.id}`)}
+                                    className="flex-shrink-0 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                                    disabled={!canEdit(user?.role || '')}
+                                  >
+                                    {canEdit(user?.role || '') ? 'View' : 'View Only'}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>

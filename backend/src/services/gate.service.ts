@@ -78,8 +78,8 @@ export async function canGenerateDiagnostics(tenantId: string): Promise<GateChec
         .where(eq(executiveBriefs.tenantId, tenantId))
         .limit(1);
 
-    if (!brief || brief.status !== 'DELIVERED') {
-        return { allowed: false, reason: 'Executive Brief must be delivered before generating diagnostics.' };
+    if (!brief || (brief.status !== 'APPROVED' && brief.status !== 'DELIVERED')) {
+        return { allowed: false, reason: 'Executive Brief must be approved before generating diagnostics.' };
     }
 
     return { allowed: true };

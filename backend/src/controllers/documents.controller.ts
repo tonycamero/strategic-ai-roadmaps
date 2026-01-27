@@ -27,16 +27,23 @@ export async function listDocuments(req: AuthRequest, res: Response) {
     if (!tenantId) {
       return res.status(403).json({ error: 'Tenant not resolved' });
     }
+
+    const isSuperAdmin = req.user.role === 'superadmin';
+    const isPublicFilter = isSuperAdmin ? undefined : eq(tenantDocuments.isPublic, true);
+
     const documents = await db
       .select()
       .from(tenantDocuments)
       .where(
         and(
           eq(tenantDocuments.tenantId, tenantId),
-          ne(tenantDocuments.category, 'roadmap')
+          ne(tenantDocuments.category, 'roadmap'),
+          isPublicFilter
         )
       )
       .orderBy(desc(tenantDocuments.createdAt));
+
+    console.log(`[Docs Controller] listDocuments: tenantId=${tenantId}, role=${req.user.role}, found=${documents.length}, isSuperAdmin=${isSuperAdmin}`);
 
     return res.json({ documents });
   } catch (error) {

@@ -62,27 +62,42 @@ export function DiagnosticReviewModal({ open, onClose, data, status }: Diagnosti
 
     const displayStatus = status || data.status || 'GENERATED';
 
+    const unwrapDiagnosticText = (value: any): string => {
+        if (!value) return '';
+        if (typeof value === 'string') return value;
+        if (typeof value === 'object') {
+            if (value.markdown) return value.markdown;
+            if (value.text) return value.text;
+            if (value.list && Array.isArray(value.list)) {
+                return value.list.map((item: any) => typeof item === 'string' ? `- ${item}` : `- ${JSON.stringify(item)}`).join('\n');
+            }
+            if (Array.isArray(value)) {
+                return value.map((item: any) => typeof item === 'string' ? `- ${item}` : `- ${JSON.stringify(item)}`).join('\n');
+            }
+        }
+        return JSON.stringify(value, null, 2);
+    };
 
     const tabs = [
         {
             key: 'overview',
             title: 'Diagnostic Overview',
-            content: data.outputs.overview || data.outputs.sop01DiagnosticMarkdown
+            content: unwrapDiagnosticText(data.outputs.overview || data.outputs.sop01DiagnosticMarkdown)
         },
         {
             key: 'aiOpportunities',
             title: 'AI Leverage Opportunities',
-            content: data.outputs.aiOpportunities || data.outputs.sop01AiLeverageMarkdown
+            content: unwrapDiagnosticText(data.outputs.aiOpportunities || data.outputs.sop01AiLeverageMarkdown)
         },
         {
             key: 'roadmapSkeleton',
             title: 'Roadmap Skeleton',
-            content: data.outputs.roadmapSkeleton || data.outputs.sop01RoadmapSkeletonMarkdown
+            content: unwrapDiagnosticText(data.outputs.roadmapSkeleton || data.outputs.sop01RoadmapSkeletonMarkdown)
         },
         {
             key: 'discoveryQuestions',
             title: 'Discovery Questions',
-            content: data.outputs.discoveryQuestions
+            content: unwrapDiagnosticText(data.outputs.discoveryQuestions)
         },
     ].filter(tab => tab.content);
 

@@ -72,7 +72,7 @@ async function ensureStorageDir(tenantId: string, briefId: string): Promise<stri
 }
 
 function calculateChecksum(buffer: Buffer): string {
-  return crypto.createHash('sha256').update(buffer).digest('hex');
+  return crypto.createHash('sha256').update(buffer as any).digest('hex');
 }
 
 function formatFileName(firmName: string): string {
@@ -104,7 +104,7 @@ async function persistPDFArtifact({
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
   }
 
-  await fs.writeFile(filePath, pdfBuffer);
+  await fs.writeFile(filePath, pdfBuffer as any);
   const checksum = calculateChecksum(pdfBuffer);
 
   const [artifact] = await db

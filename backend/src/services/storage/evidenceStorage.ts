@@ -47,7 +47,7 @@ export async function putEvidenceArtifact(
 
         // VERCEL BLOB STRATEGY
         try {
-            const blob = await put(`evidence/${Number(new Date())}-${filename}`, buffer, {
+            const blob = await put(`evidence/${Number(new Date())}-${filename}`, buffer as any, {
                 access: 'public',
                 contentType: mimeType
             });
@@ -65,7 +65,7 @@ export async function putEvidenceArtifact(
         const UPLOAD_DIR = ensureEvidenceDir();
         const uniqueName = `${Date.now()}-${filename}`;
         const filePath = path.join(UPLOAD_DIR, uniqueName);
-        fs.writeFileSync(filePath, buffer);
+        fs.writeFileSync(filePath, buffer as any);
 
         // Construct public URL - assuming express serves /uploads
         // Note: Use full URL in prod if needed, but relative works for web view. 

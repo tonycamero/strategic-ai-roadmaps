@@ -17,7 +17,7 @@ export async function renderPrivateLeadershipBriefToPDF(
 
       doc.on('data', buffers.push.bind(buffers));
       doc.on('end', () => {
-        const pdfData = Buffer.concat(buffers);
+        const pdfData = Buffer.concat(buffers as any);
         resolve(pdfData);
       });
 

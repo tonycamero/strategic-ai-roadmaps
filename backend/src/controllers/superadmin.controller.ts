@@ -3117,6 +3117,17 @@ export async function publishDiagnostic(req: AuthRequest, res: Response) {
       .set({ status: 'published' })
       .where(eq(diagnostics.id, diagnosticId));
 
+    // ✅ RELEASE documents to tenant
+    const updateResult = await db.update(tenantDocuments)
+      .set({ isPublic: true })
+      .where(and(
+        eq(tenantDocuments.tenantId, diag.tenantId),
+        eq(tenantDocuments.sopNumber, 'SOP-01'),
+        eq(tenantDocuments.category, 'sop_output')
+      ));
+
+    console.log(`[SuperAdmin Controller] publishDiagnostic: tenantId=${diag.tenantId}, rowsUpdated=${(updateResult as any).rowCount || 'unknown'}`);
+
     // Audit
     await db.insert(auditEvents).values({
       tenantId: diag.tenantId, // Use the fetched tenantId
