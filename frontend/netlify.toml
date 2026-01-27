@@ -2,6 +2,7 @@
   publish = "dist"
 
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
+  from = "/api/*"
+  to = "https://api.strategicai.app/api/:splat"
   status = 200
+  force = true

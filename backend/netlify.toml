@@ -1,10 +1,9 @@
 [build]
-  functions = "backend/netlify/functions"
-
+  functions = "netlify/functions"
 
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/api/api/:splat"
+  to = "/.netlify/functions/api/:splat"
   status = 200
   force = true
 
@@ -14,3 +13,5 @@
     Access-Control-Allow-Origin = "https://portal.strategicai.app"
     Access-Control-Allow-Headers = "Content-Type, Authorization"
     Access-Control-Allow-Methods = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+
+//backend
