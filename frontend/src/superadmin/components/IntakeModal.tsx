@@ -89,7 +89,7 @@ export function IntakeModal({ intake, intakeWindowState, onClose, onRefresh }: I
         clarificationPrompt: prompt,
         blocking
       });
-      loadClarifications();
+      fetchClarifications();
     } catch (err) {
       console.error('Failed to request clarification:', err);
       alert('Failed to request clarification');
