@@ -55,3 +55,17 @@ frontend_build_output.txt
 frontend_tsc_errors.txt
 frontend_tsc_errors_v2.txt
 shared/shared_build_errors.txt
+# Local-only
+*.code-workspace
+*.deb
+*.patch
+*.tmp
+verify-payload.json
+cascade_truth.json
+backend/src/scripts/truth_matrix_discovery*.ts
+backend/src/scripts/auditTenants.ts
+backend/src/scripts/checkTenantAuth.ts
+backend/src/scripts/genSuperAdminToken.ts
+backend/src/scripts/listTenants.ts
+backend/src/scripts/testAuthorityGate.ts
+docs/truth-matrix-evidence.md
