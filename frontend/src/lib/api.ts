@@ -206,6 +206,16 @@ export const api = {
         body: JSON.stringify(data),
       }
     ),
+
+  // Clarification Pipeline endpoints (Stakeholder side)
+  getClarificationByToken: (token: string) =>
+    fetchAPI<any>(`/api/clarify/${token}`),
+
+  submitClarification: (token: string, response: string) =>
+    fetchAPI<any>(`/api/clarify/${token}`, {
+      method: 'POST',
+      body: JSON.stringify({ response }),
+    }),
 };
 
 export { ApiError };

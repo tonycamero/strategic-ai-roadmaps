@@ -7,7 +7,7 @@ import {
   tenantMetricsDaily, webinarRegistrations, implementationSnapshots,
   roadmapOutcomes, agentConfigs, agentThreads, webinarSettings,
   diagnostics, executiveBriefs, sopTickets, ticketModerationSessions,
-  ticketsDraft
+  ticketsDraft, intakeClarifications
 } from '../db/schema';
 import { eq, and, sql, count, desc, asc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
@@ -24,6 +24,7 @@ import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
 import { AuthorityCategory, CanonicalDiscoveryNotes } from '@roadmap/shared';
 import { generateRawTickets, ParsedTicket, InventoryEmptyError } from '../services/diagnosticIngestion.service';
 import { Sop01Outputs } from '../services/sop01Engine';
+import { sendClarificationRequestEmail } from '../services/email.service';
 
 // META-TICKET v2: Gate & SOP Architecture Imports
 import {
@@ -269,6 +270,8 @@ export async function updateIntakeCoaching(req: AuthRequest<{ intakeId: string }
       .select({
         id: intakes.id,
         tenantId: intakes.tenantId,
+        coachingFeedback: intakes.coachingFeedback,
+        role: intakes.role,
       })
       .from(intakes)
       .where(eq(intakes.id, intakeId))
@@ -278,10 +281,40 @@ export async function updateIntakeCoaching(req: AuthRequest<{ intakeId: string }
       return res.status(404).json({ error: 'Intake not found' });
     }
 
+    // B2: Enforce attribution metadata (Consultant Feedback)
+    const existingFeedback = (intake.coachingFeedback as any) || {};
+    const newFeedback = coachingFeedback as any;
+    const mergedFeedback: Record<string, any> = { ...existingFeedback };
+
+    for (const key of Object.keys(newFeedback)) {
+      const prev = existingFeedback[key] || { comment: '', isFlagged: false, requests: [] };
+      const curr = { ...newFeedback[key] };
+
+      const hasChanged = prev.comment !== curr.comment || prev.isFlagged !== curr.isFlagged;
+
+      // If it's a new flag or a comment change while flagged, it's a "Request"
+      if (hasChanged && curr.isFlagged) {
+        const requests = [...(prev.requests || [])];
+        requests.push({
+          id: `fb_req_${nanoid()}`,
+          requestedBy: req.user?.id || 'system',
+          requestedFrom: intake.role,
+          requestedAt: new Date().toISOString(),
+          prompt: curr.comment,
+          status: 'PENDING'
+        });
+        curr.requests = requests;
+      } else {
+        curr.requests = prev.requests || [];
+      }
+
+      mergedFeedback[key] = curr;
+    }
+
     await db
       .update(intakes)
       .set({
-        coachingFeedback,
+        coachingFeedback: mergedFeedback,
       })
       .where(eq(intakes.id, intakeId));
 
@@ -289,6 +322,220 @@ export async function updateIntakeCoaching(req: AuthRequest<{ intakeId: string }
   } catch (error) {
     console.error('Update intake coaching error:', error);
     return res.status(500).json({ error: 'Failed to update coaching feedback' });
+  }
+}
+
+export async function requestIntakeClarification(req: AuthRequest, res: Response) {
+  try {
+    if (!requireConsultant(req, res)) return;
+
+    const { intakeId } = req.params;
+    const { questionId, clarificationPrompt, blocking } = req.body;
+
+    if (!questionId || !clarificationPrompt) {
+      return res.status(400).json({ error: 'Missing questionId or clarificationPrompt' });
+    }
+
+    // Load intake and stakeholder info
+    const [intake] = await db
+      .select({
+        id: intakes.id,
+        tenantId: intakes.tenantId,
+        answers: intakes.answers,
+        role: intakes.role,
+        userId: intakes.userId,
+      })
+      .from(intakes)
+      .where(eq(intakes.id, intakeId))
+      .limit(1);
+
+    if (!intake) return res.status(404).json({ error: 'Intake not found' });
+
+    const tenantId = intake.tenantId;
+    const originalResponse = (intake.answers as any)[questionId] || '';
+    const token = nanoid(32);
+
+    // Create clarification record
+    const [clarification] = await db
+      .insert(intakeClarifications)
+      .values({
+        tenantId,
+        intakeId,
+        questionId,
+        originalResponse: typeof originalResponse === 'string' ? originalResponse : JSON.stringify(originalResponse),
+        clarificationPrompt,
+        blocking: !!blocking,
+        token,
+        requestedByUserId: req.user?.id,
+        status: 'requested'
+      })
+      .returning();
+
+    // Load stakeholder contact info
+    const [stakeholder] = await db
+      .select({
+        name: users.name,
+        email: users.email
+      })
+      .from(users)
+      .where(eq(users.id, intake.userId))
+      .limit(1);
+
+    // 4. Try sending email (stakeholder info already loaded)
+    let emailStatus: 'SENT' | 'FAILED' = 'SENT';
+    let emailError: string | null = null;
+
+    if (stakeholder) {
+      try {
+        await sendClarificationRequestEmail(
+          stakeholder.email,
+          stakeholder.name,
+          questionId,
+          clarificationPrompt,
+          token
+        );
+
+        // Log successful attempt
+        await db.insert(auditEvents).values({
+          tenantId,
+          actorUserId: req.user?.id,
+          actorRole: req.user?.role,
+          eventType: 'CLARIFICATION_EMAIL_ATTEMPTED',
+          entityType: 'intake_clarification',
+          entityId: clarification.id,
+          metadata: { status: 'SENT' }
+        });
+      } catch (err: any) {
+        console.error('Email delivery failed:', err);
+        emailStatus = 'FAILED';
+        emailError = err.message || 'Unknown email error';
+
+        // Log failed attempt
+        await db.insert(auditEvents).values({
+          tenantId,
+          actorUserId: req.user?.id,
+          actorRole: req.user?.role,
+          eventType: 'CLARIFICATION_EMAIL_ATTEMPTED',
+          entityType: 'intake_clarification',
+          entityId: clarification.id,
+          metadata: { status: 'FAILED', error: emailError }
+        });
+      }
+    }
+
+    // 5. Update record with email outcome
+    const [updatedClarification] = await db
+      .update(intakeClarifications)
+      .set({
+        emailStatus,
+        emailError,
+        lastEmailAttemptAt: new Date()
+      })
+      .where(eq(intakeClarifications.id, clarification.id))
+      .returning();
+
+    // Audit Event
+    await db.insert(auditEvents).values({
+      tenantId,
+      actorUserId: req.user?.id,
+      actorRole: req.user?.role,
+      eventType: 'INTAKE_CLARIFICATION_REQUESTED',
+      entityType: 'intake_clarification',
+      entityId: clarification.id,
+      metadata: { intakeId, questionId, blocking, emailStatus }
+    });
+
+    return res.json(updatedClarification);
+  } catch (error) {
+    console.error('Request clarification error:', error);
+    return res.status(500).json({ error: 'Failed to request clarification' });
+  }
+}
+
+export async function getIntakeClarifications(req: AuthRequest, res: Response) {
+  try {
+    if (!requireConsultant(req, res)) return;
+    const { intakeId } = req.params;
+
+    try {
+      const results = await db
+        .select()
+        .from(intakeClarifications)
+        .where(eq(intakeClarifications.intakeId, intakeId))
+        .orderBy(desc(intakeClarifications.createdAt));
+
+      return res.json(results);
+    } catch (dbError: any) {
+      if (dbError?.message?.includes('relation "intake_clarifications" does not exist')) {
+        console.warn('⚠️ (Safe) Intake Clarification table missing from DB context:', dbError.message);
+        return res.json({ clarifications: [], systemWarning: "CLARIFICATION_TABLE_MISSING" });
+      }
+      throw dbError; // Rethrow if it's something else
+    }
+  } catch (error) {
+    console.error('Get clarifications error:', error);
+    return res.status(500).json({ error: 'Failed to fetch clarifications' });
+  }
+}
+
+export async function resendIntakeClarificationEmail(req: AuthRequest, res: Response) {
+  try {
+    if (!requireConsultant(req, res)) return;
+    const { clarificationId } = req.params;
+
+    const [clarification] = await db
+      .select()
+      .from(intakeClarifications)
+      .where(eq(intakeClarifications.id, clarificationId))
+      .limit(1);
+
+    if (!clarification) return res.status(404).json({ error: 'Clarification request not found' });
+
+    // Load stakeholder again
+    const [intake] = await db
+      .select({ userId: intakes.userId })
+      .from(intakes)
+      .where(eq(intakes.id, clarification.intakeId))
+      .limit(1);
+
+    const [stakeholder] = await db
+      .select({ email: users.email, name: users.name })
+      .from(users)
+      .where(eq(users.id, intake.userId))
+      .limit(1);
+
+    if (!stakeholder) return res.status(404).json({ error: 'Stakeholder not found' });
+
+    let emailStatus: 'SENT' | 'FAILED' = 'SENT';
+    let emailError: string | null = null;
+
+    try {
+      await sendClarificationRequestEmail(
+        stakeholder.email,
+        stakeholder.name,
+        clarification.questionId,
+        clarification.clarificationPrompt,
+        clarification.token
+      );
+    } catch (err: any) {
+      emailStatus = 'FAILED';
+      emailError = err.message || 'Unknown email error';
+    }
+
+    const [updated] = await db
+      .update(intakeClarifications)
+      .set({
+        emailStatus,
+        emailError,
+        lastEmailAttemptAt: new Date()
+      })
+      .where(eq(intakeClarifications.id, clarificationId))
+      .returning();
+
+    return res.json(updated);
+  } catch (error) {
+    console.error('Resend clarification email error:', error);
+    return res.status(500).json({ error: 'Failed to resend email' });
   }
 }
 
@@ -2640,7 +2887,8 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
       .select({
         id: tenants.id,
         name: tenants.name,
-        status: tenants.status
+        status: tenants.status,
+        intakeWindowState: tenants.intakeWindowState // Added for TruthProbe Authority
       })
       .from(tenants)
       .where(eq(tenants.id, tenantId))
@@ -2677,8 +2925,34 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
       .orderBy(desc(executiveBriefs.createdAt))
       .limit(1);
 
-    // Map Legacy APPROVED to REVIEWED for Canonical V2
-    const canonicalBriefStatus = (brief?.status === 'APPROVED') ? 'REVIEWED' : brief?.status;
+    // META-TICKET v2: TruthProbe must expose raw APPROVED/DELIVERED states
+    const canonicalBriefStatus = brief?.status;
+
+    // 3b. Delivery Audit (If Delivered)
+    let deliveryAudit = null;
+    if (canonicalBriefStatus === 'DELIVERED') {
+      const [audit] = await db
+        .select({
+          actorRole: auditEvents.actorRole,
+          metadata: auditEvents.metadata,
+          createdAt: auditEvents.createdAt
+        })
+        .from(auditEvents)
+        .where(and(
+          eq(auditEvents.tenantId, tenant.id),
+          eq(auditEvents.eventType, 'EXECUTIVE_BRIEF_DELIVERED')
+        ))
+        .orderBy(desc(auditEvents.createdAt))
+        .limit(1);
+
+      if (audit) {
+        deliveryAudit = {
+          deliveredAt: audit.createdAt.toISOString(),
+          deliveredByRole: audit.actorRole,
+          meta: audit.metadata
+        };
+      }
+    }
 
     // 4. Diagnostic
     console.log('[TruthProbe] Step 4: Diagnostic');
@@ -2758,30 +3032,21 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
     let rejectedTickets = 0;
     let pendingTickets = 0;
 
-    if (hasDrafts) {
-      // Stage 6 Mode: Use Drafts
-      totalTickets = draftStats.reduce((sum, s) => sum + (s.count ?? 0), 0);
-      pendingTickets = draftStats
-        .filter(s => s.status === 'pending')
-        .reduce((sum, s) => sum + (s.count ?? 0), 0);
-      approvedTickets = draftStats
-        .filter(s => s.status === 'accepted')
-        .reduce((sum, s) => sum + (s.count ?? 0), 0);
-      rejectedTickets = draftStats
-        .filter(s => s.status === 'rejected')
-        .reduce((sum, s) => sum + (s.count ?? 0), 0);
-    } else {
-      // Legacy Mode: Use sop_tickets
-      totalTickets = ticketStats.reduce((sum, s) => sum + (s.count ?? 0), 0);
-      approvedTickets = ticketStats
-        .filter(s => s.approved === true)
-        .reduce((sum, s) => sum + (s.count ?? 0), 0);
-      rejectedTickets = ticketStats
-        .filter(s => s.status === 'rejected')
-        .reduce((sum, s) => sum + (s.count ?? 0), 0);
-      pendingTickets = ticketStats
-        .filter(s => s.approved !== true && s.status !== 'rejected')
-        .reduce((sum, s) => sum + (s.count ?? 0), 0);
+    draftStats.forEach(s => {
+      totalTickets += s.count;
+      if (s.status === 'draft') pendingTickets += s.count;
+      if (s.status === 'accepted') approvedTickets += s.count; // Changed from 'approved' to 'accepted' based on schema
+      if (s.status === 'rejected') rejectedTickets += s.count;
+    });
+
+    // If no drafts, use legacy stats
+    if (totalTickets === 0) {
+      ticketStats.forEach(s => {
+        totalTickets += s.count;
+        if (s.status === 'pending') pendingTickets += s.count;
+        if (s.approved) approvedTickets += s.count;
+        if (s.status === 'rejected') rejectedTickets += s.count;
+      });
     }
 
     console.log('[TruthProbe] Step 6b: Tickets (Last)');
@@ -2807,9 +3072,70 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
 
     // 8. Readiness Computation (Consistent with Gates)
     console.log('[TruthProbe] Step 8: Readiness');
+
+    // Phase 3: Consultant Feedback Visibility & Authority
+    const tenantIntakes = await db
+      .select({ id: intakes.id, coachingFeedback: intakes.coachingFeedback })
+      .from(intakes)
+      .where(eq(intakes.tenantId, tenant.id));
+
+    let pendingFeedbackCount = 0;
+    let lastRequestedAt: string | null = null;
+    let lastRespondedAt: string | null = null;
+
+    tenantIntakes.forEach(i => {
+      const fb = (i.coachingFeedback as any) || {};
+      Object.keys(fb).forEach(key => {
+        const item = fb[key];
+        // Count as pending if flagged (Legacy) or if has pending requests (New)
+        const isPending = item.isFlagged || (item.requests && item.requests.some((r: any) => r.status === 'PENDING'));
+        if (isPending) {
+          pendingFeedbackCount++;
+        }
+        if (item.requests) {
+          item.requests.forEach((r: any) => {
+            if (!lastRequestedAt || r.requestedAt > lastRequestedAt) lastRequestedAt = r.requestedAt;
+            if (r.respondedAt && (!lastRespondedAt || r.respondedAt > lastRespondedAt)) lastRespondedAt = r.respondedAt;
+          });
+        }
+      });
+    });
+
+    // Structured Clarification Pipeline (Stage 1.5)
+    console.log('[TruthProbe] Step 8.5: Clarifications');
+    const clarifications = await db
+      .select({ status: intakeClarifications.status, blocking: intakeClarifications.blocking })
+      .from(intakeClarifications)
+      .where(eq(intakeClarifications.tenantId, tenant.id));
+
+    const pendingClarificationCount = clarifications.filter(c => c.status === 'requested').length;
+    const blockingClarificationCount = clarifications.filter(c => c.status === 'requested' && c.blocking).length;
+    const respondedClarificationCount = clarifications.filter(c => c.status === 'responded').length;
+
+    // Phase 1 (D3): Operator Sufficiency Detection
+    const [sufficiencyConfirmation] = await db
+      .select({
+        createdAt: auditEvents.createdAt,
+        actorUserId: auditEvents.actorUserId,
+        metadata: auditEvents.metadata
+      })
+      .from(auditEvents)
+      .where(and(
+        eq(auditEvents.tenantId, tenant.id),
+        eq(auditEvents.eventType, 'OPERATOR_CONFIRMED_DIAGNOSTIC_SUFFICIENCY')
+      ))
+      .orderBy(desc(auditEvents.createdAt))
+      .limit(1);
+
+    const hasConfirmedSufficiency = !!sufficiencyConfirmation;
+
     const blockingReasons: string[] = [];
-    // Allow REVIEWED (or Legacy APPROVED mapped to REVIEWED)
-    if (canonicalBriefStatus !== 'REVIEWED') blockingReasons.push('NO_REVIEWED_BRIEF');
+    if (pendingFeedbackCount > 0) blockingReasons.push('PENDING_CONSULTANT_FEEDBACK');
+    if (blockingClarificationCount > 0) blockingReasons.push('BLOCKING_INTAKE_CLARIFICATION');
+    if (!hasConfirmedSufficiency) blockingReasons.push('OPERATOR_SUFFICIENCY_NOT_CONFIRMED');
+    // Allow APPROVED/DELIVERED/REVIEWED as passing states
+    const validBriefStates = ['APPROVED', 'DELIVERED', 'REVIEWED'];
+    if (!validBriefStates.includes(canonicalBriefStatus || '')) blockingReasons.push('NO_REVIEWED_BRIEF');
     if (!diagnostic) blockingReasons.push('NO_DIAGNOSTIC');
     if (!discovery) blockingReasons.push('NO_DISCOVERY_NOTES');
     if (!proposedFindingsArtifact) blockingReasons.push('NO_PROPOSED_FINDINGS');
@@ -2818,7 +3144,7 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
 
     // Strict sequential gates:
     // Discovery (Execution) requires Synthesis + Diagnostic + Brief (Verified)
-    const canRunDiscovery = !!(canonicalBriefStatus === 'REVIEWED' && diagnostic && discovery);
+    const canRunDiscovery = !!(validBriefStates.includes(canonicalBriefStatus || '') && diagnostic && discovery);
 
     // Moderation requires active tickets
     const canModerateTickets = totalTickets > 0 && pendingTickets > 0;
@@ -2834,7 +3160,8 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
       intake: {
         exists: !!intake,
         latestIntakeId: intake?.id ?? null,
-        state: intake?.status ?? null,
+        state: intake?.id ? 'COMPLETED' : 'INCOMPLETE',
+        windowState: tenant.intakeWindowState, // Exposed for Authority UI
         updatedAt: intake?.createdAt?.toISOString() ?? null,
         sufficiencyHint: intake?.status === 'completed' ? 'COMPLETE' : 'INCOMPLETE'
       },
@@ -2843,7 +3170,8 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
         exists: !!brief,
         briefId: brief?.id ?? null,
         state: canonicalBriefStatus ?? null,
-        approvedAt: brief?.approvedAt?.toISOString() ?? null
+        approvedAt: brief?.approvedAt?.toISOString() ?? null,
+        deliveryAudit // Added for Traceability
       },
 
       diagnostic: {
@@ -2884,6 +3212,23 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
         isUnlocked: !!roadmap && roadmap.status === 'published'
       },
 
+      operator: {
+        confirmedSufficiency: hasConfirmedSufficiency,
+        confirmedSufficiencyAt: sufficiencyConfirmation?.createdAt?.toISOString() ?? null,
+        confirmedSufficiencyBy: sufficiencyConfirmation?.actorUserId ?? null
+      },
+
+      consultantFeedback: {
+        pendingCount: pendingFeedbackCount,
+        lastRequestedAt,
+        lastRespondedAt
+      },
+      clarificationPipeline: {
+        pendingCount: pendingClarificationCount,
+        blockingCount: blockingClarificationCount,
+        respondedCount: respondedClarificationCount
+      },
+
       readiness: {
         canRunDiscovery,
         canModerateTickets,
@@ -2901,6 +3246,7 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
           { field: 'discovery', source: 'discovery_call_notes (backend/src/db/schema.ts:836)' },
           { field: 'tickets', source: 'sop_tickets (backend/src/db/schema.ts:674)' },
           { field: 'roadmap', source: 'roadmaps (backend/src/db/schema.ts:236)' },
+          { field: 'operator', source: 'audit_events (D3 Gate)' },
           { field: 'readiness', source: 'superadmin.controller.ts:getTruthProbe' }
         ]
       }
@@ -2958,6 +3304,31 @@ export async function lockIntake(req: AuthRequest, res: Response) {
     return res.json({ success: true });
   } catch (error: any) {
     console.error('Lock Intake Error:', error);
+    return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+  }
+}
+
+export async function confirmSufficiency(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { tenantId } = req.params;
+
+    // Optional: add a note if provided in body
+    const { note } = req.body;
+
+    await db.insert(auditEvents).values({
+      tenantId,
+      actorUserId: req.user?.id || null,
+      actorRole: req.user?.role,
+      eventType: 'OPERATOR_CONFIRMED_DIAGNOSTIC_SUFFICIENCY',
+      entityType: 'tenant',
+      entityId: tenantId,
+      metadata: { confirmedAt: new Date(), note: note || 'Operator affirmed knowledge sufficiency' }
+    });
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('Confirm Sufficiency Error:', error);
     return res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 }

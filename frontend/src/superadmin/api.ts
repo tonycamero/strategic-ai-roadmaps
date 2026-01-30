@@ -516,6 +516,9 @@ export const superadminApi = {
   generateDiagnostics: (tenantId: string) =>
     apiPost<{ success: boolean; diagnosticId: string }>(`/firms/${tenantId}/generate-diagnostics`),
 
+  confirmSufficiency: (tenantId: string, note?: string) =>
+    apiPost<{ success: boolean }>(`/firms/${tenantId}/confirm-sufficiency`, { note }),
+
   lockDiagnostic: (tenantId: string, diagnosticId: string) =>
     apiPost<{ success: boolean }>(`/firms/${tenantId}/diagnostics/${diagnosticId}/lock`),
 
@@ -554,4 +557,19 @@ export const superadminApi = {
 
   getActiveModerationSession: (tenantId: string) =>
     apiGet<{ session: any; tickets: any[] }>(`/firms/${tenantId}/ticket-moderation/active`),
+
+  // Intake Clarification Pipeline
+  requestIntakeClarification: (params: {
+    intakeId: string;
+    questionId: string;
+    clarificationPrompt: string;
+    blocking?: boolean;
+  }) =>
+    apiPost<{ clarificationId: string }>(`/intakes/${params.intakeId}/request-clarification`, params),
+
+  getIntakeClarifications: (intakeId: string) =>
+    apiGet<any[]>(`/intakes/${intakeId}/clarifications`),
+
+  resendIntakeClarificationEmail: (clarificationId: string) =>
+    apiPost<any>(`/clarifications/${clarificationId}/resend`, {}),
 };

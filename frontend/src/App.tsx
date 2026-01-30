@@ -26,6 +26,7 @@ import BusinessProfile from './pages/BusinessProfile';
 import OrganizationType from './pages/OrganizationType';
 import InviteTeam from './pages/InviteTeam';
 import TeamIntakesReview from './pages/TeamIntakesReview';
+import ClarificationForm from './pages/clarify/ClarificationForm';
 import DiagnosticReview from './pages/DiagnosticReview';
 import DiscoveryCallScheduler from './pages/DiscoveryCallScheduler';
 import RequestPasswordReset from './pages/RequestPasswordReset';
@@ -78,8 +79,9 @@ function App() {
                 {/* Auth */}
                 <Route path="/login" component={Auth} />
                 <Route path="/signup" component={Signup} />
-                <Route path="/request-reset" component={RequestPasswordReset} />
+                <Route path="/forgot-password" component={RequestPasswordReset} />
                 <Route path="/reset-password/:token" component={ResetPassword} />
+                <Route path="/clarify/:token" component={ClarificationForm} />
                 <Route path="/accept-invite/:token" component={AcceptInvite} />
 
                 {/* Onboarding (with sidebar) */}

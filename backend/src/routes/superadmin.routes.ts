@@ -274,6 +274,11 @@ router.patch('/webinar/password', superadminController.updateWebinarPassword);
 // PATCH /api/superadmin/intakes/:intakeId/coaching - Update coaching feedback
 router.patch('/intakes/:intakeId/coaching', superadminController.updateIntakeCoaching);
 
+// Intake Clarification Pipeline
+router.post('/intakes/:intakeId/request-clarification', superadminController.requestIntakeClarification);
+router.post('/clarifications/:clarificationId/resend', superadminController.resendIntakeClarificationEmail);
+router.get('/intakes/:intakeId/clarifications', superadminController.getIntakeClarifications);
+
 // Intake Vector Routes (Unified Stakeholder Management)
 // POST /api/superadmin/tenants/:tenantId/intake-vectors - Create intake vector
 router.post('/tenants/:tenantId/intake-vectors', intakeVectorController.createIntakeVector);
@@ -304,6 +309,9 @@ router.post('/tenants/:tenantId/update-stakeholder-metadata', requireExecutive()
 
 // 1. Lock Intake
 router.post('/firms/:tenantId/lock-intake', superadminController.lockIntake);
+
+// 1.5 Confirm Sufficiency (D3 Gate)
+router.post('/firms/:tenantId/confirm-sufficiency', superadminController.confirmSufficiency);
 
 // 2. Generate Diagnostics (V2 Canonical)
 router.post('/firms/:tenantId/generate-diagnostics', superadminController.generateDiagnostics);

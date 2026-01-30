@@ -143,6 +143,80 @@ export async function sendInviteEmail(
 }
 
 // ============================================================================
+// INTAKE CLARIFICATION REQUEST
+// ============================================================================
+
+export async function sendClarificationRequestEmail(
+  to: string,
+  stakeholderName: string,
+  questionLabel: string,
+  clarificationPrompt: string,
+  token: string
+) {
+  // === PROOF LOG ===
+  // {"to":"${to}","intakeId":"UNKNOWN_IN_SERVICE","clarificationPromptLen":${clarificationPrompt.length}}
+  console.log(JSON.stringify({
+    proof: 'AG-CONSULTANT-CLARIFICATION-PIPELINE-003',
+    to,
+    questionLabel,
+    token_fragment: token.substring(0, 6)
+  }));
+
+  assertResendConfigured('sendClarificationRequestEmail');
+  const clarificationUrl = `${FRONTEND_URL}/clarify/${token}`;
+
+  if (!resend) {
+    if (isDev()) {
+      console.warn('[EmailService] RESEND_API_KEY not set, not sending email.');
+      console.warn(`[EmailService] Clarification URL for ${to}:`);
+      console.warn(clarificationUrl);
+    }
+    return { id: 'dev-mode-clarify' };
+  }
+
+  const { data, error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    reply_to: REPLY_TO,
+    subject: 'Clarification Requested on Your Intake Response',
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Clarification Requested</h2>
+        <p>Hello ${stakeholderName},</p>
+        <p>A consultant has requested additional clarification on one of your intake responses:</p>
+        
+        <div style="background-color: #f3f4f6; border-left: 4px solid #6366f1; padding: 16px; margin: 20px 0;">
+          <p style="margin: 0; font-size: 12px; color: #6b7280; text-transform: uppercase; font-weight: bold;">Question</p>
+          <p style="margin: 4px 0 0 0; font-weight: 500;">${questionLabel}</p>
+        </div>
+
+        <p><strong>Consultant's Question:</strong></p>
+        <p style="font-style: italic; color: #374151;">"${clarificationPrompt}"</p>
+
+        <p>Click the button below to provide your follow-up response:</p>
+        <p style="margin: 30px 0;">
+          <a href="${clarificationUrl}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+            Respond Now
+          </a>
+        </p>
+        <p style="color: #6b7280; font-size: 14px;">
+          Or copy and paste this link into your browser:<br>
+          <a href="${clarificationUrl}" style="color: #4f46e5;">${clarificationUrl}</a>
+        </p>
+      </div>
+    `,
+  });
+
+  if (error) {
+    console.error('[EmailService] Failed to send clarification email:', error);
+    throw error;
+  }
+
+  console.log(`[EmailService] Clarification email sent to ${to}, ID: ${data?.id}`);
+  return data;
+}
+
+// ============================================================================
 // GENERIC SEND (ATTACHMENTS SUPPORTED)
 // ============================================================================
 

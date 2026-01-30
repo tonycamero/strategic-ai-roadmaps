@@ -7,7 +7,8 @@ async function main() {
   console.log('🔄 Running migrations...');
 
   try {
-    const migrationsFolder = path.join(__dirname, 'migrations');
+    const migrationsFolder = path.resolve(__dirname, '../../drizzle');
+    console.log(`📂 Using migrations from: ${migrationsFolder}`);
     await migrate(db, { migrationsFolder });
     console.log('✅ Migrations complete');
     process.exit(0);

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { superadminApi } from '../api';
+import { ClarificationPipelineSubSection } from './ClarificationPipelineSubSection';
 
 interface CoachingFeedback {
   comment: string;
@@ -27,6 +28,33 @@ export function IntakeModal({ intake, intakeWindowState, onClose, onRefresh }: I
   const [feedback, setFeedback] = useState<Record<string, CoachingFeedback>>(intake.coachingFeedback || {});
   const [isSaving, setIsSaving] = useState(false);
   const [isModified, setIsModified] = useState(false);
+  const [clarifications, setClarifications] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchClarifications();
+  }, [intake.id]);
+
+  const fetchClarifications = async () => {
+    try {
+      const res = await superadminApi.getIntakeClarifications(intake.id);
+      if (Array.isArray(res)) {
+        setClarifications(res);
+      } else if (res && (res as any).clarifications) {
+        setClarifications((res as any).clarifications);
+      }
+    } catch (error) {
+      console.error('Failed to load clarifications:', error);
+    }
+  };
+
+  const handleResendEmail = async (clarificationId: string) => {
+    try {
+      await superadminApi.resendIntakeClarificationEmail(clarificationId);
+      await fetchClarifications();
+    } catch (error) {
+      console.error('Resend email error:', error);
+    }
+  };
 
   const handleFeedbackChange = (key: string, field: keyof CoachingFeedback, value: string | boolean) => {
     setFeedback((prev: Record<string, CoachingFeedback>) => ({
@@ -53,6 +81,21 @@ export function IntakeModal({ intake, intakeWindowState, onClose, onRefresh }: I
     }
   };
 
+  const handleRequestClarification = async (key: string, prompt: string, blocking: boolean) => {
+    try {
+      await superadminApi.requestIntakeClarification({
+        intakeId: intake.id,
+        questionId: key,
+        clarificationPrompt: prompt,
+        blocking
+      });
+      loadClarifications();
+    } catch (err) {
+      console.error('Failed to request clarification:', err);
+      alert('Failed to request clarification');
+    }
+  };
+
   const isReadOnly = intakeWindowState === 'CLOSED';
 
   return (
@@ -61,7 +104,7 @@ export function IntakeModal({ intake, intakeWindowState, onClose, onRefresh }: I
       onClick={onClose}
     >
       <div
-        className="bg-slate-900 border border-slate-700 rounded-xl max-w-4xl w-full max-h-[90vh] flex flex-col"
+        className="bg-slate-900 border border-slate-700 rounded-xl max-w-5xl w-full max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -94,52 +137,68 @@ export function IntakeModal({ intake, intakeWindowState, onClose, onRefresh }: I
         </div>
 
         {/* Body - Answers & Coaching */}
-        <div className="p-6 space-y-8 overflow-y-auto flex-1">
+        <div className="p-6 space-y-12 overflow-y-auto flex-1">
           {Object.keys(intake.answers).length === 0 ? (
             <div className="text-slate-500 text-sm italic py-8 text-center">No answers submitted yet.</div>
           ) : (
             Object.entries(intake.answers).map(([key, value]) => {
               const itemFeedback = feedback[key] || { comment: '', isFlagged: false };
+              const questionClarifications = clarifications.filter(c => c.questionId === key);
               return (
-                <div key={key} className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-6 border-b border-slate-800/50 last:border-0">
-                  {/* Answer Section */}
-                  <div className="space-y-3">
-                    <div className="text-[10px] uppercase tracking-widest text-slate-400 font-bold flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full" />
-                      {formatQuestionKey(key)}
+                <div key={key} className="space-y-4 pb-12 border-b border-slate-800/50 last:border-0 last:pb-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Answer Section */}
+                    <div className="space-y-3">
+                      <div className="text-[10px] uppercase tracking-widest text-slate-400 font-bold flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full" />
+                        {formatQuestionKey(key)}
+                      </div>
+                      <div className="text-sm text-slate-200 bg-slate-950 border border-slate-800 rounded-lg p-4 whitespace-pre-wrap min-h-[100px]">
+                        {formatAnswerValue(value)}
+                      </div>
                     </div>
-                    <div className="text-sm text-slate-200 bg-slate-950 border border-slate-800 rounded-lg p-4 whitespace-pre-wrap min-h-[100px]">
-                      {formatAnswerValue(value)}
+
+                    {/* Coaching Section */}
+                    <div className="space-y-3 bg-slate-800/20 p-4 rounded-lg border border-slate-800/50">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
+                          Consultant Coaching Note (Internal)
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={itemFeedback.isFlagged}
+                            onChange={(e) => handleFeedbackChange(key, 'isFlagged', e.target.checked)}
+                            disabled={isReadOnly}
+                            className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-red-600 focus:ring-red-500 focus:ring-offset-slate-900 disabled:opacity-50"
+                          />
+                          <span className={`text-[10px] uppercase font-bold tracking-wider ${itemFeedback.isFlagged ? 'text-red-400' : 'text-slate-500 group-hover:text-slate-400'}`}>
+                            Flag for Action
+                          </span>
+                        </label>
+                      </div>
+                      <textarea
+                        value={itemFeedback.comment}
+                        onChange={(e) => handleFeedbackChange(key, 'comment', e.target.value)}
+                        disabled={isReadOnly}
+                        placeholder={isReadOnly ? "No coaching notes provided." : "Add internal feedback or coaching notes..."}
+                        className="w-full text-sm bg-slate-900/50 border border-slate-800 rounded-lg p-3 text-slate-300 placeholder:text-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:bg-slate-950/20 disabled:text-slate-500 transition-all resize-none min-h-[80px]"
+                      />
                     </div>
                   </div>
 
-                  {/* Coaching Section */}
-                  <div className="space-y-3 bg-slate-800/20 p-4 rounded-lg border border-slate-800/50">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
-                        Consultant Coaching Note
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={itemFeedback.isFlagged}
-                          onChange={(e) => handleFeedbackChange(key, 'isFlagged', e.target.checked)}
-                          disabled={isReadOnly}
-                          className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-red-600 focus:ring-red-500 focus:ring-offset-slate-900 disabled:opacity-50"
-                        />
-                        <span className={`text-[10px] uppercase font-bold tracking-wider ${itemFeedback.isFlagged ? 'text-red-400' : 'text-slate-500 group-hover:text-slate-400'}`}>
-                          Flag for Action
-                        </span>
-                      </label>
+                  {/* Clarification Pipeline Section */}
+                  {!isReadOnly && (
+                    <div className="lg:col-span-2">
+                      <ClarificationPipelineSubSection
+                        questionId={key}
+                        originalResponse={formatAnswerValue(value)}
+                        existingClarifications={questionClarifications}
+                        onRequestClarification={(prompt, blocking) => handleRequestClarification(key, prompt, blocking)}
+                        onResendEmail={handleResendEmail}
+                      />
                     </div>
-                    <textarea
-                      value={itemFeedback.comment}
-                      onChange={(e) => handleFeedbackChange(key, 'comment', e.target.value)}
-                      disabled={isReadOnly}
-                      placeholder={isReadOnly ? "No coaching notes provided." : "Add feedback or coaching notes for this response..."}
-                      className="w-full text-sm bg-slate-900/50 border border-slate-800 rounded-lg p-3 text-slate-300 placeholder:text-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:bg-slate-950/20 disabled:text-slate-500 transition-all resize-none min-h-[80px]"
-                    />
-                  </div>
+                  )}
                 </div>
               );
             })

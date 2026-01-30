@@ -682,7 +682,7 @@ export const roadmapSections = pgTable('roadmap_sections', {
 export const sopTickets = pgTable('sop_tickets', {
   id: uuid('id').primaryKey().defaultRandom(),
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  diagnosticId: uuid('diagnostic_id').references(() => diagnostics.id, { onDelete: 'cascade' }),
+  diagnosticId: varchar('diagnostic_id', { length: 255 }).references(() => diagnostics.id, { onDelete: 'cascade' }),
   ticketId: varchar('ticket_id', { length: 50 }).notNull(), // e.g., "S3-T1"
   title: varchar('title', { length: 255 }).notNull(),
   description: text('description').notNull(),
@@ -842,6 +842,41 @@ export const roadmapOutcomes = pgTable('roadmap_outcomes', {
 // DISCOVERY CALL NOTES (SOP-02 prerequisite for roadmap generation)
 // ============================================================================
 
+// ============================================================================
+// INTAKE CLARIFICATIONS (Consultant -> Stakeholder Pipeline)
+// ============================================================================
+
+export const intakeClarifications = pgTable('intake_clarifications', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  intakeId: uuid('intake_id').notNull().references(() => intakes.id, { onDelete: 'cascade' }),
+  questionId: varchar('question_id', { length: 255 }).notNull(),
+
+  originalResponse: text('original_response').notNull(),
+  clarificationPrompt: text('clarification_prompt').notNull(),
+  clarificationResponse: text('clarification_response'),
+
+  status: varchar('status', { length: 20 }).notNull().default('requested'), // requested | responded
+  token: varchar('token', { length: 255 }).notNull().unique(),
+
+  blocking: boolean('blocking').notNull().default(false),
+
+  // Email delivery tracking
+  emailStatus: varchar('email_status', { length: 20 }).notNull().default('NOT_SENT'), // NOT_SENT | SENT | FAILED
+  emailError: text('email_error'),
+  lastEmailAttemptAt: timestamp('last_email_attempt_at', { withTimezone: true }),
+
+  requestedByUserId: uuid('requested_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  requestedAt: timestamp('requested_at', { withTimezone: true }).notNull().defaultNow(),
+  respondedAt: timestamp('responded_at', { withTimezone: true }),
+
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type IntakeClarification = typeof intakeClarifications.$inferSelect;
+export type NewIntakeClarification = typeof intakeClarifications.$inferInsert;
+
 export const discoveryCallNotes = pgTable('discovery_call_notes', {
   id: uuid('id').primaryKey().defaultRandom(),
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
@@ -935,7 +970,7 @@ export type NewDiagnosticSnapshot = typeof diagnosticSnapshots.$inferInsert;
 // ============================================================================
 
 export const diagnostics = pgTable('diagnostics', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: varchar('id', { length: 255 }).primaryKey(),
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   sopVersion: varchar('sop_version', { length: 20 }).notNull().default('SOP-01'),
   status: varchar('status', { length: 20 }).notNull().default('generated'), // not_generated | generated | locked | published
