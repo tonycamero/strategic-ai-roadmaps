@@ -1,0 +1,163 @@
+{
+  "executiveAssertionBlock": [
+    {
+      "id": "19e4a6314d208212",
+      "assertion": "Risk exposure identified across 6 operational domains with high recurrence.",
+      "evidence": [
+        "Market timing risks not fully understood by leadership",
+        "Burn rate accelerating faster than revenue growth",
+        "Technical debt compounding faster than engineering can address"
+      ],
+      "implication": "Unmitigated risks accumulate execution debt. Immediate attention required to prevent cascading failures.",
+      "constraint_signal": "Operational blind spots and risk accumulation patterns",
+      "alignment_strength": "high",
+      "alignment_scope": "cross-role",
+      "confidence_score": 1,
+      "source_refs": [
+        "b6e7988fc7931a95"
+      ]
+    },
+    {
+      "id": "5f151a82ced92458",
+      "assertion": "Structural constraints limit execution capacity across 6 organizational roles.",
+      "evidence": [
+        "Board pressure for profitability conflicts with growth investment needs",
+        "Infrastructure cannot scale at current growth rate without major investment",
+        "Sales cycle lengthening due to competitive pressure and economic headwinds"
+      ],
+      "implication": "Execution velocity constrained by structural factors. Resource allocation requires systematic review.",
+      "constraint_signal": "Process dependencies and resource allocation patterns",
+      "alignment_strength": "high",
+      "alignment_scope": "cross-role",
+      "confidence_score": 1,
+      "source_refs": [
+        "3fc6bd510ca31b1f"
+      ]
+    },
+    {
+      "id": "77578f8511ac42bc",
+      "assertion": "Alignment signals detected across 6 roles with high consistency.",
+      "evidence": [
+        "Leadership divided on growth vs profitability strategy",
+        "Ops aligned with engineering but not with sales timelines",
+        "Sales and product roadmap misaligned on priorities"
+      ],
+      "implication": "Cross-functional alignment enables coordinated execution. Leverage point for strategic initiatives.",
+      "constraint_signal": "Communication patterns and shared understanding indicators",
+      "alignment_strength": "high",
+      "alignment_scope": "cross-role",
+      "confidence_score": 1,
+      "source_refs": [
+        "8b29b47417ca163a"
+      ]
+    },
+    {
+      "id": "e8b19e27f7a2edd6",
+      "assertion": "Operating context defined by 6 organizational perspectives.",
+      "evidence": [
+        "High-growth SaaS company at inflection point",
+        "Operations team firefighting daily incidents",
+        "Sales team hitting quota but deal sizes shrinking"
+      ],
+      "implication": "Contextual understanding shapes execution strategy. Foundation for informed decision-making.",
+      "constraint_signal": "Organizational structure and operational environment",
+      "alignment_strength": "medium",
+      "alignment_scope": "cross-role",
+      "confidence_score": 1,
+      "source_refs": [
+        "d6fcd21eca18b3f0"
+      ]
+    }
+  ],
+  "strategicSignalSummary": "4 executive assertions synthesized. 4 high-confidence signals. 4 cross-role alignment indicators detected.",
+  "topRisks": [
+    {
+      "id": "19e4a6314d208212",
+      "assertion": "Risk exposure identified across 6 operational domains with high recurrence.",
+      "evidence": [
+        "Market timing risks not fully understood by leadership",
+        "Burn rate accelerating faster than revenue growth",
+        "Technical debt compounding faster than engineering can address"
+      ],
+      "implication": "Unmitigated risks accumulate execution debt. Immediate attention required to prevent cascading failures.",
+      "constraint_signal": "Operational blind spots and risk accumulation patterns",
+      "alignment_strength": "high",
+      "alignment_scope": "cross-role",
+      "confidence_score": 1,
+      "source_refs": [
+        "b6e7988fc7931a95"
+      ]
+    }
+  ],
+  "leverageMoves": [
+    {
+      "id": "19e4a6314d208212",
+      "assertion": "Risk exposure identified across 6 operational domains with high recurrence.",
+      "evidence": [
+        "Market timing risks not fully understood by leadership",
+        "Burn rate accelerating faster than revenue growth",
+        "Technical debt compounding faster than engineering can address"
+      ],
+      "implication": "Unmitigated risks accumulate execution debt. Immediate attention required to prevent cascading failures.",
+      "constraint_signal": "Operational blind spots and risk accumulation patterns",
+      "alignment_strength": "high",
+      "alignment_scope": "cross-role",
+      "confidence_score": 1,
+      "source_refs": [
+        "b6e7988fc7931a95"
+      ]
+    },
+    {
+      "id": "5f151a82ced92458",
+      "assertion": "Structural constraints limit execution capacity across 6 organizational roles.",
+      "evidence": [
+        "Board pressure for profitability conflicts with growth investment needs",
+        "Infrastructure cannot scale at current growth rate without major investment",
+        "Sales cycle lengthening due to competitive pressure and economic headwinds"
+      ],
+      "implication": "Execution velocity constrained by structural factors. Resource allocation requires systematic review.",
+      "constraint_signal": "Process dependencies and resource allocation patterns",
+      "alignment_strength": "high",
+      "alignment_scope": "cross-role",
+      "confidence_score": 1,
+      "source_refs": [
+        "3fc6bd510ca31b1f"
+      ]
+    },
+    {
+      "id": "77578f8511ac42bc",
+      "assertion": "Alignment signals detected across 6 roles with high consistency.",
+      "evidence": [
+        "Leadership divided on growth vs profitability strategy",
+        "Ops aligned with engineering but not with sales timelines",
+        "Sales and product roadmap misaligned on priorities"
+      ],
+      "implication": "Cross-functional alignment enables coordinated execution. Leverage point for strategic initiatives.",
+      "constraint_signal": "Communication patterns and shared understanding indicators",
+      "alignment_strength": "high",
+      "alignment_scope": "cross-role",
+      "confidence_score": 1,
+      "source_refs": [
+        "8b29b47417ca163a"
+      ]
+    },
+    {
+      "id": "e8b19e27f7a2edd6",
+      "assertion": "Operating context defined by 6 organizational perspectives.",
+      "evidence": [
+        "High-growth SaaS company at inflection point",
+        "Operations team firefighting daily incidents",
+        "Sales team hitting quota but deal sizes shrinking"
+      ],
+      "implication": "Contextual understanding shapes execution strategy. Foundation for informed decision-making.",
+      "constraint_signal": "Organizational structure and operational environment",
+      "alignment_strength": "medium",
+      "alignment_scope": "cross-role",
+      "confidence_score": 1,
+      "source_refs": [
+        "d6fcd21eca18b3f0"
+      ]
+    }
+  ],
+  "operatingContextNotes": "Operating context defined by 6 organizational perspectives."
+}
