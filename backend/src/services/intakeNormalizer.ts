@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { intakes, tenants } from '../db/schema';
+import { intakes, tenants, intakeClarifications } from '../db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { NormalizedIntakeContext, RawIntakeAnswers } from '../types/intake';
 
@@ -34,7 +34,7 @@ export async function getTenantIntakes(tenantId: string): Promise<{
   console.log(`[getTenantIntakes] Found ${allIntakes.length} completed intakes for tenant ${tenantId}`);
 
   const result: any = {};
-  
+
   // Get latest intake per role
   for (const intake of allIntakes) {
     const role = intake.role as 'owner' | 'ops' | 'sales' | 'delivery';
@@ -52,9 +52,9 @@ export async function getTenantIntakes(tenantId: string): Promise<{
  */
 function normalizeOwner(raw: any): Record<string, string | null> {
   if (!raw?.answers) return {};
-  
+
   const answers = raw.answers;
-  
+
   return {
     owner_pri: answers.top_priorities || null,
     owner_frustrations: answers.biggest_frustration || null,
@@ -80,9 +80,9 @@ function normalizeOwner(raw: any): Record<string, string | null> {
  */
 function normalizeSales(raw: any): Record<string, string | null> {
   if (!raw?.answers) return {};
-  
+
   const answers = raw.answers;
-  
+
   return {
     sales_process: answers.sales_process || null,
     sales_channels: answers.lead_generation || null,
@@ -102,9 +102,9 @@ function normalizeSales(raw: any): Record<string, string | null> {
  */
 function normalizeOps(raw: any): Record<string, string | null> {
   if (!raw?.answers) return {};
-  
+
   const answers = raw.answers;
-  
+
   return {
     ops_systems: answers.current_systems || null,
     ops_stack: answers.tech_stack || null,
@@ -124,9 +124,9 @@ function normalizeOps(raw: any): Record<string, string | null> {
  */
 function normalizeDelivery(raw: any): Record<string, string | null> {
   if (!raw?.answers) return {};
-  
+
   const answers = raw.answers;
-  
+
   return {
     del_process: answers.delivery_process || null,
     del_tools: answers.project_management || null,
@@ -241,7 +241,7 @@ function analyzeContext(params: {
   chokePoints: string[];
 } {
   const { owner, ops, sales, delivery } = params;
-  
+
   const missingData: string[] = [];
   const contradictions: string[] = [];
   const chokePoints: string[] = [];
@@ -259,7 +259,7 @@ function analyzeContext(params: {
   if (owner.owner_ideal && owner.owner_frustrations) {
     const idealLength = owner.owner_ideal.length;
     const frustrationLength = owner.owner_frustrations.length;
-    
+
     if (idealLength < 50 && frustrationLength > 300) {
       contradictions.push('Owner has detailed frustrations but vague ideal state vision');
     }
@@ -277,7 +277,7 @@ function analyzeContext(params: {
 
   const delBottlenecks = delivery.del_bottlenecks?.toLowerCase() || '';
   const opsPain = ops.ops_pain?.toLowerCase() || '';
-  
+
   if (delBottlenecks && opsPain) {
     // Check for common bottleneck keywords
     const commonKeywords = ['handoff', 'waiting', 'approval', 'communication', 'data'];
@@ -301,7 +301,7 @@ function analyzeContext(params: {
  */
 export async function buildNormalizedIntakeContext(tenantId: string): Promise<NormalizedIntakeContext> {
   const raw = await getTenantIntakes(tenantId);
-  
+
   const owner = normalizeOwner(raw.owner);
   const ops = normalizeOps(raw.ops);
   const sales = normalizeSales(raw.sales);
@@ -310,6 +310,18 @@ export async function buildNormalizedIntakeContext(tenantId: string): Promise<No
   const matrixView = buildMatrixView({ owner, ops, sales, delivery });
   const { contradictions, missingData, chokePoints } = analyzeContext({ owner, ops, sales, delivery, matrixView });
 
+  // Fetch Clarifications
+  const clarifications = await db
+    .select({
+      questionId: intakeClarifications.questionId,
+      originalResponse: intakeClarifications.originalResponse,
+      clarificationPrompt: intakeClarifications.clarificationPrompt,
+      clarificationResponse: intakeClarifications.clarificationResponse,
+      status: intakeClarifications.status
+    })
+    .from(intakeClarifications)
+    .where(eq(intakeClarifications.tenantId, tenantId));
+
   return {
     tenantId,
     roles: { owner, ops, sales, delivery },
@@ -317,5 +329,6 @@ export async function buildNormalizedIntakeContext(tenantId: string): Promise<No
     contradictions,
     missingData,
     chokePoints,
+    clarifications
   };
 }

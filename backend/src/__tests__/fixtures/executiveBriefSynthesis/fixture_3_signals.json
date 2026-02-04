@@ -1,0 +1,25 @@
+{
+    "vectors": [
+        {
+            "id": "vec-001",
+            "tenantId": "tenant-3-signals",
+            "roleType": "owner",
+            "roleLabel": "CEO",
+            "perceivedConstraints": "C1",
+            "anticipatedBlindSpots": "B1",
+            "metadata": {
+                "semanticBuckets": {
+                    "operatingReality": "Context 1"
+                }
+            }
+        },
+        {
+            "id": "vec-002",
+            "tenantId": "tenant-3-signals",
+            "roleType": "operations",
+            "roleLabel": "COO",
+            "perceivedConstraints": "C2",
+            "anticipatedBlindSpots": "B2"
+        }
+    ]
+}

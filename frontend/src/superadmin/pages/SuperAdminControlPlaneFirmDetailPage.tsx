@@ -118,6 +118,17 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     // Phase 6E: Strategic Context & Capacity ROI Collapse
     const [showROIPanel, setShowROIPanel] = useState(false);
 
+    // EXEC-BRIEF-UI-ACCEPTANCE-005: Brief-specific error state (non-blocking)
+    const [briefActionError, setBriefActionError] = useState<any | null>(null);
+    const [lastBriefAction, setLastBriefAction] = useState<'generate' | 'regen' | 'download' | 'deliver' | null>(null);
+
+    // EXEC-BRIEF-SIGNAL-GATE-009A: Threshold metadata (quality pass warning)
+    const [briefSignalMetadata, setBriefSignalMetadata] = useState<{
+        signalQuality: 'SUFFICIENT' | 'LOW_SIGNAL';
+        assertionCount: number;
+        targetCount: number;
+    } | null>(null);
+
     // Phase 6E: Modal-based Review (ONLY paradigm)
     const [isExecBriefOpen, setExecBriefOpen] = useState(false);
     const [isDiagOpen, setDiagOpen] = useState(false);
@@ -260,15 +271,74 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     // ============================================================================
 
     const getCanonicalStatus = (stage: number): 'LOCKED' | 'READY' | 'COMPLETE' => {
-        if (!data) return 'LOCKED';
-        const { tenant, latestRoadmap } = data; // diagnosticStatus removed if unused, or kept if needed.
+        // TRUTH PROBE AUTHORITY (Phase 1)
+        if (truthProbe) {
+            // s1: Intake
+            if (stage === 1) {
+                const isClosed = truthProbe.intake.windowState === 'CLOSED';
+                const isSufficient = truthProbe.intake.sufficiencyHint === 'COMPLETE';
+                return (isClosed || isSufficient) ? 'COMPLETE' : 'READY';
+            }
 
-        // s1: Intake (Source: intakeWindowState)
-        const s1 = tenant.intakeWindowState === 'CLOSED' ? 'COMPLETE' : 'READY';
+            // s2: Executive Brief
+            if (stage === 2) {
+                const state = truthProbe.executiveBrief.state;
+                const isApproved = ['APPROVED', 'DELIVERED', 'REVIEWED'].includes(state || '');
+                if (isApproved) return 'COMPLETE';
+                // If intake is complete/sufficient, Brief is READY
+                const s1Complete = truthProbe.intake.windowState === 'CLOSED' || truthProbe.intake.sufficiencyHint === 'COMPLETE';
+                return s1Complete ? 'READY' : 'LOCKED';
+            }
+
+            // s3: Diagnostic
+            if (stage === 3) {
+                const exists = truthProbe.diagnostic.exists;
+                const briefState = truthProbe.executiveBrief.state || '';
+                const briefValid = ['APPROVED', 'DELIVERED', 'REVIEWED'].includes(briefState);
+
+                if (exists && briefValid) return 'COMPLETE'; // Weak complete (exists)
+                return briefValid ? 'READY' : 'LOCKED';
+            }
+
+            // s4: Discovery
+            if (stage === 4) {
+                if (truthProbe.discovery.exists) return 'COMPLETE';
+                return truthProbe.readiness.canRunDiscovery ? 'READY' : 'LOCKED';
+            }
+
+            // s5: Findings (Assisted Synthesis)
+            if (stage === 5) {
+                if (truthProbe.findings.exists) return 'COMPLETE';
+                // Ready if Discovery exists
+                return truthProbe.discovery.exists ? 'READY' : 'LOCKED';
+            }
+
+            // s6: Tickets
+            if (stage === 6) {
+                // moderated = no pending tickets AND total > 0
+                const { total, pending } = truthProbe.tickets;
+                const isModerated = total > 0 && pending === 0;
+                if (isModerated) return 'COMPLETE';
+                return truthProbe.readiness.canModerateTickets ? 'READY' : 'LOCKED';
+            }
+
+            // s7: Roadmap
+            if (stage === 7) {
+                if (truthProbe.roadmap.exists) return 'COMPLETE';
+                return truthProbe.readiness.canFinalizeRoadmap ? 'READY' : 'LOCKED';
+            }
+        }
+
+        // LEGACY FALLBACK (If TruthProbe fails to load side-car)
+        if (!data) return 'LOCKED';
+        const { tenant, latestRoadmap } = data;
+
+        // s1: Intake (Source: intakeWindowState OR All Roles Complete)
+        const allRolesComplete = intakeRoles.length > 0 && intakeRoles.every(r => r.intakeStatus === 'COMPLETED');
+        const s1 = (tenant.intakeWindowState === 'CLOSED' || allRolesComplete) ? 'COMPLETE' : 'READY';
         if (stage === 1) return s1;
 
         // s2: Executive Brief (Consultation Anchor)
-        // Decoupled: Can generate brief while intake is OPEN.
         const s2Fact = ['APPROVED', 'ACKNOWLEDGED', 'WAIVED'].includes(tenant.executiveBriefStatus || '');
         const hasOwnerIntake = data.intakes.some((i: any) =>
             (i.role === 'owner' || i.userRole === 'owner' || i.userEmail === data.owner?.email) &&
@@ -289,38 +359,27 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         const diagExists = !!data.latestDiagnostic;
         const diagPublished = data.latestDiagnostic?.status === 'published';
 
-        // V2 Requirement: "Diagnostics generation requires: intake locked AND executive brief APPROVED."
         const isExecBriefApproved = tenant.executiveBriefStatus === 'APPROVED';
 
-        const s3 = (diagExists && s1 === 'COMPLETE')
+        const s3 = (diagExists && s1 === 'COMPLETE' && isExecBriefApproved)
             ? 'COMPLETE'
             : (s1 === 'COMPLETE' && isExecBriefApproved ? 'READY' : 'LOCKED');
         if (stage === 3) return s3;
 
-        // s4: Discovery NOTES (Step 4)
-        const s4Fact = truthProbe?.discovery?.exists || false;
-        const s4 = (s4Fact && diagPublished) ? 'COMPLETE' : (diagPublished ? 'READY' : 'LOCKED');
-        if (stage === 4) return s4;
+        // s4: Discovery NOTES (Step 4) - Simplified Fallback
+        // (We don't have deep truth in legacy object, so be conservative)
+        if (stage === 4) return diagPublished ? 'READY' : 'LOCKED';
 
-        // s5: Assisted Synthesis & Findings Declaration (Step 5)
-        const s5Fact = truthProbe?.findings?.exists || false;
-        const s5 = (s5Fact && s4 === 'COMPLETE') ? 'COMPLETE' : (s4 === 'COMPLETE' ? 'READY' : 'LOCKED');
-        if (stage === 5) return s5;
+        // s5..s7 Fallbacks
+        if (stage === 5) return 'LOCKED';
 
         // s6: Ticket Moderation (Step 6)
-        const ticketsExist = (truthProbe?.tickets?.total || 0) > 0;
-        const moderationComplete = ticketsExist && (truthProbe?.tickets?.pending || 0) === 0;
-        if (stage === 6) {
-            if (s5 !== 'COMPLETE') return 'LOCKED';
-            if (moderationComplete) return 'COMPLETE';
-            return 'READY';
-        }
+        if (stage === 6) return 'LOCKED';
 
         // s7: Roadmap Generation (Step 7)
         const s7Fact = !!latestRoadmap;
         if (stage === 7) {
-            if (!moderationComplete) return 'LOCKED';
-            return s7Fact ? 'COMPLETE' : 'READY';
+            return s7Fact ? 'COMPLETE' : 'LOCKED';
         }
 
         return 'LOCKED';
@@ -528,6 +587,20 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         }
     };
 
+    const handleConfirmSufficiency = async () => {
+        if (!params?.tenantId) return;
+        setIsGenerating(true);
+        try {
+            await superadminApi.confirmSufficiency(params.tenantId);
+            await refreshData();
+        } catch (err: any) {
+            console.error('Confirm Sufficiency Error:', err);
+            setError(err.message || 'Failed to confirm knowledge sufficiency');
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     const handleActivateModeration = async () => {
         if (!params?.tenantId || isGenerating) return;
 
@@ -646,6 +719,67 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         }
     };
 
+    const handleRegenerateExecutiveBrief = async () => {
+        if (!params?.tenantId) return;
+        if (isGenerating) return;
+
+        setIsGenerating(true);
+        setGateLockedMessage(null);
+        // EXEC-BRIEF-UI-ACCEPTANCE-005: Clear previous brief errors
+        setBriefActionError(null);
+        setBriefSignalMetadata(null); // Clear previous quality warnings
+        setLastBriefAction('regen');
+
+        try {
+            const preflight = await superadminApi.preflightRegenerateExecutiveBrief(params.tenantId);
+            if (!preflight.canRegenerate) {
+                // EXEC-BRIEF-UI-ACCEPTANCE-005: Use brief error, not global error
+                setBriefActionError({
+                    code: 'PREFLIGHT_FAILED',
+                    message: `Regeneration blocked: required intake data missing (${preflight.reasons.join(', ')}).`
+                });
+                return;
+            }
+
+            const confirmed = window.confirm(
+                "This will regenerate the Executive Brief using the current synthesis ruleset and overwrite the existing artifact. Continue?"
+            );
+            if (!confirmed) return;
+
+            const response = await superadminApi.generateExecutiveBrief(params.tenantId, true);
+            await refreshData();
+            await loadExecBriefData(); // Refresh modal content
+            // Success - clear any previous errors
+            setBriefActionError(null);
+
+            // EXEC-BRIEF-SIGNAL-GATE-009A: Set quality metadata for success case
+            if (response.signalQuality) {
+                setBriefSignalMetadata({
+                    signalQuality: response.signalQuality,
+                    assertionCount: response.assertionCount || 0,
+                    targetCount: response.targetCount || 4
+                });
+            } else {
+                setBriefSignalMetadata(null);
+            }
+        } catch (err: any) {
+            console.error('Executive Brief Regeneration Error:', err);
+            // EXEC-BRIEF-UI-ACCEPTANCE-005: Handle brief errors locally, not globally
+            if (err.errorCode === 'GATE_LOCKED' || err.status === 403) {
+                setGateLockedMessage(err.message || 'Executive Brief regeneration is currently locked.');
+            } else {
+                // Set brief-specific error instead of global error
+                setBriefActionError(err.errorPayload || {
+                    code: err.errorCode || 'UNKNOWN_ERROR',
+                    message: err.message,
+                    requestId: err.requestId
+                });
+            }
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     const handleApproveExecutiveBrief = async () => {
         if (!params?.tenantId) return;
         if (isGenerating) return;
@@ -654,7 +788,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         try {
             await superadminApi.approveExecutiveBrief(params.tenantId);
             await refreshData();
-            setExecBriefOpen(false);
+            await loadExecBriefData(); // Refresh to show APPROVED state in modal
         } catch (err: any) {
             console.error('Executive Brief Approval Error:', err);
             if (err.errorCode === 'GATE_LOCKED' || err.status === 403) {
@@ -724,6 +858,16 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                 approvedAt: brief.approvedAt,
                 hasPdf: !!hasPdf,
             });
+
+            // EXEC-BRIEF-SIGNAL-GATE-009A: Extract quality metadata from synthesis if present
+            const synthesisContent = brief.synthesis as any;
+            if (synthesisContent?.signalQuality) {
+                setBriefSignalMetadata({
+                    signalQuality: synthesisContent.signalQuality,
+                    assertionCount: synthesisContent.assertionCount || 0,
+                    targetCount: synthesisContent.targetCount || 4
+                });
+            }
         } catch (err: any) {
             console.error('Failed to load executive brief:', err);
             setExecBriefError(err.message || 'Failed to load executive brief');
@@ -868,6 +1012,93 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                     </div>
                 )}
 
+                {/* EXEC-BRIEF-UI-ACCEPTANCE-005: Brief Action Error Banner (Non-Blocking) */}
+                {briefActionError && (
+                    <div className="animate-in fade-in slide-in-from-top-2 duration-300 bg-red-900/20 border border-red-500/30 rounded-xl p-4 shadow-lg shadow-red-900/10">
+                        <div className="flex items-start gap-4">
+                            <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
+                                <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-sm font-bold text-red-400 uppercase tracking-tight">
+                                    Executive Brief {lastBriefAction || 'Action'} Failed
+                                </h3>
+                                <div className="mt-2 space-y-2">
+                                    <p className="text-xs text-slate-300">
+                                        <span className="font-mono text-red-300">{briefActionError.code}</span>: {briefActionError.message}
+                                    </p>
+                                    {briefActionError.details && briefActionError.code === 'INSUFFICIENT_SIGNAL' && (
+                                        <div className="mt-1 space-y-1">
+                                            <p className="text-xs text-slate-400">
+                                                Found {briefActionError.details.signalCount || briefActionError.details.assertionCount} valid signals.
+                                                Minimum required: {briefActionError.details.minRequired || 4}.
+                                            </p>
+                                            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 py-1.5 px-2 bg-black/30 rounded-lg border border-red-500/10">
+                                                <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Diagnostics:</div>
+                                                <div className="text-[10px] font-mono text-slate-400">VECTORS: {briefActionError.details.vectorCount || 0}</div>
+                                                <div className="text-[10px] font-mono text-slate-400">FACTS: {briefActionError.details.factCount || 0}</div>
+                                                <div className="text-[10px] font-mono text-slate-400">PATTERNS: {briefActionError.details.patternCount || 0}</div>
+                                                {briefActionError.details.invalidAssertions?.total > 0 && (
+                                                    <div className="text-[10px] font-mono text-red-400/80">REJECTED: {briefActionError.details.invalidAssertions.total}</div>
+                                                )}
+                                            </div>
+                                            {briefActionError.details.recommendation && (
+                                                <p className="text-xs text-slate-400 italic mt-2">
+                                                    Recommendation: {briefActionError.details.recommendation}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                    {briefActionError.requestId && (
+                                        <p className="text-[10px] text-slate-500 font-mono">
+                                            Request ID: {briefActionError.requestId}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setBriefActionError(null)}
+                                className="text-slate-500 hover:text-slate-300 p-1 rounded-lg hover:bg-slate-800 transition-colors"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* EXEC-BRIEF-SIGNAL-GATE-009A: Non-blocking quality warning banner */}
+                {briefSignalMetadata && briefSignalMetadata.signalQuality === 'LOW_SIGNAL' && !briefActionError && (
+                    <div className="mb-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                        <div className="bg-amber-900/20 border border-amber-500/30 rounded-xl p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="p-2 bg-amber-500/20 rounded-lg">
+                                    <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="text-amber-400 font-bold text-sm">Low Signal Warning</h3>
+                                    <p className="text-xs text-slate-300">
+                                        Brief generated with limited signal ({briefSignalMetadata.assertionCount} of {briefSignalMetadata.targetCount} desired). Consider adding more intake signal.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setBriefSignalMetadata(null)}
+                                className="text-slate-500 hover:text-slate-300 p-1 rounded-lg hover:bg-slate-800 transition-colors"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* PANEL 1: Identity & Status */}
                 <section id="panel-identity-status">
                     <header className="border-b border-slate-800 pb-6 flex items-start justify-between">
@@ -884,18 +1115,30 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                 Authority Control Plane
                             </div>
                             {/* Phase Badge - SA-EXEC-BRIEF-FREEZE-TAG-1 */}
-                            {tenant.executionPhase && (
-                                <div className={`
-                                    px-3 py-1 border rounded-full text-[10px] font-bold uppercase tracking-widest
-                                    ${tenant.executionPhase === 'EXEC_BRIEF_APPROVED'
-                                        ? 'bg-emerald-900/30 border-emerald-500/50 text-emerald-400'
-                                        : tenant.executionPhase === 'EXEC_BRIEF_DRAFT'
-                                            ? 'bg-amber-900/30 border-amber-500/50 text-amber-400'
-                                            : 'bg-slate-800/50 border-slate-700 text-slate-400'}
-                                `}>
-                                    {tenant.executionPhase.replace(/_/g, ' ')}
-                                </div>
-                            )}
+                            {(() => {
+                                // EXEC-RESTORE-REVIEW-PANELS-AND-KILL-DIVERGENCE-022: Override with TruthProbe
+                                let phase = tenant.executionPhase;
+                                if (truthProbe) {
+                                    if (truthProbe.intake.windowState === 'CLOSED' && phase === 'INTAKE_OPEN') {
+                                        phase = 'INTAKE_CLOSED';
+                                    }
+                                }
+
+                                if (!phase) return null;
+
+                                return (
+                                    <div className={`
+                                        px-3 py-1 border rounded-full text-[10px] font-bold uppercase tracking-widest
+                                        ${phase === 'EXEC_BRIEF_APPROVED'
+                                            ? 'bg-emerald-900/30 border-emerald-500/50 text-emerald-400'
+                                            : phase === 'EXEC_BRIEF_DRAFT'
+                                                ? 'bg-amber-900/30 border-amber-500/50 text-amber-400'
+                                                : 'bg-slate-800/50 border-slate-700 text-slate-400'}
+                                    `}>
+                                        {phase.replace(/_/g, ' ')}
+                                    </div>
+                                );
+                            })()}
                         </div>
                     </header>
 
@@ -919,7 +1162,14 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                         <div className="flex items-center gap-1.5">
                             <span className="text-slate-500 font-medium">Intake:</span>
                             <span className="text-slate-300">
-                                {tenant.intakeWindowState === 'CLOSED' ? 'CLOSED' : `${intakes.filter(i => i.status === 'completed').length}/${intakes.length} COMPLETE`}
+                                {(() => {
+                                    if (truthProbe) {
+                                        return truthProbe.intake.windowState === 'CLOSED' ? 'CLOSED' : 'OPEN';
+                                    }
+                                    return (tenant.intakeWindowState === 'CLOSED' || (intakeRoles.length > 0 && intakeRoles.every(r => r.intakeStatus === 'COMPLETED')))
+                                        ? 'CLOSED'
+                                        : `${intakes.filter(i => i.status === 'completed').length}/${intakes.length} COMPLETE`;
+                                })()}
                             </span>
                         </div>
                         <div className="w-px h-3 bg-slate-800" />
@@ -963,6 +1213,38 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                             Hide <span className="text-base leading-none">×</span>
                                         </button>
                                     </div>
+                                    {(() => {
+                                        const checkDivergence = () => {
+                                            if (!truthProbe || !data?.tenant) return false;
+                                            // 1. Intake
+                                            if (truthProbe.intake.windowState && truthProbe.intake.windowState !== data.tenant.intakeWindowState) return true;
+
+                                            // 2. Brief
+                                            const truthState = truthProbe.executiveBrief.state || '';
+                                            const legacyStatus = data.tenant.executiveBriefStatus || '';
+                                            const truthApproved = ['APPROVED', 'DELIVERED', 'REVIEWED'].includes(truthState);
+                                            const legacyApproved = ['APPROVED', 'ACKNOWLEDGED', 'WAIVED'].includes(legacyStatus);
+                                            if (truthApproved !== legacyApproved) return true;
+
+                                            // 3. Diagnostic
+                                            if (truthProbe.diagnostic.exists !== !!data.latestDiagnostic) return true;
+
+                                            return false;
+                                        };
+
+                                        // EXEC-RESTORE-REVIEW-PANELS-AND-KILL-DIVERGENCE-022: Suppress Divergence Alert when Probe is present
+                                        const hasDivergence = false; // checkDivergence(); // DISABLED
+
+                                        return hasDivergence && (
+                                            <div className="mb-3 bg-amber-950/40 border border-amber-900/50 p-3 rounded-lg flex items-start gap-3">
+                                                <div className="text-amber-500 font-bold uppercase text-[10px] tracking-wider mt-0.5">Divergence Alert</div>
+                                                <div className="text-amber-200/80 text-[10px]">
+                                                    Legacy control plane state differs from TruthProbe authority.<br />
+                                                    Trust <strong>Lifecycle Truth</strong> below.
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
                                     <TruthProbeCard data={truthProbe} />
                                 </div>
                             ) : (
@@ -1054,25 +1336,37 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                         action: (() => {
                                             const status = getCanonicalStatus(2);
                                             const briefStatus = tenant.executiveBriefStatus;
+                                            const hasBrief = !!briefStatus;
 
-                                            if (status === 'READY') {
-                                                if (!briefStatus) {
-                                                    return (
-                                                        <button
-                                                            onClick={handleGenerateExecutiveBrief}
-                                                            className="mt-2 text-[10px] uppercase font-bold text-indigo-400 hover:text-indigo-300 border border-indigo-900/50 bg-indigo-950/30 px-3 py-1.5 rounded transition-colors"
-                                                        >
-                                                            Generate
-                                                        </button>
-                                                    );
-                                                }
+                                            if (status === 'READY' || status === 'COMPLETE') {
                                                 return (
-                                                    <button
-                                                        onClick={openExecBriefModal}
-                                                        className="mt-2 text-[10px] uppercase font-bold text-orange-400 hover:text-orange-300 border border-orange-900/50 bg-orange-950/30 px-3 py-1.5 rounded transition-colors"
-                                                    >
-                                                        Review Draft
-                                                    </button>
+                                                    <div className="flex gap-2 mt-2">
+                                                        {!hasBrief ? (
+                                                            <button
+                                                                onClick={handleGenerateExecutiveBrief}
+                                                                disabled={isGenerating}
+                                                                className="text-[10px] uppercase font-bold text-indigo-400 hover:text-indigo-300 border border-indigo-900/50 bg-indigo-950/30 px-3 py-1.5 rounded transition-colors disabled:opacity-50"
+                                                            >
+                                                                Generate
+                                                            </button>
+                                                        ) : (
+                                                            <>
+                                                                <button
+                                                                    onClick={openExecBriefModal}
+                                                                    className="text-[10px] uppercase font-bold text-orange-400 hover:text-orange-300 border border-orange-900/50 bg-orange-950/30 px-3 py-1.5 rounded transition-colors"
+                                                                >
+                                                                    Review
+                                                                </button>
+                                                                <button
+                                                                    onClick={handleRegenerateExecutiveBrief}
+                                                                    disabled={isGenerating}
+                                                                    className="text-[10px] uppercase font-bold text-indigo-400 hover:text-indigo-300 border border-indigo-900/50 bg-indigo-950/30 px-3 py-1.5 rounded transition-colors disabled:opacity-50"
+                                                                >
+                                                                    Regen
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 );
                                             }
                                             return null;
@@ -1089,6 +1383,24 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
 
                                             // V2 Canon: Intake Locked -> Generate.
                                             if (status === 'READY') {
+                                                const hasConfirmed = truthProbe?.operator?.confirmedSufficiency;
+                                                if (!hasConfirmed) {
+                                                    return (
+                                                        <div className="mt-2 space-y-2">
+                                                            <div className="text-[10px] text-amber-400 font-medium bg-amber-950/20 border border-amber-900/30 p-2 rounded">
+                                                                Gate D3: Operator must confirm knowledge sufficiency before generation.
+                                                            </div>
+                                                            <button
+                                                                onClick={handleConfirmSufficiency}
+                                                                disabled={isGenerating}
+                                                                className="text-[10px] uppercase font-bold text-amber-400 hover:text-amber-300 border border-amber-900/50 bg-amber-950/20 px-3 py-1.5 rounded transition-colors"
+                                                            >
+                                                                Confirm Knowledge Sufficiency
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                }
+
                                                 return (
                                                     <button
                                                         onClick={handleGenerateDiagnostic}
@@ -1332,8 +1644,13 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                         {/* 2. Executive Brief (modal-only review) */}
                         <AuthorityGuard requiredCategory={AuthorityCategory.EXECUTIVE}>
                             {(() => {
-                                const status = tenant.executiveBriefStatus;
-                                const isComplete = status && ['APPROVED', 'ACKNOWLEDGED', 'WAIVED'].includes(status);
+                                // EXEC-RESTORE-REVIEW-PANELS-AND-KILL-DIVERGENCE-022: TruthProbe-driven
+                                let status = tenant.executiveBriefStatus;
+                                if (truthProbe?.executiveBrief?.state) {
+                                    status = truthProbe.executiveBrief.state as any;
+                                }
+
+                                const isComplete = status && ['APPROVED', 'DELIVERED', 'REVIEWED', 'ACKNOWLEDGED', 'WAIVED'].includes(status);
 
                                 if (!isComplete) return null;
 
@@ -1351,12 +1668,26 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                         {/* @ANCHOR:SA_FIRM_DETAIL_DIAGNOSTIC_REVIEW_SLOT */}
 
                         {/* 3.5 Diagnostic Review (modal-only) */}
-                        {tenant.lastDiagnosticId && (
-                            <DiagnosticCompleteCard
-                                status={data?.latestDiagnostic?.status || 'GENERATED'}
-                                onReview={openDiagnosticModal}
-                            />
-                        )}
+                        {/* Phase 1 Invariant: Hide Diagnostic if Brief is not APPROVED */}
+                        {/* 3.5 Diagnostic Review (modal-only) */}
+                        {/* Phase 1 Invariant: Hide Diagnostic if Brief is not APPROVED (or DELIVERED/REVIEWED) */}
+                        {(() => {
+                            // EXEC-RESTORE-REVIEW-PANELS-AND-KILL-DIVERGENCE-022: TruthProbe-driven check
+                            const hasDiagnostic = truthProbe ? truthProbe.diagnostic.exists : !!tenant.lastDiagnosticId;
+
+                            const briefState = truthProbe ? truthProbe.executiveBrief.state : tenant.executiveBriefStatus;
+                            const isBriefReady = briefState && ['APPROVED', 'DELIVERED', 'REVIEWED', 'ACKNOWLEDGED', 'WAIVED'].includes(briefState);
+
+                            if (hasDiagnostic && isBriefReady) {
+                                return (
+                                    <DiagnosticCompleteCard
+                                        status={truthProbe?.diagnostic?.status || data?.latestDiagnostic?.status || 'GENERATED'}
+                                        onReview={openDiagnosticModal}
+                                    />
+                                );
+                            }
+                            return null;
+                        })()}
                         {/* 3. Ticket Moderation (Waterfall Step 4) */}
                         {tenant.intakeWindowState === 'CLOSED' && (
                             <AuthorityGuard requiredCategory={AuthorityCategory.EXECUTIVE}>
@@ -1442,8 +1773,10 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                 <ExecutiveBriefModal
                     open={isExecBriefOpen}
                     onClose={closeExecBriefModal}
+                    loading={execBriefLoading}
                     data={execBriefData}
                     status={execBriefData?.status || tenant.executiveBriefStatus}
+                    error={execBriefError}
                     onApprove={handleApproveExecutiveBrief}
                     isApproving={isGenerating}
                     tenantId={params?.tenantId || ''}
@@ -1451,6 +1784,10 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                     isDelivering={isGenerating}
                     hasPdf={execBriefData?.hasPdf}
                     onGeneratePdf={handleGenerateExecutiveBriefPdf}
+                    audit={truthProbe?.executiveBrief?.deliveryAudit}
+                    onDownload={() => superadminApi.downloadExecutiveBrief(tenant.id, tenant.name)}
+                    onRegenerate={handleRegenerateExecutiveBrief}
+                    isRegenerating={isGenerating}
                 />
 
                 <DiagnosticReviewModal

@@ -241,6 +241,9 @@ router.get('/snapshot/:tenantId', requireExecutive(), snapshotController.getTena
 // GET /api/superadmin/firms/:tenantId/executive-brief - Get existing brief
 router.get('/firms/:tenantId/executive-brief', requireExecutive(), executiveBriefController.getExecutiveBrief);
 
+// POST /api/superadmin/firms/:tenantId/executive-brief/preflight - Preflight check for regen
+router.post('/firms/:tenantId/executive-brief/preflight', requireExecutive(), executiveBriefController.preflightRegenerateExecutiveBrief);
+
 // POST /api/superadmin/firms/:tenantId/executive-brief/generate - Generate new brief
 router.post('/firms/:tenantId/executive-brief/generate', requireExecutive(), executiveBriefController.generateExecutiveBrief);
 

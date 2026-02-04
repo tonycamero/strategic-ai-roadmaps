@@ -168,13 +168,7 @@ export const executiveBriefs = pgTable('executive_briefs', {
   generatedAt: timestamp('generated_at', { withTimezone: true }).notNull().defaultNow(),
 
   // Synthesis sections (stored as JSONB)
-  synthesis: jsonb('synthesis').notNull().$type<{
-    executiveSummary: string;
-    operatingReality: string;
-    constraintLandscape: string;
-    blindSpotRisks: string;
-    alignmentSignals: string;
-  }>(),
+  synthesis: jsonb('synthesis').notNull().$type<import('../types/executiveBrief').ExecutiveBriefSynthesis>(),
 
   // Signals (stored as JSONB)
   signals: jsonb('signals').notNull().$type<{
@@ -196,6 +190,16 @@ export const executiveBriefs = pgTable('executive_briefs', {
 
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+
+  // Mode Selector (DIAGNOSTIC_RAW vs EXECUTIVE_SYNTHESIS)
+  briefMode: varchar('brief_mode', { length: 30 }).notNull().default('EXECUTIVE_SYNTHESIS'),
+
+  // Metadata for tracking regens/actions
+  metadata: jsonb('metadata').$type<{
+    regenBy?: string;
+    regenAt?: string;
+    regenReason?: string;
+  }>().default({}),
 }, (table) => ({
   // Unique constraint: one brief per tenant (for now, can be extended for versioning)
   uniqueTenantVersion: unique().on(table.tenantId, table.version),

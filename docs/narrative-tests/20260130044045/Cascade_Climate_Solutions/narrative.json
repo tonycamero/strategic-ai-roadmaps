@@ -1,0 +1,135 @@
+{
+  "meta": {
+    "tenantName": "Cascade Climate Solutions",
+    "generatedAt": "2026-01-30T04:40:47.662Z",
+    "dataSources": [
+      "Executive Brief",
+      "Diagnostic",
+      "Intakes (5)"
+    ]
+  },
+  "evidence": {
+    "topConstraints": [
+      {
+        "role": "owner",
+        "quote": "Stop missing calls and opportunities we’re already paying for\n\nGet out of daily dispatch and problem-solving\n\nGrow revenue without adding more office ",
+        "sourceId": "50c6fe36-bbec-4577-9aaf-55ae6e0d4162"
+      },
+      {
+        "role": "owner",
+        "quote": "Dispatch and admin are stretched thin, especially during busy days or after hours. I also end up being a bottleneck because decisions come back to me ",
+        "sourceId": "50c6fe36-bbec-4577-9aaf-55ae6e0d4162"
+      },
+      {
+        "role": "sales",
+        "quote": "The biggest issue is follow-up. When things get busy, estimates don’t always get followed up on quickly or at all. There’s also limited visibility int",
+        "sourceId": "1ac534ff-3216-461e-bfa2-4511de550b47"
+      }
+    ],
+    "topGoals": [
+      {
+        "role": "owner",
+        "quote": "I don’t trust that every call or lead is being handled properly. We’re busy, but it feels reactive. I’m constantly pulled in to fix scheduling issues,",
+        "sourceId": "50c6fe36-bbec-4577-9aaf-55ae6e0d4162"
+      },
+      {
+        "role": "owner",
+        "quote": "Calls would never go unanswered, follow-up would just happen, and scheduling wouldn’t feel like a fire drill. I’d have visibility into what happened e",
+        "sourceId": "50c6fe36-bbec-4577-9aaf-55ae6e0d4162"
+      },
+      {
+        "role": "delivery",
+        "quote": "Jobs are scheduled by dispatch and assigned to technicians based on availability and skill set. Job details are usually shared verbally or through bri",
+        "sourceId": "ed2dbb98-ca96-47cd-bed4-007c2c51a526"
+      },
+      {
+        "role": "delivery",
+        "quote": "9 field technicians\n\nTechnicians handle service, maintenance, and installations\n\nNo dedicated project manager; coordination flows through dispatch and",
+        "sourceId": "ed2dbb98-ca96-47cd-bed4-007c2c51a526"
+      },
+      {
+        "role": "delivery",
+        "quote": "Feedback usually comes through phone calls or online reviews. The most common issues are around timing, scheduling changes, and wanting clearer update",
+        "sourceId": "ed2dbb98-ca96-47cd-bed4-007c2c51a526"
+      }
+    ],
+    "topFriction": [
+      {
+        "role": "owner",
+        "quote": "Scheduling and follow-up are the biggest slow points. Leads come in, but ownership isn’t always clear. Estimates get done but then sit. Same-day jobs ",
+        "sourceId": "50c6fe36-bbec-4577-9aaf-55ae6e0d4162"
+      },
+      {
+        "role": "owner",
+        "quote": "Deciding which jobs to prioritize, stepping in when scheduling gets messy, handling escalations, and checking whether follow-up actually happened. I s",
+        "sourceId": "50c6fe36-bbec-4577-9aaf-55ae6e0d4162"
+      },
+      {
+        "role": "owner",
+        "quote": "The CRM. Notes and follow-up aren’t consistent, and it’s not trusted as a source of truth. People rely more on memory, texts, or verbal updates.",
+        "sourceId": "50c6fe36-bbec-4577-9aaf-55ae6e0d4162"
+      },
+      {
+        "role": "owner",
+        "quote": "Clients don’t always get proactive updates, so they call in asking for status. Internally, job details and priorities aren’t always clear, which cause",
+        "sourceId": "50c6fe36-bbec-4577-9aaf-55ae6e0d4162"
+      },
+      {
+        "role": "owner",
+        "quote": "Call handling, scheduling changes, follow-up on estimates, and customer updates. It feels like we’re always reacting instead of running a system.",
+        "sourceId": "50c6fe36-bbec-4577-9aaf-55ae6e0d4162"
+      }
+    ]
+  },
+  "fingerprint": {
+    "topKeywords": [
+      "followup",
+      "calls",
+      "scheduling",
+      "without",
+      "call",
+      "dispatch",
+      "jobs",
+      "through",
+      "would",
+      "estimates"
+    ],
+    "dominantTheme": "Operational Stabilization",
+    "maturityScore": 70
+  },
+  "priorityFindings": [
+    {
+      "label": "Critical Bottlebeck in followup",
+      "severity": "high",
+      "why": "Consistent reporting of friction (\"scheduling\") indicates systemic drag.",
+      "evidenceIds": [
+        "50c6fe36-bbec-4577-9aaf-55ae6e0d4162"
+      ]
+    },
+    {
+      "label": "Unaligned Growth Expectations",
+      "severity": "med",
+      "why": "Goals mentioning \"dont\" are unsupported by current resource availability.",
+      "evidenceIds": [
+        "50c6fe36-bbec-4577-9aaf-55ae6e0d4162"
+      ]
+    }
+  ],
+  "executiveSummary": "Strategic analysis for Cascade Climate Solutions indicates a primary focus on Operational Stabilization. Analysis of 7562 characters of stakeholder input reveals dominant patterns around \"followup, calls, scheduling\". While goals are set on calls, operational realities presented by owner suggest immediate remediation is required.",
+  "coreTensions": [
+    "Tension between desired \"Operational Stabilization\" and reported friction around \"followup\".",
+    "Stakeholder owner reports \"Scheduling and follow-up are t...\" which conflicts with goal of calls."
+  ],
+  "impliedRisks": [
+    "Risk of \"Stalled Operational Stabilization\" if owner's concern (\"stop\") is unaddressed.",
+    "Attrition risk due to high manual toil described by owner."
+  ],
+  "leveragePoints": [
+    "Unlock Operational Stabilization by automating the \"followup\" workflow identified by stakeholders.",
+    "Resolve owner's constraint to accelerate calls."
+  ],
+  "framing": {
+    "languageMode": "direct",
+    "focusArea": "efficiency"
+  }
+}

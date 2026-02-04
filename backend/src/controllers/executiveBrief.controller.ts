@@ -3,6 +3,51 @@ import { db } from '../db';
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { executiveBriefs, tenants, intakes, intakeVectors, users, auditEvents, executiveBriefArtifacts } from '../db/schema';
 import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
+import { validateBriefModeSchema } from '../services/schemaGuard.service';
+import { generateRequestId, getRequestId } from '../utils/requestId';
+import { sendBriefError } from '../utils/briefErrorResponse';
+
+/**
+ * Helper: Resolve the logical approval status of an Executive Brief.
+ * Implements governance refocus per EXEC-BRIEF-GOVERNANCE-REALIGN-004.
+ */
+export async function resolveBriefApprovalStatus(tenantId: string): Promise<{ approved: boolean; approvedAt?: Date; approvedBy?: string }> {
+    // 1. Check for latest Approval Audit Event (Canonical Authority)
+    const [lastApprovalEvent] = await db
+        .select()
+        .from(auditEvents)
+        .where(and(
+            eq(auditEvents.tenantId, tenantId),
+            eq(auditEvents.eventType, AUDIT_EVENT_TYPES.EXECUTIVE_BRIEF_APPROVED)
+        ))
+        .orderBy(desc(auditEvents.createdAt))
+        .limit(1);
+
+    if (lastApprovalEvent) {
+        return {
+            approved: true,
+            approvedAt: lastApprovalEvent.createdAt as Date,
+            approvedBy: lastApprovalEvent.actorUserId || undefined
+        };
+    }
+
+    // 2. Fallback: Check brief record columns (Legacy support)
+    const [brief] = await db
+        .select()
+        .from(executiveBriefs)
+        .where(eq(executiveBriefs.tenantId, tenantId))
+        .limit(1);
+
+    if (brief?.status === 'APPROVED' || brief?.status === 'DELIVERED' || brief?.approvedAt) {
+        return {
+            approved: true,
+            approvedAt: (brief?.approvedAt || brief?.updatedAt) as Date,
+            approvedBy: brief?.approvedBy || undefined
+        };
+    }
+
+    return { approved: false };
+}
 
 // Helper for type safety
 interface AuthRequest extends Request {
@@ -22,6 +67,18 @@ export const getExecutiveBrief = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = req.params;
 
+        // 0. Schema Guard
+        const schemaGuard = await validateBriefModeSchema();
+        if (!schemaGuard.valid) {
+            console.error('[ExecutiveBrief] SCHEMA_MISMATCH:', schemaGuard.error);
+            return res.status(503).json({
+                error: 'SCHEMA_MISMATCH',
+                message: 'Database column mismatch detected.',
+                details: schemaGuard.error,
+                action: 'run migrations'
+            });
+        }
+
         if (!tenantId) {
             return res.status(400).json({ error: 'Tenant ID is required' });
         }
@@ -39,17 +96,44 @@ export const getExecutiveBrief = async (req: AuthRequest, res: Response) => {
             });
         }
 
-        // Check for PDF artifact
-        const [artifact] = await db
+        // Check for PDF artifact (EXEC-BRIEF-PDF-ARTIFACT-CONSISTENCY-022)
+        const { selectLatestPdfArtifact } = await import('../services/pdf/executiveBriefArtifactSelector');
+        const artifact = await selectLatestPdfArtifact({
+            tenantId,
+            briefId: brief.id
+        }, 'get_brief_hasPdf');
+
+        // AUTHORITY RESOLUTION (Ticket EXEC-BRIEF-GOVERNANCE-REALIGN-004)
+        const approval = await resolveBriefApprovalStatus(tenantId);
+
+        // Resolve Delivery Status from Audit Event
+        const [lastDeliveryEvent] = await db
             .select()
-            .from(executiveBriefArtifacts)
+            .from(auditEvents)
             .where(and(
-                eq(executiveBriefArtifacts.executiveBriefId, brief.id),
-                eq(executiveBriefArtifacts.artifactType, 'PRIVATE_LEADERSHIP_PDF')
+                eq(auditEvents.tenantId, tenantId),
+                eq(auditEvents.eventType, AUDIT_EVENT_TYPES.EXECUTIVE_BRIEF_DELIVERED)
             ))
+            .orderBy(desc(auditEvents.createdAt))
             .limit(1);
 
-        return res.status(200).json({ brief, hasPdf: !!artifact });
+        const isDelivered = !!lastDeliveryEvent || brief.status === 'DELIVERED';
+
+        return res.status(200).json({
+            brief: {
+                ...brief,
+                // Override status with governance truth for UI
+                status: isDelivered ? 'DELIVERED' : (approval.approved ? 'APPROVED' : brief.status),
+                approvedAt: approval.approvedAt || brief.approvedAt,
+                approvedBy: approval.approvedBy || brief.approvedBy
+            },
+            hasPdf: !!artifact,
+            approval,
+            delivery: lastDeliveryEvent ? {
+                deliveredAt: lastDeliveryEvent.createdAt,
+                deliveredTo: (lastDeliveryEvent.metadata as any)?.deliveredTo
+            } : null
+        });
     } catch (error) {
         console.error('[ExecutiveBrief] Get error:', error);
         return res.status(500).json({
@@ -66,13 +150,28 @@ export const getExecutiveBrief = async (req: AuthRequest, res: Response) => {
 export const generateExecutiveBrief = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = req.params;
+        const force = req.query.force === 'true';
         const currentUser = req.user;
+        const isSuperAdmin = currentUser?.isInternal && currentUser?.role === 'superadmin';
+        const isForced = force && isSuperAdmin;
+
+        // 0. Schema Guard
+        const schemaGuard = await validateBriefModeSchema();
+        if (!schemaGuard.valid) {
+            console.error('[ExecutiveBrief] SCHEMA_MISMATCH:', schemaGuard.error);
+            return res.status(503).json({
+                error: 'SCHEMA_MISMATCH',
+                message: 'Database column mismatch detected.',
+                details: schemaGuard.error,
+                action: 'run migrations'
+            });
+        }
 
         if (!tenantId) {
             return res.status(400).json({ error: 'Tenant ID is required' });
         }
 
-        console.log(`[ExecutiveBrief] Generate request for tenantId=${tenantId}`);
+        console.log(`[ExecutiveBrief] Generate request for tenantId=${tenantId} (force=${force}, isSuperAdmin=${isSuperAdmin})`);
 
         // 1. Check if brief already exists
         const [existingBrief] = await db
@@ -81,7 +180,7 @@ export const generateExecutiveBrief = async (req: AuthRequest, res: Response) =>
             .where(eq(executiveBriefs.tenantId, tenantId))
             .limit(1);
 
-        if (existingBrief) {
+        if (existingBrief && !isForced) {
             if (existingBrief.status === 'APPROVED') {
                 return res.status(409).json({
                     error: 'EXECUTIVE_BRIEF_ALREADY_APPROVED',
@@ -110,7 +209,7 @@ export const generateExecutiveBrief = async (req: AuthRequest, res: Response) =>
         }
 
         // Check intake window state
-        if (tenant.intakeWindowState !== 'OPEN') {
+        if (tenant.intakeWindowState !== 'OPEN' && !isForced) {
             return res.status(404).json({
                 error: 'EXECUTIVE_BRIEF_NOT_READY',
                 message: 'Intake window must be OPEN to generate executive brief.',
@@ -164,35 +263,317 @@ export const generateExecutiveBrief = async (req: AuthRequest, res: Response) =>
             .from(intakeVectors)
             .where(eq(intakeVectors.tenantId, tenantId));
 
-        // 4. Generate synthesis
-        const synthesis = generateExecutiveBriefV0({
-            ownerIntake,
-            vectors,
-            tenantId
-        });
+        // 4. Execute canonical synthesis pipeline (EXEC-BRIEF-SYNTHESIS-PIPELINE-001)
+        const { executeSynthesisPipeline, SynthesisError } = await import('../services/executiveBriefSynthesis.service');
+        const { validateExecutiveBriefSynthesisOrThrow, logContractValidation } = await import('../services/executiveBriefValidation.service');
 
-        // 5. Create brief
-        const [newBrief] = await db
-            .insert(executiveBriefs)
-            .values({
+        let synthesis: any;
+        let pipelineResult: any;
+        try {
+            pipelineResult = await executeSynthesisPipeline(vectors as any, {
                 tenantId,
-                version: 'v0',
-                synthesis: synthesis.synthesis,
-                signals: synthesis.signals,
-                sources: synthesis.sources,
-                status: 'DRAFT'
-            })
-            .returning();
+                briefId: existingBrief?.id,
+                action: isForced ? 'regen' : 'generate'
+            });
 
-        console.log(`[ExecutiveBrief] Generated brief ${newBrief.id} for tenant ${tenantId}`);
+            // EXEC-BRIEF-VALIDATION-KIT-003: Validate contract before persistence
+            try {
+                validateExecutiveBriefSynthesisOrThrow(pipelineResult);
+                logContractValidation({
+                    tenantId,
+                    briefId: existingBrief?.id,
+                    action: isForced ? 'regen' : 'generate',
+                    result: 'pass',
+                    violations: 0,
+                    mode: 'EXECUTIVE_SYNTHESIS'
+                });
+            } catch (validationError) {
+                if (validationError instanceof SynthesisError && validationError.code === 'CONTRACT_VIOLATION') {
+                    const violations = validationError.details?.violations || [];
+                    logContractValidation({
+                        tenantId,
+                        briefId: existingBrief?.id,
+                        action: isForced ? 'regen' : 'generate',
+                        result: 'fail',
+                        violations: violations.length,
+                        mode: 'EXECUTIVE_SYNTHESIS'
+                    });
+                    return res.status(500).json({
+                        error: 'EXEC_BRIEF_CONTRACT_VIOLATION',
+                        message: 'Executive Brief synthesis failed contract validation',
+                        code: validationError.code,
+                        stage: validationError.stage,
+                        violations
+                    });
+                }
+                throw validationError;
+            }
 
-        return res.status(200).json({ brief: newBrief });
+            // Map new synthesis structure to canonical storage format
+            synthesis = {
+                synthesis: {
+                    ...pipelineResult, // Spread all fields including content and meta
+                    // Ensure top-level sections for UI are correctly mapped from content
+                    executiveSummary: pipelineResult.content.executiveSummary,
+                    operatingReality: pipelineResult.content.operatingReality,
+                    constraintLandscape: pipelineResult.content.constraintLandscape,
+                    blindSpotRisks: pipelineResult.content.blindSpotRisks,
+                    alignmentSignals: pipelineResult.content.alignmentSignals,
+
+                    // Legacy quality fields maintained for now
+                    signalQuality: pipelineResult.meta.signalQuality.status,
+                    assertionCount: pipelineResult.meta.signalQuality.assertionCount,
+                    targetCount: pipelineResult.meta.signalQuality.targetCount,
+                },
+                signals: {
+                    constraintConsensusLevel: 'MEDIUM' as const,
+                    executionRiskLevel: pipelineResult.topRisks.length >= 3 ? 'HIGH' as const : 'MEDIUM' as const,
+                    orgClarityScore: Math.round((pipelineResult.executiveAssertionBlock.length / 4) * 100)
+                },
+                sources: {
+                    snapshotId: null,
+                    intakeVectorIds: vectors.map(v => v.id)
+                },
+                verification: {
+                    required: false,
+                    missingSignals: []
+                }
+            };
+        } catch (error) {
+            if (error instanceof SynthesisError) {
+                console.error(`[ExecutiveBrief] Synthesis pipeline failed at ${error.stage}:`, error.message);
+
+                // EXEC-BRIEF-UI-ACCEPTANCE-005A: Handle INSUFFICIENT_SIGNAL as operator-actionable (not system fault)
+                if (error.code === 'INSUFFICIENT_SIGNAL') {
+                    // Extract signal count from error details if available (EXEC-BRIEF-SIGNAL-GATE-009A)
+                    const assertionCount = error.details?.signalCount || error.details?.assertionCount || error.details?.count || 0;
+                    const minRequired = error.details?.minRequired || 3;
+                    const targetCount = error.details?.targetCount || 4;
+
+                    // EXEC-BRIEF-SIGNAL-GATE-009: Log with rigid format for observability
+                    console.log(
+                        `[ExecutiveBriefSignalGate] ` +
+                        `tenantId=${tenantId} ` +
+                        `briefId=${existingBrief?.id || 'none'} ` +
+                        `action=${isForced ? 'regen' : 'generate'} ` +
+                        `result=fail ` +
+                        `assertionCount=${assertionCount} ` +
+                        `minRequired=${minRequired} ` +
+                        `targetCount=${targetCount}`
+                    );
+
+                    // Return 422 (Unprocessable Entity) with structured payload
+                    return sendBriefError(res, req, 422, {
+                        error: 'EXEC_BRIEF_INSUFFICIENT_SIGNAL',
+                        code: 'INSUFFICIENT_SIGNAL',
+                        stage: error.stage,
+                        message: error.message || `Insufficient signal to ${isForced ? 'regenerate' : 'generate'} Executive Brief`,
+                        tenantId,
+                        briefId: existingBrief?.id,
+                        assertionCount: error.details?.assertionCount || 0,
+                        minRequired: error.details?.minRequired || 3,
+                        targetCount: error.details?.targetCount || 4,
+                        details: {
+                            assertionCount: error.details?.assertionCount || 0,
+                            minRequired: error.details?.minRequired || 3,
+                            targetCount: error.details?.targetCount || 4,
+                            vectorCount: error.details?.vectorCount || vectors.length,
+                            factCount: error.details?.factCount,
+                            patternCount: error.details?.patternCount,
+                            invalidAssertions: error.details?.invalidAssertions,
+                            recommendation: error.details?.recommendation
+                        }
+                    });
+                }
+
+                // Other synthesis errors remain 400
+                return res.status(400).json({
+                    error: 'SYNTHESIS_FAILED',
+                    message: error.message,
+                    code: error.code,
+                    stage: error.stage,
+                    details: error.details
+                });
+            }
+            throw error;
+        }
+
+        // 5. Create or Update brief
+        let finalBrief;
+        const gatesBypassed = [];
+        if (isForced) {
+            if (tenant.intakeWindowState !== 'OPEN') gatesBypassed.push('intake_window');
+            if (existingBrief) gatesBypassed.push('existing_brief');
+
+            console.log(`[ExecutiveBriefRegen]
+tenantId=${tenantId}
+actor=superadmin
+force=true
+gatesBypassed=[${gatesBypassed.join(', ')}]
+regenMode=EXECUTIVE_SYNTHESIS`);
+
+            const [updatedBrief] = await db
+                .update(executiveBriefs)
+                .set({
+                    synthesis: synthesis.synthesis,
+                    signals: synthesis.signals,
+                    sources: synthesis.sources,
+                    // PRESERVE APPROVAL STATE (Ticket EXEC-BRIEF-GOVERNANCE-REALIGN-004)
+                    // Reset DELIVERED to DRAFT to allow PDF regeneration
+                    status: existingBrief?.status === 'APPROVED' ? 'APPROVED' : 'DRAFT',
+                    approvedBy: existingBrief?.approvedBy,
+                    approvedAt: existingBrief?.approvedAt,
+                    briefMode: 'EXECUTIVE_SYNTHESIS',
+                    updatedAt: new Date(),
+                    // We use any type here to support metadata if it exists in the schema/DB
+                    // or to bypass type errors if it's missing from the current Drizzle type
+                    ...({
+                        metadata: {
+                            ...(existingBrief?.metadata || {}),
+                            regenBy: currentUser?.userId,
+                            regenAt: new Date().toISOString(),
+                            regenReason: 'SA_FORCED_REGEN',
+                            originalStatus: existingBrief?.status
+                        }
+                    } as any)
+                })
+                .where(eq(executiveBriefs.tenantId, tenantId))
+                .returning();
+            finalBrief = updatedBrief;
+
+            // EXEC-BRIEF-PDF-GATE-SCHEMA-DRIFT-FORENSICS-020
+            // Reset delivery state: delete audit event to allow PDF regeneration
+            // Rationale: Regenerating synthesis invalidates previous delivery
+            await db
+                .delete(auditEvents)
+                .where(and(
+                    eq(auditEvents.tenantId, tenantId),
+                    eq(auditEvents.eventType, AUDIT_EVENT_TYPES.EXECUTIVE_BRIEF_DELIVERED)
+                ));
+
+            console.log(`[ExecutiveBrief] Cleared delivery audit events for tenant ${tenantId} after regeneration`);
+        } else {
+            const [newBrief] = await db
+                .insert(executiveBriefs)
+                .values({
+                    tenantId,
+                    version: 'v0',
+                    synthesis: synthesis.synthesis,
+                    signals: synthesis.signals,
+                    sources: synthesis.sources,
+                    status: 'DRAFT',
+                    briefMode: 'EXECUTIVE_SYNTHESIS'
+                })
+                .returning();
+            finalBrief = newBrief;
+        }
+
+        console.log(`[ExecutiveBrief] ${isForced ? 'Regenerated' : 'Generated'} brief ${finalBrief.id} for tenant ${tenantId}`);
+
+        // EXEC-BRIEF-SIGNAL-GATE-009A: Log low-signal pass
+        if (pipelineResult.signalQuality === 'LOW_SIGNAL') {
+            console.log(
+                `[ExecutiveBriefSignalGate] ` +
+                `tenantId=${tenantId} ` +
+                `briefId=${finalBrief.id} ` +
+                `result=pass_low_signal ` +
+                `assertionCount=${pipelineResult.assertionCount} ` +
+                `target=${pipelineResult.targetCount}`
+            );
+        }
+
+        return res.status(200).json({
+            brief: finalBrief,
+            // Pass metadata for UI observability
+            signalQuality: pipelineResult.signalQuality,
+            assertionCount: pipelineResult.assertionCount,
+            targetCount: pipelineResult.targetCount
+        });
     } catch (error) {
         console.error('[ExecutiveBrief] Generate error:', error);
         console.error('[ExecutiveBrief] Stack:', error instanceof Error ? error.stack : 'No stack trace');
         return res.status(500).json({
             error: 'Internal Server Error',
-            details: 'Failed to generate executive brief.'
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+};
+
+export const preflightRegenerateExecutiveBrief = async (req: AuthRequest, res: Response) => {
+    try {
+        const { tenantId } = req.params;
+
+        // 0. Schema Guard
+        const schemaGuard = await validateBriefModeSchema();
+        if (!schemaGuard.valid) {
+            console.error('[ExecutiveBrief] SCHEMA_MISMATCH:', schemaGuard.error);
+            return res.status(503).json({
+                error: 'SCHEMA_MISMATCH',
+                message: 'Database column mismatch detected.',
+                details: schemaGuard.error,
+                action: 'run migrations'
+            });
+        }
+
+        if (!tenantId) {
+            return res.status(400).json({ error: 'Tenant ID is required' });
+        }
+
+        // Check prerequisites
+        const [tenant] = await db
+            .select({
+                id: tenants.id,
+                intakeWindowState: tenants.intakeWindowState
+            })
+            .from(tenants)
+            .where(eq(tenants.id, tenantId))
+            .limit(1);
+
+        if (!tenant) {
+            return res.status(404).json({ error: 'Tenant not found' });
+        }
+
+        // Count intake vectors
+        const [vectorCount] = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(intakeVectors)
+            .where(eq(intakeVectors.tenantId, tenantId));
+
+        const totalVectors = Number(vectorCount?.count || 0);
+
+        // Check owner intake
+        const [ownerIntake] = await db
+            .select()
+            .from(intakes)
+            .where(and(
+                eq(intakes.tenantId, tenantId),
+                eq(intakes.role, 'owner'),
+                eq(intakes.status, 'completed')
+            ))
+            .limit(1);
+
+        const hasOwnerIntake = !!ownerIntake;
+
+        const gate3Met = totalVectors >= 1 && hasOwnerIntake;
+
+        return res.status(200).json({
+            canRegenerate: gate3Met,
+            reasons: !gate3Met ? [
+                !hasOwnerIntake ? 'Missing Owner Intake (must be COMPLETED)' : null,
+                totalVectors < 1 ? 'Missing Vectors (at least 1 required)' : null
+            ].filter(Boolean) : [],
+            prerequisites: {
+                hasVectors: totalVectors >= 1,
+                vectorCount: totalVectors,
+                hasOwnerIntake,
+                intakeWindowState: tenant.intakeWindowState
+            }
+        });
+    } catch (error) {
+        console.error('[ExecutiveBrief] Preflight error:', error);
+        return res.status(500).json({
+            error: 'Internal Server Error',
+            details: 'Failed to perform preflight check.'
         });
     }
 };
@@ -204,6 +585,18 @@ export const generateExecutiveBrief = async (req: AuthRequest, res: Response) =>
 export const approveExecutiveBrief = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = req.params;
+
+        // 0. Schema Guard
+        const schemaGuard = await validateBriefModeSchema();
+        if (!schemaGuard.valid) {
+            console.error('[ExecutiveBrief] SCHEMA_MISMATCH:', schemaGuard.error);
+            return res.status(503).json({
+                error: 'SCHEMA_MISMATCH',
+                message: 'Database column mismatch detected.',
+                details: schemaGuard.error,
+                action: 'run migrations'
+            });
+        }
         const currentUser = req.user;
 
         if (!tenantId) {
@@ -254,6 +647,22 @@ export const approveExecutiveBrief = async (req: AuthRequest, res: Response) => 
                     updatedAt: new Date()
                 })
                 .where(eq(executiveBriefs.id, brief.id));
+
+            // Mark Approval Governance Event
+            await tx.insert(auditEvents).values({
+                tenantId,
+                actorUserId: currentUser?.userId,
+                actorRole: currentUser?.role,
+                eventType: AUDIT_EVENT_TYPES.EXECUTIVE_BRIEF_APPROVED,
+                entityType: 'EXECUTIVE_BRIEF',
+                entityId: brief.id,
+                metadata: {
+                    approvedAt: new Date().toISOString(),
+                    approvedBy: currentUser?.userId,
+                    version: brief.version,
+                    briefMode: brief.briefMode
+                }
+            });
 
             // The intake window closure logic has been moved to a separate, explicit action.
             // This allows for more granular control and prevents accidental closure during brief approval.
@@ -313,10 +722,11 @@ export const approveExecutiveBrief = async (req: AuthRequest, res: Response) => 
 
 // --- REFACTORED SYNTHESIS ENGINE (NON-CREATIVE, TRUTH-PRESERVING) ---
 
-export function generateExecutiveBriefV0({ ownerIntake, vectors, tenantId }: {
+export function generateExecutiveBriefV0({ ownerIntake, vectors, tenantId, briefMode = 'EXECUTIVE_SYNTHESIS' }: {
     ownerIntake: any;
     vectors: any[];
     tenantId: string;
+    briefMode?: 'DIAGNOSTIC_RAW' | 'EXECUTIVE_SYNTHESIS';
 }) {
     // Normalize vectors: de-duplicate and stable sort
     const normalizedVectors = stableSortVectors(deduplicateVectors(vectors));
@@ -325,8 +735,8 @@ export function generateExecutiveBriefV0({ ownerIntake, vectors, tenantId }: {
     const getBucket = (v: any, key: string) => v.metadata?.semanticBuckets?.[key] || '';
 
     // Aggregate truth buckets literally
-    const operatingReality = normalizedVectors.map(v => getBucket(v, 'operatingReality')).filter(Boolean).join('\n\n');
-    const alignmentSignals = normalizedVectors.map(v => getBucket(v, 'alignmentSignals')).filter(Boolean).join('\n\n');
+    let operatingReality = normalizedVectors.map(v => getBucket(v, 'operatingReality')).filter(Boolean).join('\n\n');
+    let alignmentSignals = normalizedVectors.map(v => getBucket(v, 'alignmentSignals')).filter(Boolean).join('\n\n');
     const riskSignals = normalizedVectors.map(v => getBucket(v, 'riskSignals')).filter(Boolean).join('\n\n');
     const readinessSignals = normalizedVectors.map(v => getBucket(v, 'readinessSignals')).filter(Boolean).join('\n\n');
 
@@ -341,21 +751,23 @@ export function generateExecutiveBriefV0({ ownerIntake, vectors, tenantId }: {
         return `**${v.roleLabel}:**\n${v.anticipatedBlindSpots}`;
     }).filter(Boolean).join('\n\n');
 
+    // --- FALLBACK LOGIC: If buckets are empty, construct from structured data ---
+    // This adheres to "Divergence Surfacing" and "Reflective" requirements (Phase 2)
+
+    if (!operatingReality) {
+        const executives = normalizedVectors.filter(v => v.roleType === 'EXECUTIVE');
+        const operational = normalizedVectors.filter(v => ['OPERATIONAL_LEAD', 'FACILITATOR', 'OTHER'].includes(v.roleType));
+
+        const execText = executives.map(v => `**${v.roleLabel} (Exec):**\n${v.perceivedConstraints || 'No constraints listed'}`).join('\n\n');
+        const opsText = operational.map(v => `**${v.roleLabel} (Ops):**\n${v.perceivedConstraints || 'No constraints listed'}`).join('\n\n');
+
+        operatingReality = `### Leadership Perception\n${execText || '_No executive inputs recorded._'}\n\n### Operational Reality\n${opsText || '_No operational inputs recorded._'}`;
+    }
+
     // Simple facts for summary
     const roleCount = normalizedVectors.length;
     const roleLabels = normalizedVectors.map(v => v.roleLabel).filter(Boolean).join(', ');
     const executiveSummary = `Strategic intake captured ${roleCount} organizational perspectives across established roles: ${roleLabels}. No summarization or rephrasing has been applied. Findings below represent raw stakeholder inputs.`;
-
-    // Generate synthesis sections (aligned with both legacy display and new contract)
-    const synthesis = {
-        executiveSummary,
-        operatingReality,
-        alignmentSignals,
-        riskSignals,
-        readinessSignals,
-        constraintLandscape: perceivedConstraints, // Legacy key mapped to truth
-        blindSpotRisks: anticipatedBlindSpots    // Legacy key mapped to truth
-    };
 
     // Derived signals (Heuristic-based)
     const constraintThemes = new Set(
@@ -376,6 +788,21 @@ export function generateExecutiveBriefV0({ ownerIntake, vectors, tenantId }: {
     ).length;
 
     const orgClarityScore = Math.round((vectorCompleteness / Math.max(normalizedVectors.length, 1)) * 100);
+
+    if (!alignmentSignals) {
+        alignmentSignals = `**Consensus Level:** ${consensusLevel}\n**Organization Clarity:** ${orgClarityScore}/100\n\n**Participating Roles:** ${roleLabels}`;
+    }
+
+    // Generate synthesis sections (aligned with both legacy display and new contract)
+    const synthesis = {
+        executiveSummary,
+        operatingReality,
+        alignmentSignals,
+        riskSignals,
+        readinessSignals,
+        constraintLandscape: perceivedConstraints, // Legacy key mapped to truth
+        blindSpotRisks: anticipatedBlindSpots    // Legacy key mapped to truth
+    };
 
     const signals = {
         constraintConsensusLevel: consensusLevel as 'LOW' | 'MEDIUM' | 'HIGH',
@@ -470,7 +897,9 @@ export const deliverExecutiveBrief = async (req: AuthRequest, res: Response) => 
             });
         }
 
-        if (brief.status !== 'APPROVED') {
+        // AUTHORITY RESOLUTION (Ticket EXEC-BRIEF-GOVERNANCE-REALIGN-004)
+        const approval = await resolveBriefApprovalStatus(tenantId);
+        if (!approval.approved) {
             return res.status(409).json({
                 error: 'EXECUTIVE_BRIEF_NOT_APPROVED',
                 message: 'Brief must be APPROVED before delivery.'
@@ -554,8 +983,14 @@ export const generateExecutiveBriefPDF = async (req: AuthRequest, res: Response)
         }
 
         const [brief] = await db.select().from(executiveBriefs).where(eq(executiveBriefs.tenantId, tenantId)).limit(1);
-        if (!brief || brief.status !== 'APPROVED') {
-            return res.status(409).json({ error: 'Brief must be APPROVED' });
+        if (!brief) {
+            return res.status(404).json({ error: 'BRIEF_NOT_FOUND' });
+        }
+
+        // AUTHORITY RESOLUTION (Ticket EXEC-BRIEF-GOVERNANCE-REALIGN-004)
+        const approval = await resolveBriefApprovalStatus(tenantId);
+        if (!approval.approved) {
+            return res.status(409).json({ error: 'Brief must be APPROVED before delivery artifact can be generated.' });
         }
 
         const [tenant] = await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1);
@@ -583,16 +1018,11 @@ export const downloadExecutiveBrief = async (req: AuthRequest, res: Response) =>
             return res.status(400).json({ error: 'Tenant ID is required' });
         }
 
-        // Get latest PDF artifact
-        const [artifact] = await db
-            .select()
-            .from(executiveBriefArtifacts)
-            .where(and(
-                eq(executiveBriefArtifacts.tenantId, tenantId),
-                eq(executiveBriefArtifacts.artifactType, 'PRIVATE_LEADERSHIP_PDF')
-            ))
-            .orderBy(desc(executiveBriefArtifacts.createdAt))
-            .limit(1);
+        // Get artifact (EXEC-BRIEF-PDF-ARTIFACT-CONSISTENCY-022)
+        const { selectLatestPdfArtifact } = await import('../services/pdf/executiveBriefArtifactSelector');
+        const artifact = await selectLatestPdfArtifact({
+            tenantId
+        }, 'download');
 
         if (!artifact) {
             return res.status(404).json({
@@ -600,6 +1030,115 @@ export const downloadExecutiveBrief = async (req: AuthRequest, res: Response) =>
                 message: 'No PDF artifact found for this executive brief.'
             });
         }
+
+        const [brief] = await db
+            .select()
+            .from(executiveBriefs)
+            .where(eq(executiveBriefs.id, artifact.executiveBriefId))
+            .limit(1);
+
+        if (!brief) {
+            return res.status(404).json({ error: 'BRIEF_NOT_FOUND' });
+        }
+
+        const targetMode = 'EXECUTIVE_SYNTHESIS';
+        const persistedMode = (brief as any).briefMode;
+
+        if (!persistedMode) {
+            console.error('[ExecutiveBrief] briefMode missing for brief:', brief.id);
+            return res.status(500).json({ error: 'INVALID_BRIEF_STATE', message: 'briefMode missing or invalid' });
+        }
+
+        const isEnforced = persistedMode !== targetMode;
+
+        const fsCallback = require('fs');
+        const fileExists = fsCallback.existsSync(artifact.filePath);
+
+        if (isEnforced || !fileExists) {
+            const action = isEnforced ? 'regen_stream (enforced)' : 'regen_stream (missing)';
+            console.log(`[ExecutiveBriefDelivery] tenantId=${tenantId} targetMode=${targetMode} briefMode=${persistedMode} enforced=${isEnforced} action=${action}`);
+
+            const [tenant] = await db
+                .select()
+                .from(tenants)
+                .where(eq(tenants.id, tenantId))
+                .limit(1);
+
+            if (tenant) {
+                try {
+                    // EXEC-BRIEF-VALIDATION-KIT-003B: Validate synthesis before rendering
+                    const { validateExecutiveBriefSynthesisOrThrow, logContractValidation } = await import('../services/executiveBriefValidation.service');
+                    const { SynthesisError } = await import('../services/executiveBriefSynthesis.service');
+
+                    // Reconstruct synthesis from stored brief (legacy format)
+                    // Note: This is a best-effort reconstruction since we store in legacy format
+                    // In the future, we should store ExecutiveBriefSynthesis directly
+                    const synthesis = {
+                        executiveAssertionBlock: [], // Cannot reconstruct from legacy format
+                        strategicSignalSummary: brief.synthesis?.executiveSummary || brief.synthesis?.operatingReality || '',
+                        topRisks: [], // Cannot reconstruct from legacy format
+                        leverageMoves: [], // Cannot reconstruct from legacy format
+                        operatingContextNotes: brief.synthesis?.operatingReality || ''
+                    };
+
+                    try {
+                        validateExecutiveBriefSynthesisOrThrow(synthesis);
+                        logContractValidation({
+                            tenantId,
+                            briefId: brief.id,
+                            action: 'download_regen',
+                            result: 'pass',
+                            violations: 0,
+                            mode: targetMode
+                        });
+                    } catch (validationError) {
+                        if (validationError instanceof SynthesisError && validationError.code === 'CONTRACT_VIOLATION') {
+                            const violations = validationError.details?.violations || [];
+                            logContractValidation({
+                                tenantId,
+                                briefId: brief.id,
+                                action: 'download_regen',
+                                result: 'fail',
+                                violations: violations.length,
+                                mode: targetMode
+                            });
+                            return res.status(500).json({
+                                error: 'EXEC_BRIEF_CONTRACT_VIOLATION',
+                                message: 'Executive Brief synthesis failed contract validation',
+                                code: validationError.code,
+                                stage: validationError.stage,
+                                violations
+                            });
+                        }
+                        throw validationError;
+                    }
+
+                    const { renderPrivateLeadershipBriefToPDF } = await import('../services/pdf/executiveBriefRenderer');
+                    const pdfBuffer = await renderPrivateLeadershipBriefToPDF(brief, tenant.name, targetMode);
+
+                    // Attempt to cache back to /tmp if it was just missing (and mode matched)
+                    if (!isEnforced && !fileExists) {
+                        try {
+                            const pathCallback = require('path');
+                            const dir = pathCallback.dirname(artifact.filePath);
+                            if (!fsCallback.existsSync(dir)) fsCallback.mkdirSync(dir, { recursive: true });
+                            fsCallback.writeFileSync(artifact.filePath, pdfBuffer as any);
+                        } catch (cacheErr) {
+                            console.warn('[ExecutiveBrief] Could not cache regenerated PDF:', cacheErr);
+                        }
+                    }
+
+                    res.setHeader('Content-Type', 'application/pdf');
+                    res.setHeader('Content-Disposition', `attachment; filename="${artifact.fileName}"`);
+                    return res.send(pdfBuffer);
+                } catch (renderErr) {
+                    console.error('[ExecutiveBrief] Regeneration failed:', renderErr);
+                    return res.status(500).json({ error: 'REGEN_FAILED', message: 'Failed to regenerate executive brief.' });
+                }
+            }
+        }
+
+        console.log(`[ExecutiveBriefDelivery] tenantId=${tenantId} targetMode=${targetMode} briefMode=${persistedMode} enforced=${isEnforced} action=stream_existing`);
 
         return res.download(artifact.filePath, artifact.fileName, (err) => {
             if (err) {

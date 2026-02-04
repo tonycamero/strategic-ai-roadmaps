@@ -1,0 +1,32 @@
+{
+  "id": "aeb1edcd-67cf-441e-88b8-375a78a83bc8",
+  "tenantId": "bae93021-b0c9-4c18-9ef3-3b8ac1e8469f",
+  "version": "v0",
+  "generatedAt": "2026-01-27T18:27:20.295Z",
+  "synthesis": {
+    "executiveSummary": "Strategic intake captured 2 organizational perspectives across established roles: Operations / Project Management, Sales / Growth. No summarization or rephrasing has been applied. Findings below represent raw stakeholder inputs.",
+    "operatingReality": "",
+    "alignmentSignals": "",
+    "riskSignals": "",
+    "readinessSignals": "",
+    "constraintLandscape": "**Operations / Project Management:**\nClient work flows through multiple teams with varying processes, which makes it difficult to maintain consistency, predict timelines, and manage capacity. Project tracking, handoffs, and reporting require frequent manual coordination, leading to context switching and reactive problem-solving rather than proactive optimization.\n\n**Sales / Growth:**\nNew business growth relies heavily on founder involvement and informal processes. Leads, opportunities, and deal status are tracked inconsistently, making it difficult to forecast pipeline health or identify where deals stall. Follow-up and qualification vary by salesperson or conversation, which creates uneven conversion and limited visibility into what’s working.",
+    "blindSpotRisks": "**Operations / Project Management:**\nMay not fully see how much inefficiency comes from inconsistent scopes, non-standard workflows, and partial tool adoption rather than team effort. Likely compensates manually for gaps that could be solved structurally with clearer systems and automation.\n\n**Sales / Growth:**\nMay over-attribute missed revenue to lead quality or market conditions rather than inconsistent qualification, follow-up, and handoff to account teams. Likely underestimates how much pipeline confidence and conversion lift could come from standardizing sales workflows and visibility."
+  },
+  "signals": {
+    "constraintConsensusLevel": "LOW",
+    "executionRiskLevel": "HIGH",
+    "orgClarityScore": 100
+  },
+  "sources": {
+    "snapshotId": null,
+    "intakeVectorIds": [
+      "f15c5df4-b41b-4a72-a4f7-3c2860b4ef7c",
+      "63776567-f298-44d8-acd6-ac1caa93a528"
+    ]
+  },
+  "status": "APPROVED",
+  "approvedBy": "6d4dc5a8-fe51-44f4-95ca-9b82b47ba3b9",
+  "approvedAt": "2026-01-27T18:27:38.000Z",
+  "createdAt": "2026-01-27T18:27:20.295Z",
+  "updatedAt": "2026-01-27T18:27:38.000Z"
+}

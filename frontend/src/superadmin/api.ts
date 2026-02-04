@@ -275,8 +275,11 @@ async function apiPost<T>(path: string, body?: unknown): Promise<T> {
       const errBody = await res.json();
       const message = errBody.message || errBody.error || `SuperAdmin API error: ${res.status}`;
       const error = new Error(message);
-      (error as any).errorCode = errBody.errorCode;
+      (error as any).errorCode = errBody.errorCode || errBody.code;
       (error as any).status = res.status;
+      // EXEC-BRIEF-UI-ACCEPTANCE-005: Preserve full error payload for structured handling
+      (error as any).errorPayload = errBody;
+      (error as any).requestId = errBody.requestId || res.headers.get('x-request-id');
       throw error;
     } catch (e) {
       if (e instanceof Error && (e as any).status) throw e;
@@ -447,8 +450,20 @@ export const superadminApi = {
   getExecutiveBrief: (tenantId: string) =>
     apiGet<{ brief: any; hasPdf?: boolean }>(`/firms/${tenantId}/executive-brief`),
 
-  generateExecutiveBrief: (tenantId: string) =>
-    apiPost<{ brief: any }>(`/firms/${tenantId}/executive-brief/generate`, {}),
+  generateExecutiveBrief: (tenantId: string, force: boolean = false) =>
+    apiPost<{
+      brief: any;
+      signalQuality?: 'SUFFICIENT' | 'LOW_SIGNAL';
+      assertionCount?: number;
+      targetCount?: number;
+    }>(`/firms/${tenantId}/executive-brief/generate${force ? '?force=true' : ''}`, {}),
+
+  preflightRegenerateExecutiveBrief: (tenantId: string) =>
+    apiPost<{
+      canRegenerate: boolean;
+      reasons: string[];
+      prerequisites: any;
+    }>(`/firms/${tenantId}/executive-brief/preflight`, {}),
 
   generateExecutiveBriefPDF: (tenantId: string) =>
     apiPost<{ success: boolean; message: string }>(`/firms/${tenantId}/executive-brief/generate-pdf`, {}),
@@ -572,4 +587,10 @@ export const superadminApi = {
 
   resendIntakeClarificationEmail: (clarificationId: string) =>
     apiPost<any>(`/clarifications/${clarificationId}/resend`, {}),
+
+  downloadExecutiveBrief: (tenantId: string, firmName?: string) => {
+    const safeName = firmName ? firmName.replace(/[^a-z0-9]/gi, '_') : 'firm';
+    const filename = `${safeName}_Executive_Brief_${new Date().toISOString().split('T')[0]}.pdf`;
+    return downloadFile(`/firms/${tenantId}/executive-brief/download`, filename);
+  },
 };

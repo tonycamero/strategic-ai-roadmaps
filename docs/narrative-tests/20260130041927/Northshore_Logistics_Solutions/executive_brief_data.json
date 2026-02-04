@@ -1,0 +1,40 @@
+{
+  "id": "78dbb16a-ab10-4e89-9170-27b2f57dc49e",
+  "tenantId": "883a5307-6354-49ad-b8e3-765ff64dc1af",
+  "version": "v0",
+  "generatedAt": "2026-01-19T07:37:11.639Z",
+  "synthesis": {
+    "executiveSummary": "Strategic intake captured 4 organizational perspectives across established roles: Business Owner, Ops, Sales Lead, Delivery Lead. No summarization or rephrasing has been applied. Findings below represent raw stakeholder inputs.",
+    "operatingReality": "Cross-functional handoffs (sales → ops, ops → billing, ops → customer comms)\n\nWaiting on approvals or confirmations that aren’t clearly owned\n\nExceptions management: edge cases trigger a lot of back-and-forth and “who decides” loops\n\nFollow-through after customer conversations (next steps get lost); CRM and task tracking aren’t consistently maintained. Email and ad-hoc chats become the source of truth, so we lose history and accountability. We also lack a reliable dashboard for operational status.; Internally: context gets lost during handoffs and escalations; updates live in people’s heads.\nWith clients: we sometimes over-promise or under-communicate because internal status isn’t clear in real time.; Exception handling and status clarification. We’re constantly stitching together info from different tools and conversations. The manual coordination overhead is too high.\n\nCross-functional handoffs (sales → ops, ops → billing, ops → customer comms)\n\nWaiting on approvals or confirmations that aren’t clearly owned\n\nExceptions management: edge cases trigger a lot of back-and-forth and “who decides” loops\n\nFollow-through after customer conversations (next steps get lost); CRM and task tracking aren’t consistently maintained. Email and ad-hoc chats become the source of truth, so we lose history and accountability. We also lack a reliable dashboard for operational status.; Internally: context gets lost during handoffs and escalations; updates live in people’s heads.\nWith clients: we sometimes over-promise or under-communicate because internal status isn’t clear in real time.; Exception handling and status clarification. We’re constantly stitching together info from different tools and conversations. The manual coordination overhead is too high.\n\nOperations relies on a mix of NetSuite for core financials and inventory, HubSpot for deal context coming from sales, Slack for day-to-day coordination, and spreadsheets for tracking job status, handoffs, and exceptions. Email is still used heavily for approvals and customer updates.\n\nLeads come in through referrals, outbound outreach, website forms, and events. A sales rep makes initial contact, qualifies the lead, and schedules a first call. After that, follow-up varies by rep. There’s no consistent next-step framework, and deals often stall unless someone actively pushes them.; Slow or inconsistent follow-up after the first call, unclear ownership for next steps, and lack of visibility into where deals actually stand. Prospects go cold or competitors move faster.\n\nAfter a contract is signed, details are handed off from sales to operations via email and Slack. Ops assigns the work and coordinates with delivery teams. Execution happens across multiple systems, and updates are shared manually. Projects complete, but visibility throughout the process is limited.; Slack for coordination, email for external communication, and spreadsheets for tracking milestones and exceptions. There’s no single project management system used consistently across teams.",
+    "alignmentSignals": "Build real operational visibility (one truth) across fulfillment, customer service, and sales so leaders can run the business without chasing updates. Standardize sales + onboarding so deals don’t stall after the first call and handoffs into delivery are clean. Scale capacity without adding chaos: reduce rework, tighten ownership, and prevent burnout while we grow.; Everyone knows the priorities, each workflow has clear owners, and status is visible without meetings. Work moves through predictable stages with fewer escalations. Leadership spends time improving the system, not acting as the system.; ,,; If I can step away for a week and the business keeps moving with clear ownership and no escalation pile-ups, this was worth it.\n\nBuild real operational visibility (one truth) across fulfillment, customer service, and sales so leaders can run the business without chasing updates. Standardize sales + onboarding so deals don’t stall after the first call and handoffs into delivery are clean. Scale capacity without adding chaos: reduce rework, tighten ownership, and prevent burnout while we grow.; Everyone knows the priorities, each workflow has clear owners, and status is visible without meetings. Work moves through predictable stages with fewer escalations. Leadership spends time improving the system, not acting as the system.; ,,; If I can step away for a week and the business keeps moving with clear ownership and no escalation pile-ups, this was worth it.",
+    "riskSignals": "Teams may resist if change feels imposed or unclear. If we roll out tooling before workflows and ownership are defined, trust erodes and people fall back to old habits.; medium\n\nTeams may resist if change feels imposed or unclear. If we roll out tooling before workflows and ownership are defined, trust erodes and people fall back to old habits.; medium",
+    "readinessSignals": "medium; 5; ,; ,",
+    "constraintLandscape": "Migrated from legacy intake - constraints not captured in structured format\n\nMigrated from legacy intake - constraints not captured in structured format\n\nMigrated from legacy intake - constraints not captured in structured format\n\nMigrated from legacy intake - constraints not captured in structured format",
+    "blindSpotRisks": ""
+  },
+  "signals": {
+    "constraintConsensusLevel": "HIGH",
+    "executionRiskLevel": "HIGH",
+    "orgClarityScore": 100,
+    "verification": {
+      "required": true,
+      "missingSignals": [
+        "blind_spots"
+      ]
+    }
+  },
+  "sources": {
+    "snapshotId": null,
+    "intakeVectorIds": [
+      "1ad26b78-0c2f-4048-a974-7e24af094172",
+      "fddb9513-d824-4c86-88e5-43ef2c5ef3bf",
+      "d7a2de05-0ac3-4a9b-be75-2aa24fd61c0b",
+      "aa25066b-386f-4b96-840d-20f0a74088a9"
+    ]
+  },
+  "status": "APPROVED",
+  "approvedBy": "6d4dc5a8-fe51-44f4-95ca-9b82b47ba3b9",
+  "approvedAt": "2026-01-19T07:40:30.000Z",
+  "createdAt": "2026-01-19T07:37:11.639Z",
+  "updatedAt": "2026-01-19T07:40:30.000Z"
+}

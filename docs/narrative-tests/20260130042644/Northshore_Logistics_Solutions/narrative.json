@@ -1,0 +1,29 @@
+{
+  "meta": {
+    "tenantName": "Northshore Logistics Solutions",
+    "generatedAt": "2026-01-30T04:26:47.978Z",
+    "dataSources": [
+      "Executive Brief",
+      "Diagnostic",
+      "Intakes (6)"
+    ]
+  },
+  "executiveSummary": "Strategic intake captured 4 organizational perspectives across established roles: Business Owner, Ops, Sales Lead, Delivery Lead. No summarization or rephrasing has been applied. Findings below represent raw stakeholder inputs.",
+  "coreTensions": [
+    "Capacity vs. Ambition: Current resource allocation conflicts with stated growth goals."
+  ],
+  "priorityFindings": [
+    "Diagnostic Complete: Operational baselines have been established."
+  ],
+  "impliedRisks": [
+    "Inaction Risk: Competitor adoption of AI efficiency tools may erode margin.",
+    "Execution Risk: Current organizational readiness is flagged as low maturity."
+  ],
+  "leveragePoints": [
+    "Quick Wins: Automating repetitive administrative tasks to free up leadership time."
+  ],
+  "framing": {
+    "languageMode": "cautionary",
+    "focusArea": "efficiency"
+  }
+}

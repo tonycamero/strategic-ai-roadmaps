@@ -1,0 +1,100 @@
+{
+    "vectors": [
+        {
+            "id": "vec-hv-001",
+            "tenantId": "tenant-high-variance",
+            "roleType": "owner",
+            "roleLabel": "CEO",
+            "perceivedConstraints": "Board pressure for profitability conflicts with growth investment needs",
+            "anticipatedBlindSpots": "Market timing risks not fully understood by leadership",
+            "metadata": {
+                "semanticBuckets": {
+                    "operatingReality": "High-growth SaaS company at inflection point",
+                    "alignmentSignals": "Leadership divided on growth vs profitability strategy",
+                    "riskSignals": "Burn rate accelerating faster than revenue growth",
+                    "readinessSignals": "Executive team experienced but stretched"
+                }
+            }
+        },
+        {
+            "id": "vec-hv-002",
+            "tenantId": "tenant-high-variance",
+            "roleType": "operations",
+            "roleLabel": "COO",
+            "perceivedConstraints": "Infrastructure cannot scale at current growth rate without major investment",
+            "anticipatedBlindSpots": "Technical debt compounding faster than engineering can address",
+            "metadata": {
+                "semanticBuckets": {
+                    "operatingReality": "Operations team firefighting daily incidents",
+                    "alignmentSignals": "Ops aligned with engineering but not with sales timelines",
+                    "riskSignals": "System outages increasing in frequency and duration",
+                    "readinessSignals": "Incident response protocols mature"
+                }
+            }
+        },
+        {
+            "id": "vec-hv-003",
+            "tenantId": "tenant-high-variance",
+            "roleType": "sales",
+            "roleLabel": "CRO",
+            "perceivedConstraints": "Sales cycle lengthening due to competitive pressure and economic headwinds",
+            "anticipatedBlindSpots": "Customer churn signals not reaching executive team fast enough",
+            "metadata": {
+                "semanticBuckets": {
+                    "operatingReality": "Sales team hitting quota but deal sizes shrinking",
+                    "alignmentSignals": "Sales and product roadmap misaligned on priorities",
+                    "riskSignals": "Win rate declining quarter over quarter",
+                    "readinessSignals": "Sales enablement program launched"
+                }
+            }
+        },
+        {
+            "id": "vec-hv-004",
+            "tenantId": "tenant-high-variance",
+            "roleType": "product",
+            "roleLabel": "CPO",
+            "perceivedConstraints": "Feature requests from enterprise customers conflict with product vision",
+            "anticipatedBlindSpots": "User experience degradation from technical debt not visible in metrics",
+            "metadata": {
+                "semanticBuckets": {
+                    "operatingReality": "Product roadmap under pressure from all stakeholders",
+                    "alignmentSignals": "Product vision clear but execution priorities fragmented",
+                    "riskSignals": "Engineering velocity declining due to complexity",
+                    "readinessSignals": "Design system and component library mature"
+                }
+            }
+        },
+        {
+            "id": "vec-hv-005",
+            "tenantId": "tenant-high-variance",
+            "roleType": "engineering",
+            "roleLabel": "CTO",
+            "perceivedConstraints": "Engineering capacity maxed out between feature delivery and infrastructure stability",
+            "anticipatedBlindSpots": "Security vulnerabilities accumulating in legacy codebase",
+            "metadata": {
+                "semanticBuckets": {
+                    "operatingReality": "Engineering team at capacity with high attrition risk",
+                    "alignmentSignals": "Engineering aligned on technical strategy but not on business priorities",
+                    "riskSignals": "Code quality declining under delivery pressure",
+                    "readinessSignals": "CI/CD pipeline and testing infrastructure solid"
+                }
+            }
+        },
+        {
+            "id": "vec-hv-006",
+            "tenantId": "tenant-high-variance",
+            "roleType": "customer_success",
+            "roleLabel": "VP Customer Success",
+            "perceivedConstraints": "Customer success team cannot scale to support growth without automation",
+            "anticipatedBlindSpots": "Early warning signals of churn buried in support ticket noise",
+            "metadata": {
+                "semanticBuckets": {
+                    "operatingReality": "CS team overwhelmed with reactive support",
+                    "alignmentSignals": "CS insights not reaching product or engineering teams",
+                    "riskSignals": "Customer satisfaction scores trending downward",
+                    "readinessSignals": "Customer health scoring model implemented"
+                }
+            }
+        }
+    ]
+}

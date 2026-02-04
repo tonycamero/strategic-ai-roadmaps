@@ -107,8 +107,8 @@ export async function sendInviteEmail(
   }
 
   const subject = roleLabel
-    ? `${inviterName} invited you to join ${companyName} as ${roleLabel}`
-    : `${inviterName} invited you to join ${companyName}`;
+    ? `${inviterName} has invited you to Strategic AI Roadmaps for ${companyName} as ${roleLabel}`
+    : `${inviterName} has invited you to Strategic AI Roadmaps for ${companyName}`;
 
   const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,

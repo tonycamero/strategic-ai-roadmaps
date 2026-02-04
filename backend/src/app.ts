@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import cors from 'cors';
+import { requestIdMiddleware } from './utils/requestId';
 
 import authRoutes from './routes/auth.routes';
 import inviteRoutes from './routes/invite.routes';
@@ -27,6 +28,7 @@ import internalEvidenceRoutes from './routes/internalEvidence.routes';
 import healthRoutes from './routes/health.routes';
 import agentRoutes from './routes/agent.routes';
 import agentConfigRoutes from './routes/agentConfig.routes';
+import clarificationRoutes from './routes/clarification.routes';
 
 const app = express();
 
@@ -44,6 +46,9 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+// EXEC-BRIEF-PREUI-SWEEP-004: Request ID correlation for observability
+app.use(requestIdMiddleware);
 
 // Serve uploads locally in dev/non-blob mode
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
@@ -89,6 +94,7 @@ app.use('/api/public/trustagent', trustagentRoutes); // Unified TrustAgent API
 app.use('/api/public/diagnostic', diagnosticRoutes); // Team Execution Diagnostic
 app.use('/api/tenants', tenantsRoutes); // Tenant business profile
 app.use('/api/tenants', onboardingRoutes); // Tenant onboarding progress
+app.use('/api/clarify', clarificationRoutes); // Stakeholder Clarification Form
 app.use('/api', leadRequestRoutes); // Public routes
 
 if (process.env.INTERNAL_EVIDENCE_TOKEN) {

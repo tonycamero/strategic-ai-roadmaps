@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-01-30T04:19:27.932Z",
+  "tenants": [
+    {
+      "id": "ec32ea41-d056-462d-8321-c2876c9af263",
+      "status": "error",
+      "name": "Cascade Climate Solutions",
+      "briefId": "7ef7d57d-a7cd-440f-b619-9d69bab0378e",
+      "error": "switchToPage(0) out of bounds, current buffer covers pages 2 to 2",
+      "stack": "Error: switchToPage(0) out of bounds, current buffer covers pages 2 to 2\n    at switchToPage (/home/tonycamero/code/Strategic_AI_Roadmaps/node_modules/.pnpm/pdfkit@0.15.2/node_modules/pdfkit/lib/document.js:186:13)\n    at <anonymous> (/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/services/pdf/executiveBriefRenderer.ts:79:13)\n    at new Promise (<anonymous>)\n    at renderPrivateLeadershipBriefToPDF (/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/services/pdf/executiveBriefRenderer.ts:13:10)\n    at runBatch (/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/scripts/run_narrative_batch.ts:94:37)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)"
+    },
+    {
+      "id": "bae93021-b0c9-4c18-9ef3-3b8ac1e8469f",
+      "status": "error",
+      "name": "Prairie Peak Marketing",
+      "briefId": "aeb1edcd-67cf-441e-88b8-375a78a83bc8",
+      "error": "switchToPage(0) out of bounds, current buffer covers pages 2 to 2",
+      "stack": "Error: switchToPage(0) out of bounds, current buffer covers pages 2 to 2\n    at switchToPage (/home/tonycamero/code/Strategic_AI_Roadmaps/node_modules/.pnpm/pdfkit@0.15.2/node_modules/pdfkit/lib/document.js:186:13)\n    at <anonymous> (/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/services/pdf/executiveBriefRenderer.ts:79:13)\n    at new Promise (<anonymous>)\n    at renderPrivateLeadershipBriefToPDF (/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/services/pdf/executiveBriefRenderer.ts:13:10)\n    at runBatch (/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/scripts/run_narrative_batch.ts:94:37)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)"
+    },
+    {
+      "id": "883a5307-6354-49ad-b8e3-765ff64dc1af",
+      "status": "error",
+      "name": "Northshore Logistics Solutions",
+      "briefId": "78dbb16a-ab10-4e89-9170-27b2f57dc49e",
+      "error": "switchToPage(0) out of bounds, current buffer covers pages 3 to 3",
+      "stack": "Error: switchToPage(0) out of bounds, current buffer covers pages 3 to 3\n    at switchToPage (/home/tonycamero/code/Strategic_AI_Roadmaps/node_modules/.pnpm/pdfkit@0.15.2/node_modules/pdfkit/lib/document.js:186:13)\n    at <anonymous> (/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/services/pdf/executiveBriefRenderer.ts:79:13)\n    at new Promise (<anonymous>)\n    at renderPrivateLeadershipBriefToPDF (/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/services/pdf/executiveBriefRenderer.ts:13:10)\n    at runBatch (/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/scripts/run_narrative_batch.ts:94:37)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)"
+    }
+  ],
+  "command": "/usr/bin/node /home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/scripts/run_narrative_batch.ts --tenant ec32ea41-d056-462d-8321-c2876c9af263 --tenant bae93021-b0c9-4c18-9ef3-3b8ac1e8469f --tenant 883a5307-6354-49ad-b8e3-765ff64dc1af"
+}

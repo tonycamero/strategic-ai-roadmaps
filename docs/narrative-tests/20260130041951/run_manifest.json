@@ -1,0 +1,39 @@
+{
+  "timestamp": "2026-01-30T04:19:51.601Z",
+  "tenants": [
+    {
+      "id": "ec32ea41-d056-462d-8321-c2876c9af263",
+      "status": "success",
+      "name": "Cascade Climate Solutions",
+      "briefId": "7ef7d57d-a7cd-440f-b619-9d69bab0378e",
+      "files": {
+        "json": "/home/tonycamero/code/Strategic_AI_Roadmaps/docs/narrative-tests/20260130041951/Cascade_Climate_Solutions/executive_brief_data.json",
+        "pdf": "/home/tonycamero/code/Strategic_AI_Roadmaps/docs/narrative-tests/20260130041951/Cascade_Climate_Solutions/executive_brief.pdf",
+        "pdfSize": 5133
+      }
+    },
+    {
+      "id": "bae93021-b0c9-4c18-9ef3-3b8ac1e8469f",
+      "status": "success",
+      "name": "Prairie Peak Marketing",
+      "briefId": "aeb1edcd-67cf-441e-88b8-375a78a83bc8",
+      "files": {
+        "json": "/home/tonycamero/code/Strategic_AI_Roadmaps/docs/narrative-tests/20260130041951/Prairie_Peak_Marketing/executive_brief_data.json",
+        "pdf": "/home/tonycamero/code/Strategic_AI_Roadmaps/docs/narrative-tests/20260130041951/Prairie_Peak_Marketing/executive_brief.pdf",
+        "pdfSize": 4171
+      }
+    },
+    {
+      "id": "883a5307-6354-49ad-b8e3-765ff64dc1af",
+      "status": "success",
+      "name": "Northshore Logistics Solutions",
+      "briefId": "78dbb16a-ab10-4e89-9170-27b2f57dc49e",
+      "files": {
+        "json": "/home/tonycamero/code/Strategic_AI_Roadmaps/docs/narrative-tests/20260130041951/Northshore_Logistics_Solutions/executive_brief_data.json",
+        "pdf": "/home/tonycamero/code/Strategic_AI_Roadmaps/docs/narrative-tests/20260130041951/Northshore_Logistics_Solutions/executive_brief.pdf",
+        "pdfSize": 5258
+      }
+    }
+  ],
+  "command": "/usr/bin/node /home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/scripts/run_narrative_batch.ts --tenant ec32ea41-d056-462d-8321-c2876c9af263 --tenant bae93021-b0c9-4c18-9ef3-3b8ac1e8469f --tenant 883a5307-6354-49ad-b8e3-765ff64dc1af"
+}

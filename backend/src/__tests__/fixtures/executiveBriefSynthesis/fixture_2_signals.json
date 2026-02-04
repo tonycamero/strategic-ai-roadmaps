@@ -1,0 +1,20 @@
+{
+    "vectors": [
+        {
+            "id": "vec-001",
+            "tenantId": "tenant-2-signals",
+            "roleType": "owner",
+            "roleLabel": "CEO",
+            "perceivedConstraints": "C1",
+            "anticipatedBlindSpots": "B1"
+        },
+        {
+            "id": "vec-002",
+            "tenantId": "tenant-2-signals",
+            "roleType": "operations",
+            "roleLabel": "COO",
+            "perceivedConstraints": "C2",
+            "anticipatedBlindSpots": "B2"
+        }
+    ]
+}

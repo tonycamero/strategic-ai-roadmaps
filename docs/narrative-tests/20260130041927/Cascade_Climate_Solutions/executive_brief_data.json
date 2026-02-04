@@ -1,0 +1,34 @@
+{
+  "id": "7ef7d57d-a7cd-440f-b619-9d69bab0378e",
+  "tenantId": "ec32ea41-d056-462d-8321-c2876c9af263",
+  "version": "v0",
+  "generatedAt": "2026-01-26T01:35:51.648Z",
+  "synthesis": {
+    "executiveSummary": "Strategic intake captured 4 organizational perspectives across established roles: General Manager/Supervisor, Operations / Dispatch, Sales / Estimation, Technician. No summarization or rephrasing has been applied. Findings below represent raw stakeholder inputs.",
+    "operatingReality": "",
+    "alignmentSignals": "",
+    "riskSignals": "",
+    "readinessSignals": "",
+    "constraintLandscape": "**General Manager/Supervisor:**\nResponsible for keeping day-to-day operations running smoothly while balancing competing priorities across dispatch, sales, and field teams. Lacks consistent, real-time visibility into performance, issues, and follow-up status, which makes it difficult to proactively manage problems before they escalate. Much of the role is spent coordinating, clarifying, and reacting rather than improving systems. bump\n\n**Operations / Dispatch:**\nScheduling and dispatch are largely manual and reactive. Incoming calls, same-day jobs, and schedule changes require constant coordination, which makes it hard to keep up during busy periods. There’s limited real-time visibility into technician availability, job status, and follow-up ownership, leading to frequent interruptions, context switching, and last-minute problem solving.\n\n**Sales / Estimation:**\nEstimates are created based on inbound demand, but follow-up is largely manual and inconsistent. When volume increases, it becomes difficult to track which estimates are still active, which need follow-up, and which have gone cold. There’s limited visibility into estimate aging and reasons jobs are lost, making it hard to improve close rates or prioritize the right opportunities.\n\n**Technician:**\nJob information and priorities are not always clear before arrival, which can lead to confusion, follow-up questions, or last-minute changes in the field. Technicians often become the point of contact for customer updates, timing questions, or clarification, which pulls focus away from completing the work efficiently.",
+    "blindSpotRisks": "**General Manager/Supervisor:**\nMay underestimate how much time is spent compensating for unclear ownership and missing automation. Likely believes issues are primarily people- or effort-related rather than system-design problems that could be addressed structurally.\n\n**Operations / Dispatch:**\nMay not see how much revenue is lost due to missed calls, delayed responses, or unworked estimates. Likely normalizes chaos as “just how busy days are” and underestimates how much mental load and firefighting could be eliminated with clearer systems and automation.\n\n**Sales / Estimation:**\nMay attribute lost deals to price or lead quality without seeing how much revenue is lost to delayed or missing follow-up. Likely underestimates how often estimates silently die without a clear “no,” and how automation could recover a meaningful portion of that revenue.\n\n**Technician:**\nMay not see how inconsistent intake, scheduling, and internal handoffs upstream create field-level friction. Likely views communication issues as “just part of the job,” without realizing how much time and energy could be reclaimed with clearer systems and proactive updates."
+  },
+  "signals": {
+    "constraintConsensusLevel": "LOW",
+    "executionRiskLevel": "HIGH",
+    "orgClarityScore": 100
+  },
+  "sources": {
+    "snapshotId": null,
+    "intakeVectorIds": [
+      "052b1216-a708-4dec-84dd-46fdda03405f",
+      "adf87f62-27ad-47d7-84a2-f8b2056b31f6",
+      "aa2f5adb-004b-4ecf-b9a5-afdb4ef34be1",
+      "20b61dc0-b274-4a4b-b41e-d031439fcfb4"
+    ]
+  },
+  "status": "DELIVERED",
+  "approvedBy": "6d4dc5a8-fe51-44f4-95ca-9b82b47ba3b9",
+  "approvedAt": "2026-01-26T01:36:28.000Z",
+  "createdAt": "2026-01-26T01:35:51.648Z",
+  "updatedAt": "2026-01-29T20:08:07.000Z"
+}

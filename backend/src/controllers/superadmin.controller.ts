@@ -39,6 +39,7 @@ import {
 import { generateSop01Outputs } from '../services/sop01Engine';
 import { persistSop01OutputsForTenant } from '../services/sop01Persistence';
 import { buildNormalizedIntakeContext } from '../services/intakeNormalizer';
+import { validateBriefModeSchema } from '../services/schemaGuard.service';
 
 const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 
@@ -2881,6 +2882,18 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
       });
     }
 
+    // 0b. Column Specific Guard (brief_mode)
+    const columnGuard = await validateBriefModeSchema();
+    if (!columnGuard.valid) {
+      console.error('[TruthProbe] SCHEMA_MISMATCH:', columnGuard.error);
+      return res.status(503).json({
+        error: 'SCHEMA_MISMATCH',
+        message: 'Database column mismatch detected.',
+        details: columnGuard.error,
+        action: 'run migrations'
+      });
+    }
+
     // 1. Tenant
     console.log('[TruthProbe] Step 1: Tenant');
     const [tenant] = await db
@@ -2926,7 +2939,37 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
       .limit(1);
 
     // META-TICKET v2: TruthProbe must expose raw APPROVED/DELIVERED states
-    const canonicalBriefStatus = brief?.status;
+    // Authority Resolution per EXEC-BRIEF-GOVERNANCE-REALIGN-004
+    let canonicalBriefStatus = brief?.status;
+
+    // 1. Check for Approval Event (Canonical Authority)
+    const [lastApprovalEvent] = await db
+      .select({ createdAt: auditEvents.createdAt })
+      .from(auditEvents)
+      .where(and(
+        eq(auditEvents.tenantId, tenant.id),
+        eq(auditEvents.eventType, AUDIT_EVENT_TYPES.EXECUTIVE_BRIEF_APPROVED)
+      ))
+      .orderBy(desc(auditEvents.createdAt))
+      .limit(1);
+
+    // 2. Resolve Status: If delivered audit exists, it's DELIVERED. 
+    // Otherwise if approved event or legacy field exists, it's APPROVED.
+    const [lastDeliveryEvent] = await db
+      .select()
+      .from(auditEvents)
+      .where(and(
+        eq(auditEvents.tenantId, tenant.id),
+        eq(auditEvents.eventType, AUDIT_EVENT_TYPES.EXECUTIVE_BRIEF_DELIVERED)
+      ))
+      .orderBy(desc(auditEvents.createdAt))
+      .limit(1);
+
+    if (lastDeliveryEvent) {
+      canonicalBriefStatus = 'DELIVERED';
+    } else if (lastApprovalEvent || brief?.status === 'APPROVED' || brief?.approvedAt) {
+      canonicalBriefStatus = 'APPROVED';
+    }
 
     // 3b. Delivery Audit (If Delivered)
     let deliveryAudit = null;

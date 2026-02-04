@@ -24,6 +24,7 @@ export function ExecutiveBriefPanel({ tenantId, onApproved }: ExecutiveBriefPane
             const response = await superadminApi.getExecutiveBrief(tenantId);
             setBrief(response.brief);
 
+            // Use logical status directly from API (governance truth)
             if (response.brief.status === 'DELIVERED') {
                 setState('DELIVERED');
             } else if (response.brief.status === 'APPROVED') {
@@ -34,7 +35,7 @@ export function ExecutiveBriefPanel({ tenantId, onApproved }: ExecutiveBriefPane
         } catch (err: any) {
             const errorMessage = err?.message || '';
 
-            if (err?.error === 'EXECUTIVE_BRIEF_NOT_READY') {
+            if (err?.error === 'EXECUTIVE_BRIEF_NOT_READY' || (err?.details && err.details.includes('vectors'))) {
                 setState('NOT_READY');
                 setPrerequisites(err?.prerequisites || {});
             } else if (err?.error === 'EXECUTIVE_BRIEF_NOT_FOUND' || errorMessage.includes('404')) {
@@ -88,6 +89,26 @@ export function ExecutiveBriefPanel({ tenantId, onApproved }: ExecutiveBriefPane
             } else {
                 setError(err?.message || 'Failed to approve executive brief');
             }
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleRegenerate = async () => {
+        if (!window.confirm("Regenerate brief? This will update the content while PRESERVING your current approval status. Continue?")) return;
+
+        try {
+            setActionLoading(true);
+            const response = await superadminApi.generateExecutiveBrief(tenantId, true);
+            setBrief(response.brief);
+            // Refresh state - logical status (APPROVED/DELIVERED) is preserved by backend
+            if (response.brief.status === 'DELIVERED') setState('DELIVERED');
+            else if (response.brief.status === 'APPROVED') setState('APPROVED');
+            else setState('DRAFT');
+
+        } catch (err: any) {
+            console.error('[ExecutiveBrief] Regenerate error:', err);
+            setError(err?.message || 'Failed to regenerate executive brief');
         } finally {
             setActionLoading(false);
         }
@@ -327,8 +348,8 @@ export function ExecutiveBriefPanel({ tenantId, onApproved }: ExecutiveBriefPane
                             </p>
                         </div>
                         <div className={`px-2 py-1 border text-[10px] font-bold rounded uppercase ${isDelivered
-                                ? 'bg-purple-900/20 border-purple-500/30 text-purple-400'
-                                : 'bg-green-900/20 border-green-500/30 text-green-400'
+                            ? 'bg-purple-900/20 border-purple-500/30 text-purple-400'
+                            : 'bg-green-900/20 border-green-500/30 text-green-400'
                             }`}>
                             {isDelivered ? 'Delivered' : 'Approved · Intake Closed'}
                         </div>
@@ -357,31 +378,50 @@ export function ExecutiveBriefPanel({ tenantId, onApproved }: ExecutiveBriefPane
                             </button>
                         </div>
 
-                        {/* ACTION BUTTON: Deliver Executive Brief */}
-                        {state === 'APPROVED' && (
-                            <button
-                                onClick={handleDeliver}
-                                disabled={actionLoading}
-                                className="px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest bg-purple-600 hover:bg-purple-500 text-white rounded-full transition-colors flex items-center gap-2"
-                            >
-                                {actionLoading ? (
-                                    <>
-                                        <svg className="animate-spin h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        Delivering...
-                                    </>
-                                ) : (
-                                    <>
-                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                        </svg>
-                                        Deliver to Client
-                                    </>
-                                )}
-                            </button>
-                        )}
+                        {/* ACTION BUTTONS: Deliver + Regenerate */}
+                        <div className="flex items-center gap-2">
+                            {(state === 'APPROVED' || state === 'DELIVERED') && (
+                                <button
+                                    onClick={handleRegenerate}
+                                    disabled={actionLoading}
+                                    className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-full transition-colors flex items-center gap-2"
+                                >
+                                    {actionLoading ? '...' : (
+                                        <>
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                            </svg>
+                                            Regen
+                                        </>
+                                    )}
+                                </button>
+                            )}
+
+                            {state === 'APPROVED' && (
+                                <button
+                                    onClick={handleDeliver}
+                                    disabled={actionLoading}
+                                    className="px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest bg-purple-600 hover:bg-purple-500 text-white rounded-full transition-colors flex items-center gap-2"
+                                >
+                                    {actionLoading ? (
+                                        <>
+                                            <svg className="animate-spin h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Delivering...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                            </svg>
+                                            Deliver to Client
+                                        </>
+                                    )}
+                                </button>
+                            )}
+                        </div>
                         {state === 'DELIVERED' && (
                             <div className="text-[10px] font-mono text-purple-400 flex items-center gap-1 opacity-70">
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

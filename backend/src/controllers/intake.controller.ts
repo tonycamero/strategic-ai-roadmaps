@@ -57,6 +57,29 @@ export async function submitIntake(req: AuthRequest, res: Response) {
       .limit(1);
 
     if (existing) {
+      // Resolve PENDING feedback on resubmit
+      const existingFeedback = (existing.coachingFeedback as any) || {};
+      let updatedFeedback = { ...existingFeedback };
+      let feedbackModified = false;
+
+      Object.keys(updatedFeedback).forEach(key => {
+        const item = updatedFeedback[key];
+        if (item.isFlagged || (item.requests && item.requests.some((r: any) => r.status === 'PENDING'))) {
+          item.isFlagged = false;
+          if (item.requests) {
+            item.requests.forEach((r: any) => {
+              if (r.status === 'PENDING') {
+                r.status = 'RESPONDED';
+                r.respondedAt = new Date().toISOString();
+                r.response = (answers as any)[key];
+                feedbackModified = true;
+              }
+            });
+          }
+          feedbackModified = true;
+        }
+      });
+
       await db
         .update(intakes)
         .set({
@@ -64,6 +87,7 @@ export async function submitIntake(req: AuthRequest, res: Response) {
           role,
           status: 'completed',
           completedAt: new Date(),
+          coachingFeedback: feedbackModified ? updatedFeedback : existing.coachingFeedback
         })
         .where(
           and(

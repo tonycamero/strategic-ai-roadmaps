@@ -1,0 +1,68 @@
+{
+    "vectors": [
+        {
+            "id": "vec-001",
+            "tenantId": "tenant-minimal",
+            "roleType": "owner",
+            "roleLabel": "CEO",
+            "perceivedConstraints": "Limited budget for Q1 initiatives",
+            "anticipatedBlindSpots": "Team capacity constraints not visible to leadership",
+            "metadata": {
+                "semanticBuckets": {
+                    "operatingReality": "Early-stage startup with constrained resources",
+                    "alignmentSignals": "Leadership team aligned on priorities",
+                    "riskSignals": "Cash runway concerns",
+                    "readinessSignals": "Core team in place"
+                }
+            }
+        },
+        {
+            "id": "vec-002",
+            "tenantId": "tenant-minimal",
+            "roleType": "operations",
+            "roleLabel": "COO",
+            "perceivedConstraints": "Process bottlenecks in fulfillment",
+            "anticipatedBlindSpots": "Customer feedback loop delays",
+            "metadata": {
+                "semanticBuckets": {
+                    "operatingReality": "Operations scaling challenges",
+                    "alignmentSignals": "Ops and product teams coordinating",
+                    "riskSignals": "System reliability gaps",
+                    "readinessSignals": "Process documentation complete"
+                }
+            }
+        },
+        {
+            "id": "vec-003",
+            "tenantId": "tenant-minimal",
+            "roleType": "sales",
+            "roleLabel": "VP Sales",
+            "perceivedConstraints": "CRM system limitations",
+            "anticipatedBlindSpots": "Pipeline visibility gaps",
+            "metadata": {
+                "semanticBuckets": {
+                    "operatingReality": "Sales team ramping up",
+                    "alignmentSignals": "Sales and marketing aligned",
+                    "riskSignals": "Lead quality inconsistent",
+                    "readinessSignals": "Sales playbook defined"
+                }
+            }
+        },
+        {
+            "id": "vec-004",
+            "tenantId": "tenant-minimal",
+            "roleType": "product",
+            "roleLabel": "Head of Product",
+            "perceivedConstraints": "Feature prioritization conflicts",
+            "anticipatedBlindSpots": "User research gaps",
+            "metadata": {
+                "semanticBuckets": {
+                    "operatingReality": "Product roadmap under pressure",
+                    "alignmentSignals": "Product vision clear",
+                    "riskSignals": "Technical debt accumulating",
+                    "readinessSignals": "Design system established"
+                }
+            }
+        }
+    ]
+}
