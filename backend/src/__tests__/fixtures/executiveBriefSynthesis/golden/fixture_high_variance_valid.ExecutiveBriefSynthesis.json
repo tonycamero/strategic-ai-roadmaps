@@ -1,0 +1,267 @@
+{
+  "content": {
+    "executiveSummary": "Decisions: prioritize execution focus, enforce operating standards, and instrument accountability.\n\nHigh-confidence signals confirm clear strategic direction. Cross-functional alignment is visible.",
+    "operatingReality": "Operating context defined by 6 organizational perspectives. Contextual understanding shapes execution strategy. Foundation for informed decision-making.\n\nThis dynamic is actively observed within CEO, COO, CPO, CRO, CTO, VP Customer Success workflows. Operational manifestations include: High-growth SaaS company at inflection point; Operations team firefighting daily incidents; Sales team hitting quota but deal sizes shrinking.\n\nThis creates execution drag through organizational structure and operational environment, contributing to resource inefficiency and coordination overhead.",
+    "constraintLandscape": "Structural constraints limit execution capacity across 6 organizational roles. Execution velocity constrained by structural factors. Resource allocation requires systematic review.\n\nThis dynamic is actively observed within CEO, COO, CPO, CRO, CTO, VP Customer Success workflows. Operational manifestations include: Board pressure for profitability conflicts with growth investment needs; Infrastructure cannot scale at current growth rate without major investment; Sales cycle lengthening due to competitive pressure and economic headwinds.\n\nThis creates execution drag through process dependencies and resource allocation patterns, contributing to resource inefficiency and coordination overhead.",
+    "blindSpotRisks": "Risk exposure identified across 6 operational domains with high recurrence. Unmitigated risks accumulate execution debt. Immediate attention required to prevent cascading failures.\n\nThis dynamic is actively observed within CEO, COO, CPO, CRO, CTO, VP Customer Success workflows. Operational manifestations include: Market timing risks not fully understood by leadership; Burn rate accelerating faster than revenue growth; Technical debt compounding faster than engineering can address.\n\nThis creates execution drag through operational blind spots and risk accumulation patterns, contributing to resource inefficiency and coordination overhead.",
+    "alignmentSignals": "Alignment signals detected across 6 roles with high consistency. Cross-functional alignment enables coordinated execution. Leverage point for strategic initiatives.\n\nThis dynamic is actively observed within CEO, COO, CPO, CRO, CTO, VP Customer Success workflows. Operational manifestations include: Leadership divided on growth vs profitability strategy; Ops aligned with engineering but not with sales timelines; Sales and product roadmap misaligned on priorities.\n\nThis creates execution drag through communication patterns and shared understanding indicators, contributing to resource inefficiency and coordination overhead.",
+    "sections": {
+      "EXEC_SUMMARY": [
+        "High-confidence signals confirm clear strategic direction. Cross-functional alignment is visible."
+      ],
+      "OPERATING_REALITY": [
+        "Operating context defined by 6 organizational perspectives. Contextual understanding shapes execution strategy. Foundation for informed decision-making.",
+        "This dynamic is actively observed within CEO, COO, CPO, CRO, CTO, VP Customer Success workflows. Operational manifestations include: High-growth SaaS company at inflection point; Operations team firefighting daily incidents; Sales team hitting quota but deal sizes shrinking.",
+        "This creates execution drag through organizational structure and operational environment, contributing to resource inefficiency and coordination overhead."
+      ],
+      "CONSTRAINT_LANDSCAPE": [
+        "Structural constraints limit execution capacity across 6 organizational roles. Execution velocity constrained by structural factors. Resource allocation requires systematic review.",
+        "This dynamic is actively observed within CEO, COO, CPO, CRO, CTO, VP Customer Success workflows. Operational manifestations include: Board pressure for profitability conflicts with growth investment needs; Infrastructure cannot scale at current growth rate without major investment; Sales cycle lengthening due to competitive pressure and economic headwinds.",
+        "This creates execution drag through process dependencies and resource allocation patterns, contributing to resource inefficiency and coordination overhead."
+      ],
+      "BLIND_SPOT_RISKS": [
+        "Risk exposure identified across 6 operational domains with high recurrence. Unmitigated risks accumulate execution debt. Immediate attention required to prevent cascading failures.",
+        "This dynamic is actively observed within CEO, COO, CPO, CRO, CTO, VP Customer Success workflows. Operational manifestations include: Market timing risks not fully understood by leadership; Burn rate accelerating faster than revenue growth; Technical debt compounding faster than engineering can address.",
+        "This creates execution drag through operational blind spots and risk accumulation patterns, contributing to resource inefficiency and coordination overhead."
+      ],
+      "ALIGNMENT_SIGNALS": [
+        "Alignment signals detected across 6 roles with high consistency. Cross-functional alignment enables coordinated execution. Leverage point for strategic initiatives.",
+        "This dynamic is actively observed within CEO, COO, CPO, CRO, CTO, VP Customer Success workflows. Operational manifestations include: Leadership divided on growth vs profitability strategy; Ops aligned with engineering but not with sales timelines; Sales and product roadmap misaligned on priorities.",
+        "This creates execution drag through communication patterns and shared understanding indicators, contributing to resource inefficiency and coordination overhead."
+      ]
+    }
+  },
+  "meta": {
+    "signalQuality": {
+      "status": "SUFFICIENT",
+      "assertionCount": 4,
+      "targetCount": 4
+    },
+    "sectionCoverage": {
+      "EXEC_SUMMARY": {
+        "count": 1,
+        "usedFallback": false
+      },
+      "OPERATING_REALITY": {
+        "count": 1,
+        "usedFallback": false
+      },
+      "CONSTRAINT_LANDSCAPE": {
+        "count": 1,
+        "usedFallback": false
+      },
+      "BLIND_SPOT_RISKS": {
+        "count": 1,
+        "usedFallback": false
+      },
+      "ALIGNMENT_SIGNALS": {
+        "count": 1,
+        "usedFallback": false
+      }
+    },
+    "contrastCoverage": {
+      "contrastAvailableBySection": {
+        "OPERATING_REALITY": true,
+        "CONSTRAINT_LANDSCAPE": true,
+        "BLIND_SPOT_RISKS": true,
+        "ALIGNMENT_SIGNALS": true
+      },
+      "contrastUsedBySection": {
+        "OPERATING_REALITY": true,
+        "CONSTRAINT_LANDSCAPE": true,
+        "BLIND_SPOT_RISKS": true,
+        "ALIGNMENT_SIGNALS": true
+      },
+      "highContrastCount": 4,
+      "threshold": 0.45
+    },
+    "elaboration": {
+      "elaborationApplied": true,
+      "elaboratedAssertionIds": [
+        "e8b19e27f7a2edd6",
+        "5f151a82ced92458",
+        "19e4a6314d208212",
+        "77578f8511ac42bc"
+      ],
+      "elaborationDepthBySection": {
+        "OPERATING_REALITY": 1,
+        "CONSTRAINT_LANDSCAPE": 1,
+        "BLIND_SPOT_RISKS": 1,
+        "ALIGNMENT_SIGNALS": 1
+      }
+    }
+  },
+  "executiveAssertionBlock": [
+    {
+      "id": "19e4a6314d208212",
+      "assertion": "Risk exposure identified across 6 operational domains with high recurrence.",
+      "evidence": [
+        "Market timing risks not fully understood by leadership",
+        "Burn rate accelerating faster than revenue growth",
+        "Technical debt compounding faster than engineering can address"
+      ],
+      "implication": "Unmitigated risks accumulate execution debt. Immediate attention required to prevent cascading failures.",
+      "constraint_signal": "Operational blind spots and risk accumulation patterns",
+      "primarySection": "BLIND_SPOT_RISKS",
+      "alignment_strength": "high",
+      "alignment_scope": "cross-role",
+      "confidence_score": 1,
+      "contrastScore": 0.7,
+      "source_refs": [
+        "b6e7988fc7931a95"
+      ],
+      "roles_observed": [
+        "CEO",
+        "COO",
+        "CPO",
+        "CRO",
+        "CTO",
+        "VP Customer Success"
+      ]
+    },
+    {
+      "id": "5f151a82ced92458",
+      "assertion": "Structural constraints limit execution capacity across 6 organizational roles.",
+      "evidence": [
+        "Board pressure for profitability conflicts with growth investment needs",
+        "Infrastructure cannot scale at current growth rate without major investment",
+        "Sales cycle lengthening due to competitive pressure and economic headwinds"
+      ],
+      "implication": "Execution velocity constrained by structural factors. Resource allocation requires systematic review.",
+      "constraint_signal": "Process dependencies and resource allocation patterns",
+      "primarySection": "CONSTRAINT_LANDSCAPE",
+      "alignment_strength": "high",
+      "alignment_scope": "cross-role",
+      "confidence_score": 1,
+      "contrastScore": 0.7,
+      "source_refs": [
+        "3fc6bd510ca31b1f"
+      ],
+      "roles_observed": [
+        "CEO",
+        "COO",
+        "CPO",
+        "CRO",
+        "CTO",
+        "VP Customer Success"
+      ]
+    },
+    {
+      "id": "77578f8511ac42bc",
+      "assertion": "Alignment signals detected across 6 roles with high consistency.",
+      "evidence": [
+        "Leadership divided on growth vs profitability strategy",
+        "Ops aligned with engineering but not with sales timelines",
+        "Sales and product roadmap misaligned on priorities"
+      ],
+      "implication": "Cross-functional alignment enables coordinated execution. Leverage point for strategic initiatives.",
+      "constraint_signal": "Communication patterns and shared understanding indicators",
+      "primarySection": "ALIGNMENT_SIGNALS",
+      "alignment_strength": "high",
+      "alignment_scope": "cross-role",
+      "confidence_score": 1,
+      "contrastScore": 0.45,
+      "source_refs": [
+        "8b29b47417ca163a"
+      ],
+      "roles_observed": [
+        "CEO",
+        "COO",
+        "CPO",
+        "CRO",
+        "CTO",
+        "VP Customer Success"
+      ]
+    },
+    {
+      "id": "e8b19e27f7a2edd6",
+      "assertion": "Operating context defined by 6 organizational perspectives.",
+      "evidence": [
+        "High-growth SaaS company at inflection point",
+        "Operations team firefighting daily incidents",
+        "Sales team hitting quota but deal sizes shrinking"
+      ],
+      "implication": "Contextual understanding shapes execution strategy. Foundation for informed decision-making.",
+      "constraint_signal": "Organizational structure and operational environment",
+      "primarySection": "OPERATING_REALITY",
+      "alignment_strength": "medium",
+      "alignment_scope": "cross-role",
+      "confidence_score": 1,
+      "contrastScore": 0.45,
+      "source_refs": [
+        "d6fcd21eca18b3f0"
+      ],
+      "roles_observed": [
+        "CEO",
+        "COO",
+        "CPO",
+        "CRO",
+        "CTO",
+        "VP Customer Success"
+      ]
+    }
+  ],
+  "topRisks": [
+    {
+      "id": "19e4a6314d208212",
+      "assertion": "Risk exposure identified across 6 operational domains with high recurrence.",
+      "evidence": [
+        "Market timing risks not fully understood by leadership",
+        "Burn rate accelerating faster than revenue growth",
+        "Technical debt compounding faster than engineering can address"
+      ],
+      "implication": "Unmitigated risks accumulate execution debt. Immediate attention required to prevent cascading failures.",
+      "constraint_signal": "Operational blind spots and risk accumulation patterns",
+      "primarySection": "BLIND_SPOT_RISKS",
+      "alignment_strength": "high",
+      "alignment_scope": "cross-role",
+      "confidence_score": 1,
+      "contrastScore": 0.7,
+      "source_refs": [
+        "b6e7988fc7931a95"
+      ],
+      "roles_observed": [
+        "CEO",
+        "COO",
+        "CPO",
+        "CRO",
+        "CTO",
+        "VP Customer Success"
+      ]
+    }
+  ],
+  "leverageMoves": [
+    {
+      "id": "77578f8511ac42bc",
+      "assertion": "Alignment signals detected across 6 roles with high consistency.",
+      "evidence": [
+        "Leadership divided on growth vs profitability strategy",
+        "Ops aligned with engineering but not with sales timelines",
+        "Sales and product roadmap misaligned on priorities"
+      ],
+      "implication": "Cross-functional alignment enables coordinated execution. Leverage point for strategic initiatives.",
+      "constraint_signal": "Communication patterns and shared understanding indicators",
+      "primarySection": "ALIGNMENT_SIGNALS",
+      "alignment_strength": "high",
+      "alignment_scope": "cross-role",
+      "confidence_score": 1,
+      "contrastScore": 0.45,
+      "source_refs": [
+        "8b29b47417ca163a"
+      ],
+      "roles_observed": [
+        "CEO",
+        "COO",
+        "CPO",
+        "CRO",
+        "CTO",
+        "VP Customer Success"
+      ]
+    }
+  ],
+  "strategicSignalSummary": "High-confidence signals confirm clear strategic direction. Cross-functional alignment is visible.",
+  "operatingContextNotes": "Operating context defined by 6 organizational perspectives. Contextual understanding shapes execution strategy. Foundation for informed decision-making.\n\nThis dynamic is actively observed within CEO, COO, CPO, CRO, CTO, VP Customer Success workflows. Operational manifestations include: High-growth SaaS company at inflection point; Operations team firefighting daily incidents; Sales team hitting quota but deal sizes shrinking.\n\nThis creates execution drag through organizational structure and operational environment, contributing to resource inefficiency and coordination overhead.",
+  "signalQuality": "SUFFICIENT",
+  "assertionCount": 4,
+  "targetCount": 4
+}

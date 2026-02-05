@@ -1,0 +1,147 @@
+{
+    "run": {
+        "sha": "880f5b3d3df744fd88cec5a7723c4e195d6ddc97",
+        "branch": "main",
+        "timestamp": "2026-01-30T07:59:00Z",
+        "env": "local",
+        "debug": true
+    },
+    "tenants": [
+        {
+            "name": "Cascade Climate Solutions",
+            "id": "ec32ea41-d056-462d-8321-c28dd603f90b"
+        },
+        {
+            "name": "Northshore Logistics Solutions",
+            "id": "4a59f515-886f-4c8d-8a5e-26f63f53835e"
+        },
+        {
+            "name": "Prairie Peak Marketing",
+            "id": "8962f36f-8a03-4eab-8c9a-4c2f7b1d9c4e"
+        }
+    ],
+    "assertions": {
+        "A1": {
+            "verdict": "PASS",
+            "type": "STATIC",
+            "evidence": [
+                "backend/src/controllers/executiveBrief.controller.ts:258-267 (Intake closure removed from approval transaction)"
+            ]
+        },
+        "A2": {
+            "verdict": "PASS",
+            "type": "STATIC",
+            "evidence": [
+                "backend/src/controllers/superadmin.controller.ts:594 (closeIntakeWindow explicit action)",
+                "backend/src/controllers/superadmin.controller.ts:2952 (lockIntake explicit action)"
+            ]
+        },
+        "A3": {
+            "verdict": "PASS",
+            "type": "STATIC",
+            "evidence": [
+                "backend/src/controllers/intake.controller.ts:23-38 (Intake submission gate only checks intakeWindowState)"
+            ]
+        },
+        "B1": {
+            "verdict": "PASS",
+            "type": "STATIC",
+            "evidence": [
+                "backend/src/controllers/superadmin.controller.ts:261 (updateIntakeCoaching persists to intakes.coachingFeedback)"
+            ]
+        },
+        "B2": {
+            "verdict": "FAIL",
+            "type": "STATIC",
+            "evidence": [
+                "backend/src/db/schema.ts:85-95 (intakes.coachingFeedback used for Consultant Feedback lacks enforced requestedBy, requestedFrom, requestedAt fields)"
+            ]
+        },
+        "B3": {
+            "verdict": "FAIL",
+            "type": "STATIC",
+            "evidence": [
+                "backend/src/services/gate.service.ts:66 (canGenerateDiagnostics ignores the state of coachingFeedback/Consultant Feedback)"
+            ]
+        },
+        "C1": {
+            "verdict": "PASS",
+            "type": "STATIC",
+            "evidence": [
+                "backend/src/controllers/executiveBrief.controller.ts:515 (Delivery only updates status, no auto-triggering/advance)"
+            ]
+        },
+        "C2": {
+            "verdict": "PASS",
+            "type": "STATIC",
+            "evidence": [
+                "backend/src/controllers/executiveBrief.controller.ts:456 (deliverExecutiveBrief does not update intakeWindowState)"
+            ]
+        },
+        "D1": {
+            "verdict": "PASS",
+            "type": "STATIC",
+            "evidence": [
+                "backend/src/services/gate.service.ts:71 (checks for intakeClosedAt, which is set alongside snapshotId)"
+            ]
+        },
+        "D2": {
+            "verdict": "PASS",
+            "type": "STATIC",
+            "evidence": [
+                "backend/src/controllers/intake.controller.ts:31 (Input blocked if intakeWindowState === CLOSED)"
+            ]
+        },
+        "D3": {
+            "verdict": "FAIL",
+            "type": "STATIC",
+            "evidence": [
+                "backend/src/db/schema.ts:8-48 (tenants table lacks operator.confirmedSufficiency flag)",
+                "backend/src/services/gate.service.ts:66 (Gate check does not verify operator sufficiency affirmation)"
+            ]
+        },
+        "E1": {
+            "verdict": "PASS",
+            "type": "STATIC",
+            "evidence": [
+                "backend/src/controllers/superadmin.controller.ts:2603 (getTruthProbe is read-only)"
+            ]
+        },
+        "E2": {
+            "verdict": "PASS",
+            "type": "STATIC",
+            "evidence": [
+                "backend/src/controllers/superadmin.controller.ts:2859 (sufficiencyHint is independent of windowState)"
+            ]
+        },
+        "F1": {
+            "verdict": "FAIL",
+            "type": "STATIC",
+            "evidence": [
+                "backend/src/controllers/executiveBrief.controller.ts:302 (API returns intakeWindowState: 'CLOSED' misleadingly on approval)"
+            ]
+        },
+        "F2": {
+            "verdict": "FAIL",
+            "type": "STATIC",
+            "evidence": [
+                "frontend/src/superadmin/pages/SuperAdminControlPlaneFirmDetailPage.tsx:1442 (Brief hidden if status != APPROVED/DELIVERED/REVIEWED)",
+                "frontend/src/superadmin/pages/SuperAdminControlPlaneFirmDetailPage.tsx:1468 (Diagnostic hidden if brief status not ready)"
+            ]
+        },
+        "G1": {
+            "verdict": "PASS",
+            "type": "STATIC",
+            "evidence": [
+                "Logic analysis: All state transitions (Lock, Generate, Deliver) are manual controller actions triggered by requests."
+            ]
+        },
+        "G2": {
+            "verdict": "PASS",
+            "type": "STATIC",
+            "evidence": [
+                "Logic analysis: No background automation or scheduled transitions detected in the codebase."
+            ]
+        }
+    }
+}

@@ -2,9 +2,9 @@
 import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { db } from '../db';
-import { executiveBriefArtifacts, users } from '../db/schema';
+import { executiveBriefArtifacts, users, intakeVectors, executiveBriefs } from '../db/schema';
 import { renderPrivateLeadershipBriefToPDF } from './pdf/executiveBriefRenderer';
 import { sendEmail } from './email.service';
 
@@ -55,8 +55,14 @@ export class ExecBriefPDFRenderFailedError extends Error {
 // CONFIG
 // ============================================================================
 
-const PDF_STORAGE_DIR =
-  process.env.PDF_STORAGE_PATH || path.join(process.cwd(), 'uploads', 'executive-briefs');
+const getPdfStorageDir = () => {
+  if (process.env.NETLIFY === "true") {
+    return path.join('/tmp', 'uploads', 'executive-briefs');
+  }
+  return process.env.PDF_STORAGE_PATH || path.join(process.cwd(), 'uploads', 'executive-briefs');
+};
+
+const PDF_STORAGE_DIR = getPdfStorageDir();
 
 // Default to true now that implementation is complete
 const ENABLE_EXEC_BRIEF_PDF_DELIVERY = true;
@@ -75,10 +81,12 @@ function calculateChecksum(buffer: Buffer): string {
   return crypto.createHash('sha256').update(buffer as any).digest('hex');
 }
 
-function formatFileName(firmName: string): string {
-  const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+function formatFileName(firmName: string, timestamp?: Date): string {
+  const date = (timestamp || new Date()).toISOString().split('T')[0]; // YYYY-MM-DD
   const safeFirmName = (firmName || 'Firm').replace(/[^a-zA-Z0-9]/g, '_');
-  return `${safeFirmName}_Executive_Brief_${date}.pdf`;
+  // EXEC-BRIEF-PDF-STALE-PERSIST-024E: Add random suffix to prevent path conflicts
+  const randomSuffix = Math.random().toString(36).substring(2, 5).toUpperCase();
+  return `${safeFirmName}_Executive_Brief_${date}_${randomSuffix}.pdf`;
 }
 
 // Persist artifact record + write PDF to disk
@@ -187,52 +195,213 @@ async function emailPrivateBriefToLead(args: {
  * If shouldEmail is true (default), it will send/resend the email.
  */
 export async function generateAndDeliverPrivateBriefPDF(brief: any, tenant: any, shouldEmail: boolean = true): Promise<{ deliveredTo?: string } | void> {
-  console.log(`[PDF] Starting private brief delivery for brief=${brief?.id} tenant=${tenant?.id} email=${shouldEmail}`);
+  const targetMode = 'EXECUTIVE_SYNTHESIS';
+  const persistedMode = brief?.briefMode;
 
-  // STEP 1: Check for existing immutable artifact
-  const [existingArtifact] = await db
-    .select()
-    .from(executiveBriefArtifacts)
-    .where(
-      and(
-        eq(executiveBriefArtifacts.executiveBriefId, brief.id),
-        eq(executiveBriefArtifacts.tenantId, tenant.id)
-      )
-    )
-    .limit(1);
+  if (!persistedMode) {
+    throw new Error('[ExecutiveBriefDelivery] briefMode missing or invalid');
+  }
+
+  const isEnforced = persistedMode !== targetMode;
+  console.log(`[ExecutiveBriefDelivery] tenantId=${tenant.id} targetMode=${targetMode} briefMode=${persistedMode} enforced=${isEnforced}`);
+
+  // STEP 1: Check for existing immutable artifact (EXEC-BRIEF-PDF-ARTIFACT-CONSISTENCY-022)
+  const { selectLatestPdfArtifact } = await import('./pdf/executiveBriefArtifactSelector');
+  const existingArtifact = await selectLatestPdfArtifact({
+    tenantId: tenant.id,
+    briefId: brief.id
+  }, 'generate');
 
   let artifact = existingArtifact;
   let pdfBuffer: Buffer;
+  let action: 'stream_existing' | 'regen_stream' | 'regen_attach' = 'stream_existing';
 
-  if (existingArtifact?.isImmutable) {
-    console.log(`[PDF] Artifact exists (immutable=true). Checking file integrity...`);
+  // STALE ARTIFACT INVALIDATION (EXEC-BRIEF-PDF-ARTIFACT-CONSISTENCY-022)
+  // If brief was regenerated AFTER artifact was created, artifact is stale
+  const briefStamp = brief.updatedAt || brief.generatedAt || new Date(0);
+  const artifactStamp = existingArtifact?.createdAt || new Date(0);
+
+  const { isMirrorNarrativeEnabled } = await import('./executiveBriefSynthesis.service');
+  const needsMirror = isMirrorNarrativeEnabled();
+  const hasMirror = brief.synthesis?.content?.isMirrorNarrative === true;
+  const isMissingMirror = needsMirror && !hasMirror;
+
+  const isStale = (existingArtifact && artifactStamp < briefStamp) || isMissingMirror;
+
+  if (isStale) {
+    console.log(
+      `[PDF_STALE] briefUpdatedAt=${briefStamp.toISOString()} ` +
+      `artifactCreatedAt=${artifactStamp.toISOString()} ` +
+      `isMissingMirror=${isMissingMirror} => regenerate=true`
+    );
+  }
+
+  // If enforced OR no artifact OR stale artifact, we MUST regenerate
+  if (isEnforced || !existingArtifact || isStale) {
+    action = shouldEmail ? 'regen_attach' : 'regen_stream';
     try {
-      // Load the file into buffer for potential emailing
+      console.log(`[PDF] Mode mismatch or missing artifact. Regenerating in ${targetMode}...`);
+
+
+      // EXEC-BRIEF-PDF-CONTRACT-VIOLATION-023: Resolve canonical synthesis
+      // If brief.synthesis is missing required fields (content/meta), regenerate it
+      const { validateExecutiveBriefSynthesisOrThrow, logContractValidation } = await import('./executiveBriefValidation.service');
+      const { SynthesisError, executeSynthesisPipeline } = await import('./executiveBriefSynthesis.service');
+
+      let canonicalSynthesis: any = brief.synthesis;
+      let synthesisSource = 'existing';
+
+      // Check if synthesis has required fields (content + meta)
+      const hasRequiredFields = canonicalSynthesis?.content && canonicalSynthesis?.meta;
+
+      if (!hasRequiredFields) {
+        console.log(`[PDF_CANON] briefId=${brief.id} synthesis missing required fields, regenerating...`);
+        synthesisSource = 'regen_pipeline';
+
+        // Fetch intake vectors for this tenant to regenerate synthesis
+        const vectors = await db
+          .select()
+          .from(intakeVectors)
+          .where(eq(intakeVectors.tenantId, tenant.id));
+
+        if (vectors.length === 0) {
+          throw new Error(`[PDF_CANON] No intake vectors found for tenant ${tenant.id}, cannot regenerate synthesis`);
+        }
+
+        // Regenerate synthesis using the same pipeline as normal generation
+        canonicalSynthesis = await executeSynthesisPipeline(vectors as any, {
+          tenantId: tenant.id,
+          briefId: brief.id,
+          action: 'pdf_regen'
+        });
+
+        // Persist regenerated synthesis back to brief
+        await db
+          .update(executiveBriefs)
+          .set({
+            synthesis: canonicalSynthesis as any,
+            updatedAt: new Date()
+          })
+          .where(eq(executiveBriefs.id, brief.id));
+
+        // Update brief object for renderer
+        brief.synthesis = canonicalSynthesis;
+
+        console.log(`[PDF_CANON] briefId=${brief.id} synthesis regenerated and persisted`);
+      } else {
+        console.log(`[PDF_CANON] briefId=${brief.id} using existing synthesis (has content+meta)`);
+      }
+
+      try {
+        validateExecutiveBriefSynthesisOrThrow(canonicalSynthesis, {
+          tenantId: tenant.id,
+          briefId: brief.id,
+          briefMode: brief.briefMode,
+          targetMode
+        });
+        logContractValidation({
+          tenantId: tenant.id,
+          briefId: brief.id,
+          action: shouldEmail ? 'deliver_regen' : 'deliver_existing',
+          result: 'pass',
+          violations: 0,
+          mode: targetMode
+        });
+      } catch (validationError) {
+        if (validationError instanceof SynthesisError && validationError.code === 'CONTRACT_VIOLATION') {
+          const violations = validationError.details?.violations || [];
+          logContractValidation({
+            tenantId: tenant.id,
+            briefId: brief.id,
+            action: shouldEmail ? 'deliver_regen' : 'deliver_existing',
+            result: 'fail',
+            violations: violations.length,
+            mode: targetMode
+          });
+          // Re-throw with contract violation details for controller to handle
+          throw validationError;
+        }
+        throw validationError;
+      }
+
+      // EXEC-BRIEF-PDF-ARTIFACT-CONSISTENCY-022: Define timestamp for NEW artifact
+      const artifactCreatedAt = new Date();
+
+      // EXEC-BRIEF-PDF-MIRROR-RENDER-025: Diagnostic log to understand synthesis structure
+      console.log("[PDF_MODE]", {
+        targetMode,
+        briefMode: brief.briefMode,
+        hasSynthesis: !!brief.synthesis,
+        isMirrorNarrative: !!(brief.synthesis as any)?.content?.isMirrorNarrative,
+        hasEvidenceSections: !!(brief.synthesis as any)?.content?.evidenceSections,
+        synthesisKeys: brief.synthesis ? Object.keys(brief.synthesis) : [],
+        hasContentSections: !!(brief.synthesis as any)?.content?.sections,
+        contentSectionsKeys: (brief.synthesis as any)?.content?.sections ? Object.keys((brief.synthesis as any).content.sections) : [],
+      });
+
+      // Render PDF with the timestamp it will be persisted with
+      pdfBuffer = await renderPrivateLeadershipBriefToPDF(brief, tenant.name, targetMode, artifactCreatedAt);
+
+      // EXEC-BRIEF-PDF-STALE-PERSIST-024B: Always persist when stale or missing
+      // If we don't have an artifact OR it's stale, persist a new one
+      if (!existingArtifact || isStale) {
+        // EXEC-BRIEF-PDF-STALE-PERSIST-024C: Delete old artifact first to avoid unique constraint violation
+        if (isStale && existingArtifact) {
+          console.log(`[PDF] Deleting stale artifact ${existingArtifact.id} before persisting new one`);
+
+          // Delete physical file first
+          try {
+            await fs.unlink(existingArtifact.filePath);
+            console.log(`[PDF] Deleted stale file: ${existingArtifact.filePath}`);
+          } catch (error) {
+            // File might not exist, that's okay
+            if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+              console.warn(`[PDF] Failed to delete stale file: ${error}`);
+            }
+          }
+
+          // Then delete DB row
+          await db
+            .delete(executiveBriefArtifacts)
+            .where(eq(executiveBriefArtifacts.id, existingArtifact.id));
+        }
+
+        const fileName = formatFileName(tenant.name, artifactCreatedAt);
+        artifact = await persistPDFArtifact({
+          executiveBriefId: brief.id,
+          tenantId: tenant.id,
+          pdfBuffer,
+          fileName,
+        });
+        console.log(`[PDF] Persisted new artifact ${artifact.id} (${isStale ? 'stale_replaced' : 'first_time'})`);
+      } else {
+        // We have an artifact but it might be diagnostic. 
+        // We use the transient buffer for delivery but don't overwrite the diagnostic record yet
+        // as per Record Mutation Policy (unless we decided to upsert a separate one).
+        console.log('[PDF] Transiently using regenerated executive PDF for delivery.');
+      }
+    } catch (error) {
+      throw new ExecBriefPDFRenderFailedError(brief.id, error as Error);
+    }
+  } else {
+    // Standard path: Use existing artifact
+    console.log(`[PDF] Artifact exists and mode matches. Checking file integrity...`);
+    try {
       pdfBuffer = await fs.readFile(existingArtifact.filePath);
+      action = 'stream_existing';
+      console.log(
+        `[PDF_FRESH] briefUpdatedAt=${briefStamp.toISOString()} ` +
+        `artifactCreatedAt=${artifactStamp.toISOString()} => regenerate=false (streaming existing)`
+      );
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         throw new ExecBriefArtifactNotFoundError(existingArtifact.id, existingArtifact.filePath);
       }
       throw error;
     }
-  } else {
-    // STEP 2: Render PDF
-    try {
-      console.log('[PDF] Rendering PDF...');
-      pdfBuffer = await renderPrivateLeadershipBriefToPDF(brief, tenant.name);
-    } catch (error) {
-      throw new ExecBriefPDFRenderFailedError(brief.id, error as Error);
-    }
-
-    // STEP 3: Persist artifact
-    const fileName = formatFileName(tenant.name);
-    artifact = await persistPDFArtifact({
-      executiveBriefId: brief.id,
-      tenantId: tenant.id,
-      pdfBuffer,
-      fileName,
-    });
   }
+
+  console.log(`[ExecutiveBriefDelivery] tenantId=${tenant.id} targetMode=${targetMode} briefMode=${persistedMode} enforced=${isEnforced} action=${action}`);
 
   // STEP 4: Email to Tenant Lead (Optional)
   if (shouldEmail) {
@@ -244,41 +413,48 @@ export async function generateAndDeliverPrivateBriefPDF(brief: any, tenant: any,
 
       await emailPrivateBriefToLead({ tenant, artifact, pdfBuffer });
 
-      // Update metadata to reflect success
-      const currentMetadata = (artifact.metadata as any) || {};
-      await db
-        .update(executiveBriefArtifacts)
-        .set({
-          metadata: {
-            ...currentMetadata,
-            emailedTo: deliveredTo,
-            emailedAt: new Date().toISOString(),
-            deliveryStatus: 'sent',
-          },
-        })
-        .where(eq(executiveBriefArtifacts.id, artifact.id));
+      // Update metadata to reflect success (if we have an artifact record)
+      if (artifact) {
+        const currentMetadata = (artifact.metadata as any) || {};
+        await db
+          .update(executiveBriefArtifacts)
+          .set({
+            metadata: {
+              ...currentMetadata,
+              emailedTo: deliveredTo,
+              emailedAt: new Date().toISOString(),
+              deliveryStatus: 'sent',
+              deliveredMode: targetMode,
+              enforcedMode: isEnforced,
+              originalBriefMode: persistedMode
+            },
+          })
+          .where(eq(executiveBriefArtifacts.id, artifact.id));
+      }
 
       console.log(`[PDF] Delivery complete for brief ${brief.id}`);
       return { deliveredTo };
     } catch (error) {
-      // Email failed, artifact persisted
-      const currentMetadata = (artifact.metadata as any) || {};
-      await db
-        .update(executiveBriefArtifacts)
-        .set({
-          metadata: {
-            ...currentMetadata,
-            deliveryStatus: 'failed',
-            retryCount: (currentMetadata.retryCount || 0) + 1,
-          },
-        })
-        .where(eq(executiveBriefArtifacts.id, artifact.id));
+      // Email failed
+      if (artifact) {
+        const currentMetadata = (artifact.metadata as any) || {};
+        await db
+          .update(executiveBriefArtifacts)
+          .set({
+            metadata: {
+              ...currentMetadata,
+              deliveryStatus: 'failed',
+              retryCount: (currentMetadata.retryCount || 0) + 1,
+            },
+          })
+          .where(eq(executiveBriefArtifacts.id, artifact.id));
+      }
 
-      console.error('[PDF] Email send failed, artifact persisted for retry:', error);
+      console.error('[PDF] Email send failed:', error);
       throw new ExecBriefEmailSendFailedError(tenant?.ownerEmail || 'unknown', error as Error);
     }
   } else {
-    console.log(`[PDF] Generated artifact ${artifact.id} (email skipped).`);
+    console.log(`[PDF] Generated/Resolved artifact ${artifact?.id} (email skipped).`);
   }
 }
 

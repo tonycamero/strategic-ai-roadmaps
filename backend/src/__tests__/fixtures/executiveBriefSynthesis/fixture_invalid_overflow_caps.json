@@ -1,0 +1,12 @@
+{
+    "vectors": [
+        {
+            "id": "vec-overflow-001",
+            "tenantId": "tenant-overflow",
+            "roleType": "owner",
+            "roleLabel": "CEO",
+            "perceivedConstraints": "Constraint A",
+            "anticipatedBlindSpots": "Risk A"
+        }
+    ]
+}

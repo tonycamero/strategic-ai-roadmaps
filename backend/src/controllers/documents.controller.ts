@@ -7,10 +7,31 @@ import path from 'path';
 import fs from 'fs/promises';
 import os from 'os';
 
-const UPLOADS_DIR = path.join(__dirname, '../../uploads');
+const getUploadsDir = () => {
+  if (process.env.NETLIFY === "true") {
+    return path.join('/tmp', 'uploads');
+  }
+  return path.join(__dirname, '../../uploads');
+};
 
-// Ensure uploads directory exists
-fs.mkdir(UPLOADS_DIR, { recursive: true }).catch(console.error);
+const UPLOADS_DIR = getUploadsDir();
+
+/**
+ * Lazy directory creation to avoid module-load crashes in serverless
+ */
+let _dirCreated = false;
+async function ensureUploadsDir() {
+  if (_dirCreated) return;
+  try {
+    const fsCallback = require('fs');
+    if (!fsCallback.existsSync(UPLOADS_DIR)) {
+      fsCallback.mkdirSync(UPLOADS_DIR, { recursive: true });
+    }
+    _dirCreated = true;
+  } catch (err) {
+    console.error(`[DocsController] Failed to ensure directory ${UPLOADS_DIR}:`, err);
+  }
+}
 
 // ============================================================================
 // GET /api/documents - List tenant documents
@@ -216,6 +237,7 @@ export async function downloadDocument(req: AuthRequest, res: Response) {
 
 export async function uploadDocument(req: AuthRequest, res: Response) {
   try {
+    await ensureUploadsDir();
     if (!req.user) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
@@ -284,6 +306,7 @@ export async function uploadDocument(req: AuthRequest, res: Response) {
 
 export async function deleteDocument(req: AuthRequest, res: Response) {
   try {
+    await ensureUploadsDir();
     if (!req.user) {
       return res.status(401).json({ error: 'Not authenticated' });
     }

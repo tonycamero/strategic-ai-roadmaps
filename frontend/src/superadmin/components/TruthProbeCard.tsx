@@ -5,8 +5,16 @@ export interface TruthProbeData {
     tenantName: string;
     tenantStatus: string;
 
-    intake: { exists: boolean; state: string | null; };
-    executiveBrief: { exists: boolean; state: string | null; };
+    intake: { exists: boolean; state: string | null; sufficiencyHint?: string; windowState?: string; };
+    executiveBrief: {
+        exists: boolean;
+        state: string | null;
+        deliveryAudit?: {
+            deliveredAt: string;
+            deliveredByRole?: string | null;
+            meta?: any;
+        };
+    };
     diagnostic: { exists: boolean; state: string | null; };
     discovery: { exists: boolean; state: string | null; };
     findings: { exists: boolean; state: string | null; };
@@ -20,6 +28,16 @@ export interface TruthProbeData {
         lastModeratedAt: string | null;
     };
     roadmap: { exists: boolean; state: string | null; };
+    operator: {
+        confirmedSufficiency: boolean;
+        confirmedSufficiencyAt: string | null;
+        confirmedSufficiencyBy: string | null;
+    };
+    consultantFeedback: {
+        pendingCount: number;
+        lastRequestedAt: string | null;
+        lastRespondedAt: string | null;
+    };
     readiness: {
         canRunDiscovery: boolean;
         canModerateTickets: boolean;
@@ -41,7 +59,7 @@ export function TruthProbeCard({ data }: TruthProbeCardProps) {
         let color = 'text-slate-500 bg-slate-900 border-slate-800'; // Default gray/missing
         if (exists) {
             color = 'text-blue-400 bg-blue-900/20 border-blue-800'; // Exists
-            if (state === 'completed' || state === 'APPROVED' || state === 'captured') {
+            if (state === 'completed' || state === 'APPROVED' || state === 'captured' || state === 'DELIVERED' || state === 'REVIEWED') {
                 color = 'text-emerald-400 bg-emerald-900/20 border-emerald-800'; // Success
             } else if (state === 'pending' || state === 'draft') {
                 color = 'text-amber-400 bg-amber-900/20 border-amber-800'; // In Progress
@@ -80,6 +98,13 @@ export function TruthProbeCard({ data }: TruthProbeCardProps) {
                 <StateBadge label="Diagnostic" exists={diagnostic.exists} state={diagnostic.state} />
                 <StateBadge label="Discovery" exists={discovery.exists} state={discovery.state} />
                 <StateBadge label="Roadmap" exists={roadmap.exists} state={roadmap.state} />
+
+                <div className="text-[10px] px-2 py-1 rounded border text-slate-400 bg-slate-900/50 border-slate-800 flex justify-between items-center">
+                    <span className="font-semibold uppercase tracking-wider">Operator</span>
+                    <span className={`font-mono ${data.operator.confirmedSufficiency ? 'text-emerald-500' : 'text-amber-500'}`}>
+                        {data.operator.confirmedSufficiency ? 'CONFIRMED' : 'PENDING'}
+                    </span>
+                </div>
 
                 <div className="text-[10px] px-2 py-1 rounded border text-slate-400 bg-slate-900/50 border-slate-800 flex justify-between items-center">
                     <span className="font-semibold uppercase tracking-wider">Tickets</span>

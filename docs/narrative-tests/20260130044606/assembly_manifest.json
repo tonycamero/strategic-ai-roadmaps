@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-01-30T04:46:06.070Z",
+  "tenants": [
+    {
+      "id": "ec32ea41-d056-462d-8321-c2876c9af263",
+      "status": "error",
+      "error": "Dominant Theme \"Operational Stabilization\" is weak (<3 matched keywords). Text lacks thematic coherence."
+    },
+    {
+      "id": "bae93021-b0c9-4c18-9ef3-3b8ac1e8469f",
+      "status": "error",
+      "error": "Dominant Theme \"Operational Stabilization\" is weak (<3 matched keywords). Text lacks thematic coherence."
+    },
+    {
+      "id": "883a5307-6354-49ad-b8e3-765ff64dc1af",
+      "status": "error",
+      "error": "Dominant Theme \"Operational Stabilization\" is weak (<3 matched keywords). Text lacks thematic coherence."
+    }
+  ]
+}

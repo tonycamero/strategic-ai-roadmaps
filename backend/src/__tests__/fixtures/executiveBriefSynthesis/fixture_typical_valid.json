@@ -1,0 +1,68 @@
+{
+    "vectors": [
+        {
+            "id": "vec-101",
+            "tenantId": "tenant-typical",
+            "roleType": "owner",
+            "roleLabel": "CEO",
+            "perceivedConstraints": "Budget constraints limiting expansion",
+            "anticipatedBlindSpots": "Market timing risks",
+            "metadata": {
+                "semanticBuckets": {
+                    "operatingReality": "Fast-growing SaaS company in competitive market",
+                    "alignmentSignals": "Leadership aligned on growth strategy",
+                    "riskSignals": "Customer churn trending upward",
+                    "readinessSignals": "Team ready for next phase"
+                }
+            }
+        },
+        {
+            "id": "vec-102",
+            "tenantId": "tenant-typical",
+            "roleType": "operations",
+            "roleLabel": "COO",
+            "perceivedConstraints": "Infrastructure scaling challenges",
+            "anticipatedBlindSpots": "Technical debt accumulation",
+            "metadata": {
+                "semanticBuckets": {
+                    "operatingReality": "Operations team stretched thin",
+                    "alignmentSignals": "Cross-functional collaboration improving",
+                    "riskSignals": "System reliability concerns",
+                    "readinessSignals": "Automation roadmap defined"
+                }
+            }
+        },
+        {
+            "id": "vec-103",
+            "tenantId": "tenant-typical",
+            "roleType": "sales",
+            "roleLabel": "VP Sales",
+            "perceivedConstraints": "Sales cycle lengthening",
+            "anticipatedBlindSpots": "Competitive positioning gaps",
+            "metadata": {
+                "semanticBuckets": {
+                    "operatingReality": "Sales team hitting targets but margins compressing",
+                    "alignmentSignals": "Sales and product teams coordinating well",
+                    "riskSignals": "Deal velocity slowing",
+                    "readinessSignals": "New sales playbook ready"
+                }
+            }
+        },
+        {
+            "id": "vec-104",
+            "tenantId": "tenant-typical",
+            "roleType": "product",
+            "roleLabel": "CPO",
+            "perceivedConstraints": "Feature prioritization conflicts",
+            "anticipatedBlindSpots": "User experience debt",
+            "metadata": {
+                "semanticBuckets": {
+                    "operatingReality": "Product roadmap under pressure",
+                    "alignmentSignals": "Product vision shared across teams",
+                    "riskSignals": "Engineering capacity constraints",
+                    "readinessSignals": "Design system mature"
+                }
+            }
+        }
+    ]
+}

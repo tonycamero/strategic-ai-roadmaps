@@ -1,0 +1,135 @@
+{
+  "meta": {
+    "tenantName": "Northshore Logistics Solutions",
+    "generatedAt": "2026-01-30T04:40:49.016Z",
+    "dataSources": [
+      "Executive Brief",
+      "Diagnostic",
+      "Intakes (6)"
+    ]
+  },
+  "evidence": {
+    "topConstraints": [
+      {
+        "role": "ops",
+        "quote": "The data itself is generally accurate in individual systems, but it’s not well organized or easily accessible across teams. Leadership doesn’t fully t",
+        "sourceId": "25768b0f-4cfc-4034-a81b-1334f9026b55"
+      },
+      {
+        "role": "ops",
+        "quote": "HubSpot and NetSuite don’t sync cleanly. Sales context doesn’t reliably carry into operations. Updates often require manual re-entry or Slack clarific",
+        "sourceId": "25768b0f-4cfc-4034-a81b-1334f9026b55"
+      },
+      {
+        "role": "delivery",
+        "quote": "After a contract is signed, details are handed off from sales to operations via email and Slack. Ops assigns the work and coordinates with delivery te",
+        "sourceId": "7178c59b-e772-4cc4-a351-b0cd51407e99"
+      }
+    ],
+    "topGoals": [
+      {
+        "role": "ops",
+        "quote": "Operations relies on a mix of NetSuite for core financials and inventory, HubSpot for deal context coming from sales, Slack for day-to-day coordinatio",
+        "sourceId": "25768b0f-4cfc-4034-a81b-1334f9026b55"
+      },
+      {
+        "role": "ops",
+        "quote": "HubSpot (CRM, partial adoption)\n\nNetSuite (ERP)\n\nSlack\n\nGoogle Workspace\n\nExcel / Google Sheets\n\nEmail (Outlook / Gmail)\n\nNo custom databases or inter",
+        "sourceId": "25768b0f-4cfc-4034-a81b-1334f9026b55"
+      },
+      {
+        "role": "sales",
+        "quote": "Standardizing follow-up, making sure nothing falls through the cracks, and helping reps know what to do next. I’m open to AI support, but I don’t want",
+        "sourceId": "a7e5af97-1112-4379-bc5f-083448b7680d"
+      },
+      {
+        "role": "owner",
+        "quote": "Usually ambiguity or waiting: they’re unsure who owns the next move, don’t want to be wrong, or are waiting for approval/confirmation. Less often it’s",
+        "sourceId": "0e535caa-7ebe-4ee0-b1c3-9472109958e9"
+      },
+      {
+        "role": "owner",
+        "quote": "Helping surface issues earlier, standardizing handoffs, and reducing the need for manual status checks—as long as it’s explainable and controllable.",
+        "sourceId": "0b92aa8a-02a2-4b2a-b71c-4ea1f643d3a8"
+      }
+    ],
+    "topFriction": [
+      {
+        "role": "ops",
+        "quote": "Tracking job status across teams, reconciling information between systems, updating customers, and clarifying ownership when issues arise. A lot of ti",
+        "sourceId": "25768b0f-4cfc-4034-a81b-1334f9026b55"
+      },
+      {
+        "role": "sales",
+        "quote": "Leads come in through referrals, outbound outreach, website forms, and events. A sales rep makes initial contact, qualifies the lead, and schedules a ",
+        "sourceId": "a7e5af97-1112-4379-bc5f-083448b7680d"
+      },
+      {
+        "role": "sales",
+        "quote": "Referrals convert best but are unpredictable. Outbound drives volume but requires heavy follow-up. Website leads are hit-or-miss. Events produce good ",
+        "sourceId": "a7e5af97-1112-4379-bc5f-083448b7680d"
+      },
+      {
+        "role": "sales",
+        "quote": "HubSpot is our primary CRM, but it’s not used consistently. Some reps log everything, others only update deals when prompted. Leadership doesn’t rely ",
+        "sourceId": "a7e5af97-1112-4379-bc5f-083448b7680d"
+      },
+      {
+        "role": "sales",
+        "quote": "Slow or inconsistent follow-up after the first call, unclear ownership for next steps, and lack of visibility into where deals actually stand. Prospec",
+        "sourceId": "a7e5af97-1112-4379-bc5f-083448b7680d"
+      }
+    ]
+  },
+  "fingerprint": {
+    "topKeywords": [
+      "updates",
+      "ownership",
+      "visibility",
+      "sales",
+      "status",
+      "when",
+      "after",
+      "deals",
+      "dont",
+      "often"
+    ],
+    "dominantTheme": "Operational Stabilization",
+    "maturityScore": 100
+  },
+  "priorityFindings": [
+    {
+      "label": "Critical Bottlebeck in updates",
+      "severity": "high",
+      "why": "Consistent reporting of friction (\"tracking\") indicates systemic drag.",
+      "evidenceIds": [
+        "25768b0f-4cfc-4034-a81b-1334f9026b55"
+      ]
+    },
+    {
+      "label": "Unaligned Growth Expectations",
+      "severity": "med",
+      "why": "Goals mentioning \"operations\" are unsupported by current resource availability.",
+      "evidenceIds": [
+        "25768b0f-4cfc-4034-a81b-1334f9026b55"
+      ]
+    }
+  ],
+  "executiveSummary": "Strategic analysis for Northshore Logistics Solutions indicates a primary focus on Operational Stabilization. Analysis of 13070 characters of stakeholder input reveals dominant patterns around \"updates, ownership, visibility\". While goals are set on ownership, operational realities presented by ops suggest immediate remediation is required.",
+  "coreTensions": [
+    "Tension between desired \"Operational Stabilization\" and reported friction around \"updates\".",
+    "Stakeholder ops reports \"Tracking job status across tea...\" which conflicts with goal of ownership."
+  ],
+  "impliedRisks": [
+    "Risk of \"Stalled Operational Stabilization\" if ops's concern (\"data\") is unaddressed.",
+    "Attrition risk due to high manual toil described by sales."
+  ],
+  "leveragePoints": [
+    "Unlock Operational Stabilization by automating the \"updates\" workflow identified by stakeholders.",
+    "Resolve ops's constraint to accelerate ownership."
+  ],
+  "framing": {
+    "languageMode": "direct",
+    "focusArea": "efficiency"
+  }
+}

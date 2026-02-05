@@ -1,0 +1,183 @@
+{
+  "meta": {
+    "tenantName": "Prairie Peak Marketing",
+    "generatedAt": "2026-01-30T04:50:59.488Z",
+    "dataSources": [
+      "Executive Brief",
+      "Diagnostic",
+      "Intakes (3)"
+    ]
+  },
+  "evidence": {
+    "topConstraints": [
+      {
+        "role": "owner",
+        "quote": "Account managers and project management are stretched thin, especially as client complexity increases. I’m also a bottleneck because key decisions and escalations still come to me.",
+        "sourceId": "e7d73d35-69c0-4def-b356-7677f1aeb363"
+      },
+      {
+        "role": "owner",
+        "quote": "Reviewing reports, resolving client escalations, approving scope changes, and prioritizing work across teams. These should be handled by systems and clear ownership, not me.",
+        "sourceId": "e7d73d35-69c0-4def-b356-7677f1aeb363"
+      },
+      {
+        "role": "owner",
+        "quote": "Inconsistent delivery and reporting across clients,Over-reliance on me for decisions and approvals,Limited visibility into capacity and profitability",
+        "sourceId": "e7d73d35-69c0-4def-b356-7677f1aeb363"
+      },
+      {
+        "role": "sales",
+        "quote": "We use a CRM to track leads and opportunities, but usage is inconsistent. Some follow-up and notes still live in email or personal systems, which limits visibility across the team.",
+        "sourceId": "2864c982-1000-40b2-93b4-91a5d5228218"
+      }
+    ],
+    "topGoals": [
+      {
+        "role": "owner",
+        "quote": "Improve delivery consistency and margins across all client accounts\n\nReduce my personal involvement in day-to-day execution and approvals\n\nBuild systems that allow us to grow without adding headcount at the same pace",
+        "sourceId": "e7d73d35-69c0-4def-b356-7677f1aeb363"
+      },
+      {
+        "role": "owner",
+        "quote": "Workflows would be consistent across accounts, reporting would be faster and more reliable, and teams would know exactly what’s expected without constant clarification. I’d be focused on strategy and growth, not reviewing details or fixing process gaps.",
+        "sourceId": "e7d73d35-69c0-4def-b356-7677f1aeb363"
+      },
+      {
+        "role": "owner",
+        "quote": "Operational inconsistency. Without tighter systems, growth increases complexity and stress instead of efficiency and profitability.",
+        "sourceId": "e7d73d35-69c0-4def-b356-7677f1aeb363"
+      },
+      {
+        "role": "owner",
+        "quote": "Disrupting client delivery or overwhelming the team during active campaigns. Changes need to be phased and practical to avoid churn or burnout.",
+        "sourceId": "e7d73d35-69c0-4def-b356-7677f1aeb363"
+      }
+    ],
+    "topFriction": [
+      {
+        "role": "owner",
+        "quote": "We’re busy and growing, but it feels harder than it should. Too much depends on specific people knowing things or stepping in at the right moment. I’m constantly context-switching between sales, accounts, and delivery, and I don’t always have a clear, real-time view of what’s actually happening across clients.",
+        "sourceId": "e7d73d35-69c0-4def-b356-7677f1aeb363"
+      },
+      {
+        "role": "owner",
+        "quote": "Handoffs between sales, account management, and delivery are the biggest slowdown. Scopes aren’t always translated cleanly into execution, and approvals or clarifications often come back to me instead of being resolved within the team.",
+        "sourceId": "e7d73d35-69c0-4def-b356-7677f1aeb363"
+      },
+      {
+        "role": "owner",
+        "quote": "The CRM and project management tools. They’re used, but not always consistently or in the same way, which makes it hard to trust the data.",
+        "sourceId": "e7d73d35-69c0-4def-b356-7677f1aeb363"
+      },
+      {
+        "role": "owner",
+        "quote": "Internally, expectations and priorities aren’t always clear between teams. With clients, updates and reporting sometimes take longer than they should, which creates unnecessary back-and-forth.",
+        "sourceId": "e7d73d35-69c0-4def-b356-7677f1aeb363"
+      },
+      {
+        "role": "owner",
+        "quote": "Reporting, status updates, and aligning teams around changing priorities. A lot of manual effort goes into pulling information together and making sure everyone is on the same page.",
+        "sourceId": "e7d73d35-69c0-4def-b356-7677f1aeb363"
+      }
+    ]
+  },
+  "fingerprint": {
+    "topKeywords": [
+      "across",
+      "project",
+      "delivery",
+      "client",
+      "reporting",
+      "management",
+      "always",
+      "teams",
+      "work",
+      "through"
+    ],
+    "themeSignals": [
+      {
+        "theme": "Efficiency & Optimization",
+        "matchedKeywords": [
+          "work"
+        ]
+      },
+      {
+        "theme": "Growth & Scaling",
+        "matchedKeywords": []
+      },
+      {
+        "theme": "Risk Mitigation",
+        "matchedKeywords": []
+      },
+      {
+        "theme": "Operational Stabilization",
+        "matchedKeywords": [
+          "client",
+          "management",
+          "work"
+        ]
+      }
+    ],
+    "dominantTheme": "Operational Stabilization",
+    "maturityScore": 53,
+    "maturityBreakdown": [
+      {
+        "category": "Organizational Self-Awareness",
+        "score": 60,
+        "reason": "3 stakeholders provided input context or constraints.",
+        "evidenceId": "e7d73d35-69c0-4def-b356-7677f1aeb363"
+      },
+      {
+        "category": "Diagnostic Baseline",
+        "score": 100,
+        "reason": "Diagnostic completed and baseline established."
+      },
+      {
+        "category": "Workflow Friction",
+        "score": 0,
+        "reason": "Explicit friction reported by 19 roles.",
+        "evidenceId": "e7d73d35-69c0-4def-b356-7677f1aeb363"
+      },
+      {
+        "category": "Strategic Alignment",
+        "score": 50,
+        "reason": "Goals diverge across input vectors."
+      }
+    ]
+  },
+  "priorityFindings": [
+    {
+      "label": "Critical Bottlebeck in client",
+      "severity": "high",
+      "why": "Stakeholder owner explicitly cites \"in at the right moment. I’m\" as a blocker to Operational Stabilization.",
+      "evidenceIds": [
+        "e7d73d35-69c0-4def-b356-7677f1aeb363"
+      ]
+    },
+    {
+      "label": "Unaligned Operational Stabilization Goals",
+      "severity": "med",
+      "why": "Desire for management is contradicted by resource constraints (\"in day-to-day execution and approvals Build\").",
+      "evidenceIds": [
+        "e7d73d35-69c0-4def-b356-7677f1aeb363"
+      ]
+    }
+  ],
+  "executiveSummary": "Analysis of Prairie Peak Marketing reveals a direct outlook focused on Operational Stabilization. Stakeholder input is dominated by terms like \"across, project, delivery\", referencing specific bottlenecks in reporting. Immediate focus must shift to resolving the \"across\" constraint to enable sustainable progress.",
+  "coreTensions": [
+    "Tension between mandate for \"Operational Stabilization\" and reported \"across\" reality.",
+    "While project focuses on client, owner signals infrastructure gap."
+  ],
+  "impliedRisks": [
+    "Risk of \"Stalled Operational Stabilization\" due to unaddressed constraint: \"...client complexity increases. I’m also a...\"",
+    "Operational fragility indicated by reliance on manual \"across\" tasks."
+  ],
+  "leveragePoints": [
+    "Accelerate Operational Stabilization by automating the \"client\" workflow.",
+    "Resolve barrier identified by owner to unlock across capacity."
+  ],
+  "framing": {
+    "languageMode": "direct",
+    "focusArea": "efficiency"
+  }
+}

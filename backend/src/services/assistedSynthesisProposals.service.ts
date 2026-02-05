@@ -88,9 +88,9 @@ export class AssistedSynthesisProposalsService {
         const rawNotes = parsedNotes.currentBusinessReality || '';
         const diagnosticOverview = diagnostic?.overview ? JSON.stringify(diagnostic.overview) : '';
         const diagnosticOpportunities = diagnostic?.aiOpportunities ? JSON.stringify(diagnostic.aiOpportunities) : '';
-        const execSummary = execBrief?.synthesis?.executiveSummary || '';
-        const operatingReality = execBrief?.synthesis?.operatingReality || '';
-        const constraints = execBrief?.synthesis?.constraintLandscape || '';
+        const execSummary = execBrief?.synthesis?.content?.executiveSummary || (execBrief?.synthesis as any)?.executiveSummary || '';
+        const operatingReality = execBrief?.synthesis?.content?.operatingReality || (execBrief?.synthesis as any)?.operatingReality || '';
+        const constraints = execBrief?.synthesis?.content?.constraintLandscape || (execBrief?.synthesis as any)?.constraintLandscape || '';
 
         // 4. Build strict LLM prompt
         const systemPrompt = `You are a findings extraction agent. Your job is to analyze discovery artifacts and propose ATOMIC, EVIDENCE-ANCHORED findings.

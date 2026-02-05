@@ -1,0 +1,193 @@
+{
+  "meta": {
+    "tenantName": "Northshore Logistics Solutions",
+    "generatedAt": "2026-01-30T04:53:24.462Z",
+    "dataSources": [
+      "Executive Brief",
+      "Diagnostic",
+      "Intakes (6)"
+    ]
+  },
+  "evidence": {
+    "topConstraints": [
+      {
+        "role": "sales",
+        "quote": "Leads come in through referrals, outbound outreach, website forms, and events. A sales rep makes initial contact, qualifies the lead, and schedules a first call. After that, follow-up varies by rep. There’s no consistent next-step framework, and deals often stall unless someone actively pushes them.",
+        "sourceId": "a7e5af97-1112-4379-bc5f-083448b7680d"
+      },
+      {
+        "role": "sales",
+        "quote": "Referrals convert best but are unpredictable. Outbound drives volume but requires heavy follow-up. Website leads are hit-or-miss. Events produce good leads but require fast response to convert.",
+        "sourceId": "a7e5af97-1112-4379-bc5f-083448b7680d"
+      }
+    ],
+    "topGoals": [
+      {
+        "role": "ops",
+        "quote": "Operations relies on a mix of NetSuite for core financials and inventory, HubSpot for deal context coming from sales, Slack for day-to-day coordination, and spreadsheets for tracking job status, handoffs, and exceptions. Email is still used heavily for approvals and customer updates.",
+        "sourceId": "25768b0f-4cfc-4034-a81b-1334f9026b55"
+      },
+      {
+        "role": "ops",
+        "quote": "HubSpot (CRM, partial adoption)\n\nNetSuite (ERP)\n\nSlack\n\nGoogle Workspace\n\nExcel / Google Sheets\n\nEmail (Outlook / Gmail)\n\nNo custom databases or internal tooling beyond that.",
+        "sourceId": "25768b0f-4cfc-4034-a81b-1334f9026b55"
+      },
+      {
+        "role": "sales",
+        "quote": "Standardizing follow-up, making sure nothing falls through the cracks, and helping reps know what to do next. I’m open to AI support, but I don’t want anything that feels robotic or opaque.",
+        "sourceId": "a7e5af97-1112-4379-bc5f-083448b7680d"
+      },
+      {
+        "role": "owner",
+        "quote": "Build real operational visibility (one truth) across fulfillment, customer service, and sales so leaders can run the business without chasing updates. Standardize sales + onboarding so deals don’t stall after the first call and handoffs into delivery are clean. Scale capacity without adding chaos: reduce rework, tighten ownership, and prevent burnout while we grow.",
+        "sourceId": "0e535caa-7ebe-4ee0-b1c3-9472109958e9"
+      },
+      {
+        "role": "owner",
+        "quote": "We don’t have stable, repeatable execution loops across sales, onboarding, and fulfillment. Without consistent ownership + visibility, growth increases noise and escalations instead of throughput.",
+        "sourceId": "0e535caa-7ebe-4ee0-b1c3-9472109958e9"
+      }
+    ],
+    "topFriction": [
+      {
+        "role": "ops",
+        "quote": "Tracking job status across teams, reconciling information between systems, updating customers, and clarifying ownership when issues arise. A lot of time is spent just confirming what’s true before acting.",
+        "sourceId": "25768b0f-4cfc-4034-a81b-1334f9026b55"
+      },
+      {
+        "role": "ops",
+        "quote": "The data itself is generally accurate in individual systems, but it’s not well organized or easily accessible across teams. Leadership doesn’t fully trust dashboards unless someone manually validates them.",
+        "sourceId": "25768b0f-4cfc-4034-a81b-1334f9026b55"
+      },
+      {
+        "role": "ops",
+        "quote": "HubSpot and NetSuite don’t sync cleanly. Sales context doesn’t reliably carry into operations. Updates often require manual re-entry or Slack clarification. There’s no consistent handoff structure.",
+        "sourceId": "25768b0f-4cfc-4034-a81b-1334f9026b55"
+      },
+      {
+        "role": "sales",
+        "quote": "HubSpot is our primary CRM, but it’s not used consistently. Some reps log everything, others only update deals when prompted. Leadership doesn’t rely on the data for forecasting.",
+        "sourceId": "a7e5af97-1112-4379-bc5f-083448b7680d"
+      },
+      {
+        "role": "sales",
+        "quote": "Slow or inconsistent follow-up after the first call, unclear ownership for next steps, and lack of visibility into where deals actually stand. Prospects go cold or competitors move faster.",
+        "sourceId": "a7e5af97-1112-4379-bc5f-083448b7680d"
+      }
+    ]
+  },
+  "fingerprint": {
+    "topKeywords": [
+      "updates",
+      "ownership",
+      "visibility",
+      "sales",
+      "status",
+      "after",
+      "deals",
+      "dont",
+      "often",
+      "teams",
+      "followup",
+      "handoffs",
+      "customer",
+      "unclear",
+      "ops",
+      "decisions",
+      "because",
+      "across",
+      "information",
+      "time"
+    ],
+    "themeSignals": [
+      {
+        "theme": "Efficiency & Optimization",
+        "matchedKeywords": [
+          "time"
+        ]
+      },
+      {
+        "theme": "Growth & Scaling",
+        "matchedKeywords": [
+          "sales",
+          "customer"
+        ]
+      },
+      {
+        "theme": "Risk Mitigation",
+        "matchedKeywords": []
+      },
+      {
+        "theme": "Operational Stabilization",
+        "matchedKeywords": [
+          "sales",
+          "teams",
+          "followup",
+          "customer",
+          "time"
+        ]
+      }
+    ],
+    "dominantTheme": "Operational Stabilization",
+    "maturityScore": 63,
+    "maturityBreakdown": [
+      {
+        "category": "Organizational Self-Awareness",
+        "score": 100,
+        "reason": "6 stakeholders provided input context or constraints.",
+        "evidenceId": "25768b0f-4cfc-4034-a81b-1334f9026b55"
+      },
+      {
+        "category": "Diagnostic Baseline",
+        "score": 100,
+        "reason": "Diagnostic completed and baseline established."
+      },
+      {
+        "category": "Workflow Friction",
+        "score": 0,
+        "reason": "Explicit friction reported by 55 roles.",
+        "evidenceId": "25768b0f-4cfc-4034-a81b-1334f9026b55"
+      },
+      {
+        "category": "Strategic Alignment",
+        "score": 50,
+        "reason": "Goals diverge across input vectors."
+      }
+    ]
+  },
+  "priorityFindings": [
+    {
+      "label": "Critical Bottlebeck in sales",
+      "severity": "high",
+      "why": "Stakeholder ops explicitly cites \"and clarifying ownership when issues arise.\" as a blocker to Operational Stabilization.",
+      "evidenceIds": [
+        "25768b0f-4cfc-4034-a81b-1334f9026b55"
+      ]
+    },
+    {
+      "label": "Unaligned Operational Stabilization Goals",
+      "severity": "med",
+      "why": "Desire for teams is contradicted by resource constraints (\"sales, Slack for day-to-day coordination, and\").",
+      "evidenceIds": [
+        "25768b0f-4cfc-4034-a81b-1334f9026b55"
+      ]
+    }
+  ],
+  "executiveSummary": "Analysis of Northshore Logistics Solutions reveals a direct outlook focused on Operational Stabilization. Stakeholder input is dominated by terms like \"updates, ownership, visibility\", referencing specific bottlenecks in status. Immediate focus must shift to resolving the \"updates\" constraint to enable sustainable progress.",
+  "coreTensions": [
+    "Tension between mandate for \"Operational Stabilization\" and reported \"updates\" reality.",
+    "While ownership focuses on sales, sales signals infrastructure gap."
+  ],
+  "impliedRisks": [
+    "Risk of \"Stalled Operational Stabilization\" due to unaddressed constraint: \"...lead, and schedules a first call....\"",
+    "Operational fragility indicated by reliance on manual \"updates\" tasks."
+  ],
+  "leveragePoints": [
+    "Accelerate Operational Stabilization by automating the \"sales\" workflow.",
+    "Resolve barrier identified by sales to unlock updates capacity."
+  ],
+  "framing": {
+    "languageMode": "direct",
+    "focusArea": "efficiency"
+  }
+}

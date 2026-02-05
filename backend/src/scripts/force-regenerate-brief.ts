@@ -42,7 +42,8 @@ async function main() {
         const synthesis = generateExecutiveBriefV0({
             ownerIntake,
             vectors,
-            tenantId: TENANT_ID
+            tenantId: TENANT_ID,
+            briefMode: 'EXECUTIVE_SYNTHESIS'
         });
 
         // 4. Insert new brief
@@ -55,7 +56,8 @@ async function main() {
                 synthesis: synthesis.synthesis,
                 signals: synthesis.signals,
                 sources: synthesis.sources,
-                status: 'DRAFT'
+                status: 'DRAFT',
+                briefMode: 'EXECUTIVE_SYNTHESIS'
             })
             .returning();
 

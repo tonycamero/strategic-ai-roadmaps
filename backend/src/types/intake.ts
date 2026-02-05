@@ -19,6 +19,13 @@ export interface NormalizedIntakeContext {
   contradictions: string[];
   missingData: string[];
   chokePoints: string[];
+  clarifications?: Array<{
+    questionId: string;
+    originalResponse: string;
+    clarificationPrompt: string;
+    clarificationResponse: string | null;
+    status: string;
+  }>;
 }
 
 export interface RawIntakeAnswers {

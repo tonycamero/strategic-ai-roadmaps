@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-01-30T04:50:57.135Z",
+  "tenants": [
+    {
+      "id": "ec32ea41-d056-462d-8321-c2876c9af263",
+      "name": "Cascade Climate Solutions",
+      "status": "success",
+      "path": "/home/tonycamero/code/Strategic_AI_Roadmaps/docs/narrative-tests/20260130045057/Cascade_Climate_Solutions/narrative.json"
+    },
+    {
+      "id": "bae93021-b0c9-4c18-9ef3-3b8ac1e8469f",
+      "name": "Prairie Peak Marketing",
+      "status": "success",
+      "path": "/home/tonycamero/code/Strategic_AI_Roadmaps/docs/narrative-tests/20260130045057/Prairie_Peak_Marketing/narrative.json"
+    },
+    {
+      "id": "883a5307-6354-49ad-b8e3-765ff64dc1af",
+      "status": "error",
+      "error": "Dominant Theme \"Operational Stabilization\" is weak (<3 matched keywords). Text lacks thematic coherence."
+    }
+  ]
+}

@@ -5,10 +5,13 @@ import {
     diagnostics,
     sopTickets,
     discoveryCallNotes,
-    roadmaps
+    roadmaps,
+    intakes,
+    auditEvents,
+    intakeClarifications
 } from '../db/schema';
 import { db } from '../db';
-import { eq } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
 
 // ============================================================================
 // TYPES (Should match schema enums, enforced here for logic)
@@ -80,6 +83,47 @@ export async function canGenerateDiagnostics(tenantId: string): Promise<GateChec
 
     if (!brief || (brief.status !== 'APPROVED' && brief.status !== 'DELIVERED')) {
         return { allowed: false, reason: 'Executive Brief must be approved before generating diagnostics.' };
+    }
+
+    // B3: Block while Consultant Feedback is PENDING
+    const tenantIntakes = await db.select().from(intakes).where(eq(intakes.tenantId, tenantId));
+    for (const intake of tenantIntakes) {
+        const fb = (intake.coachingFeedback as any) || {};
+        const hasPending = Object.values(fb).some((item: any) =>
+            item.isFlagged || (item.requests && item.requests.some((r: any) => r.status === 'PENDING'))
+        );
+        if (hasPending) {
+            return { allowed: false, reason: 'Pending Consultant Feedback/Coaching must be resolved before generating diagnostics.' };
+        }
+    }
+
+    // D3: Enforce Operator Knowledge Gate
+    const [sufficiencyConfirmation] = await db
+        .select()
+        .from(auditEvents)
+        .where(and(
+            eq(auditEvents.tenantId, tenantId),
+            eq(auditEvents.eventType, 'OPERATOR_CONFIRMED_DIAGNOSTIC_SUFFICIENCY')
+        ))
+        .orderBy(desc(auditEvents.createdAt))
+        .limit(1);
+
+    if (!sufficiencyConfirmation) {
+        return { allowed: false, reason: 'Operator must explicitly confirm knowledge sufficiency before generating diagnostics.' };
+    }
+
+    // B4: Block if there are BLOCKING unresponded intake clarifications
+    const outstandingBlocking = await db
+        .select()
+        .from(intakeClarifications)
+        .where(and(
+            eq(intakeClarifications.tenantId, tenantId),
+            eq(intakeClarifications.status, 'requested'),
+            eq(intakeClarifications.blocking, true)
+        ));
+
+    if (outstandingBlocking.length > 0) {
+        return { allowed: false, reason: 'Outstanding blocking clarifications must be responded to before generating diagnostics.' };
     }
 
     return { allowed: true };
