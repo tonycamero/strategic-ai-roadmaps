@@ -60,7 +60,7 @@ function ensureDecisionOrientedSummary(summary: string, taxonomyTokens: string[]
     return sanitizeNarrativeText(prefix + (s || ''), taxonomyTokens);
 }
 
-export async function executeSynthesisPipeline(...) {
+export async function executeSynthesisPipeline() {
 
   console.log('[EXEC_BRIEF_FLAGS]', {
     NODE_ENV: process.env.NODE_ENV,
