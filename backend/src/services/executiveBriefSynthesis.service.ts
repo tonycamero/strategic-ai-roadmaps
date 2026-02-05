@@ -61,6 +61,21 @@ function ensureDecisionOrientedSummary(summary: string, taxonomyTokens: string[]
 }
 
 
+export async function executeSynthesisPipeline() {
+
+  console.log('[EXEC_BRIEF_FLAGS]', {
+    NODE_ENV: process.env.NODE_ENV,
+    MODE2: process.env.EXEC_BRIEF_MODE2_EXPANSION_ENABLED,
+    MIRROR: process.env.EXEC_BRIEF_MIRROR_NARRATIVE,
+    MIRROR_OFFLINE: process.env.EXEC_BRIEF_MIRROR_OFFLINE,
+    MIRROR_REPAIR_ONCE: process.env.EXEC_BRIEF_MIRROR_REPAIR_ONCE,
+    PDF_EVIDENCE: process.env.EXEC_BRIEF_PDF_INCLUDE_EVIDENCE,
+  });
+
+  // existing logic follows
+}
+f1cba13 (fix(exec-brief): self-heal missing PDF artifact + log exec brief env flags)
+
 const isExpansionEnabled = () => process.env.EXEC_BRIEF_MODE2_EXPANSION_ENABLED === 'true';
 export const isMirrorNarrativeEnabled = () =>
     process.env.EXEC_BRIEF_MIRROR_NARRATIVE === 'true';
@@ -1001,13 +1016,6 @@ function selectTopAssertions(
  * 4. Assembly Validator (implicit in assembleSections)
  * 5. Final Assembly
  */
-export async function executeSynthesisPipeline(
-    vectors: IntakeVector[],
-    options?: { tenantId: string; briefId?: string; action?: string }
-): Promise<ExecutiveBriefSynthesis> {
-    const tenantId = options?.tenantId || 'unknown';
-    const briefId = options?.briefId || 'none';
-    const action = options?.action || 'generate';
 
     // Local diagnostic state
     const diagnostics: any = {
