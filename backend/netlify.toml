@@ -1,5 +1,7 @@
 [build]
   functions = "netlify/functions"
+  command = "npm ci && mkdir -p netlify/functions/data && cp -R node_modules/pdfkit/js/data/* netlify/functions/data/"
+
 
 [[redirects]]
   from = "/api/*"
@@ -9,7 +11,6 @@
 
 [functions]
   node_bundler = "esbuild"
-  external_node_modules = ["pdfkit"]
   included_files = [
     "netlify/functions/data/**",
     "node_modules/pdfkit/js/data/**"
