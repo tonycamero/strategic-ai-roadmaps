@@ -1656,7 +1656,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
 
                                 return (
                                     <BriefCompleteCard
-                                        status={status}
+                                        status={status ?? ''}
                                         onReview={openExecBriefModal}
                                     />
                                 );
@@ -1681,7 +1681,9 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                             if (hasDiagnostic && isBriefReady) {
                                 return (
                                     <DiagnosticCompleteCard
-                                        status={truthProbe?.diagnostic?.status || data?.latestDiagnostic?.status || 'GENERATED'}
+
+                                        status={truthProbe?.diagnostic?.state || data?.latestDiagnostic?.status || 'GENERATED'}
+ 
                                         onReview={openDiagnosticModal}
                                     />
                                 );
