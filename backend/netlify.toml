@@ -8,12 +8,11 @@
   force = true
 
 [functions]
-  node_bundler = "esbuild"
-  external_node_modules = ["pdfkit"]
-  included_files = [
-    "netlify/functions/data/**",
-    "node_modules/pdfkit/js/data/**"
-  ]
+node_bundler = "esbuild"
+included_files = [
+  "netlify/functions/data/**",
+  "node_modules/pdfkit/js/data/**"
+]
 
 [[headers]]
   for = "/api/*"
