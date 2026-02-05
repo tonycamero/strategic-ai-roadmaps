@@ -226,13 +226,27 @@ export async function generateAndDeliverPrivateBriefPDF(brief: any, tenant: any,
   const hasMirror = brief.synthesis?.content?.isMirrorNarrative === true;
   const isMissingMirror = needsMirror && !hasMirror;
 
-  const isStale = (existingArtifact && artifactStamp < briefStamp) || isMissingMirror;
+  // Check for physical file existence (ENOENT triggers regeneration)
+  let isMissingFile = false;
+  if (existingArtifact) {
+    try {
+      await fs.access(existingArtifact.filePath);
+    } catch (e) {
+      if ((e as any).code === 'ENOENT') {
+        isMissingFile = true;
+        console.log(`[PDF_MISSING] artifactId=${existingArtifact.id} filePath=${existingArtifact.filePath} => forcing regen`);
+      }
+    }
+  }
+
+  const isStale = (existingArtifact && (artifactStamp < briefStamp || isMissingFile)) || isMissingMirror;
 
   if (isStale) {
     console.log(
       `[PDF_STALE] briefUpdatedAt=${briefStamp.toISOString()} ` +
       `artifactCreatedAt=${artifactStamp.toISOString()} ` +
-      `isMissingMirror=${isMissingMirror} => regenerate=true`
+      `isMissingMirror=${isMissingMirror} ` +
+      `isMissingFile=${isMissingFile} => regenerate=true`
     );
   }
 

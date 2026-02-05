@@ -60,15 +60,24 @@ function ensureDecisionOrientedSummary(summary: string, taxonomyTokens: string[]
     return sanitizeNarrativeText(prefix + (s || ''), taxonomyTokens);
 }
 
-const isExpansionEnabled = () => process.env.EXEC_BRIEF_MODE2_EXPANSION_ENABLED === 'true' || process.env.NODE_ENV === 'development';
-export const isMirrorNarrativeEnabled = () => {
-    const enabled = process.env.EXEC_BRIEF_MIRROR_NARRATIVE === 'true';
-    console.log('[MirrorNarrative] ENV CHECK:', {
-        EXEC_BRIEF_MIRROR_NARRATIVE: process.env.EXEC_BRIEF_MIRROR_NARRATIVE,
-        enabled
-    });
-    return enabled;
-};
+export async function executeSynthesisPipeline(...) {
+
+  console.log('[EXEC_BRIEF_FLAGS]', {
+    NODE_ENV: process.env.NODE_ENV,
+    MODE2: process.env.EXEC_BRIEF_MODE2_EXPANSION_ENABLED,
+    MIRROR: process.env.EXEC_BRIEF_MIRROR_NARRATIVE,
+    MIRROR_OFFLINE: process.env.EXEC_BRIEF_MIRROR_OFFLINE,
+    MIRROR_REPAIR_ONCE: process.env.EXEC_BRIEF_MIRROR_REPAIR_ONCE,
+    PDF_EVIDENCE: process.env.EXEC_BRIEF_PDF_INCLUDE_EVIDENCE,
+  });
+
+  // existing logic follows
+}
+
+const isExpansionEnabled = () => process.env.EXEC_BRIEF_MODE2_EXPANSION_ENABLED === 'true';
+export const isMirrorNarrativeEnabled = () =>
+    process.env.EXEC_BRIEF_MIRROR_NARRATIVE === 'true';
+
 
 // EXEC-BRIEF-SIGNAL-GATE-009A
 const MIN_REQUIRED_ASSERTIONS = 3;   // fail-closed threshold
