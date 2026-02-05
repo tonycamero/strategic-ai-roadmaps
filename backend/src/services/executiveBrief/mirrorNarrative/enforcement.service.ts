@@ -112,6 +112,20 @@ async function repairSentence(params: {
 }): Promise<string> {
     const { sectionKey, sentence, hits, bannedHits } = params;
 
+    // MOCK FOR TESTS (Ticket MT-2026-02-04-STRICT-002)
+    // Only bypass if explicitly requested offline to allow existing mocked unit tests to run
+    if (process.env.EXEC_BRIEF_MIRROR_OFFLINE === 'true') {
+        let out = sentence;
+        // Simple deterministic "repair" for tests: replace with first replacement or generic redacted
+        hits.forEach(h => {
+            out = out.replace(new RegExp(h.phrase, 'gi'), h.replacement);
+        });
+        bannedHits.forEach(b => {
+            out = out.replace(new RegExp(b, 'gi'), '[REDACTED_VOICE]');
+        });
+        return out;
+    }
+
     const safeSummary = hits
         .map(h => `"${h.phrase}" -> "${h.replacement}"`)
         .slice(0, 6)

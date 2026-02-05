@@ -48,6 +48,7 @@ describe('Mirror Narrative Contract Tests', () => {
     // Enable feature flag for these tests
     beforeAll(() => {
         process.env.EXEC_BRIEF_MIRROR_NARRATIVE = 'true';
+        process.env.EXEC_BRIEF_MIRROR_OFFLINE = 'true';
         process.env.EXEC_BRIEF_MODE2_EXPANSION_ENABLED = 'false'; // Disable LLM expansion for determinism
     });
 
@@ -113,13 +114,21 @@ describe('Mirror Narrative Contract Tests', () => {
             });
 
             it('should not contain banlist phrases', () => {
-                // Collect all narrative text
+                // Collect all narrative text from mirror narrative layer
                 const allText = [
-                    result.content.executiveSummary,
-                    result.content.operatingReality,
-                    result.content.constraintLandscape,
-                    result.content.blindSpotRisks,
-                    result.content.alignmentSignals
+                    result.content.mirrorSummary || result.content.executiveSummary,
+                    result.content.mirrorSections?.OPERATING_REALITY ?
+                        `${result.content.mirrorSections.OPERATING_REALITY.livedReality} ${result.content.mirrorSections.OPERATING_REALITY.costOfStatusQuo} ${result.content.mirrorSections.OPERATING_REALITY.theCall}` :
+                        result.content.operatingReality,
+                    result.content.mirrorSections?.CONSTRAINT_LANDSCAPE ?
+                        `${result.content.mirrorSections.CONSTRAINT_LANDSCAPE.livedReality} ${result.content.mirrorSections.CONSTRAINT_LANDSCAPE.costOfStatusQuo} ${result.content.mirrorSections.CONSTRAINT_LANDSCAPE.theCall}` :
+                        result.content.constraintLandscape,
+                    result.content.mirrorSections?.BLIND_SPOT_RISKS ?
+                        `${result.content.mirrorSections.BLIND_SPOT_RISKS.livedReality} ${result.content.mirrorSections.BLIND_SPOT_RISKS.costOfStatusQuo} ${result.content.mirrorSections.BLIND_SPOT_RISKS.theCall}` :
+                        result.content.blindSpotRisks,
+                    result.content.mirrorSections?.ALIGNMENT_SIGNALS ?
+                        `${result.content.mirrorSections.ALIGNMENT_SIGNALS.livedReality} ${result.content.mirrorSections.ALIGNMENT_SIGNALS.costOfStatusQuo} ${result.content.mirrorSections.ALIGNMENT_SIGNALS.theCall}` :
+                        result.content.alignmentSignals
                 ].join(' ').toLowerCase();
 
                 // Check for banlist phrases
@@ -129,13 +138,21 @@ describe('Mirror Narrative Contract Tests', () => {
             });
 
             it('should not contain ALL_CAPS taxonomy tokens', () => {
-                // Collect all narrative text
+                // Collect all narrative text from mirror narrative layer
                 const allText = [
-                    result.content.executiveSummary,
-                    result.content.operatingReality,
-                    result.content.constraintLandscape,
-                    result.content.blindSpotRisks,
-                    result.content.alignmentSignals
+                    result.content.mirrorSummary || result.content.executiveSummary,
+                    result.content.mirrorSections?.OPERATING_REALITY ?
+                        `${result.content.mirrorSections.OPERATING_REALITY.livedReality} ${result.content.mirrorSections.OPERATING_REALITY.costOfStatusQuo} ${result.content.mirrorSections.OPERATING_REALITY.theCall}` :
+                        result.content.operatingReality,
+                    result.content.mirrorSections?.CONSTRAINT_LANDSCAPE ?
+                        `${result.content.mirrorSections.CONSTRAINT_LANDSCAPE.livedReality} ${result.content.mirrorSections.CONSTRAINT_LANDSCAPE.costOfStatusQuo} ${result.content.mirrorSections.CONSTRAINT_LANDSCAPE.theCall}` :
+                        result.content.constraintLandscape,
+                    result.content.mirrorSections?.BLIND_SPOT_RISKS ?
+                        `${result.content.mirrorSections.BLIND_SPOT_RISKS.livedReality} ${result.content.mirrorSections.BLIND_SPOT_RISKS.costOfStatusQuo} ${result.content.mirrorSections.BLIND_SPOT_RISKS.theCall}` :
+                        result.content.blindSpotRisks,
+                    result.content.mirrorSections?.ALIGNMENT_SIGNALS ?
+                        `${result.content.mirrorSections.ALIGNMENT_SIGNALS.livedReality} ${result.content.mirrorSections.ALIGNMENT_SIGNALS.costOfStatusQuo} ${result.content.mirrorSections.ALIGNMENT_SIGNALS.theCall}` :
+                        result.content.alignmentSignals
                 ].join(' ');
 
                 // Check for taxonomy tokens
