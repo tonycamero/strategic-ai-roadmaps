@@ -59,8 +59,6 @@ function ensureDecisionOrientedSummary(summary: string, taxonomyTokens: string[]
 
     return sanitizeNarrativeText(prefix + (s || ''), taxonomyTokens);
 }
-
-
 const isExpansionEnabled = () => process.env.EXEC_BRIEF_MODE2_EXPANSION_ENABLED === 'true';
 export const isMirrorNarrativeEnabled = () =>
     process.env.EXEC_BRIEF_MIRROR_NARRATIVE === 'true';
@@ -1001,13 +999,6 @@ function selectTopAssertions(
  * 4. Assembly Validator (implicit in assembleSections)
  * 5. Final Assembly
  */
-export async function executeSynthesisPipeline(
-    vectors: IntakeVector[],
-    options?: { tenantId: string; briefId?: string; action?: string }
-): Promise<ExecutiveBriefSynthesis> {
-    const tenantId = options?.tenantId || 'unknown';
-    const briefId = options?.briefId || 'none';
-    const action = options?.action || 'generate';
 
     // Local diagnostic state
     const diagnostics: any = {
