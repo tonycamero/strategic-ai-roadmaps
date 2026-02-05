@@ -1074,11 +1074,23 @@ export const downloadExecutiveBrief = async (req: AuthRequest, res: Response) =>
                     // Note: This is a best-effort reconstruction since we store in legacy format
                     // In the future, we should store ExecutiveBriefSynthesis directly
                     const synthesis = {
-                        executiveAssertionBlock: [], // Cannot reconstruct from legacy format
-                        strategicSignalSummary: brief.synthesis?.executiveSummary || brief.synthesis?.operatingReality || '',
-                        topRisks: [], // Cannot reconstruct from legacy format
-                        leverageMoves: [], // Cannot reconstruct from legacy format
-                        operatingContextNotes: brief.synthesis?.operatingReality || ''
+                        content: {
+                            executiveSummary: brief.synthesis?.content?.executiveSummary || (brief.synthesis as any)?.executiveSummary || '',
+                            operatingReality: brief.synthesis?.content?.operatingReality || (brief.synthesis as any)?.operatingReality || '',
+                            constraintLandscape: brief.synthesis?.content?.constraintLandscape || (brief.synthesis as any)?.constraintLandscape || '',
+                            blindSpotRisks: brief.synthesis?.content?.blindSpotRisks || (brief.synthesis as any)?.blindSpotRisks || '',
+                            alignmentSignals: brief.synthesis?.content?.alignmentSignals || (brief.synthesis as any)?.alignmentSignals || ''
+                        },
+                        meta: {
+                            signalQuality: {
+                                status: 'SUFFICIENT' as const,
+                                assertionCount: 0,
+                                targetCount: 0
+                            }
+                        },
+                        executiveAssertionBlock: [],
+                        topRisks: [],
+                        leverageMoves: []
                     };
 
                     try {

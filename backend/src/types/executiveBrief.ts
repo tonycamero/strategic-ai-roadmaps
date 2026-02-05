@@ -104,7 +104,7 @@ export interface ExecutiveBriefSynthesis {
         mirrorEnforcement?: {
             noRepeat: { triggered: boolean; count: number; rewrites: number; collisions: string[] };
             jargonHitsCount: number;
-            jargonHits: { phrase: string; replacement: string; sectionKey: string; sentenceIndex: number; severity: "LOW" | "MEDIUM" | "HIGH" }[];
+            jargonHits: (any)[]; // Flexible to accommodate both JargonHit and BannedHit shapes
             repairedSentences: number;
             callSpec: { pass: boolean; patched: boolean; llmFix: boolean; count: number };
             samples: { beforeAfterSnippets: string[] };

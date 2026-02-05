@@ -3404,6 +3404,7 @@ export async function generateDiagnostics(req: AuthRequest, res: Response) {
     let isNewDiagnostic = false;
 
     const diagnosticValues = {
+      id: nanoid(),
       tenantId,
       sopVersion: 'SOP-01',
       status: 'generated' as const,
