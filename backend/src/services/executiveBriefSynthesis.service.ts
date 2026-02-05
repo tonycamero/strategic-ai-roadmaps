@@ -1001,13 +1001,6 @@ function selectTopAssertions(
  * 4. Assembly Validator (implicit in assembleSections)
  * 5. Final Assembly
  */
-export async function executeSynthesisPipeline(
-  vectors: IntakeVector[],
-  options?: { tenantId?: string; briefId?: string; action?: string }
-): Promise<ExecutiveBriefSynthesis> {
-  const tenantId = options?.tenantId || 'unknown';
-  const briefId = options?.briefId || 'none';
-  const action = options?.action || 'generate';
 
     // Local diagnostic state
     const diagnostics: any = {
@@ -1259,4 +1252,3 @@ export async function executeSynthesisPipeline(
             { ...diagnostics, tenantId, briefId }
         );
     }
-}
