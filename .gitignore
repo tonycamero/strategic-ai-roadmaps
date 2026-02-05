@@ -69,3 +69,7 @@ backend/src/scripts/genSuperAdminToken.ts
 backend/src/scripts/listTenants.ts
 backend/src/scripts/testAuthorityGate.ts
 docs/truth-matrix-evidence.md
+
+# build artifacts
+shared/src/*.js
+shared/src/*.js.map
