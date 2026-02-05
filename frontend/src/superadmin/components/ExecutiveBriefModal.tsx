@@ -119,49 +119,66 @@ No synthesis, prioritization, or reframing has been applied yet. The purpose of 
                 ? (content?.mirrorSections?.EXEC_SUMMARY?.livedReality || content?.mirrorSummary || 'Mirror Summary pending...')
                 : (content?.executiveSummary || synthesis?.executiveSummary || synthesis?.strategicSignalSummary || EXECUTIVE_SUMMARY_TEXT)
         },
-        {
-            key: 'operatingReality',
-            label: 'Operating Reality',
-            content: layer === 'mirror'
-                ? ([content?.mirrorSections?.OPERATING_REALITY?.livedReality, content?.mirrorSections?.OPERATING_REALITY?.costOfStatusQuo, content?.mirrorSections?.OPERATING_REALITY?.theCall].filter(Boolean).join('\n\n') || 'Mirror narrative pending...')
+{
+  key: 'operatingReality',
+  label: 'Operating Reality',
+  content:
+    layer === 'mirror'
+      ? (
+          [
+            content?.mirrorSections?.OPERATING_REALITY?.livedReality,
+            content?.mirrorSections?.OPERATING_REALITY?.costOfStatusQuo,
+            content?.mirrorSections?.OPERATING_REALITY?.theCall,
+          ]
+            .filter(Boolean)
+            .join('\n\n') || 'Mirror narrative pending...'
+        )
+      : (content?.operatingReality ?? ''),
+},
 
-                : (content?.operatingReality ?? '')
+{
+  key: 'constraintLandscape',
+  label: 'Constraint Landscape',
+  content:
+    layer === 'mirror'
+      ? (content?.mirrorSections?.CONSTRAINT_LANDSCAPE?.livedReality ?? '')
+      : (content?.constraintLandscape ?? ''),
+},
 
-                : content?.operatingReality
-        },
-        {
-            key: 'constraintLandscape',
-            label: 'Constraint Landscape',
-            content: layer === 'mirror'
-                ? ([content?.mirrorSections?.CONSTRAINT_LANDSCAPE?.livedReality, content?.mirrorSections?.CONSTRAINT_LANDSCAPE?.costOfStatusQuo, content?.mirrorSections?.CONSTRAINT_LANDSCAPE?.theCall].filter(Boolean).join('\n\n') || 'Mirror narrative pending...')
-<<<<<<< HEAD
-                : (content?.constraintLandscape ?? '')
-=======
-                : content?.constraintLandscape
->>>>>>> a565a621ca618714539b3035fcfb826dad94c239
-        },
-        {
-            key: 'blindSpotRisks',
-            label: 'Blind Spot Risks',
-            content: layer === 'mirror'
-                ? ([content?.mirrorSections?.BLIND_SPOT_RISKS?.livedReality, content?.mirrorSections?.BLIND_SPOT_RISKS?.costOfStatusQuo, content?.mirrorSections?.BLIND_SPOT_RISKS?.theCall].filter(Boolean).join('\n\n') || 'Mirror narrative pending...')
-<<<<<<< HEAD
-                : (content?.blindSpotRisks ?? '')
-=======
-                : content?.blindSpotRisks
->>>>>>> a565a621ca618714539b3035fcfb826dad94c239
-        },
-        {
-            key: 'alignmentSignals',
-            label: 'Alignment Signals',
-            content: layer === 'mirror'
-                ? ([content?.mirrorSections?.ALIGNMENT_SIGNALS?.livedReality, content?.mirrorSections?.ALIGNMENT_SIGNALS?.costOfStatusQuo, content?.mirrorSections?.ALIGNMENT_SIGNALS?.theCall].filter(Boolean).join('\n\n') || 'Mirror narrative pending...')
-<<<<<<< HEAD
-                : (content?.alignmentSignals ?? '')
-=======
-                : content?.alignmentSignals
->>>>>>> a565a621ca618714539b3035fcfb826dad94c239
-        },
+{
+  key: 'blindSpotRisks',
+  label: 'Blind Spot Risks',
+  content:
+    layer === 'mirror'
+      ? (
+          [
+            content?.mirrorSections?.BLIND_SPOT_RISKS?.livedReality ?? '',
+            content?.mirrorSections?.BLIND_SPOT_RISKS?.costOfStatusQuo ?? '',
+            content?.mirrorSections?.BLIND_SPOT_RISKS?.theCall ?? '',
+          ]
+            .filter((s) => s.trim().length > 0)
+            .join('\n\n') || 'Mirror narrative pending...'
+        )
+      : (content?.blindSpotRisks ?? ''),
+},
+
+{
+  key: 'alignmentSignals',
+  label: 'Alignment Signals',
+  content:
+    layer === 'mirror'
+      ? (
+          [
+            content?.mirrorSections?.ALIGNMENT_SIGNALS?.livedReality ?? '',
+            content?.mirrorSections?.ALIGNMENT_SIGNALS?.costOfStatusQuo ?? '',
+            content?.mirrorSections?.ALIGNMENT_SIGNALS?.theCall ?? '',
+          ]
+            .filter((s) => s.trim().length > 0)
+            .join('\n\n') || 'Mirror narrative pending...'
+        )
+      : (content?.alignmentSignals ?? ''),
+},
+
         { key: 'delivery', label: 'Delivery & Export', content: 'delivery' },
     ];
 
