@@ -124,11 +124,10 @@ No synthesis, prioritization, or reframing has been applied yet. The purpose of 
             label: 'Operating Reality',
             content: layer === 'mirror'
                 ? ([content?.mirrorSections?.OPERATING_REALITY?.livedReality, content?.mirrorSections?.OPERATING_REALITY?.costOfStatusQuo, content?.mirrorSections?.OPERATING_REALITY?.theCall].filter(Boolean).join('\n\n') || 'Mirror narrative pending...')
-<<<<<<< HEAD
+
                 : (content?.operatingReality ?? '')
-=======
+
                 : content?.operatingReality
->>>>>>> a565a621ca618714539b3035fcfb826dad94c239
         },
         {
             key: 'constraintLandscape',
