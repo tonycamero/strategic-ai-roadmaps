@@ -1681,7 +1681,9 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                             if (hasDiagnostic && isBriefReady) {
                                 return (
                                     <DiagnosticCompleteCard
+
                                         status={truthProbe?.diagnostic?.state || data?.latestDiagnostic?.status || 'GENERATED'}
+ 
                                         onReview={openDiagnosticModal}
                                     />
                                 );
