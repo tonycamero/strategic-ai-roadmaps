@@ -15,7 +15,11 @@ interface ExecutiveBriefModalProps {
             blindSpotRisks?: string;
             alignmentSignals?: string;
             content?: {
-                alignmentSignals: string;
+                executiveSummary?: string | null;
+                operatingReality?: string | null;
+                constraintLandscape?: string | null;
+                blindSpotRisks?: string | null;
+                alignmentSignals?: string | null;
                 mirrorSummary?: string;
                 mirrorSections?: Record<string, { livedReality: string; costOfStatusQuo: string; theCall: string }>;
             };
@@ -112,28 +116,28 @@ No synthesis, prioritization, or reframing has been applied yet. The purpose of 
             label: 'Operating Reality',
             content: layer === 'mirror'
                 ? ([content?.mirrorSections?.OPERATING_REALITY?.livedReality, content?.mirrorSections?.OPERATING_REALITY?.costOfStatusQuo, content?.mirrorSections?.OPERATING_REALITY?.theCall].filter(Boolean).join('\n\n') || 'Mirror narrative pending...')
-                : content?.operatingReality
+                : (content?.operatingReality ?? '')
         },
         {
             key: 'constraintLandscape',
             label: 'Constraint Landscape',
             content: layer === 'mirror'
                 ? ([content?.mirrorSections?.CONSTRAINT_LANDSCAPE?.livedReality, content?.mirrorSections?.CONSTRAINT_LANDSCAPE?.costOfStatusQuo, content?.mirrorSections?.CONSTRAINT_LANDSCAPE?.theCall].filter(Boolean).join('\n\n') || 'Mirror narrative pending...')
-                : content?.constraintLandscape
+                : (content?.constraintLandscape ?? '')
         },
         {
             key: 'blindSpotRisks',
             label: 'Blind Spot Risks',
             content: layer === 'mirror'
                 ? ([content?.mirrorSections?.BLIND_SPOT_RISKS?.livedReality, content?.mirrorSections?.BLIND_SPOT_RISKS?.costOfStatusQuo, content?.mirrorSections?.BLIND_SPOT_RISKS?.theCall].filter(Boolean).join('\n\n') || 'Mirror narrative pending...')
-                : content?.blindSpotRisks
+                : (content?.blindSpotRisks ?? '')
         },
         {
             key: 'alignmentSignals',
             label: 'Alignment Signals',
             content: layer === 'mirror'
                 ? ([content?.mirrorSections?.ALIGNMENT_SIGNALS?.livedReality, content?.mirrorSections?.ALIGNMENT_SIGNALS?.costOfStatusQuo, content?.mirrorSections?.ALIGNMENT_SIGNALS?.theCall].filter(Boolean).join('\n\n') || 'Mirror narrative pending...')
-                : content?.alignmentSignals
+                : (content?.alignmentSignals ?? '')
         },
         { key: 'delivery', label: 'Delivery & Export', content: 'delivery' },
     ];
