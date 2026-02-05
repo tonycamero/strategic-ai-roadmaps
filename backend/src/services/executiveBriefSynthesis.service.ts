@@ -14,8 +14,10 @@ import {
 } from '../types/executiveBrief';
 import { createHash } from 'crypto';
 import { ExecutiveBriefAssertionExpansionService, ExpansionCandidate } from './executiveBriefAssertionExpansion.service';
-import { generateMirrorNarrative, repairMirrorNarrative } from './executiveBriefMirrorNarrative.service';
+import { generateMirrorNarrative, repairMirrorNarrative, enforceTriadDepth } from './executiveBriefMirrorNarrative.service';
 import { validateMirrorNarrativeOrThrow } from './executiveBriefValidation.service';
+import { enforceMirrorContract } from './executiveBrief/mirrorNarrative/enforcement.service';
+
 
 function sanitizeNarrativeText(input: string, taxonomyTokens: string[]): string {
     if (!input) return input;
@@ -1093,7 +1095,7 @@ function selectTopAssertions(
                 assertions = [...assertions, ...trackBCandidates];
             }
         }
-
+    
         // Final Selection + Deterministic Ordering
         const { selected } = selectTopAssertions(assertions, facts, patterns);
 
@@ -1134,11 +1136,9 @@ function selectTopAssertions(
                 };
 
                 // Enforce Depth (Hard Minimums)
-                const { enforceTriadDepth } = await import('./executiveBriefMirrorNarrative.service');
                 await enforceTriadDepth(mirrorNarrative.sections, assertionsBySection);
 
                 // Enforce Mirror Contract (Deterministic Gate - Ticket 021)
-                const { enforceMirrorContract } = await import('./executiveBrief/mirrorNarrative/enforcement.service');
                 const enforcement = await enforceMirrorContract(mirrorNarrative.sections, options?.briefId);
                 synthesis.meta.mirrorEnforcement = enforcement;
 
