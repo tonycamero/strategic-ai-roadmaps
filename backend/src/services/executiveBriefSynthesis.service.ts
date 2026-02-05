@@ -1252,4 +1252,3 @@ function selectTopAssertions(
             { ...diagnostics, tenantId, briefId }
         );
     }
-
