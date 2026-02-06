@@ -1,6 +1,4 @@
 [build]
-  publish = "."
-  command = "pnpm install --frozen-lockfile && pnpm build"
   functions = "netlify/functions"
 
 [[redirects]]
@@ -10,10 +8,8 @@
   force = true
 
 [functions]
-  directory = "netlify/functions"
   node_bundler = "esbuild"
-
-[functions.api]
+  directory = "netlify/functions"
   external_node_modules = ["pdfkit"]
 
 [[headers]]
