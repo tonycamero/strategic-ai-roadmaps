@@ -8,8 +8,10 @@
   force = true
 
 [functions]
-  node_bundler = "esbuild"
+  node_bundler = "zisi"
   directory = "netlify/functions"
+ 
+ [functions.api]
   external_node_modules = ["pdfkit"]
 
 [[headers]]
