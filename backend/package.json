@@ -31,6 +31,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.675.0",
     "@aws-sdk/s3-request-presigner": "^3.675.0",
+    "@netlify/functions": "^5.1.2",
     "@roadmap/shared": "workspace:*",
     "@sparticuz/chromium": "^143.0.0",
     "bcryptjs": "^2.4.3",
@@ -43,10 +44,10 @@
     "multer": "^2.0.2",
     "nanoid": "^5.0.4",
     "openai": "^4.104.0",
+    "pdfkit": "^0.15.0",
     "pg": "^8.16.3",
     "postgres": "^3.4.3",
     "puppeteer-core": "^23.10.4",
-    "pdfkit": "^0.15.0",
     "resend": "^3.0.0",
     "serverless-http": "^3.2.0",
     "zod": "^3.22.4"
@@ -60,13 +61,13 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^20.10.5",
     "@types/pdfkit": "^0.13.4",
+    "@vitest/ui": "^1.2.0",
     "dotenv-cli": "^11.0.0",
     "drizzle-kit": "^0.20.6",
     "minimist": "^1.2.8",
     "ts-node": "^10.9.2",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3",
-    "vitest": "^1.2.0",
-    "@vitest/ui": "^1.2.0"
+    "vitest": "^1.2.0"
   }
 }
