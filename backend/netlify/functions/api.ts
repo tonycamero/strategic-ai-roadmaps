@@ -2,15 +2,20 @@ import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 import serverless from "serverless-http";
 import { app } from "../../src/app";
 
-const handlerFn = serverless(app, {
-  // IMPORTANT: preserve /api prefix all the way into Express
-  basePath: "/.netlify/functions/api",
-});
+// No basePath. We'll normalize the incoming path ourselves.
+const handlerFn = serverless(app);
 
-export const handler: Handler = async (
-  event: HandlerEvent,
-  context: HandlerContext
-) => {
+function normalizePathToExpressApiPrefix(path: string) {
+  // Netlify invokes function as: /.netlify/functions/api/<splat>
+  // Our Express app expects: /api/<splat>
+  if (path.startsWith("/.netlify/functions/api")) {
+    const rest = path.slice("/.netlify/functions/api".length) || "/";
+    return rest.startsWith("/") ? `/api${rest}` : `/api/${rest}`;
+  }
+  return path;
+}
+
+export const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
   // Explicit CORS preflight handling
   if (event.httpMethod === "OPTIONS") {
     return {
@@ -25,7 +30,12 @@ export const handler: Handler = async (
     };
   }
 
-  const response = await handlerFn(event, context);
+  const patchedEvent = {
+    ...event,
+    path: normalizePathToExpressApiPrefix(event.path || "/"),
+  };
+
+  const response = await handlerFn(patchedEvent, context);
 
   response.headers = {
     ...(response.headers ?? {}),
