@@ -10,8 +10,10 @@
 [functions]
   node_bundler = "zisi"
   directory = "netlify/functions"
+  included_files = ["src/**"]
+
  
- [functions.api]
+[functions.api]
   external_node_modules = ["pdfkit"]
 
 [[headers]]
