@@ -1,6 +1,6 @@
 import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 import serverless from "serverless-http";
-import { app } from "../../src/app";
+import { app } from "../../src/app.ts";
 
 // No basePath. We'll normalize the incoming path ourselves.
 const handlerFn = serverless(app);
