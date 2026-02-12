@@ -74,3 +74,4 @@ docs/truth-matrix-evidence.md
 shared/src/*.js
 shared/src/*.js.map
 netlify/functions-dist/
+backend/netlify/functions-dist/

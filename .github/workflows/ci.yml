@@ -60,3 +60,6 @@ jobs:
 
       - name: Build
         run: pnpm run build
+
+      - name: Enforce explicit .ts imports
+        run: pnpm -C backend node scripts/assert-no-extensionless-imports.mjs

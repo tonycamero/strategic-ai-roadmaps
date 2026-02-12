@@ -1,4 +1,10 @@
 packages:
-  - 'shared'
-  - 'backend'
-  - 'frontend'
+  - shared
+  - backend
+  - frontend
+
+ignoredBuiltDependencies:
+  - es5-ext
+
+onlyBuiltDependencies:
+  - esbuild
