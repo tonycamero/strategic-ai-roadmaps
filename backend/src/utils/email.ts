@@ -6,7 +6,9 @@ if (!apiKey) {
 }
 
 const resend = apiKey ? new Resend(apiKey) : null;
-const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@example.com';
+const DEFAULT_FROM = "hello@mail.strategicai.app";
+const FROM_EMAIL = (process.env.FROM_EMAIL ?? process.env.EMAIL_FROM ?? DEFAULT_FROM).trim();
+const fromHeader = `StrategicAI <${FROM_EMAIL}>`;
 
 export async function sendInviteEmail(params: {
   to: string;
@@ -31,7 +33,7 @@ export async function sendInviteEmail(params: {
 
   try {
     await resend.emails.send({
-      from: FROM_EMAIL,
+      from: fromHeader,
       to,
       subject: `You've been invited as ${roleName}`,
       html: `

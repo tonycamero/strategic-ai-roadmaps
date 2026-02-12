@@ -11,13 +11,10 @@
 import { Resend } from 'resend';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_EMAIL = process.env.FROM_EMAIL;
+const DEFAULT_FROM = "hello@mail.strategicai.app";
+const FROM_EMAIL = (process.env.FROM_EMAIL ?? process.env.EMAIL_FROM ?? DEFAULT_FROM).trim();
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const REPLY_TO = process.env.RESEND_REPLY_TO;
-
-if (!FROM_EMAIL) {
-  throw new Error("FROM_EMAIL environment variable is not defined");
-}
 
 const fromHeader = `StrategicAI <${FROM_EMAIL}>`;
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
@@ -279,6 +276,6 @@ export async function sendEmail(args: {
     throw error;
   }
 
-  console.log(`[EmailService] Email sent to ${to}, ID: ${data?.id}`);
+  console.log(`[EmailService] Email sent to ${to} from ${fromHeader}, ID: ${data?.id}`);
   return data;
 }
