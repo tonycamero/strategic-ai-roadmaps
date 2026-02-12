@@ -4,8 +4,8 @@ import { eq, and, sql, desc } from 'drizzle-orm';
 import { executiveBriefs, tenants, intakes, intakeVectors, users, auditEvents, executiveBriefArtifacts } from '../db/schema';
 import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
 import { validateBriefModeSchema } from '../services/schemaGuard.service';
-import { generateRequestId, getRequestId } from '../utils/requestId';
-import { sendBriefError } from '../utils/briefErrorResponse';
+import { generateRequestId, getRequestId } from '../utils/requestId.ts';
+import { sendBriefError } from '../utils/briefErrorResponse.ts';
 
 /**
  * Helper: Resolve the logical approval status of an Executive Brief.
