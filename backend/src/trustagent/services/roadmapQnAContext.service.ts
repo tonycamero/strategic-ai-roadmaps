@@ -1,7 +1,7 @@
 // src/trustagent/services/roadmapQnAContext.service.ts
 
 import { eq, and } from 'drizzle-orm';
-import { db } from '../../db';
+import { db } from '../../db/index.ts';
 import { tenants, sopTickets, roadmaps, roadmapSections, intakes } from '../../db/schema';
 import {
   RoadmapQnAContext,
