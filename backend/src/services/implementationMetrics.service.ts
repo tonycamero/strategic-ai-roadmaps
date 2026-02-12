@@ -8,7 +8,7 @@ import {
   type RoadmapOutcome,
   type NewRoadmapOutcome,
 } from '../db/schema.ts';
-import { normalizeMetrics, validateMetrics, type NormalizedMetrics, type RawMetrics } from './metricNormalizer.service';
+import { normalizeMetrics, validateMetrics, type NormalizedMetrics, type RawMetrics } from './metricNormalizer.service.ts';
 
 export type SnapshotLabel = 'baseline' | '30d' | '60d' | '90d' | 'custom';
 export type SnapshotSource = 'manual' | 'api' | 'ghl_export' | 'hubspot_export';
