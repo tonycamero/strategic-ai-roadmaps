@@ -1,0 +1,50 @@
+name: backend-netlify-function
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "backend/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/backend-netlify-function.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/backend-netlify-function.yml"
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node (20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: "10"
+
+      - name: Install deps (workspace)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build backend Netlify function (CJS)
+        run: pnpm -C backend run build:functions
+
+      - name: Assert artifact exists
+        run: test -f backend/netlify/functions-dist/api.js
+
+      - name: Assert artifact is CommonJS (no top-level ESM imports)
+        run: |
+          node -e "const fs=require('fs');const s=fs.readFileSync('backend/netlify/functions-dist/api.js','utf8'); if (/^\s*import\s/m.test(s)) { console.error('FAIL: api.js contains ESM import'); process.exit(1);} console.log('OK: api.js has no top-level ESM import');"
+
+      - name: Smoke require(api.js)
+        env:
+          NODE_ENV: test
+        run: node -e "require('./backend/netlify/functions-dist/api.js'); console.log('OK: require(api.js)')"
