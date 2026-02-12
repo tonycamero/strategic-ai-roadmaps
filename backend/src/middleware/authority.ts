@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthorityCategory, RoleToAuthorityMap, hasAuthority } from '@roadmap/shared';
-import { AuthRequest } from './auth';
+import { AuthRequest } from './auth.ts';
 
 // Augment Express Request type to include authorityCategory
 declare global {

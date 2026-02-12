@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken, TokenPayload } from '../utils/auth';
+import { verifyToken, TokenPayload } from '../utils/auth.ts';
 import type { UserRole } from '@roadmap/shared';
 import { db } from '../db/index.ts';
 import { auditEvents, tenants } from '../db/schema.ts';
