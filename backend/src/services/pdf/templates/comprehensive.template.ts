@@ -3,7 +3,7 @@
  * Implements exact canonical spec from print-first template
  */
 
-import { PRINT_CSS } from './print.css';
+import { PRINT_CSS } from './print.css.ts';
 
 interface RoleData {
     roleName: string;

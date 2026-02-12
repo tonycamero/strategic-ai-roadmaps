@@ -4,12 +4,12 @@
  */
 
 // Load env FIRST (before any OpenAI imports)
-import { loadBackendEnv } from '../helpers/loadEnv';
+import { loadBackendEnv } from '../helpers/loadEnv.ts';
 loadBackendEnv();
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { executeSynthesisPipeline } from '../../../services/executiveBriefSynthesis.service';
+import { executeSynthesisPipeline } from '../../../services/executiveBriefSynthesis.service.ts';
 
 // Enable mirror narrative
 process.env.EXEC_BRIEF_MIRROR_NARRATIVE = 'true';

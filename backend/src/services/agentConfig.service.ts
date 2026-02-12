@@ -9,7 +9,7 @@
 import { db } from '../db/index.ts';
 import { agentConfigs } from '../db/schema.ts';
 import { eq, and } from 'drizzle-orm';
-import type { AgentConfig } from '../types/agent.types';
+import type { AgentConfig } from '../types/agent.types.ts';
 
 /**
  * List all agent configs for a tenant

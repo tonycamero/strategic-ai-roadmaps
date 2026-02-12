@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { generateRawTickets, InventoryEmptyError } from '../services/diagnosticIngestion.service';
+import { generateRawTickets, InventoryEmptyError } from '../services/diagnosticIngestion.service.ts';
 import { randomUUID } from 'crypto';
 
 async function runIntegrationTests() {

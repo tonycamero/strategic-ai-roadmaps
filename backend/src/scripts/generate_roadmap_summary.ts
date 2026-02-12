@@ -4,7 +4,7 @@ dotenv.config();
 import { db } from '../db/index.ts';
 import { agentConfigs, tenantDocuments, tenants } from '../db/schema.ts';
 import { and, eq } from 'drizzle-orm';
-import { readMarkdown, extractAgentCheatsheet } from '../utils/roadmapCheatsheet';
+import { readMarkdown, extractAgentCheatsheet } from '../utils/roadmapCheatsheet.ts';
 
 const HAYES_TENANT_ID = '4e2c6eb1-0767-43d6-b6a4-3fca8efd3f64';
 

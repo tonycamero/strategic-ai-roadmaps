@@ -4,7 +4,7 @@ dotenv.config();
 import { db } from '../db/index.ts';
 import { agentConfigs, tenants } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
-import { provisionAssistantForConfig } from '../services/assistantProvisioning.service';
+import { provisionAssistantForConfig } from '../services/assistantProvisioning.service.ts';
 
 const HAYES_TENANT_ID = '4e2c6eb1-0767-43d6-b6a4-3fca8efd3f64';
 

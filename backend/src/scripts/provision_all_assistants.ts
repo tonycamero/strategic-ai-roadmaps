@@ -8,7 +8,7 @@
 import { db } from '../db/index.ts';
 import { agentConfigs, users } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
-import { provisionAssistantForConfig } from '../services/assistantProvisioning.service';
+import { provisionAssistantForConfig } from '../services/assistantProvisioning.service.ts';
 
 async function main() {
   console.log('=== Provisioning All Active Assistants ===\n');

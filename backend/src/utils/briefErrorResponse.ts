@@ -7,7 +7,7 @@
 
 import type { Response, Request } from 'express';
 import { getRequestId } from './requestId.ts';
-import type { ValidationViolation } from '../services/executiveBriefValidation.service';
+import type { ValidationViolation } from '../services/executiveBriefValidation.service.ts';
 
 /**
  * Standard error payload structure for Executive Brief operations

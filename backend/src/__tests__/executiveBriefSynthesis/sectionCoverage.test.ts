@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { assembleSections } from '../../services/executiveBriefSynthesis.service';
-import { ExecutiveAssertionBlock } from '../../types/executiveBrief';
+import { assembleSections } from '../../services/executiveBriefSynthesis.service.ts';
+import { ExecutiveAssertionBlock } from '../../types/executiveBrief.ts';
 
 describe('Executive Brief Section Coverage (EXEC-BRIEF-SECTION-COVERAGE-012)', () => {
     const mockAssertion = (id: string, section: any): ExecutiveAssertionBlock => ({

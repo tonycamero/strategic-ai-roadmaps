@@ -1,5 +1,5 @@
-import { assembleNarrative } from '../engine';
-import { ConstraintType, FailureModeType, TimingType, SeverityType, OutcomeType } from '../taxonomy';
+import { assembleNarrative } from '../engine.ts';
+import { ConstraintType, FailureModeType, TimingType, SeverityType, OutcomeType } from '../taxonomy.ts';
 
 function randomEnum<T>(anEnum: T): T[keyof T] {
     const values = Object.values(anEnum as any) as unknown as T[keyof T][];

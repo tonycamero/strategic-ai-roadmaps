@@ -1,4 +1,4 @@
-import { NarrativeBlock } from '../../types';
+import { NarrativeBlock } from '../../types.ts';
 
 export const G1_EnforcementGap: NarrativeBlock = {
     id: 'G1_EnforcementGap',

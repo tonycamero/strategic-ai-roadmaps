@@ -1,5 +1,5 @@
-import { NarrativeBlock } from '../../types';
-import { ConstraintType } from '../../taxonomy';
+import { NarrativeBlock } from '../../types.ts';
+import { ConstraintType } from '../../taxonomy.ts';
 
 export const C6_DecisionBottleneck: NarrativeBlock = {
     id: 'C6_DecisionBottleneck',

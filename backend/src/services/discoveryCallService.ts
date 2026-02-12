@@ -1,7 +1,7 @@
 import { db } from '../db/index.ts';
 import { discoveryCallNotes, tenants } from '../db/schema.ts';
 import { eq, desc } from 'drizzle-orm';
-import { invalidateDownstreamArtifacts } from './compilerInvalidation.service';
+import { invalidateDownstreamArtifacts } from './compilerInvalidation.service.ts';
 
 export async function saveDiscoveryCallNotes(params: {
   tenantId: string;

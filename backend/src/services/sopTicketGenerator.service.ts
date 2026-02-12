@@ -6,10 +6,10 @@
  */
 
 import OpenAI from 'openai';
-import { DiagnosticMap, TicketGenerationResult } from '../types/diagnostic';
-import { buildDiagnosticToTicketsPrompt } from '../trustagent/prompts/diagnosticToTickets';
-import { buildSelectionContext, selectInventoryTickets } from '../trustagent/services/inventorySelection.service';
-import { loadInventory } from '../trustagent/services/inventory.service';
+import { DiagnosticMap, TicketGenerationResult } from '../types/diagnostic.ts';
+import { buildDiagnosticToTicketsPrompt } from '../trustagent/prompts/diagnosticToTickets.ts';
+import { buildSelectionContext, selectInventoryTickets } from '../trustagent/services/inventorySelection.service.ts';
+import { loadInventory } from '../trustagent/services/inventory.service.ts';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY

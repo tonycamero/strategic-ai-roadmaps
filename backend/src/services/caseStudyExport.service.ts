@@ -1,8 +1,8 @@
 import { db } from '../db/index.ts';
 import { roadmaps, roadmapSections, ticketPacks, ticketInstances, tenantDocuments } from '../db/schema.ts';
 import { eq, and } from 'drizzle-orm';
-import { ImplementationMetricsService } from './implementationMetrics.service';
-import { getOrCreateRoadmapForTenant } from './roadmapOs.service';
+import { ImplementationMetricsService } from './implementationMetrics.service.ts';
+import { getOrCreateRoadmapForTenant } from './roadmapOs.service.ts';
 
 /**
  * Generate professional case study from roadmap execution data.

@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { NormalizedIntakeContext } from '../types/intake';
+import { NormalizedIntakeContext } from '../types/intake.ts';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 

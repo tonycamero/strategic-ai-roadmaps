@@ -7,7 +7,7 @@
 
 import { writeFileSync, mkdirSync, readFileSync } from 'fs';
 import { join } from 'path';
-import { executeSynthesisPipeline, SynthesisError } from '../services/executiveBriefSynthesis.service';
+import { executeSynthesisPipeline, SynthesisError } from '../services/executiveBriefSynthesis.service.ts';
 
 const FIXTURES_DIR = join(__dirname, '../__tests__/fixtures/executiveBriefSynthesis');
 const GOLDEN_DIR = join(FIXTURES_DIR, 'golden');

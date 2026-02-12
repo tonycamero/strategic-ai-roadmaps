@@ -5,7 +5,7 @@ import path from 'path';
 // Load .env
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-import { generateRawTickets, ArtifactNotFoundError, InventoryEmptyError } from '../services/diagnosticIngestion.service';
+import { generateRawTickets, ArtifactNotFoundError, InventoryEmptyError } from '../services/diagnosticIngestion.service.ts';
 
 async function runRefusalTests() {
     console.log('--- STAGE 6 AUTHORITY REFUSAL TESTS ---');

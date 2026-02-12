@@ -4,7 +4,7 @@ import { tenants, users, sopTickets } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { getDiagnosticTickets, approveDiagnosticTickets, rejectDiagnosticTickets } from '../controllers/ticketModeration.controller.ts';
-import { AuthRequest } from '../middleware/auth';
+import { AuthRequest } from '../middleware/auth.ts';
 import { Response } from 'express';
 
 // Mock Response object

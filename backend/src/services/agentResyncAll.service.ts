@@ -1,7 +1,7 @@
 import { db } from '../db/index.ts';
 import { roadmaps } from '../db/schema.ts';
 import { desc, eq } from 'drizzle-orm';
-import { syncAgentsForRoadmap } from './roadmapAgentSync.service';
+import { syncAgentsForRoadmap } from './roadmapAgentSync.service.ts';
 
 /**
  * Resync agents for a single tenant

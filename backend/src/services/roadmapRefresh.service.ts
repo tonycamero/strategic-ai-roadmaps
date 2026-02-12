@@ -1,9 +1,9 @@
 import { db } from '../db/index.ts';
 import { roadmaps, roadmapSections, agentLogs, agentConfigs, type RoadmapSection } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
-import { RoadmapSectionService } from './roadmapSection.service';
-import { TicketPackService } from './ticketPack.service';
-import { ImplementationMetricsService } from './implementationMetrics.service';
+import { RoadmapSectionService } from './roadmapSection.service.ts';
+import { TicketPackService } from './ticketPack.service.ts';
+import { ImplementationMetricsService } from './implementationMetrics.service.ts';
 
 export class RoadmapRefreshService {
   /**

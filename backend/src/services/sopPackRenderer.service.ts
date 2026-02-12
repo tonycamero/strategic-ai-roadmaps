@@ -7,7 +7,7 @@
  * GPT-4o no longer has discretion over sprint placement, hours, or costs.
  */
 
-import type { SopTicket } from '../types/diagnostic';
+import type { SopTicket } from '../types/diagnostic.ts';
 
 export interface SopPackSection {
   section: 'sop_pack';

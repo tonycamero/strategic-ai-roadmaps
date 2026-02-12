@@ -1,7 +1,7 @@
 import { db } from '../db/index.ts';
 import { intakes, tenants, intakeClarifications } from '../db/schema.ts';
 import { eq, and, desc } from 'drizzle-orm';
-import { NormalizedIntakeContext, RawIntakeAnswers } from '../types/intake';
+import { NormalizedIntakeContext, RawIntakeAnswers } from '../types/intake.ts';
 
 /**
  * Fetch the latest intake for each role for a tenant

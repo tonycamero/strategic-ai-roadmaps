@@ -1,5 +1,5 @@
-import { NarrativeBlock } from '../../types';
-import { TimingType, SeverityType } from '../../taxonomy';
+import { NarrativeBlock } from '../../types.ts';
+import { TimingType, SeverityType } from '../../taxonomy.ts';
 
 // Helper to format the body content
 const formatBody = (body: string, mandate: string, reality: string) =>

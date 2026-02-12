@@ -10,7 +10,7 @@
 import fs from 'fs';
 import path from 'path';
 import OpenAI from 'openai';
-import { homepageAssistantConfig } from '../config/openai.config';
+import { homepageAssistantConfig } from '../config/openai.config.ts';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,

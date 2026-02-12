@@ -2,7 +2,7 @@
 
 import { eq, and } from 'drizzle-orm';
 import { db } from '../../db/index.ts';
-import { tenants, sopTickets, roadmaps, roadmapSections, intakes } from '../../db/schema';
+import { tenants, sopTickets, roadmaps, roadmapSections, intakes } from '../../db/schema.ts';
 import {
   RoadmapQnAContext,
   RoadmapTicket,
@@ -11,7 +11,7 @@ import {
   SprintSummary,
   TopTicketByImpact,
   EnrichedProfile
-} from '../types/roadmapQnA';
+} from '../types/roadmapQnA.ts';
 
 const TIME_VALUE_PER_HOUR = 35;
 const LEAD_VALUE = 35;

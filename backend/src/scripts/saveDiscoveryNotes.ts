@@ -7,7 +7,7 @@ import path from 'path';
 import { db } from '../db/index.ts';
 import { tenants } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
-import { saveDiscoveryCallNotes } from '../services/discoveryCallService';
+import { saveDiscoveryCallNotes } from '../services/discoveryCallService.ts';
 
 async function main() {
   const [, , tenantIdOrOwnerEmail, notesPath] = process.argv;

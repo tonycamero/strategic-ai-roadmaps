@@ -5,7 +5,7 @@
  * All inventories are validated against the InventoryTicket schema.
  */
 
-import { InventoryTicket } from '../types/inventory';
+import { InventoryTicket } from '../types/inventory.ts';
 import * as path from 'path';
 import * as fs from 'fs';
 

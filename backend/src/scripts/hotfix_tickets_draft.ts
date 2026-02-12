@@ -13,7 +13,7 @@ async function applyFix() {
     console.log('🔧 hotfixing tickets_draft table...');
 
     try {
-        const { db } = await import('../db');
+        const { db } = await import('../db.ts');
 
         // 1. Add category column if missing
         await db.execute(sql`

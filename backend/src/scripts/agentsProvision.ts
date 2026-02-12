@@ -5,7 +5,7 @@ dotenv.config();
 import { db } from '../db/index.ts';
 import { agentConfigs, agentLogs, tenants } from '../db/schema.ts';
 import { eq, and, inArray } from 'drizzle-orm';
-import { provisionAssistantForConfig } from '../services/assistantProvisioning.service';
+import { provisionAssistantForConfig } from '../services/assistantProvisioning.service.ts';
 
 type RoleType = 'owner' | 'ops' | 'tc' | 'agent_support';
 

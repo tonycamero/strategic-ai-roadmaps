@@ -1,4 +1,4 @@
-import { NarrativeBlock } from '../../types';
+import { NarrativeBlock } from '../../types.ts';
 
 export const S5_ClosingFrame: NarrativeBlock = {
     id: 'S5_ClosingFrame',

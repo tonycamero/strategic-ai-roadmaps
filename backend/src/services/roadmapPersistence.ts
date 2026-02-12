@@ -4,7 +4,7 @@ import os from 'os';
 import { db } from '../db/index.ts';
 import { tenants, tenantDocuments } from '../db/schema.ts';
 import { eq, and } from 'drizzle-orm';
-import { getStorageProvider, s3PutText } from './storage';
+import { getStorageProvider, s3PutText } from './storage.ts';
 
 type RoadmapSectionKey =
   | 'summary'

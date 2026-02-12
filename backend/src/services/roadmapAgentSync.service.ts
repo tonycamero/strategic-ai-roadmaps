@@ -1,8 +1,8 @@
 import { db } from '../db/index.ts';
 import { agentConfigs, roadmapSections, agentLogs } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
-import { provisionAssistantForConfig } from './assistantProvisioning.service';
-import { buildRoadmapQnAContext } from '../trustagent/services/roadmapQnAContext.service';
+import { provisionAssistantForConfig } from './assistantProvisioning.service.ts';
+import { buildRoadmapQnAContext } from '../trustagent/services/roadmapQnAContext.service.ts';
 
 /**
  * Sync agents after roadmap refresh

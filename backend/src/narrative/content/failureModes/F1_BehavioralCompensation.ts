@@ -1,5 +1,5 @@
-import { NarrativeBlock } from '../../types';
-import { FailureModeType } from '../../taxonomy';
+import { NarrativeBlock } from '../../types.ts';
+import { FailureModeType } from '../../taxonomy.ts';
 
 export const F1_BehavioralCompensation: NarrativeBlock = {
     id: 'F1_BehavioralCompensation',

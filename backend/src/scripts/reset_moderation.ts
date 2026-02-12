@@ -12,8 +12,8 @@ async function resetSession() {
     console.log('🧨 RESETTING Active Moderation Session...');
 
     try {
-        const { db } = await import('../db');
-        const { ticketModerationSessions } = await import('../db/schema');
+        const { db } = await import('../db.ts');
+        const { ticketModerationSessions } = await import('../db/schema.ts');
         const { eq, inArray } = await import('drizzle-orm');
 
         // 1. Find Active Sessions

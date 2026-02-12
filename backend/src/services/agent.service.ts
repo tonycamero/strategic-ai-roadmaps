@@ -2,10 +2,10 @@ import OpenAI from 'openai';
 import { db } from '../db/index.ts';
 import { tenants, users, intakes, agentConfigs, ticketInstances, roadmapSections, roadmaps, ticketPacks } from '../db/schema.ts';
 import { eq, and } from 'drizzle-orm';
-import { getCustomInstructions } from '../config/agent-custom-instructions';
-import { runVerifiedCompute } from './verified-compute.service';
-import type { ToolConfig, AgentConfig, AgentRoleType } from '../types/agent.types';
-import { ImplementationMetricsService } from './implementationMetrics.service';
+import { getCustomInstructions } from '../config/agent-custom-instructions.ts';
+import { runVerifiedCompute } from './verified-compute.service.ts';
+import type { ToolConfig, AgentConfig, AgentRoleType } from '../types/agent.types.ts';
+import { ImplementationMetricsService } from './implementationMetrics.service.ts';
 
 type TenantRow = typeof tenants.$inferSelect;
 type TenantWithOwner = TenantRow & { ownerName: string };

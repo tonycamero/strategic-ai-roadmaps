@@ -1,5 +1,5 @@
-import { NarrativeBlock } from '../../types';
-import { TimingType, SeverityType } from '../../taxonomy';
+import { NarrativeBlock } from '../../types.ts';
+import { TimingType, SeverityType } from '../../taxonomy.ts';
 
 export const SIT_ActiveBreach: NarrativeBlock = {
     id: 'SIT_ActiveBreach',

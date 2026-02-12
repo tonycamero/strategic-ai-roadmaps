@@ -9,7 +9,7 @@ import { db } from '../db/index.ts';
 import { publicAgentSessions, publicAgentEvents } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 import OpenAI from 'openai';
-import { homepageAssistantConfig } from '../config/openai.config';
+import { homepageAssistantConfig } from '../config/openai.config.ts';
 import crypto from 'crypto';
 
 const openai = new OpenAI({

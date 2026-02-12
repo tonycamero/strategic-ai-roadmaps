@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { validateExecutiveBriefSynthesisOrThrow } from '../../services/executiveBriefValidation.service';
-import { ExecutiveBriefSynthesis } from '../../types/executiveBrief';
+import { validateExecutiveBriefSynthesisOrThrow } from '../../services/executiveBriefValidation.service.ts';
+import { ExecutiveBriefSynthesis } from '../../types/executiveBrief.ts';
 
 describe('Executive Brief Narrative Integrity (EXEC-BRIEF-RENDER-INTEGRITY-012)', () => {
     const validBase: ExecutiveBriefSynthesis = {

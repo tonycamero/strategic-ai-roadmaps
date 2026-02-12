@@ -3,7 +3,7 @@
  * Multi-role synthesis with comparison matrix
  */
 
-import { PRINT_CSS } from './print.css';
+import { PRINT_CSS } from './print.css.ts';
 
 interface TeamReportData {
     primaryConstraint: string;

@@ -10,9 +10,9 @@ import fs from 'fs';
 import { db } from '../db/index.ts';
 import { agentConfigs, tenantDocuments, tenants, users } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
-import type { AgentConfig } from '../types/agent.types';
-import { buildAgentSystemPrompt, buildContextFromConfig } from './agentPromptBuilder.service';
-import { computeCapabilityProfile } from '../shared/types/capability-profile';
+import type { AgentConfig } from '../types/agent.types.ts';
+import { buildAgentSystemPrompt, buildContextFromConfig } from './agentPromptBuilder.service.ts';
+import { computeCapabilityProfile } from '../shared/types/capability-profile.ts';
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,

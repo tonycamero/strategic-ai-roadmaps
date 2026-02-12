@@ -3,7 +3,7 @@
  * Implements exact layout spec from META-TICKET
  */
 
-import { PRINT_CSS } from './print.css';
+import { PRINT_CSS } from './print.css.ts';
 
 interface RoleReportData {
     role: 'owner' | 'sales' | 'ops' | 'delivery';

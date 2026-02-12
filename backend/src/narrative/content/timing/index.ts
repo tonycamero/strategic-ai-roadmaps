@@ -1,5 +1,5 @@
-import { NarrativeBlock } from '../../types';
-import { TimingType } from '../../taxonomy';
+import { NarrativeBlock } from '../../types.ts';
+import { TimingType } from '../../taxonomy.ts';
 
 export const T1_NOW: NarrativeBlock = {
     id: 'T1_NOW',

@@ -8,7 +8,7 @@
  */
 
 import OpenAI from 'openai';
-import { HOMEPAGE_TRUSTAGENT_PROMPT } from '../trustagent/homepagePrompt';
+import { HOMEPAGE_TRUSTAGENT_PROMPT } from '../trustagent/homepagePrompt.ts';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,

@@ -1,11 +1,11 @@
-import { config } from '../config/env';
+import { config } from '../config/env.ts';
 import { sql } from 'drizzle-orm';
 
 async function forceFix() {
     console.log('🔧 Forcing Schema Fix via App Connection...');
 
     // Dynamic import ensures dotenv is loaded BEFORE db connection initializes
-    const { db } = await import('../db');
+    const { db } = await import('../db.ts');
 
     try {
         // 1. Add category

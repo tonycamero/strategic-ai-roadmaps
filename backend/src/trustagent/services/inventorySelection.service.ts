@@ -11,8 +11,8 @@ import {
   SelectedInventoryTicket,
   Tier,
   Sprint,
-} from '../types/inventory';
-import { getInventoryForVertical, getGHLNativeInventory, getSidecarInventory } from './inventory.service';
+} from '../types/inventory.ts';
+import { getInventoryForVertical, getGHLNativeInventory, getSidecarInventory } from './inventory.service.ts';
 
 /**
  * Derive firm size tier from team headcount

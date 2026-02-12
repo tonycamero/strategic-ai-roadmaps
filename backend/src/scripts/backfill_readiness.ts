@@ -1,7 +1,7 @@
 import { db } from '../db/index.ts';
 import { tenants, roadmaps, sopTickets } from '../db/schema.ts';
 import { eq, and, sql } from 'drizzle-orm';
-import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
+import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes.ts';
 
 /**
  * Backfill Readiness Flags Script

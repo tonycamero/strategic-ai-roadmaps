@@ -1,4 +1,4 @@
-import { createOpenAIClient } from '../ai/openaiClient';
+import { createOpenAIClient } from '../ai/openaiClient.ts';
 
 /**
  * Global Insight Narrative Rendering Standard (Prose + Bullet Hybrid)

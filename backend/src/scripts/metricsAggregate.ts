@@ -4,7 +4,7 @@ dotenv.config();
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { OutcomeAggregateService } from '../services/outcomeAggregate.service';
+import { OutcomeAggregateService } from '../services/outcomeAggregate.service.ts';
 
 async function main() {
   console.log('📊 Aggregating Outcomes Across All Tenants\n');

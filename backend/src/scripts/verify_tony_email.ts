@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { sendEmail } from '../services/email.service';
+import { sendEmail } from '../services/email.service.ts';
 
 async function main() {
   const targetEmail = 'tony@strategicai.app';

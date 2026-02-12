@@ -9,7 +9,7 @@
  * - Suggested micro-steps
  */
 
-import type { RoadmapSignals, DiagnosticData } from './metadataParser';
+import type { RoadmapSignals, DiagnosticData } from './metadataParser.ts';
 
 export interface TacticalFrame {
   mainConstraint?: string;

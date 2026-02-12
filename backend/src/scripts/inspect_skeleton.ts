@@ -8,8 +8,8 @@ dotenv.config({ path: envPath });
 
 async function inspectSkeleton() {
     try {
-        const { db } = await import('../db');
-        const { tenantDocuments } = await import('../db/schema');
+        const { db } = await import('../db.ts');
+        const { tenantDocuments } = await import('../db/schema.ts');
         const { eq, and } = await import('drizzle-orm');
 
         const tenantId = '883a5307-6354-49ad-b8e3-765ff64dc1af'; // From user logs

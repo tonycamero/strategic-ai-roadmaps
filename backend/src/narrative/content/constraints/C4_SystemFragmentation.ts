@@ -1,5 +1,5 @@
-import { NarrativeBlock } from '../../types';
-import { ConstraintType } from '../../taxonomy';
+import { NarrativeBlock } from '../../types.ts';
+import { ConstraintType } from '../../taxonomy.ts';
 
 export const C4_SystemFragmentation: NarrativeBlock = {
     id: 'C4_SystemFragmentation',

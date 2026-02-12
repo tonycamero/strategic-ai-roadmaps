@@ -6,7 +6,7 @@ import * as readline from 'readline';
 import { db } from '../db/index.ts';
 import { tenants, roadmaps } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
-import { ImplementationMetricsService } from '../services/implementationMetrics.service';
+import { ImplementationMetricsService } from '../services/implementationMetrics.service.ts';
 
 const rl = readline.createInterface({
   input: process.stdin,

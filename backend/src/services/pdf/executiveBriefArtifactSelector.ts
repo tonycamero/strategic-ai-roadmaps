@@ -1,6 +1,6 @@
 // FILE: backend/src/services/pdf/executiveBriefArtifactSelector.ts
 import { db } from '../../db/index.ts';
-import { executiveBriefArtifacts } from '../../db/schema';
+import { executiveBriefArtifacts } from '../../db/schema.ts';
 import { eq, and, desc } from 'drizzle-orm';
 
 /**

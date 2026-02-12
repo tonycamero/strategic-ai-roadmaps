@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { executeSynthesisPipeline, SynthesisError, extractFacts } from '../../services/executiveBriefSynthesis.service';
-import { ExecutiveBriefAssertionExpansionService } from '../../services/executiveBriefAssertionExpansion.service';
+import { executeSynthesisPipeline, SynthesisError, extractFacts } from '../../services/executiveBriefSynthesis.service.ts';
+import { ExecutiveBriefAssertionExpansionService } from '../../services/executiveBriefAssertionExpansion.service.ts';
 import * as fs from 'fs';
 import * as path from 'path';
 

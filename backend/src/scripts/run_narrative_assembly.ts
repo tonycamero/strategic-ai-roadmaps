@@ -2,7 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { assembleExecutiveNarrative, NarrativeContext } from '../services/narrativeAssembly.service';
+import { assembleExecutiveNarrative, NarrativeContext } from '../services/narrativeAssembly.service.ts';
 
 const args = process.argv.slice(2);
 let tenantIds: string[] = [];

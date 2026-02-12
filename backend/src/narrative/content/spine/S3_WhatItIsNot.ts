@@ -1,4 +1,4 @@
-import { NarrativeBlock } from '../../types';
+import { NarrativeBlock } from '../../types.ts';
 
 export const S3_WhatItIsNot: NarrativeBlock = {
     id: 'S3_WhatItIsNot',

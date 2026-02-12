@@ -1,4 +1,4 @@
-import { createOpenAIClient } from '../ai/openaiClient';
+import { createOpenAIClient } from '../ai/openaiClient.ts';
 import { db } from '../db/index.ts';
 import {
     assistedSynthesisAgentSessions,

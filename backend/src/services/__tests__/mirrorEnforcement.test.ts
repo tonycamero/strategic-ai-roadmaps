@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { enforceMirrorContract } from '../executiveBrief/mirrorNarrative/enforcement.service';
-import { SAFE_JARGON_PHRASES, assertJargonMapGuardrails, BANNED_JARGON_TERMS } from '../executiveBrief/mirrorNarrative/jargonMap';
+import { enforceMirrorContract } from '../executiveBrief/mirrorNarrative/enforcement.service.ts';
+import { SAFE_JARGON_PHRASES, assertJargonMapGuardrails, BANNED_JARGON_TERMS } from '../executiveBrief/mirrorNarrative/jargonMap.ts';
 
 // Mock getOpenAIClient to avoid actual API calls
 vi.mock('../executiveBriefMirrorNarrative.service', () => ({

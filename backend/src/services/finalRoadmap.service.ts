@@ -9,8 +9,8 @@ import { db } from '../db/index.ts';
 import { roadmaps, roadmapSections, sopTickets, tenants } from '../db/schema.ts';
 import { eq, and } from 'drizzle-orm';
 import crypto from 'crypto';
-import { assembleRoadmap } from './roadmapAssembly.service';
-import { RoadmapContext, DiagnosticMap } from '../types/diagnostic';
+import { assembleRoadmap } from './roadmapAssembly.service.ts';
+import { RoadmapContext, DiagnosticMap } from '../types/diagnostic.ts';
 
 export async function generateFinalRoadmapForTenant(tenantId: string) {
   console.log(`[FinalRoadmap] Starting final roadmap generation for tenant: ${tenantId}`);

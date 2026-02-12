@@ -1,4 +1,4 @@
-import { NormalizedIntakeContext } from './intake';
+import { NormalizedIntakeContext } from './intake.ts';
 
 export interface RoadmapContext {
   tenantId: string;

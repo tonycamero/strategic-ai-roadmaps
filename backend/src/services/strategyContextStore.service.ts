@@ -8,7 +8,7 @@
 import { db } from '../db/index.ts';
 import { agentStrategyContexts } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
-import type { StrategyContext } from '../types/strategyContext';
+import type { StrategyContext } from '../types/strategyContext.ts';
 
 /**
  * Save StrategyContext to database (upsert)
