@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { db } from '../db';
+import { db } from '../db/index.ts';
 import { evidenceArtifacts, evidenceBindings } from '../db/schema';
 import { putEvidenceArtifact } from '../services/storage/evidenceStorage';
 import { eq, and } from 'drizzle-orm';
