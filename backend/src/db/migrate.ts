@@ -1,6 +1,6 @@
-import '../config/env'; // Ensure env is loaded before DB import
+import '../config/env.ts'; // Ensure env is loaded before DB import
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
-import { db } from './index';
+import { db } from './index.ts';
 import path from 'path';
 
 async function main() {
