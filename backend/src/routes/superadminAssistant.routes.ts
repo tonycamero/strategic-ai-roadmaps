@@ -5,7 +5,7 @@
  */
 
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth';
+import { authenticate } from '../middleware/auth.ts';
 import { handleSuperadminAgentQuery } from '../controllers/superadminAssistant.controller.ts';
 
 const router = Router();

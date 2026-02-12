@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { handleAgentQuery } from '../controllers/agent.controller.ts';
-import { authenticate } from '../middleware/auth';
+import { authenticate } from '../middleware/auth.ts';
 
 const router = Router();
 

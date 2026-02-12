@@ -1,7 +1,7 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
-import { authenticate, requireRole, AuthRequest } from '../middleware/auth';
+import { authenticate, requireRole, AuthRequest } from '../middleware/auth.ts';
 import { requireExecutive, requireDelegateOrHigher } from '../middleware/authority';
 import { AuthorityCategory, RoleToAuthorityMap } from '@roadmap/shared';
 import * as superadminController from '../controllers/superadmin.controller.ts';

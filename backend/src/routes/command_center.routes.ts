@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth';
+import { authenticate } from '../middleware/auth.ts';
 import { deriveAuthority, requireDelegateOrHigher, requireExecutive } from '../middleware/authority';
 import * as controller from '../controllers/command_center.controller.ts';
 

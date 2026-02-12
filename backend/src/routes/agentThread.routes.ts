@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as agentThreadController from '../controllers/agentThread.controller.ts';
-import { authenticate, requireRole } from '../middleware/auth';
+import { authenticate, requireRole } from '../middleware/auth.ts';
 
 const router = Router();
 

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import * as roadmapController from '../controllers/roadmap.controller.ts';
 import * as roadmapQnAController from '../controllers/roadmapQnA.controller.ts';
-import { authenticate, requireRole, requireTenantAccess, requireEditorMode } from '../middleware/auth';
+import { authenticate, requireRole, requireTenantAccess, requireEditorMode } from '../middleware/auth.ts';
 
 const router = Router();
 
