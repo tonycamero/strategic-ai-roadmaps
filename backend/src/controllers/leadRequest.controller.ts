@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { db } from '../db/index.js';
-import { webinarRegistrations } from '../db/schema.js';
+import { db } from '../db/index.ts';
+import { webinarRegistrations } from '../db/schema.ts';
 
 interface LeadRequestBody {
   name: string;
