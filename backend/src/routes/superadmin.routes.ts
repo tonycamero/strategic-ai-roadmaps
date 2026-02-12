@@ -149,7 +149,7 @@ router.post('/firms/:tenantId/extract-metadata', superadminController.extractMet
 
 // POST /api/superadmin/tickets/generate/:tenantId/:diagnosticId - Generate tickets from Discovery Synthesis (Discovery Gated)
 router.post('/tickets/generate/:tenantId/:diagnosticId', async (req, res, next) => {
-  const { handleGenerateTicketsFromDiscovery } = await import('../controllers/ticketGeneration.controller');
+  const { handleGenerateTicketsFromDiscovery } = await import('../controllers/ticketGeneration.controller.ts');
   return handleGenerateTicketsFromDiscovery(req, res, next);
 });
 
@@ -190,7 +190,7 @@ router.get('/tickets/:tenantId/:diagnosticId', async (req, res) => {
     }
 
     // Delegate to existing service (no SQL in routes)
-    const { getTicketsForDiagnostic, getModerationStatus } = await import('../services/ticketModeration.service');
+    const { getTicketsForDiagnostic, getModerationStatus } = await import('../services/ticketModeration.service.ts');
     const [tickets, status] = await Promise.all([
       getTicketsForDiagnostic(tenantId, diagnosticId),
       getModerationStatus(tenantId, diagnosticId)
