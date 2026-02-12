@@ -29,6 +29,9 @@ importers:
       '@netlify/functions':
         specifier: ^5.1.2
         version: 5.1.2
+      '@netlify/types':
+        specifier: ^2.3.0
+        version: 2.3.0
       '@roadmap/shared':
         specifier: workspace:*
         version: link:../shared
