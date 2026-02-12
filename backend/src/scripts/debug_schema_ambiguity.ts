@@ -14,7 +14,7 @@ async function checkAmbiguity() {
 
     try {
         // Dynamic import DB so it sees the env vars
-        const { db } = await import('../db.ts');
+        const { db } = await import('../db/index.ts');
 
         // 1. Get Search Path
         const searchPathRes = await db.execute(sql`SHOW search_path`);

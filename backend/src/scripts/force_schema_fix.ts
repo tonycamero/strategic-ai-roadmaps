@@ -5,7 +5,7 @@ async function forceFix() {
     console.log('🔧 Forcing Schema Fix via App Connection...');
 
     // Dynamic import ensures dotenv is loaded BEFORE db connection initializes
-    const { db } = await import('../db.ts');
+    const { db } = await import('../db/index.ts');
 
     try {
         // 1. Add category

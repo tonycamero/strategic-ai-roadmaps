@@ -132,7 +132,7 @@ export async function buildContextFromConfig(
   if (options?.enableDiagnostics) {
     try {
       const { deriveRoadmapSignals, formatSignalsForPrompt } = await import('./roadmapAnalysis/metadataParser.ts');
-      const { db } = await import('../db.ts');
+      const { db } = await import('../db/index.ts');
       const { roadmapSections: roadmapSectionsTable, roadmaps, intakes } = await import('../db/schema.ts');
       const { eq } = await import('drizzle-orm');
 

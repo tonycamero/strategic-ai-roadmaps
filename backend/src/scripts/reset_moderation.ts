@@ -12,7 +12,7 @@ async function resetSession() {
     console.log('🧨 RESETTING Active Moderation Session...');
 
     try {
-        const { db } = await import('../db.ts');
+        const { db } = await import('../db/index.ts');
         const { ticketModerationSessions } = await import('../db/schema.ts');
         const { eq, inArray } = await import('drizzle-orm');
 

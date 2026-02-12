@@ -13,7 +13,7 @@ async function cleanTitles() {
     console.log('🧹 Cleaning tickets_draft titles...');
 
     try {
-        const { db } = await import('../db.ts');
+        const { db } = await import('../db/index.ts');
 
         // Remove "Proposed: " prefix
         const result = await db.execute(sql`

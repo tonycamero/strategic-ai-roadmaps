@@ -11,7 +11,7 @@ console.log(`[INSPECT] Loaded .env from: ${envPath}`);
 
 async function inspect() {
     try {
-        const { db } = await import('../db.ts');
+        const { db } = await import('../db/index.ts');
 
         const drafts = await db.execute(sql`
             SELECT id, title, category, finding_id, ghl_implementation 

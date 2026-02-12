@@ -8,7 +8,7 @@ dotenv.config({ path: envPath });
 
 async function inspectSkeleton() {
     try {
-        const { db } = await import('../db.ts');
+        const { db } = await import('../db/index.ts');
         const { tenantDocuments } = await import('../db/schema.ts');
         const { eq, and } = await import('drizzle-orm');
 

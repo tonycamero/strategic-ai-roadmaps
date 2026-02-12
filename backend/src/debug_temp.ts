@@ -1,5 +1,5 @@
 
-import { db } from './db.ts';
+import { db } from './db/index.ts';
 import { tenants, diagnostics } from './db/schema.ts';
 import { eq } from 'drizzle-orm';
 

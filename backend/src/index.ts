@@ -15,7 +15,7 @@ if (!isNetlify && !isVercel) {
 
     // PHASE 2: DB FINGERPRINT
     try {
-      const { db } = await import('./db.ts');
+      const { db } = await import('./db/index.ts');
       const { sql } = await import('drizzle-orm');
 
       const dbUrl = config.dbUrl || '';
