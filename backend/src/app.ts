@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import cors from 'cors';
-import { requestIdMiddleware } from './utils/requestId';
+import { requestIdMiddleware } from './utils/requestId.ts';
 
 import authRoutes from './routes/auth.routes';
 import inviteRoutes from './routes/invite.routes';

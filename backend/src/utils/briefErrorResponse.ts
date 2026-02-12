@@ -6,7 +6,7 @@
  */
 
 import type { Response, Request } from 'express';
-import { getRequestId } from './requestId';
+import { getRequestId } from './requestId.ts';
 import type { ValidationViolation } from '../services/executiveBriefValidation.service';
 
 /**
