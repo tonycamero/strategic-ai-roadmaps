@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { db } from '../db';
+import { db } from '../db/index.ts';
 import { eq, and, sql, desc } from 'drizzle-orm';
-import { executiveBriefs, tenants, intakes, intakeVectors, users, auditEvents, executiveBriefArtifacts } from '../db/schema';
+import { executiveBriefs, tenants, intakes, intakeVectors, users, auditEvents, executiveBriefArtifacts } from '../db/schema.ts';
 import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
 import { validateBriefModeSchema } from '../services/schemaGuard.service';
 import { generateRequestId, getRequestId } from '../utils/requestId.ts';

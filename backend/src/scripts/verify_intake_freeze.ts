@@ -1,6 +1,6 @@
 import 'dotenv/config';
-import { db } from '../db';
-import { tenants, users, intakes } from '../db/schema';
+import { db } from '../db/index.ts';
+import { tenants, users, intakes } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 

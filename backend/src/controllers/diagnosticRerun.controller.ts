@@ -1,7 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../middleware/auth';
-import { db } from '../db';
-import { tenants, executiveBriefs, diagnostics } from '../db/schema';
+import { db } from '../db/index.ts';
+import { tenants, executiveBriefs, diagnostics } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 import { buildNormalizedIntakeContext } from '../services/intakeNormalizer';
 import { generateSop01Outputs } from '../services/sop01Engine';

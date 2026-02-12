@@ -1,6 +1,6 @@
 import { Response } from 'express';
-import { db } from '../db';
-import { tenants, users, auditEvents, roadmaps } from '../db/schema';
+import { db } from '../db/index.ts';
+import { tenants, users, auditEvents, roadmaps } from '../db/schema.ts';
 import { eq, and, sql, desc, inArray, ilike, or } from 'drizzle-orm';
 import { AuthRequest } from '../middleware/auth';
 import { getManyOnboardingStates, invalidateOnboardingStateCache } from '../services/onboardingState.service';

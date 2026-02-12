@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getDebugLogs, getLogEventTypes } from '../controllers/debugLogs.controller';
+import { getDebugLogs, getLogEventTypes } from '../controllers/debugLogs.controller.ts';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();

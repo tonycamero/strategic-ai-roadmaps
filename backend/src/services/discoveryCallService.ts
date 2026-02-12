@@ -1,5 +1,5 @@
-import { db } from '../db';
-import { discoveryCallNotes, tenants } from '../db/schema';
+import { db } from '../db/index.ts';
+import { discoveryCallNotes, tenants } from '../db/schema.ts';
 import { eq, desc } from 'drizzle-orm';
 import { invalidateDownstreamArtifacts } from './compilerInvalidation.service';
 

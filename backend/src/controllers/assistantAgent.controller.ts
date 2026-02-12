@@ -13,8 +13,8 @@
 import { Request, Response } from 'express';
 import { queryAssistant } from '../services/assistantQuery.service';
 import { computeCapabilityProfile } from '../shared/types/capability-profile';
-import { db } from '../db';
-import { tenants } from '../db/schema';
+import { db } from '../db/index.ts';
+import { tenants } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 
 interface AuthRequest extends Request {

@@ -1,8 +1,8 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { db } from '../db';
-import { agentThreads } from '../db/schema';
+import { db } from '../db/index.ts';
+import { agentThreads } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 
 const HAYES_TENANT_ID = '4e2c6eb1-0767-43d6-b6a4-3fca8efd3f64';

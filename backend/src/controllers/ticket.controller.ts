@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { db } from '../db';
-import { ticketInstances, auditEvents } from '../db/schema';
+import { db } from '../db/index.ts';
+import { ticketInstances, auditEvents } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 import { updateSectionStatus, recalculatePackTotals } from '../services/sectionStatusSync.service';
 

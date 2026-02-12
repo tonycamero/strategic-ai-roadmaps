@@ -10,7 +10,7 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
-import { handleOwnerAgentQuery } from '../controllers/assistantAgent.controller';
+import { handleOwnerAgentQuery } from '../controllers/assistantAgent.controller.ts';
 
 const router = Router();
 

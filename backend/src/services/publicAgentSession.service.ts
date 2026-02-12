@@ -5,8 +5,8 @@
  * Sessions are ephemeral and not tied to authenticated users or tenants.
  */
 
-import { db } from '../db';
-import { publicAgentSessions, publicAgentEvents } from '../db/schema';
+import { db } from '../db/index.ts';
+import { publicAgentSessions, publicAgentEvents } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 import OpenAI from 'openai';
 import { homepageAssistantConfig } from '../config/openai.config';

@@ -1,6 +1,6 @@
 
-import { db } from '../db';
-import { agentMessages, agentThreads } from '../db/schema';
+import { db } from '../db/index.ts';
+import { agentMessages, agentThreads } from '../db/schema.ts';
 import { eq, inArray, notInArray } from 'drizzle-orm';
 
 async function main() {

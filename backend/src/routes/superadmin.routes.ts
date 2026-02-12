@@ -4,15 +4,15 @@ import multer from 'multer';
 import { authenticate, requireRole, AuthRequest } from '../middleware/auth';
 import { requireExecutive, requireDelegateOrHigher } from '../middleware/authority';
 import { AuthorityCategory, RoleToAuthorityMap } from '@roadmap/shared';
-import * as superadminController from '../controllers/superadmin.controller';
-import * as intakeVectorController from '../controllers/intakeVector.controller';
-import * as executiveBriefController from '../controllers/executiveBrief.controller';
-import * as stakeholderRepairController from '../controllers/stakeholderRepair.controller';
-import * as stakeholderMetadataUpdateController from '../controllers/stakeholderMetadataUpdate.controller';
-import * as ticketModerationController from '../controllers/ticketModeration.controller';
+import * as superadminController from '../controllers/superadmin.controller.ts';
+import * as intakeVectorController from '../controllers/intakeVector.controller.ts';
+import * as executiveBriefController from '../controllers/executiveBrief.controller.ts';
+import * as stakeholderRepairController from '../controllers/stakeholderRepair.controller.ts';
+import * as stakeholderMetadataUpdateController from '../controllers/stakeholderMetadataUpdate.controller.ts';
+import * as ticketModerationController from '../controllers/ticketModeration.controller.ts';
 
-import * as snapshotController from '../controllers/snapshot.controller';
-import * as executionStateController from '../controllers/executionState.controller';
+import * as snapshotController from '../controllers/snapshot.controller.ts';
+import * as executionStateController from '../controllers/executionState.controller.ts';
 
 const router = Router();
 

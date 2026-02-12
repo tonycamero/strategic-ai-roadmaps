@@ -4,8 +4,8 @@
  * Verifies Hayes tickets and roadmap sections exist in DB.
  */
 
-import { db } from '../db';
-import { sopTickets, roadmapSections, tenants, roadmaps } from '../db/schema';
+import { db } from '../db/index.ts';
+import { sopTickets, roadmapSections, tenants, roadmaps } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 
 const HAYES_TENANT_ID = '4e2c6eb1-0767-43d6-b6a4-3fca8efd3f64';

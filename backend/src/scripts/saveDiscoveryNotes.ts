@@ -4,8 +4,8 @@ dotenv.config();
 
 import fs from 'fs';
 import path from 'path';
-import { db } from '../db';
-import { tenants } from '../db/schema';
+import { db } from '../db/index.ts';
+import { tenants } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 import { saveDiscoveryCallNotes } from '../services/discoveryCallService';
 

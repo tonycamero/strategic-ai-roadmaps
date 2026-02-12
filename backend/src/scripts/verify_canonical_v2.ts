@@ -2,8 +2,8 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { db } from '../db';
-import { tenants, tenantDocuments, sopTickets } from '../db/schema';
+import { db } from '../db/index.ts';
+import { tenants, tenantDocuments, sopTickets } from '../db/schema.ts';
 import { eq, desc } from 'drizzle-orm';
 import { FindingsService } from '../services/findings.service';
 import { generateTicketsFromFindings } from '../services/ticketGeneration.service';

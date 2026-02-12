@@ -1,7 +1,7 @@
 
 import { Request, Response } from 'express';
-import { db } from '../db';
-import { diagnosticSnapshots, users, tenants } from '../db/schema';
+import { db } from '../db/index.ts';
+import { diagnosticSnapshots, users, tenants } from '../db/schema.ts';
 import { eq, desc } from 'drizzle-orm';
 import { z } from 'zod';
 import crypto from 'crypto';

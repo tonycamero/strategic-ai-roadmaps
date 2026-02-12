@@ -1,6 +1,6 @@
 import { Response } from 'express';
-import { db } from '../db';
-import { tenantDocuments, tenants, users } from '../db/schema';
+import { db } from '../db/index.ts';
+import { tenantDocuments, tenants, users } from '../db/schema.ts';
 import { eq, and, ne, desc } from 'drizzle-orm';
 import { AuthRequest } from '../middleware/auth';
 import path from 'path';

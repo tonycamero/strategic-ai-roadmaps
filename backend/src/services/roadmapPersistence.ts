@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { db } from '../db';
-import { tenants, tenantDocuments } from '../db/schema';
+import { db } from '../db/index.ts';
+import { tenants, tenantDocuments } from '../db/schema.ts';
 import { eq, and } from 'drizzle-orm';
 import { getStorageProvider, s3PutText } from './storage';
 

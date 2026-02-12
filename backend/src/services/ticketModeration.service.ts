@@ -5,8 +5,8 @@
  * Allows approval/rejection of AI-generated tickets to ensure quality and prevent bloat.
  */
 
-import { db } from '../db';
-import { sopTickets, ticketsDraft, ticketModerationSessions } from '../db/schema';
+import { db } from '../db/index.ts';
+import { sopTickets, ticketsDraft, ticketModerationSessions } from '../db/schema.ts';
 import { eq, and, inArray, or, isNull, ne, notInArray, isNotNull, desc, asc, sql, count } from 'drizzle-orm';
 
 export interface ModerationTicketDTO {

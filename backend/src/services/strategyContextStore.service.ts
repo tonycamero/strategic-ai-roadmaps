@@ -5,8 +5,8 @@
  * Used for debugging, auditing, and observability.
  */
 
-import { db } from '../db';
-import { agentStrategyContexts } from '../db/schema';
+import { db } from '../db/index.ts';
+import { agentStrategyContexts } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 import type { StrategyContext } from '../types/strategyContext';
 

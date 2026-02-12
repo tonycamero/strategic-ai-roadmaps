@@ -1,8 +1,8 @@
 
 import path from 'path';
 import dotenv from 'dotenv';
-import { db } from '../db';
-import { sopTickets } from '../db/schema';
+import { db } from '../db/index.ts';
+import { sopTickets } from '../db/schema.ts';
 import { sql } from 'drizzle-orm';
 import { fileURLToPath } from 'url';
 

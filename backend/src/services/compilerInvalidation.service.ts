@@ -1,6 +1,6 @@
 
-import { db } from '../db';
-import { sopTickets, auditEvents } from '../db/schema';
+import { db } from '../db/index.ts';
+import { sopTickets, auditEvents } from '../db/schema.ts';
 import { eq, and, sql } from 'drizzle-orm';
 
 /**

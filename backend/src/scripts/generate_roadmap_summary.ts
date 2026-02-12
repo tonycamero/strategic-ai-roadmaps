@@ -1,8 +1,8 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { db } from '../db';
-import { agentConfigs, tenantDocuments, tenants } from '../db/schema';
+import { db } from '../db/index.ts';
+import { agentConfigs, tenantDocuments, tenants } from '../db/schema.ts';
 import { and, eq } from 'drizzle-orm';
 import { readMarkdown, extractAgentCheatsheet } from '../utils/roadmapCheatsheet';
 

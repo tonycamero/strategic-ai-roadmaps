@@ -6,8 +6,8 @@
  */
 
 import OpenAI from 'openai';
-import { db } from '../db';
-import { agentConfigs, agentThreads, users, agentMessages, agentLogs, roadmapSections, intakes } from '../db/schema';
+import { db } from '../db/index.ts';
+import { agentConfigs, agentThreads, users, agentMessages, agentLogs, roadmapSections, intakes } from '../db/schema.ts';
 import { and, eq } from 'drizzle-orm';
 import { wrapUserMessageWithRoleContext } from '../config/role-runtime-context';
 import type { CapabilityProfile } from '../shared/types/capability-profile';

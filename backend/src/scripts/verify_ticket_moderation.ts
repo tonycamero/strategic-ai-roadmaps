@@ -1,9 +1,9 @@
 import 'dotenv/config';
-import { db } from '../db';
-import { tenants, users, sopTickets } from '../db/schema';
+import { db } from '../db/index.ts';
+import { tenants, users, sopTickets } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import { getDiagnosticTickets, approveDiagnosticTickets, rejectDiagnosticTickets } from '../controllers/ticketModeration.controller';
+import { getDiagnosticTickets, approveDiagnosticTickets, rejectDiagnosticTickets } from '../controllers/ticketModeration.controller.ts';
 import { AuthRequest } from '../middleware/auth';
 import { Response } from 'express';
 

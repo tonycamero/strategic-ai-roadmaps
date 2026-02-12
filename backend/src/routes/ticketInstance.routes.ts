@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import * as ticketInstanceController from '../controllers/ticketInstance.controller';
+import * as ticketInstanceController from '../controllers/ticketInstance.controller.ts';
 import { authenticate, requireRole, requireEditorMode } from '../middleware/auth';
 
 const router = Router();

@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
-import { db } from '../db';
-import { tenants, users, intakes, agentConfigs, ticketInstances, roadmapSections, roadmaps, ticketPacks } from '../db/schema';
+import { db } from '../db/index.ts';
+import { tenants, users, intakes, agentConfigs, ticketInstances, roadmapSections, roadmaps, ticketPacks } from '../db/schema.ts';
 import { eq, and } from 'drizzle-orm';
 import { getCustomInstructions } from '../config/agent-custom-instructions';
 import { runVerifiedCompute } from './verified-compute.service';

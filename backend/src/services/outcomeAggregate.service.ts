@@ -1,5 +1,5 @@
-import { db } from '../db';
-import { roadmapOutcomes } from '../db/schema';
+import { db } from '../db/index.ts';
+import { roadmapOutcomes } from '../db/schema.ts';
 
 export class OutcomeAggregateService {
   /**

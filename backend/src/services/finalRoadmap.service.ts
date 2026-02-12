@@ -5,8 +5,8 @@
  * This is the final step: tickets generated → moderated → final roadmap.
  */
 
-import { db } from '../db';
-import { roadmaps, roadmapSections, sopTickets, tenants } from '../db/schema';
+import { db } from '../db/index.ts';
+import { roadmaps, roadmapSections, sopTickets, tenants } from '../db/schema.ts';
 import { eq, and } from 'drizzle-orm';
 import crypto from 'crypto';
 import { assembleRoadmap } from './roadmapAssembly.service';

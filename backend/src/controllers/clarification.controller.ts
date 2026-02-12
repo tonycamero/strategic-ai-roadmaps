@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { db } from '../db';
-import { intakeClarifications, auditEvents } from '../db/schema';
+import { db } from '../db/index.ts';
+import { intakeClarifications, auditEvents } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 
 export async function getClarificationByToken(req: Request, res: Response) {

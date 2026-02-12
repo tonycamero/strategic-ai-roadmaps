@@ -6,8 +6,8 @@
  * - Owner: can only update customInstructions
  */
 
-import { db } from '../db';
-import { agentConfigs } from '../db/schema';
+import { db } from '../db/index.ts';
+import { agentConfigs } from '../db/schema.ts';
 import { eq, and } from 'drizzle-orm';
 import type { AgentConfig } from '../types/agent.types';
 

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { deriveAuthority, requireDelegateOrHigher, requireExecutive } from '../middleware/authority';
-import * as controller from '../controllers/command_center.controller';
+import * as controller from '../controllers/command_center.controller.ts';
 
 const router = Router();
 

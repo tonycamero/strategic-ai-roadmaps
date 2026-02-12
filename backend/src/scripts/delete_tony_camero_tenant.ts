@@ -11,8 +11,8 @@
  * - All related foreign key references
  */
 
-import { db } from '../db';
-import { users, tenants } from '../db/schema';
+import { db } from '../db/index.ts';
+import { users, tenants } from '../db/schema.ts';
 import { eq, or, like } from 'drizzle-orm';
 
 async function main() {

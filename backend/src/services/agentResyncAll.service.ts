@@ -1,5 +1,5 @@
-import { db } from '../db';
-import { roadmaps } from '../db/schema';
+import { db } from '../db/index.ts';
+import { roadmaps } from '../db/schema.ts';
 import { desc, eq } from 'drizzle-orm';
 import { syncAgentsForRoadmap } from './roadmapAgentSync.service';
 

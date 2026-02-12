@@ -1,6 +1,6 @@
 import 'dotenv/config';
-import { db } from '../db';
-import { intakeVectors, invites, tenants, users } from '../db/schema';
+import { db } from '../db/index.ts';
+import { intakeVectors, invites, tenants, users } from '../db/schema.ts';
 import { eq, and, isNull, ne } from 'drizzle-orm';
 import { generateInviteToken } from '../utils/auth';
 import * as emailService from '../services/email.service';

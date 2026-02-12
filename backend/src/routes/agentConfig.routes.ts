@@ -9,7 +9,7 @@ import {
   handleListConfigs,
   handleGetConfig,
   handleUpdateConfig,
-} from '../controllers/agentConfig.controller';
+} from '../controllers/agentConfig.controller.ts';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();

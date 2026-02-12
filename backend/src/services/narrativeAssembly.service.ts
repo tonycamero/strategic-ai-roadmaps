@@ -1,7 +1,7 @@
 
-import { db } from '../db';
+import { db } from '../db/index.ts';
 import { eq, desc } from 'drizzle-orm';
-import { tenants, executiveBriefs, diagnostics, intakes } from '../db/schema';
+import { tenants, executiveBriefs, diagnostics, intakes } from '../db/schema.ts';
 
 // --- Types ---
 

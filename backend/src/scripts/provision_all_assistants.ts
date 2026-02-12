@@ -5,8 +5,8 @@
  * Run with: npm run provision:assistants
  */
 
-import { db } from '../db';
-import { agentConfigs, users } from '../db/schema';
+import { db } from '../db/index.ts';
+import { agentConfigs, users } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 import { provisionAssistantForConfig } from '../services/assistantProvisioning.service';
 

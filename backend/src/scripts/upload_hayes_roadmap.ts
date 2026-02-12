@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
-import { db } from '../db';
-import { tenants, tenantDocuments } from '../db/schema';
+import { db } from '../db/index.ts';
+import { tenants, tenantDocuments } from '../db/schema.ts';
 import { eq, and } from 'drizzle-orm';
 
 const HAYES_TENANT_ID = '4e2c6eb1-0767-43d6-b6a4-3fca8efd3f64';

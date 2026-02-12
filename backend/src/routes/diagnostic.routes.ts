@@ -5,7 +5,7 @@
 
 import { Router } from 'express';
 import { ipRateLimiter, sessionRateLimiter } from '../middleware/pulseagentRateLimit';
-import * as webinarController from '../controllers/webinar.controller';
+import * as webinarController from '../controllers/webinar.controller.ts';
 
 const router = Router();
 
@@ -60,7 +60,7 @@ const assertHandler = (handler: any, name: string) => {
 };
 
 // PDF Generation Routes
-import * as pdfController from '../controllers/webinarPdf.controller';
+import * as pdfController from '../controllers/webinarPdf.controller.ts';
 
 assertHandler(pdfController.generateRolePdf, 'pdfController.generateRolePdf');
 assertHandler(pdfController.generateTeamPdf, 'pdfController.generateTeamPdf');
@@ -86,7 +86,7 @@ router.post(
 );
 
 // New Persistence Routes
-import * as diagnosticController from '../controllers/diagnostic.controller';
+import * as diagnosticController from '../controllers/diagnostic.controller.ts';
 
 /**
  * POST /api/public/diagnostic/save

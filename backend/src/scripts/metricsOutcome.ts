@@ -3,8 +3,8 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import * as readline from 'readline';
-import { db } from '../db';
-import { tenants, roadmaps } from '../db/schema';
+import { db } from '../db/index.ts';
+import { tenants, roadmaps } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 import { ImplementationMetricsService } from '../services/implementationMetrics.service';
 
