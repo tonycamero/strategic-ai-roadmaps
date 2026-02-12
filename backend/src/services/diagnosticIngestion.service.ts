@@ -4,7 +4,7 @@ import { nanoid } from 'nanoid';
 import { OpenAI } from 'openai';
 import { buildDiagnosticToTicketsPrompt, SelectedInventoryTicket } from '../trustagent/prompts/diagnosticToTickets';
 import { eq, and } from 'drizzle-orm';
-import { Sop01Outputs } from './sop01Engine';
+import { Sop01Outputs } from './sop01Engine.ts';
 import { AUTHORITY_VERSION_STAGE6 } from '../config/authorityVersions';
 import { createHash } from 'crypto';
 
