@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createLeadRequest } from '../controllers/leadRequest.controller.js.ts';
+import { createLeadRequest } from '../controllers/leadRequest.controller.ts';
 
 const router = Router();
 
