@@ -2,7 +2,7 @@
 import { Request, Response } from 'express';
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
-import { assembleNarrative } from '../narrative/engine';
+import { assembleNarrative } from '../narrative/engine.ts';
 
 // Verdict map for role snapshots
 const ROLE_VERDICTS: Record<string, string> = {

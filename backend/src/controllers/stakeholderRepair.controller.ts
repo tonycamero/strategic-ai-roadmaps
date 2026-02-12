@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { db } from '../db/index.ts';
 import { intakeVectors, intakes } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
-import { AuthRequest } from '../middleware/auth';
+import { AuthRequest } from '../middleware/auth.ts';
 
 /**
  * POST /api/superadmin/tenants/:tenantId/repair-stakeholders

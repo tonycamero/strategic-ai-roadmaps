@@ -5,11 +5,11 @@ import { diagnosticSnapshots, users, tenants } from '../db/schema.ts';
 import { eq, desc } from 'drizzle-orm';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { generateToken, hashPassword } from '../utils/auth';
+import { generateToken, hashPassword } from '../utils/auth.ts';
 
 // Legacy imports from original HEAD
 
-import { DiagnosticMap } from '../types/diagnostic';
+import { DiagnosticMap } from '../types/diagnostic.ts';
 
 const SaveSnapshotSchema = z.object({
   email: z.string().email(),

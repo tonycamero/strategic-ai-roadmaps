@@ -5,12 +5,12 @@
  */
 
 import { Response } from 'express';
-import { AuthRequest } from '../middleware/auth';
+import { AuthRequest } from '../middleware/auth.ts';
 import {
   listConfigsForTenant,
   getConfigForTenantAndRole,
   updateConfig,
-} from '../services/agentConfig.service';
+} from '../services/agentConfig.service.ts';
 
 /**
  * GET /api/agents/configs/:tenantId

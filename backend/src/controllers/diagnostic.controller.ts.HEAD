@@ -6,8 +6,8 @@
  */
 
 import { Request, Response } from 'express';
-import { ingestDiagnostic } from '../services/diagnosticIngestion.service';
-import { DiagnosticMap } from '../types/diagnostic';
+import { ingestDiagnostic } from '../services/diagnosticIngestion.service.ts';
+import { DiagnosticMap } from '../types/diagnostic.ts';
 
 export async function generateFromDiagnostic(req: Request, res: Response) {
   try {

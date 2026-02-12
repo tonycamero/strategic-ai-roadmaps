@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { TicketPackService } from '../services/ticketPack.service';
+import { TicketPackService } from '../services/ticketPack.service.ts';
 
 interface AuthRequest extends Request {
   user?: {

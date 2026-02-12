@@ -6,7 +6,7 @@
  */
 
 import { Request, Response } from 'express';
-import { queryAssistant, type ThreadVisibility } from '../services/assistantQuery.service';
+import { queryAssistant, type ThreadVisibility } from '../services/assistantQuery.service.ts';
 import { db } from '../db/index.ts';
 import { tenants } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';

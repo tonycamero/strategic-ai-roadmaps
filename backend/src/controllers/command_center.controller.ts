@@ -2,10 +2,10 @@ import { Response } from 'express';
 import { db } from '../db/index.ts';
 import { tenants, users, auditEvents, roadmaps } from '../db/schema.ts';
 import { eq, and, sql, desc, inArray, ilike, or } from 'drizzle-orm';
-import { AuthRequest } from '../middleware/auth';
-import { getManyOnboardingStates, invalidateOnboardingStateCache } from '../services/onboardingState.service';
+import { AuthRequest } from '../middleware/auth.ts';
+import { getManyOnboardingStates, invalidateOnboardingStateCache } from '../services/onboardingState.service.ts';
 import { AuthorityCategory } from '@roadmap/shared';
-import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
+import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes.ts';
 
 // ============================================================================
 // HELPERS

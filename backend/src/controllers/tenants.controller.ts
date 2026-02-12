@@ -1,9 +1,9 @@
 import { Response } from 'express';
-import { AuthRequest } from '../middleware/auth';
+import { AuthRequest } from '../middleware/auth.ts';
 import { db } from '../db/index.ts';
 import { tenants, diagnostics } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
-import { onboardingProgressService } from '../services/onboardingProgress.service';
+import { onboardingProgressService } from '../services/onboardingProgress.service.ts';
 
 const onboardingService = onboardingProgressService;
 

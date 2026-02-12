@@ -1,6 +1,6 @@
 import { Response } from 'express';
-import { queryAgent, AgentContext } from '../services/agent.service';
-import { AuthRequest } from '../middleware/auth';
+import { queryAgent, AgentContext } from '../services/agent.service.ts';
+import { AuthRequest } from '../middleware/auth.ts';
 import { db } from '../db/index.ts';
 import { tenants, users } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';

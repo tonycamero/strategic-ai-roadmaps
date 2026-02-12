@@ -19,7 +19,7 @@ import {
     type RoleAnswers,
     type RoleEvidence
 } from '@roadmap/shared';
-import { assembleNarrative } from '../narrative/engine';
+import { assembleNarrative } from '../narrative/engine.ts';
 
 // In-memory session store with composite keys: ${role}:${sessionId}
 const WEBINAR_SESSIONS = new Map<string, any>();

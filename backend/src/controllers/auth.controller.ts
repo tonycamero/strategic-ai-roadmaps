@@ -3,10 +3,10 @@ import { db } from '../db/index.ts';
 import { users, tenants } from '../db/schema.ts';
 import crypto from 'crypto';
 import { eq } from 'drizzle-orm';
-import { hashPassword, comparePassword, generateToken } from '../utils/auth';
+import { hashPassword, comparePassword, generateToken } from '../utils/auth.ts';
 import { LoginRequest, RegisterRequest } from '@roadmap/shared';
 import { ZodError } from 'zod';
-import { sendPasswordResetEmail } from '../services/email.service';
+import { sendPasswordResetEmail } from '../services/email.service.ts';
 
 export async function login(req: Request, res: Response) {
   try {

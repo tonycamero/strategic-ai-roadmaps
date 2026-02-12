@@ -10,9 +10,9 @@ import {
     tenantDocuments
 } from '../db/schema.ts';
 import { eq, and, asc, desc, sql } from 'drizzle-orm';
-import { AuthRequest } from '../middleware/auth';
-import { getOrCreateRoadmapForTenant } from '../services/roadmapOs.service';
-import { generateTicketPackForRoadmap } from '../services/ticketPackGenerator.service';
+import { AuthRequest } from '../middleware/auth.ts';
+import { getOrCreateRoadmapForTenant } from '../services/roadmapOs.service.ts';
+import { generateTicketPackForRoadmap } from '../services/ticketPackGenerator.service.ts';
 
 /**
  * GET /api/roadmap/sections
