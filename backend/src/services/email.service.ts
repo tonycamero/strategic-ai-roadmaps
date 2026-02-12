@@ -11,10 +11,15 @@
 import { Resend } from 'resend';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_EMAIL = process.env.FROM_EMAIL || process.env.RESEND_FROM || 'onboarding@resend.dev';
+const FROM_EMAIL = process.env.FROM_EMAIL;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const REPLY_TO = process.env.RESEND_REPLY_TO;
 
+if (!FROM_EMAIL) {
+  throw new Error("FROM_EMAIL environment variable is not defined");
+}
+
+const fromHeader = `StrategicAI <${FROM_EMAIL}>`;
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
 function isDev() {
@@ -47,7 +52,7 @@ export async function sendPasswordResetEmail(to: string, resetToken: string) {
   }
 
   const { data, error } = await resend.emails.send({
-    from: FROM_EMAIL,
+    from: fromHeader,
     to,
     subject: 'Reset your password',
     html: `
@@ -111,7 +116,7 @@ export async function sendInviteEmail(
     : `${inviterName} has invited you to Strategic AI Roadmaps for ${companyName}`;
 
   const { data, error } = await resend.emails.send({
-    from: FROM_EMAIL,
+    from: fromHeader,
     to,
     reply_to: REPLY_TO,
     subject,
@@ -175,7 +180,7 @@ export async function sendClarificationRequestEmail(
   }
 
   const { data, error } = await resend.emails.send({
-    from: FROM_EMAIL,
+    from: fromHeader,
     to,
     reply_to: REPLY_TO,
     subject: 'Clarification Requested on Your Intake Response',
@@ -260,7 +265,7 @@ export async function sendEmail(args: {
     })) || undefined;
 
   const { data, error } = await resend.emails.send({
-    from: FROM_EMAIL,
+    from: fromHeader,
     to,
     reply_to: REPLY_TO,
     subject,
