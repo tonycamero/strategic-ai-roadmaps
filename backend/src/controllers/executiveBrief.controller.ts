@@ -5,7 +5,7 @@ import { executiveBriefs, tenants, intakes, intakeVectors, users, auditEvents, e
 import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
 import { validateBriefModeSchema } from '../services/schemaGuard.service';
 import { generateRequestId, getRequestId } from '../utils/requestId.ts';
-import { sendBriefError } from '../utils/briefErrorResponse';
+import { sendBriefError } from '../utils/briefErrorResponse.ts';
 
 /**
  * Helper: Resolve the logical approval status of an Executive Brief.
