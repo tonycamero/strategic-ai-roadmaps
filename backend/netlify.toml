@@ -1,5 +1,6 @@
 [build]
-  functions = "netlify/functions"
+  command = "pnpm run build:functions"
+  functions = "netlify/functions-dist"
 
 [[redirects]]
   from = "/api/*"
@@ -8,13 +9,12 @@
   force = true
 
 [functions]
-  node_bundler = "zisi"
-  directory = "netlify/functions"
-  included_files = ["src/**"]
-
- 
-[functions.api]
-  external_node_modules = ["pdfkit"]
+  node_bundler = "none"
+  directory = "netlify/functions-dist"
+  included_files = [
+    "netlify/functions-dist/**",
+    "src/**"
+  ]
 
 [[headers]]
   for = "/api/*"
