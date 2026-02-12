@@ -4,7 +4,7 @@ import { Router } from 'express';
 import { db } from '../db/index.ts';
 // @ts-ignore
 import { sql } from 'drizzle-orm';
-import { config } from '../config/env';
+import { config } from '../config/env.ts';
 
 const router = Router();
 

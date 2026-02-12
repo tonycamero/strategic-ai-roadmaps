@@ -2,7 +2,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { authenticate, requireRole, AuthRequest } from '../middleware/auth.ts';
-import { requireExecutive, requireDelegateOrHigher } from '../middleware/authority';
+import { requireExecutive, requireDelegateOrHigher } from '../middleware/authority.ts';
 import { AuthorityCategory, RoleToAuthorityMap } from '@roadmap/shared';
 import * as superadminController from '../controllers/superadmin.controller.ts';
 import * as intakeVectorController from '../controllers/intakeVector.controller.ts';
@@ -171,7 +171,7 @@ router.post('/firms/:tenantId/metrics/compute-outcome', superadminController.com
 // POST /api/superadmin/firms/:tenantId/export/case-study - REMOVED (Legacy)
 
 // Ticket Moderation Endpoints - REMOVED (Stubbed)
-import { validateTicketSchema } from '../middleware/schemaValidation';
+import { validateTicketSchema } from '../middleware/schemaValidation.ts';
 
 // POST /api/superadmin/tickets/approve - Approve tickets — PHASE 1: DELEGATE OR HIGHER
 router.post('/tickets/approve', requireDelegateOrHigher(), ticketModerationController.approveDiagnosticTickets);
@@ -214,7 +214,7 @@ router.get('/tickets/:tenantId/:diagnosticId', async (req, res) => {
 
 
 /*
-import { getDeprecationPhase, DeprecationPhase, getDeprecationWarning } from '../services/sunset.service';
+import { getDeprecationPhase, DeprecationPhase, getDeprecationWarning } from '../services/sunset.service.ts';
 
 function wrapLegacyFinalize(handler: any) {
   return async (req: Request, res: Response, next: NextFunction) => {

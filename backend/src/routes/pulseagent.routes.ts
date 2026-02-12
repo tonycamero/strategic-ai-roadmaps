@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { pulseagentPublicGuard } from '../middleware/pulseagentPublicGuard';
-import { ipRateLimiter, sessionRateLimiter } from '../middleware/pulseagentRateLimit';
+import { pulseagentPublicGuard } from '../middleware/pulseagentPublicGuard.ts';
+import { ipRateLimiter, sessionRateLimiter } from '../middleware/pulseagentRateLimit.ts';
 import * as pulseagentHomepageController from '../controllers/pulseagentHomepage.controller.ts';
 
 const router = Router();

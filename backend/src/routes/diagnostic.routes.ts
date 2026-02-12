@@ -4,7 +4,7 @@
  */
 
 import { Router } from 'express';
-import { ipRateLimiter, sessionRateLimiter } from '../middleware/pulseagentRateLimit';
+import { ipRateLimiter, sessionRateLimiter } from '../middleware/pulseagentRateLimit.ts';
 import * as webinarController from '../controllers/webinar.controller.ts';
 
 const router = Router();

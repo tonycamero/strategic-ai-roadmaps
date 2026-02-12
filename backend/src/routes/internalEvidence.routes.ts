@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { db } from '../db/index.ts';
 import { evidenceArtifacts, evidenceBindings } from '../db/schema.ts';
-import { putEvidenceArtifact } from '../services/storage/evidenceStorage';
+import { putEvidenceArtifact } from '../services/storage/evidenceStorage.ts';
 import { eq, and } from 'drizzle-orm';
 
 const router = Router();
