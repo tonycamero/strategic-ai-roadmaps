@@ -75,3 +75,6 @@ shared/src/*.js
 shared/src/*.js.map
 netlify/functions-dist/
 backend/netlify/functions-dist/
+
+# Netlify function build output
+backend/netlify/functions-dist/
