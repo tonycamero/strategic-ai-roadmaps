@@ -5,8 +5,8 @@
 
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { db } from '../db';
-import { webinarSettings, webinarRegistrations, evidenceBindings, evidenceArtifacts } from '../db/schema';
+import { db } from '../db/index.ts';
+import { webinarSettings, webinarRegistrations, evidenceBindings, evidenceArtifacts } from '../db/schema.ts';
 import { eq, and } from 'drizzle-orm';
 import {
     FETA_REGISTRY,

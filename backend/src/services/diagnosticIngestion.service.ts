@@ -1,5 +1,5 @@
-import { db } from '../db';
-import { sopTickets } from '../db/schema';
+import { db } from '../db/index.ts';
+import { sopTickets } from '../db/schema.ts';
 import { nanoid } from 'nanoid';
 import { OpenAI } from 'openai';
 import { buildDiagnosticToTicketsPrompt, SelectedInventoryTicket } from '../trustagent/prompts/diagnosticToTickets';

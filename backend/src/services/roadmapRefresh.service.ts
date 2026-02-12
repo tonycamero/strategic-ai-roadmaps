@@ -1,5 +1,5 @@
-import { db } from '../db';
-import { roadmaps, roadmapSections, agentLogs, agentConfigs, type RoadmapSection } from '../db/schema';
+import { db } from '../db/index.ts';
+import { roadmaps, roadmapSections, agentLogs, agentConfigs, type RoadmapSection } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 import { RoadmapSectionService } from './roadmapSection.service';
 import { TicketPackService } from './ticketPack.service';

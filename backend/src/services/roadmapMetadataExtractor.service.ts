@@ -1,5 +1,5 @@
-import { db } from '../db';
-import { roadmapSections, agentConfigs } from '../db/schema';
+import { db } from '../db/index.ts';
+import { roadmapSections, agentConfigs } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 
 interface RoadmapMetadata {

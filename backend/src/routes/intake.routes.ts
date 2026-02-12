@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import * as intakeController from '../controllers/intake.controller';
+import * as intakeController from '../controllers/intake.controller.ts';
 import { authenticate, requireRole, requireTenantAccess } from '../middleware/auth';
 
 const router = Router();

@@ -1,5 +1,5 @@
-import { db } from '../db';
-import { roadmaps, roadmapSections, ticketPacks, ticketInstances, tenantDocuments } from '../db/schema';
+import { db } from '../db/index.ts';
+import { roadmaps, roadmapSections, ticketPacks, ticketInstances, tenantDocuments } from '../db/schema.ts';
 import { eq, and } from 'drizzle-orm';
 import { ImplementationMetricsService } from './implementationMetrics.service';
 import { getOrCreateRoadmapForTenant } from './roadmapOs.service';

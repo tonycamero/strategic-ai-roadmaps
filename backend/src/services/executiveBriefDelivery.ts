@@ -3,8 +3,8 @@ import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 import { eq, and, desc } from 'drizzle-orm';
-import { db } from '../db';
-import { executiveBriefArtifacts, users, intakeVectors, executiveBriefs } from '../db/schema';
+import { db } from '../db/index.ts';
+import { executiveBriefArtifacts, users, intakeVectors, executiveBriefs } from '../db/schema.ts';
 import { renderPrivateLeadershipBriefToPDF } from './pdf/executiveBriefRenderer';
 import { sendEmail } from './email.service';
 

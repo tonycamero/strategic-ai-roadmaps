@@ -1,8 +1,8 @@
 
 import fs from 'fs';
 import path from 'path';
-import { db } from '../db';
-import { tenants, executiveBriefs } from '../db/schema';
+import { db } from '../db/index.ts';
+import { tenants, executiveBriefs } from '../db/schema.ts';
 import { eq, desc } from 'drizzle-orm';
 import { renderPrivateLeadershipBriefToPDF } from '../services/pdf/executiveBriefRenderer';
 

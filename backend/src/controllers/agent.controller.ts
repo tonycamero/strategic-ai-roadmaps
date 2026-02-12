@@ -1,8 +1,8 @@
 import { Response } from 'express';
 import { queryAgent, AgentContext } from '../services/agent.service';
 import { AuthRequest } from '../middleware/auth';
-import { db } from '../db';
-import { tenants, users } from '../db/schema';
+import { db } from '../db/index.ts';
+import { tenants, users } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 
 export async function handleAgentQuery(req: AuthRequest, res: Response) {

@@ -2,8 +2,8 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { db } from '../db';
-import { agentConfigs, agentLogs, tenants } from '../db/schema';
+import { db } from '../db/index.ts';
+import { agentConfigs, agentLogs, tenants } from '../db/schema.ts';
 import { eq, and, inArray } from 'drizzle-orm';
 import { provisionAssistantForConfig } from '../services/assistantProvisioning.service';
 

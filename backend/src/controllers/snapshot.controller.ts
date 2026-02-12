@@ -1,8 +1,8 @@
 
 import { Request, Response } from 'express';
-import { db } from '../db';
+import { db } from '../db/index.ts';
 import { eq, and, desc, sql } from 'drizzle-orm';
-import { tenants, intakes, intakeVectors, sopTickets, users, executiveBriefs } from '../db/schema';
+import { tenants, intakes, intakeVectors, sopTickets, users, executiveBriefs } from '../db/schema.ts';
 
 // Helper for type safety
 interface AuthRequest extends Request {

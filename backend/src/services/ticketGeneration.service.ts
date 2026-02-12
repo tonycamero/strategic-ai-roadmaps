@@ -1,5 +1,5 @@
-import { db } from '../db';
-import { sopTickets } from '../db/schema';
+import { db } from '../db/index.ts';
+import { sopTickets } from '../db/schema.ts';
 import { randomUUID, createHash } from 'crypto';
 import { CanonicalFindingsObject, CanonicalTicket, TicketClass } from '@roadmap/shared/src/canon';
 

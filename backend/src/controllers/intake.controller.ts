@@ -1,6 +1,6 @@
 import { Response } from 'express';
-import { db } from '../db';
-import { intakes, users, tenants, intakeVectors } from '../db/schema';
+import { db } from '../db/index.ts';
+import { intakes, users, tenants, intakeVectors } from '../db/schema.ts';
 import { eq, and } from 'drizzle-orm';
 import { AuthRequest } from '../middleware/auth';
 import { SubmitIntakeRequest } from '@roadmap/shared';

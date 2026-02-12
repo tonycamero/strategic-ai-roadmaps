@@ -7,8 +7,8 @@
  */
 
 import bcrypt from 'bcryptjs';
-import { db } from '../db';
-import { users } from '../db/schema';
+import { db } from '../db/index.ts';
+import { users } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 
 const TEST_PASSWORD = 'testpass123';

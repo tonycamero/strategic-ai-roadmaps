@@ -8,8 +8,8 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { db } from '../db';
-import { agentConfigs, intakes, tenants, users } from '../db/schema';
+import { db } from '../db/index.ts';
+import { agentConfigs, intakes, tenants, users } from '../db/schema.ts';
 import { eq, and } from 'drizzle-orm';
 
 interface IntakeAnswers {

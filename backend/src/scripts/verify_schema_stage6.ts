@@ -1,5 +1,5 @@
 import '../config/env';
-import { db } from '../db';
+import { db } from '../db/index.ts';
 import { sql } from 'drizzle-orm';
 
 async function verifySchema() {

@@ -9,8 +9,8 @@ import {
     intakes,
     auditEvents,
     intakeClarifications
-} from '../db/schema';
-import { db } from '../db';
+} from '../db/schema.ts';
+import { db } from '../db/index.ts';
 import { eq, desc, and } from 'drizzle-orm';
 
 // ============================================================================

@@ -1,7 +1,7 @@
 
-import { db } from '../db';
+import { db } from '../db/index.ts';
 import { eq, and, sql } from 'drizzle-orm';
-import { tenants, intakes, intakeVectors, executiveBriefs, diagnostics, sopTickets, discoveryCallNotes } from '../db/schema';
+import { tenants, intakes, intakeVectors, executiveBriefs, diagnostics, sopTickets, discoveryCallNotes } from '../db/schema.ts';
 
 export enum ExecutionStage {
     EXECUTIVE_BRIEF_GEN = 'EXECUTIVE_BRIEF_GEN',

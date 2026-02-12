@@ -1,5 +1,5 @@
-import { db } from '../db';
-import { onboardingStates } from '../db/schema';
+import { db } from '../db/index.ts';
+import { onboardingStates } from '../db/schema.ts';
 import { inArray, eq } from 'drizzle-orm';
 
 /**

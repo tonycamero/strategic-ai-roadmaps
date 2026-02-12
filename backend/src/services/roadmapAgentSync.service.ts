@@ -1,5 +1,5 @@
-import { db } from '../db';
-import { agentConfigs, roadmapSections, agentLogs } from '../db/schema';
+import { db } from '../db/index.ts';
+import { agentConfigs, roadmapSections, agentLogs } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 import { provisionAssistantForConfig } from './assistantProvisioning.service';
 import { buildRoadmapQnAContext } from '../trustagent/services/roadmapQnAContext.service';

@@ -12,8 +12,8 @@
 
 import fs from 'fs';
 import path from 'path';
-import { db } from '../db';
-import { tenants } from '../db/schema';
+import { db } from '../db/index.ts';
+import { tenants } from '../db/schema.ts';
 import { getOrCreateRoadmapForTenant, upsertRoadmapSection, getSectionMetadata } from '../services/roadmapOs.service';
 
 const STORAGE_DIR = path.join(__dirname, '../../storage/roadmaps');

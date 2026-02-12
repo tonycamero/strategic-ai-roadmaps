@@ -1,5 +1,5 @@
-import { db } from '../db';
-import { tenantDocuments, tenants } from '../db/schema';
+import { db } from '../db/index.ts';
+import { tenantDocuments, tenants } from '../db/schema.ts';
 import { eq, and } from 'drizzle-orm';
 import { Sop01Outputs } from './sop01Engine';
 

@@ -1,5 +1,5 @@
 
-import { getTenantSnapshot } from '../controllers/snapshot.controller';
+import { getTenantSnapshot } from '../controllers/snapshot.controller.ts';
 import { Request, Response } from 'express';
 
 // Mock Express
@@ -31,7 +31,7 @@ const mockResponse = () => {
 // No, the previous `verify_roadmap_finalization.ts` imported controllers and mocked DB *inside* the script using jest hacks or manual mocks?
 // Let's look at `verify_roadmap_finalization.ts` again.
 
-// It used `import { db } from '../db';` and then it would try to run against the real DB if connected, or fail.
+// It used `import { db } from '../db/index.ts';` and then it would try to run against the real DB if connected, or fail.
 // Code interaction summary said: "Enhanced database setup... Added test cases".
 // It seems it was running mostly as a unit test with mocks or against a local DB.
 
@@ -52,8 +52,8 @@ const mockResponse = () => {
 // It will require a valid tenantId.
 // I'll grab a tenantId from the database first.
 
-import { db } from '../db';
-import { tenants } from '../db/schema';
+import { db } from '../db/index.ts';
+import { tenants } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 
 async function verify() {

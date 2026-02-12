@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { db } from '../db/index.ts';
 import { and, eq } from 'drizzle-orm';
 import {
   ticketPacks,
@@ -7,7 +7,7 @@ import {
   type NewTicketPack,
   type TicketInstance,
   type NewTicketInstance,
-} from '../db/schema';
+} from '../db/schema.ts';
 
 export class TicketPackService {
   static async createPack(input: NewTicketPack): Promise<TicketPack> {

@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { db } from '../db/index.ts';
 import { sql } from 'drizzle-orm';
 
 let isBriefModeColumnPresent: boolean | null = null;

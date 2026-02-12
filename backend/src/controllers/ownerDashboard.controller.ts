@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { db } from '../db';
-import { tenants, roadmaps, roadmapSections, roadmapOutcomes, implementationSnapshots, ticketPacks, ticketInstances, intakes, tenantDocuments, discoveryCallNotes, users, auditEvents } from '../db/schema';
+import { db } from '../db/index.ts';
+import { tenants, roadmaps, roadmapSections, roadmapOutcomes, implementationSnapshots, ticketPacks, ticketInstances, intakes, tenantDocuments, discoveryCallNotes, users, auditEvents } from '../db/schema.ts';
 import { eq, and, desc } from 'drizzle-orm';
 import { ImplementationMetricsService } from '../services/implementationMetrics.service';
 

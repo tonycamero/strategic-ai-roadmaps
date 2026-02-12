@@ -2,8 +2,8 @@
 import { Request, Response } from 'express';
 import { buildRoadmapQnAContext } from '../trustagent/services/roadmapQnAContext.service';
 import { callRoadmapQnAAgent } from '../trustagent/services/roadmapQnAAgent.service';
-import { db } from '../db';
-import { users } from '../db/schema';
+import { db } from '../db/index.ts';
+import { users } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 import { getBusinessTypeProfile } from '@roadmap/shared';
 import type { BusinessType } from '@roadmap/shared';

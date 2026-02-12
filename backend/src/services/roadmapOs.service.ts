@@ -1,7 +1,7 @@
-import { db } from '../db';
-import { tenants, roadmaps, roadmapSections } from '../db/schema';
+import { db } from '../db/index.ts';
+import { tenants, roadmaps, roadmapSections } from '../db/schema.ts';
 import { eq, and } from 'drizzle-orm';
-import type { Roadmap, RoadmapSection } from '../db/schema';
+import type { Roadmap, RoadmapSection } from '../db/schema.ts';
 
 /**
  * Get or create a roadmap for a tenant.

@@ -1,7 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../middleware/auth';
-import { db } from '../db';
-import { tenantDocuments } from '../db/schema';
+import { db } from '../db/index.ts';
+import { tenantDocuments } from '../db/schema.ts';
 import { eq, and, desc } from 'drizzle-orm';
 import { generateTicketsFromFindings } from '../services/ticketGeneration.service';
 import { CanonicalFindingsObject } from '@roadmap/shared/src/canon';

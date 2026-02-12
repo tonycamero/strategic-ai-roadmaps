@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import * as clarificationController from '../controllers/clarification.controller';
+import * as clarificationController from '../controllers/clarification.controller.ts';
 
 const router = Router();
 

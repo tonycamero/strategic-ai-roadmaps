@@ -1,6 +1,6 @@
-import { db } from '../db';
+import { db } from '../db/index.ts';
 import { eq, and } from 'drizzle-orm';
-import { roadmapSections, type RoadmapSection, type NewRoadmapSection } from '../db/schema';
+import { roadmapSections, type RoadmapSection, type NewRoadmapSection } from '../db/schema.ts';
 
 export class RoadmapSectionService {
   static async getSectionsForRoadmap(roadmapId: string): Promise<RoadmapSection[]> {

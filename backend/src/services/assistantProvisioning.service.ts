@@ -7,8 +7,8 @@
 
 import OpenAI from 'openai';
 import fs from 'fs';
-import { db } from '../db';
-import { agentConfigs, tenantDocuments, tenants, users } from '../db/schema';
+import { db } from '../db/index.ts';
+import { agentConfigs, tenantDocuments, tenants, users } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 import type { AgentConfig } from '../types/agent.types';
 import { buildAgentSystemPrompt, buildContextFromConfig } from './agentPromptBuilder.service';

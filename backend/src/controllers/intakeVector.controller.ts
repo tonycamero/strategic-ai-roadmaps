@@ -1,6 +1,6 @@
 import { Response } from 'express';
-import { db } from '../db';
-import { intakeVectors, intakes, users, tenants, invites } from '../db/schema';
+import { db } from '../db/index.ts';
+import { intakeVectors, intakes, users, tenants, invites } from '../db/schema.ts';
 import { eq, and } from 'drizzle-orm';
 import { AuthRequest } from '../middleware/auth';
 import { generateInviteToken } from '../utils/auth';

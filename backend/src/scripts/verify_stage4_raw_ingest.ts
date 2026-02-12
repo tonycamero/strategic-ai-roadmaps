@@ -2,8 +2,8 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { db } from '../db';
-import { tenants, discoveryCallNotes, tenantDocuments } from '../db/schema';
+import { db } from '../db/index.ts';
+import { tenants, discoveryCallNotes, tenantDocuments } from '../db/schema.ts';
 import { eq, desc, and } from 'drizzle-orm';
 import { FindingsService } from '../services/findings.service';
 

@@ -1,5 +1,5 @@
-import { db } from '../db';
-import { ticketInstances, roadmapSections, ticketPacks } from '../db/schema';
+import { db } from '../db/index.ts';
+import { ticketInstances, roadmapSections, ticketPacks } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 
 type SectionStatus = 'planned' | 'in_progress' | 'done' | 'blocked';

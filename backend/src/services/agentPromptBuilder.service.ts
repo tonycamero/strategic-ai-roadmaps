@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import type { CapabilityProfile } from '../shared/types/capability-profile';
-import type { AgentConfig } from '../db/schema';
+import type { AgentConfig } from '../db/schema.ts';
 
 export interface AgentPromptContext {
   firmName: string;

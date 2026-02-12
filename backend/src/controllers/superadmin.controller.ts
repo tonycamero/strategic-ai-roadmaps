@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { nanoid } from 'nanoid';
-import { db } from '../db';
+import { db } from '../db/index.ts';
 import {
   users, intakes, tenants, roadmaps, auditEvents, tenantDocuments,
   discoveryCallNotes, roadmapSections, ticketPacks, ticketInstances,
@@ -8,7 +8,7 @@ import {
   roadmapOutcomes, agentConfigs, agentThreads, webinarSettings,
   diagnostics, executiveBriefs, sopTickets, ticketModerationSessions,
   ticketsDraft, intakeClarifications
-} from '../db/schema';
+} from '../db/schema.ts';
 import { eq, and, sql, count, desc, asc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { AuthRequest } from '../middleware/auth';

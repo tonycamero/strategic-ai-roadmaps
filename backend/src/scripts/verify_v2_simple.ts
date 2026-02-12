@@ -1,7 +1,7 @@
 
 import 'dotenv/config';
-import { db } from '../db';
-import { diagnostics, executiveBriefs, sopTickets, discoveryCallNotes, tenants, users } from '../db/schema';
+import { db } from '../db/index.ts';
+import { diagnostics, executiveBriefs, sopTickets, discoveryCallNotes, tenants, users } from '../db/schema.ts';
 import { eq, and } from 'drizzle-orm';
 import crypto from 'crypto';
 

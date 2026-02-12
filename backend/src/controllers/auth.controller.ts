@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { db } from '../db';
-import { users, tenants } from '../db/schema';
+import { db } from '../db/index.ts';
+import { users, tenants } from '../db/schema.ts';
 import crypto from 'crypto';
 import { eq } from 'drizzle-orm';
 import { hashPassword, comparePassword, generateToken } from '../utils/auth';

@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import * as dashboardController from '../controllers/ownerDashboard.controller';
-import * as advisorThreadsController from '../controllers/advisorThreads.controller';
+import * as dashboardController from '../controllers/ownerDashboard.controller.ts';
+import * as advisorThreadsController from '../controllers/advisorThreads.controller.ts';
 import { authenticate, requireRole, requireTenantAccess } from '../middleware/auth';
 
 const router = Router();

@@ -6,8 +6,8 @@
  */
 
 import { Request, Response } from 'express';
-import { db } from '../db';
-import { agentLogs, agentConfigs } from '../db/schema';
+import { db } from '../db/index.ts';
+import { agentLogs, agentConfigs } from '../db/schema.ts';
 import { and, eq, desc, gte } from 'drizzle-orm';
 
 /**
