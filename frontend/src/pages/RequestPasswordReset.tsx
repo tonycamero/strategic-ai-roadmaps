@@ -58,7 +58,7 @@ export default function RequestPasswordReset() {
                 <div className="bg-amber-900/20 border border-amber-700/50 rounded-lg p-4 mb-6 text-left">
                   <p className="text-xs text-amber-200 font-semibold mb-2">DEV ONLY - Reset Link:</p>
                   <button
-                    onClick={() => setLocation(`/reset-password/${resetToken}`)}
+                    onClick={() => setLocation(`/reset-password?token=${encodeURIComponent(resetToken)}`)}
                     className="w-full text-left px-3 py-2 bg-slate-800 text-slate-300 rounded text-xs font-mono break-all hover:bg-slate-700 transition-colors"
                   >
                     /reset-password/{resetToken}
