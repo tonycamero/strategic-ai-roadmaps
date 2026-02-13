@@ -10,7 +10,8 @@ import { sendPasswordResetEmail } from '../services/email.service.ts';
 
 export async function login(req: Request, res: Response) {
   try {
-    const { email, password } = LoginRequest.parse(req.body);
+    const { email: rawEmail, password } = LoginRequest.parse(req.body);
+    const email = rawEmail.toLowerCase().trim();
 
     const [user] = await db
       .select()
@@ -58,7 +59,8 @@ export async function login(req: Request, res: Response) {
 
 export async function register(req: Request, res: Response) {
   try {
-    const { email, password, name, company, industry } = RegisterRequest.parse(req.body);
+    const { email: rawEmail, password, name, company, industry } = RegisterRequest.parse(req.body);
+    const email = rawEmail.toLowerCase().trim();
 
     // Check if user exists
     const [existing] = await db
@@ -173,7 +175,7 @@ export async function requestPasswordReset(req: Request, res: Response) {
 
       // Send password reset email via Resend
       try {
-        await sendPasswordResetEmail(email, resetToken);
+        await sendPasswordResetEmail(user.email, resetToken);
       } catch (emailError) {
         console.error('[Auth] Failed to send password reset email:', emailError);
         // Don't throw - we don't want to leak whether email exists

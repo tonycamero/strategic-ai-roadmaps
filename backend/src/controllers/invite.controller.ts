@@ -15,7 +15,8 @@ export async function createInvite(req: AuthRequest, res: Response) {
       return res.status(403).json({ error: 'Only owners can create invites' });
     }
 
-    const { email, role } = CreateInviteRequest.parse(req.body);
+    const { email: rawEmail, role } = CreateInviteRequest.parse(req.body);
+    const email = rawEmail.toLowerCase().trim();
 
     // Check if user already exists
     const [existingUser] = await db
