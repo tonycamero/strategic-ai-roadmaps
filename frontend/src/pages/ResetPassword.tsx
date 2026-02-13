@@ -1,11 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useRoute } from 'wouter';
 import { api, ApiError } from '../lib/api';
 
 export default function ResetPassword() {
-  const [, setLocation] = useLocation();
-  const [, params] = useRoute('/reset-password/:token');
-  const token = params?.token || '';
+  const [location, setLocation] = useLocation();
+
+  // Legacy route support: /reset-password/:token
+  const [, legacyParams] = useRoute('/reset-password/:token');
+  const legacyToken = (legacyParams?.token ?? '').trim();
+
+  // Canonical route support: /reset-password?token=...
+  const queryToken = useMemo(() => {
+    const q = new URLSearchParams(window.location.search);
+    return (q.get('token') ?? '').trim();
+  }, [location]);
+
+  // Prefer canonical query token, fallback to legacy param token
+  const token = (queryToken || legacyToken).trim();
 
   const [validating, setValidating] = useState(true);
   const [valid, setValid] = useState(false);
@@ -16,35 +27,58 @@ export default function ResetPassword() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  // Validate token on mount
+  // Normalize legacy URL → canonical query URL (but keep legacy working)
   useEffect(() => {
+    if (!queryToken && legacyToken) {
+      setLocation(`/reset-password?token=${encodeURIComponent(legacyToken)}`, { replace: true } as any);
+    }
+  }, [queryToken, legacyToken, setLocation]);
+
+  // Validate token (works for both canonical + legacy)
+  useEffect(() => {
+    let cancelled = false;
+
     const validateToken = async () => {
+      setValidating(true);
+      setError('');
+      setValid(false);
+      setEmail('');
+
+      if (!token) {
+        setError('No reset token provided');
+        setValidating(false);
+        return;
+      }
+
       try {
         const data = await api.validateResetToken(token);
 
-        if (data.valid) {
+        if (cancelled) return;
+
+        if (data?.valid) {
           setValid(true);
-          setEmail(data.email);
+          setEmail(data.email ?? '');
         } else {
-          setError(data.error || 'Invalid or expired reset link');
+          setValid(false);
+          setError(data?.error || 'Invalid or expired reset link');
         }
       } catch (err) {
+        if (cancelled) return;
+
         if (err instanceof ApiError) {
           setError(err.message);
         } else {
           setError('Failed to validate reset link');
         }
       } finally {
-        setValidating(false);
+        if (!cancelled) setValidating(false);
       }
     };
 
-    if (token) {
-      validateToken();
-    } else {
-      setError('No reset token provided');
-      setValidating(false);
-    }
+    validateToken();
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -66,7 +100,6 @@ export default function ResetPassword() {
 
     try {
       await api.resetPassword({ token, newPassword });
-
       setSuccess(true);
 
       // Redirect to login after 3 seconds
@@ -108,12 +141,8 @@ export default function ResetPassword() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold text-slate-100 mb-3">
-                Password Reset Successfully
-              </h2>
-              <p className="text-slate-400 mb-6">
-                Your password has been updated. Redirecting to login...
-              </p>
+              <h2 className="text-2xl font-bold text-slate-100 mb-3">Password Reset Successfully</h2>
+              <p className="text-slate-400 mb-6">Your password has been updated. Redirecting to login...</p>
               <button
                 onClick={() => setLocation('/login')}
                 className="text-blue-500 hover:text-blue-400 text-sm transition-colors font-bold uppercase tracking-widest"
@@ -139,12 +168,8 @@ export default function ResetPassword() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-semibold text-slate-100 mb-3">
-                Invalid Reset Link
-              </h2>
-              <p className="text-slate-400 mb-6">
-                {error || 'This password reset link is invalid or has expired.'}
-              </p>
+              <h2 className="text-2xl font-semibold text-slate-100 mb-3">Invalid Reset Link</h2>
+              <p className="text-slate-400 mb-6">{error || 'This password reset link is invalid or has expired.'}</p>
               <div className="space-y-3">
                 <button
                   onClick={() => setLocation('/request-reset')}
@@ -172,9 +197,7 @@ export default function ResetPassword() {
       <div className="w-full max-w-md">
         <div className="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 p-8 card-glow-hover">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-slate-100 mb-2">
-              Create New Password
-            </h2>
+            <h2 className="text-2xl font-bold text-slate-100 mb-2">Create New Password</h2>
             <p className="text-slate-400 text-sm">
               For <span className="text-slate-100 font-bold">{email}</span>
             </p>
@@ -197,9 +220,7 @@ export default function ResetPassword() {
                 disabled={loading}
               />
               {newPassword && newPassword.length < 8 && (
-                <p className="text-xs text-red-400 mt-1 font-bold">
-                  Password must be at least 8 characters
-                </p>
+                <p className="text-xs text-red-400 mt-1 font-bold">Password must be at least 8 characters</p>
               )}
             </div>
 
@@ -218,9 +239,7 @@ export default function ResetPassword() {
                 disabled={loading}
               />
               {confirmPassword && newPassword !== confirmPassword && (
-                <p className="text-xs text-red-400 mt-1 font-bold">
-                  Passwords do not match
-                </p>
+                <p className="text-xs text-red-400 mt-1 font-bold">Passwords do not match</p>
               )}
             </div>
 

@@ -79,8 +79,14 @@ function App() {
                 {/* Auth */}
                 <Route path="/login" component={Auth} />
                 <Route path="/signup" component={Signup} />
+                {/* Canonical password reset routes */}
+                <Route path="/request-reset" component={RequestPasswordReset} />
+                <Route path="/reset-password" component={ResetPassword} />
+
+                {/* Back-compat (optional but recommended) */}
                 <Route path="/forgot-password" component={RequestPasswordReset} />
                 <Route path="/reset-password/:token" component={ResetPassword} />
+                
                 <Route path="/clarify/:token" component={ClarificationForm} />
                 <Route path="/accept-invite/:token" component={AcceptInvite} />
 
