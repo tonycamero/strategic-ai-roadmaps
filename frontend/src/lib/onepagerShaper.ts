@@ -1,5 +1,4 @@
 import { OnepagerSpec } from '../types/OnepagerSpec';
-// NOTE: evidenceMap is frontend-safe ESM import
 import { evidenceMap, clusterMap, failureModeMap, assertEvidenceMapQuality } from './evidenceMap';
 import { isUsableVoice, formatEvidenceQuote } from './voiceUtils'; // AG-TICKET-08
 

@@ -2427,10 +2427,38 @@ export async function createBaselineForFirm(req: AuthRequest, res: Response) {
 
     const current = existing[0];
 
-    // IF status is already COMPLETE, it is immutable via this endpoint (Authority Discipline)
-    if (current && (current as any).status === 'COMPLETE') {
-      return res.status(409).json({ error: 'Baseline is COMPLETE and locked. Snapshot required to modify.' });
-    }
+// IF status is already COMPLETE, do NOT mutate baseline here.
+// Instead: create a baseline snapshot (T3.2) and return 200.
+if (current && (current as any).status === 'COMPLETE') {
+  const roadmap = await getOrCreateRoadmapForTenant(tenantId);
+
+  // Build RawMetrics from the locked baseline row
+  const rawMetrics: any = {
+    monthlyLeadVolume: (current as any).monthlyLeadVolume ?? null,
+    avgResponseTimeMinutes: (current as any).avgResponseTimeMinutes ?? null,
+    closeRatePercent: (current as any).closeRatePercent ?? null,
+    avgJobValue: (current as any).avgJobValue ?? null,
+    currentTools: (current as any).currentTools ?? [],
+    salesRepsCount: (current as any).salesRepsCount ?? null,
+    opsAdminCount: (current as any).opsAdminCount ?? null,
+    primaryBottleneck: (current as any).primaryBottleneck ?? null,
+  };
+
+  const { snapshotId, metrics } = await ImplementationMetricsService.createBaselineSnapshot(
+    tenantId,
+    roadmap.id,
+    rawMetrics,
+    'api'
+  );
+
+  return res.status(200).json({
+    ok: true,
+    baselineLocked: true,
+    baseline: current,
+    snapshot: { id: snapshotId, metrics },
+  });
+}
+
 
     // Tools Transformation: Must be array
     let tools: string[] = [];
