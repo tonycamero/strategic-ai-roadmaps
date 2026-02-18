@@ -2447,23 +2447,48 @@ export async function createBaselineForFirm(req: AuthRequest, res: Response) {
     const current = existing[0];
 
     // ========================================================================
-    // IMMUTABILITY CHECK (Task 2.3)
+    // IMMUTABILITY + LEGACY SNAPSHOT SIDE-EFFECT
     // ========================================================================
-    if (current && (current as any).status !== 'DRAFT') {
-      // If legacy behavior (COMPLETE triggers snapshot) is desired, it acts as a side-effect,
-      // NOT a mutation of the baseline itself.
-      // However, the mandate says: "If baseline.status != 'DRAFT', reject POST update with 409"
-      // UNLESS valid for legacy snapshot trigger.
-      // We will Fail-Closed here for any data mutation attempt.
 
-      // Legacy "Create Snapshot" side-effect trap:
-      // If the body implies a "lock" action or just a periodic save, we must be careful.
-      // Current instruction: "If baseline.status != 'DRAFT', reject POST update with 409"
-      return res.status(409).json({
-        error: 'BASELINE_IMMUTABLE',
-        message: 'Baseline is locked (status != DRAFT) and cannot be modified.'
+    // If baseline is already COMPLETE, do NOT mutate baseline here.
+    // Instead: create a baseline snapshot from the locked row and return 200.
+    if (current && (current as any).status === 'COMPLETE') {
+      const roadmap = await getOrCreateRoadmapForTenant(tenantId);
+
+      const rawMetrics: any = {
+        monthlyLeadVolume: (current as any).monthlyLeadVolume ?? null,
+        avgResponseTimeMinutes: (current as any).avgResponseTimeMinutes ?? null,
+        closeRatePercent: (current as any).closeRatePercent ?? null,
+        avgJobValue: (current as any).avgJobValue ?? null,
+        currentTools: (current as any).currentTools ?? [],
+        salesRepsCount: (current as any).salesRepsCount ?? null,
+        opsAdminCount: (current as any).opsAdminCount ?? null,
+        primaryBottleneck: (current as any).primaryBottleneck ?? null,
+      };
+
+      const { snapshotId, metrics } = await ImplementationMetricsService.createBaselineSnapshot(
+        tenantId,
+        roadmap.id,
+        rawMetrics,
+        'api'
+      );
+
+      return res.status(200).json({
+        ok: true,
+        baselineLocked: true,
+        baseline: current,
+        snapshot: { id: snapshotId, metrics },
       });
     }
+
+    // If baseline is not DRAFT (LOCKED or other), reject mutation attempts.
+    if (current && (current as any).status !== 'DRAFT') {
+      return res.status(409).json({
+        error: 'BASELINE_IMMUTABLE',
+        message: 'Baseline is locked (status != DRAFT) and cannot be modified.',
+      });
+    }
+
 
     // Tools Transformation: Must be array
     let tools: string[] = [];
