@@ -46,9 +46,38 @@ function ScrollToTop() {
 
 function RootRedirect() {
   const [location, setLocation] = useLocation();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, login } = useAuth(); // Added login to destructuring
 
   useEffect(() => {
+    // Check for impersonation token in URL
+    const searchParams = new URLSearchParams(window.location.search);
+    const impersonationToken = searchParams.get('impersonationToken');
+
+    // PARKED: Impersonation feature disabled
+    if (false && impersonationToken) {
+      // We need to decode the token to get the user object for the login method
+      // But since verifyToken is a backend util, we'll try a simpler approach first:
+      // Just set the token and let AuthProvider hydrate the user on mount/update is tricky 
+      // because AuthProvider reads from localStorage on mount. 
+
+      // BETTER: Set local storage and force reload to ensure clean state if needed, 
+      // OR better yet, use the login method if we can construct a minimal user.
+      // Given AuthContext implementation:
+      // const login = (newToken: string, newUser: User) => { ... }
+
+      // We'll set localStorage manually and let the app reload/redirect to pick it up cleanly
+      localStorage.setItem('token', impersonationToken);
+
+      // We also need to fetch the user or decode the token. 
+      // For now, let's rely on the AuthProvider to potentially re-fetch or we force a reload.
+      // Actually, AuthProvider only reads on mount. 
+
+      // Let's do a hard reload to /dashboard to ensure AuthProvider picks up the new token
+      // This is robust/safe for an "open in new tab" flow.
+      window.location.href = '/dashboard';
+      return;
+    }
+
     if (location !== '/') return;
     setLocation(isAuthenticated ? '/dashboard' : '/login', { replace: true });
   }, [location, isAuthenticated, setLocation]);
@@ -86,7 +115,7 @@ function App() {
                 {/* Back-compat (optional but recommended) */}
                 <Route path="/forgot-password" component={RequestPasswordReset} />
                 <Route path="/reset-password/:token" component={ResetPassword} />
-                
+
                 <Route path="/clarify/:token" component={ClarificationForm} />
                 <Route path="/accept-invite/:token" component={AcceptInvite} />
 

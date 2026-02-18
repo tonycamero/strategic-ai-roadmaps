@@ -600,4 +600,12 @@ export const superadminApi = {
 
   saveROIBaseline: (tenantId: string, payload: any) =>
     apiPost<{ ok: boolean; baseline: any }>(`/firms/${tenantId}/metrics/baseline`, payload),
+
+  // Impersonation
+  impersonateTenantOwner: (tenantId: string) =>
+    apiPost<{
+      token: string;
+      user: { id: string; email: string; name: string; role: string };
+      sessionId: string;
+    }>(`/firms/${tenantId}/impersonate`),
 };

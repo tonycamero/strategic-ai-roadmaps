@@ -1,6 +1,6 @@
 import express from 'express';
 import path from 'path';
-import cors from 'cors';
+import cors, { type CorsOptions } from 'cors';
 import { requestIdMiddleware } from './utils/requestId';
 
 import authRoutes from './routes/auth.routes';
@@ -32,20 +32,51 @@ import clarificationRoutes from './routes/clarification.routes';
 
 const app = express();
 
-// Trust proxy - required for Vercel and proper rate limiting
+// Trust proxy - required for Vercel/Netlify + proper IP handling/rate limiting
 app.set('trust proxy', 1);
 
-// Middleware
-app.use(cors({
-    origin: [
-        'http://localhost:5173',
-        'https://portal.strategicai.app',
-    ],
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+/**
+ * CORS (MUST be first middleware)
+ * Supports:
+ *  - local dev
+ *  - production portal
+ *  - staging portal
+ * Optional override via env:
+ *  - CORS_ALLOWED_ORIGINS="https://portal.strategicai.app,https://staging-sar-portal.strategicai.app,http://localhost:5173"
+ */
+const defaultAllowedOrigins = [
+  'http://localhost:5173',
+  'https://portal.strategicai.app',
+  'https://staging-sar-portal.strategicai.app',
+];
 
-app.use(express.json());
+const envAllowedOrigins =
+  process.env.CORS_ALLOWED_ORIGINS?.split(',')
+    .map((s) => s.trim())
+    .filter(Boolean) ?? [];
+
+const allowedOrigins = new Set<string>(
+  (envAllowedOrigins.length ? envAllowedOrigins : defaultAllowedOrigins).map((o) => o.replace(/\/$/, '')),
+);
+
+const corsOptions: CorsOptions = {
+  origin: (origin, cb) => {
+    // allow non-browser/server-to-server calls (no Origin header)
+    if (!origin) return cb(null, true);
+    const normalized = origin.replace(/\/$/, '');
+    if (allowedOrigins.has(normalized)) return cb(null, true);
+    return cb(null, false);
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
+// Body parsing (once)
+app.use(express.json({ limit: '2mb' }));
 
 // EXEC-BRIEF-PREUI-SWEEP-004: Request ID correlation for observability
 app.use(requestIdMiddleware);
@@ -55,19 +86,19 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Request logging in development
 if (process.env.NODE_ENV !== 'production') {
-    app.use((req, res, next) => {
-        console.log(`${req.method} ${req.path}`);
-        next();
-    });
+  app.use((req, _res, next) => {
+    console.log(`${req.method} ${req.path}`);
+    next();
+  });
 }
 
-// Health check
-app.get('/health', (req, res) => {
-    res.json({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development',
-    });
+// Health check (root)
+app.get('/health', (_req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+  });
 });
 
 // API Routes
@@ -76,40 +107,45 @@ app.use('/api/auth', authRoutes);
 app.use('/api/invites', inviteRoutes);
 app.use('/api/intake', intakeRoutes);
 app.use('/api/documents', documentsRoutes);
-app.use('/api/roadmap', roadmapRoutes);          // Roadmap viewer
+
+app.use('/api/roadmap', roadmapRoutes); // Roadmap viewer
 app.use('/api/ticket-instances', ticketInstanceRoutes); // Ticket management
-app.use('/api/tickets', ticketRoutes);           // Ticket status/assignee/notes
-app.use('/api/agents', agentThreadRoutes);       // Agent threads & messages
-app.use('/api/dashboard', dashboardRoutes);      // Owner dashboard
-app.use('/api/debug', debugLogsRoutes);          // Debug logs (superadmin + owners)
-app.use('/api/agent', agentRoutes);              // Legacy chat completions
-app.use('/api/assistant', assistantAgentRoutes); // NEW: Assistants API for owner/team
-app.use('/api/agents', agentConfigRoutes);
+app.use('/api/tickets', ticketRoutes); // Ticket status/assignee/notes
+app.use('/api/agents', agentThreadRoutes); // Agent threads & messages
+app.use('/api/dashboard', dashboardRoutes); // Owner dashboard
+app.use('/api/debug', debugLogsRoutes); // Debug logs (superadmin + owners)
+app.use('/api/agent', agentRoutes); // Legacy chat completions
+app.use('/api/assistant', assistantAgentRoutes); // Assistants API for owner/team
+app.use('/api/agents', agentConfigRoutes); // Agent configs (mounted under /api/agents/*)
+
 app.use('/api/superadmin/assistant', superadminAssistantRoutes); // SuperAdmin tap-in
 app.use('/api/superadmin/command-center', commandCenterRoutes);
 app.use('/api/superadmin', superadminRoutes);
+
 app.use('/api/diagnostics', diagnosticGenerationRoutes); // Diagnostic ticket+roadmap generation
 app.use('/api/public/pulseagent', pulseagentRoutes); // Public PulseAgent API
 app.use('/api/public/trustagent', trustagentRoutes); // Unified TrustAgent API
 app.use('/api/public/diagnostic', diagnosticRoutes); // Team Execution Diagnostic
+
 app.use('/api/tenants', tenantsRoutes); // Tenant business profile
 app.use('/api/tenants', onboardingRoutes); // Tenant onboarding progress
 app.use('/api/clarify', clarificationRoutes); // Stakeholder Clarification Form
+
 app.use('/api', leadRequestRoutes); // Public routes
 
 if (process.env.INTERNAL_EVIDENCE_TOKEN) {
-    app.use('/api/internal/evidence', internalEvidenceRoutes);
+  app.use('/api/internal/evidence', internalEvidenceRoutes);
 }
 
 // 404 handler
 app.use((req, res) => {
-    res.status(404).json({ error: 'Route not found' });
+  res.status(404).json({ error: 'Route not found' });
 });
 
 // Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    console.error('Unhandled error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 export { app };

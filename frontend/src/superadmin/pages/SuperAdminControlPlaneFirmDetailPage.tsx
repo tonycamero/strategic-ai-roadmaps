@@ -147,6 +147,9 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     const [isSynthesisOpen, setSynthesisOpen] = useState(false);
     const [synthesisNotes, setSynthesisNotes] = useState<string | null>(null);
     const [gateLockedMessage, setGateLockedMessage] = useState<string | null>(null);
+
+    // Impersonation State
+    const [impersonating, setImpersonating] = useState(false);
     // @ANCHOR:SA_FIRM_DETAIL_STATE_END
 
     const refreshData = async () => {
@@ -265,6 +268,26 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     useEffect(() => {
         refreshData();
     }, [params?.tenantId]);
+
+    // STUBBED/PARKED: Impersonation feature rollback requested by user (v0.2)
+    // const handleImpersonate = async () => {
+    //     if (!params?.tenantId) return;
+    //     if (!confirm('Are you sure you want to impersonate this tenant owner? You will be logged out of SuperAdmin.')) return;
+    //
+    //     setImpersonating(true);
+    //     try {
+    //         const response = await superadminApi.impersonateTenantOwner(params.tenantId);
+    //         // Store token and redirect
+    //         // Open in new tab/window with token and user object in query params to isolate session
+    //         // The App component will handle extracting these and setting the session in the new tab
+    //         const serializedUser = encodeURIComponent(JSON.stringify(response.user));
+    //         window.open(`/dashboard?impersonationToken=${response.token}&impersonatedUser=${serializedUser}`, '_blank');
+    //     } catch (err: any) {
+    //         console.error('Failed to impersonate:', err);
+    //         setError(err.message || 'Failed to start impersonation session');
+    //         setImpersonating(false);
+    //     }
+    // };
 
     // ============================================================================
     // CANONICAL STATUS SYSTEM (LOCKED, READY, COMPLETE)
@@ -1111,8 +1134,19 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                             </div>
                         </div>
                         <div className="flex flex-col items-end gap-2">
-                            <div className="px-3 py-1 bg-indigo-900/30 border border-indigo-700/50 rounded-full text-[10px] font-bold uppercase tracking-widest text-indigo-300">
-                                Authority Control Plane
+                            <div className="flex items-center gap-2">
+                                {/* PARKED: Impersonation Feature
+                                <button
+                                    // onClick={handleImpersonate}
+                                    disabled={impersonating}
+                                    className="px-3 py-1 bg-rose-900/30 border border-rose-700/50 rounded-full text-[10px] font-bold uppercase tracking-widest text-rose-300 hover:bg-rose-900/50 transition-colors disabled:opacity-50"
+                                >
+                                    {impersonating ? 'Connecting...' : 'Impersonate Owner'}
+                                </button>
+                                */}
+                                <div className="px-3 py-1 bg-indigo-900/30 border border-indigo-700/50 rounded-full text-[10px] font-bold uppercase tracking-widest text-indigo-300">
+                                    Authority Control Plane
+                                </div>
                             </div>
                             {/* Phase Badge - SA-EXEC-BRIEF-FREEZE-TAG-1 */}
                             {(() => {
@@ -1683,7 +1717,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                     <DiagnosticCompleteCard
 
                                         status={truthProbe?.diagnostic?.state || data?.latestDiagnostic?.status || 'GENERATED'}
- 
+
                                         onReview={openDiagnosticModal}
                                     />
                                 );

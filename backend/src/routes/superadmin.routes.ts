@@ -83,6 +83,9 @@ router.get('/firms/:tenantId/detail', superadminController.getFirmDetailV2);
 // GET /api/superadmin/execution/:tenantId/:diagnosticId - Execution state aggregator
 router.get('/execution/:tenantId/:diagnosticId', executionStateController.getExecutionStateController);
 
+// PARKED: Impersonation feature
+// router.post('/firms/:tenantId/impersonate', requireExecutive(), superadminController.impersonateTenantOwner);
+
 // GET /api/superadmin/firms/:tenantId/client-context - Get client preview context
 router.get('/firms/:tenantId/client-context', superadminController.getClientContextForFirm);
 
