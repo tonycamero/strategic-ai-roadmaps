@@ -1,4 +1,4 @@
-import { NarrativeBlock } from '../../types.ts';
+import { NarrativeBlock } from '../../types';
 
 export const P1_ManualReconcile: NarrativeBlock = {
     id: 'P1_ManualReconcile',

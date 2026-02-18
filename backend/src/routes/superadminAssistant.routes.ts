@@ -5,8 +5,8 @@
  */
 
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth.ts';
-import { handleSuperadminAgentQuery } from '../controllers/superadminAssistant.controller.ts';
+import { authenticate } from '../middleware/auth';
+import { handleSuperadminAgentQuery } from '../controllers/superadminAssistant.controller';
 
 const router = Router();
 

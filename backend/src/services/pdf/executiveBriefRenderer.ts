@@ -65,8 +65,8 @@ import {
   PDF_TYPOGRAPHY,
   normalizeParagraphs,
   keepWithNext
-} from './executiveBriefPdfRules.ts';
-import { LEADERSHIP_CONTEXT_V1 } from '../../modules/executiveBrief/pdf/copy/leadershipContext.ts';
+} from './executiveBriefPdfRules';
+import { LEADERSHIP_CONTEXT_V1 } from '../../modules/executiveBrief/pdf/copy/leadershipContext';
 
 function renderExecutiveSynthesisContract(
   doc: PDFKit.PDFDocument,

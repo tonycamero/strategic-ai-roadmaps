@@ -173,7 +173,7 @@ export function NarrativeSection({ section, view = 'PRIVATE' }: { section: Execu
                     <ul className="list-disc pl-5 space-y-[6pt]">
                         {(section.content as string[]).map((item, idx) => (
                             <li key={idx} className="text-[13px] text-slate-300 leading-[1.45] font-normal break-inside-avoid">
-                                {String(item).replace(/^[•\-\*]\s+/, '').trim()}
+                                {String(item).replace(/^[•\-*]\s+/, '').trim()}
                             </li>
                         ))}
                     </ul>

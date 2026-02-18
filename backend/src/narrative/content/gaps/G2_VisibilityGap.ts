@@ -1,4 +1,4 @@
-import { NarrativeBlock } from '../../types.ts';
+import { NarrativeBlock } from '../../types';
 
 export const G2_VisibilityGap: NarrativeBlock = {
     id: 'G2_VisibilityGap',

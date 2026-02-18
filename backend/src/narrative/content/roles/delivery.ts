@@ -1,4 +1,4 @@
-import { NarrativeBlock } from '../../types.ts';
+import { NarrativeBlock } from '../../types';
 
 export const D1_ReworkNorm: NarrativeBlock = {
     id: 'D1_ReworkNorm',

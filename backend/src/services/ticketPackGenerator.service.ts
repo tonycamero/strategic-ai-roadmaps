@@ -1,5 +1,5 @@
-import { db } from '../db/index.ts';
-import { roadmapSections, ticketPacks, ticketInstances } from '../db/schema.ts';
+import { db } from '../db/index';
+import { roadmapSections, ticketPacks, ticketInstances } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
 interface GeneratedTicket {

@@ -1,5 +1,5 @@
-import { db } from '../db/index.ts';
-import { onboardingStates, tenants, intakes, invites, diagnostics, roadmaps } from '../db/schema.ts';
+import { db } from '../db/index';
+import { onboardingStates, tenants, intakes, invites, diagnostics, roadmaps } from '../db/schema';
 import { eq, and, count } from 'drizzle-orm';
 
 export const onboardingProgressService = {

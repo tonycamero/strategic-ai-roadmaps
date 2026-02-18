@@ -11,12 +11,12 @@ import {
     Pattern,
     ExecutiveBriefSynthesis,
     ExecutiveBriefSectionKey
-} from '../types/executiveBrief.ts';
+} from '../types/executiveBrief';
 import { createHash } from 'crypto';
-import { ExecutiveBriefAssertionExpansionService, ExpansionCandidate } from './executiveBriefAssertionExpansion.service.ts';
-import { generateMirrorNarrative, repairMirrorNarrative, enforceTriadDepth } from './executiveBriefMirrorNarrative.service.ts';
-import { validateMirrorNarrativeOrThrow } from './executiveBriefValidation.service.ts';
-import { enforceMirrorContract } from './executiveBrief/mirrorNarrative/enforcement.service.ts';
+import { ExecutiveBriefAssertionExpansionService, ExpansionCandidate } from './executiveBriefAssertionExpansion.service';
+import { generateMirrorNarrative, repairMirrorNarrative, enforceTriadDepth } from './executiveBriefMirrorNarrative.service';
+import { validateMirrorNarrativeOrThrow } from './executiveBriefValidation.service';
+import { enforceMirrorContract } from './executiveBrief/mirrorNarrative/enforcement.service';
 
 
 function sanitizeNarrativeText(input: string, taxonomyTokens: string[]): string {

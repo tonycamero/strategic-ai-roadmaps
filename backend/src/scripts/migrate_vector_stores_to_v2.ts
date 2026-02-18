@@ -10,8 +10,8 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { db } from '../db/index.ts';
-import { agentConfigs, tenantVectorStores } from '../db/schema.ts';
+import { db } from '../db/index';
+import { agentConfigs, tenantVectorStores } from '../db/schema';
 import { eq, isNotNull } from 'drizzle-orm';
 
 async function migrateVectorStores() {

@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { db } from '../db/index.ts';
-import { ticketInstances, auditEvents } from '../db/schema.ts';
+import { db } from '../db/index';
+import { ticketInstances, auditEvents } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import { updateSectionStatus, recalculatePackTotals } from '../services/sectionStatusSync.service.ts';
+import { updateSectionStatus, recalculatePackTotals } from '../services/sectionStatusSync.service';
 
 interface AuthRequest extends Request {
   user?: {

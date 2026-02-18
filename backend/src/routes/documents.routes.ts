@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { authenticate, requireTenantAccess, requireRole } from '../middleware/auth.ts';
-import * as documentsController from '../controllers/documents.controller.ts';
+import { authenticate, requireTenantAccess, requireRole } from '../middleware/auth';
+import * as documentsController from '../controllers/documents.controller';
 
 const router = Router();
 

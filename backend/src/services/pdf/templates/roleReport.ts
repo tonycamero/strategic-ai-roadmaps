@@ -3,8 +3,8 @@
  * Renders individual role diagnostic output
  */
 
-import { PDF_STYLES } from './styles.ts';
-import { buildCoverPage } from './cover.ts';
+import { PDF_STYLES } from './styles';
+import { buildCoverPage } from './cover';
 
 interface RoleReportPayload {
     role: string;

@@ -1,5 +1,4 @@
 import { OnepagerSpec } from '../types/OnepagerSpec';
-// @ts-ignore
 import { evidenceMap, clusterMap, failureModeMap, assertEvidenceMapQuality } from './evidenceMap';
 import { isUsableVoice, formatEvidenceQuote } from './voiceUtils'; // AG-TICKET-08
 

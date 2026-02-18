@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
-import { NarrativeContext } from '../services/narrativeAssembly.service.ts';
+import { NarrativeContext } from '../services/narrativeAssembly.service';
 
 /**
  * RENDERER WRAPPER

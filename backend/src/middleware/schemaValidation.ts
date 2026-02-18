@@ -1,7 +1,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 // @ts-ignore
-import { db } from '../db/index.ts';
+import { db } from '../db/index';
 // @ts-ignore
 import { sql } from 'drizzle-orm';
 

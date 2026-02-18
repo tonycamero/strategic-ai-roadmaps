@@ -9,11 +9,11 @@ import {
     findBannedJargonHits,
     splitIntoSentences,
     JargonHit,
-} from './jargonMap.ts';
-import { enforceNoRepeat, NoRepeatSummary } from './noRepeatGuard.ts';
-import { enforceCallSpec, CallSpecSummary } from './callSpec.ts';
-import { MirrorSection, ExecutiveBriefSectionKey } from '../../../types/executiveBrief.ts';
-import { getOpenAIClient } from '../../executiveBriefMirrorNarrative.service.ts';
+} from './jargonMap';
+import { enforceNoRepeat, NoRepeatSummary } from './noRepeatGuard';
+import { enforceCallSpec, CallSpecSummary } from './callSpec';
+import { MirrorSection, ExecutiveBriefSectionKey } from '../../../types/executiveBrief';
+import { getOpenAIClient } from '../../executiveBriefMirrorNarrative.service';
 
 export interface EnforcementResult {
     noRepeat: NoRepeatSummary;

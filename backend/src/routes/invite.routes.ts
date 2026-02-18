@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import * as inviteController from '../controllers/invite.controller.ts';
-import { authenticate, requireRole, requireTenantAccess } from '../middleware/auth.ts';
+import * as inviteController from '../controllers/invite.controller';
+import { authenticate, requireRole, requireTenantAccess } from '../middleware/auth';
 
 const router = Router();
 

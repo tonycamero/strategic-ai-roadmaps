@@ -2,7 +2,7 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { getTicketsForDiagnostic, getModerationStatus } from '../services/ticketModeration.service.ts';
+import { getTicketsForDiagnostic, getModerationStatus } from '../services/ticketModeration.service';
 
 async function test() {
     const tenantId = '883a5307-6354-49ad-b8e3-765ff64dc1af'; // Northshore

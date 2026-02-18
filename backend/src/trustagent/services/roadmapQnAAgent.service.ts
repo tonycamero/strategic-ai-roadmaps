@@ -1,6 +1,6 @@
 // src/trustagent/services/roadmapQnAAgent.service.ts
 import OpenAI from 'openai';
-import type { RoadmapQnAContext } from '../types/roadmapQnA.ts';
+import type { RoadmapQnAContext } from '../types/roadmapQnA';
 
 const client = new OpenAI({ 
   apiKey: process.env.OPENAI_API_KEY! 

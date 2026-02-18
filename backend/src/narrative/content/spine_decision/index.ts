@@ -1,5 +1,5 @@
-import { NarrativeBlock } from '../../types.ts';
-import { TimingType, SeverityType, OutcomeType, ConstraintType } from '../../taxonomy.ts';
+import { NarrativeBlock } from '../../types';
+import { TimingType, SeverityType, OutcomeType, ConstraintType } from '../../taxonomy';
 
 // DS1: SITUATION (Verdict)
 export const DS1_Situation_ActiveConstraint: NarrativeBlock = {

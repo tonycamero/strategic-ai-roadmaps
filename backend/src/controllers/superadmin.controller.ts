@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { nanoid } from 'nanoid';
-import { db } from '../db/index.ts';
+import { db } from '../db/index';
 import {
   users, intakes, tenants, roadmaps, auditEvents, tenantDocuments,
   discoveryCallNotes, roadmapSections, ticketPacks, ticketInstances,
@@ -8,23 +8,23 @@ import {
   roadmapOutcomes, agentConfigs, agentThreads, webinarSettings,
   diagnostics, executiveBriefs, sopTickets, ticketModerationSessions,
   ticketsDraft, intakeClarifications
-} from '../db/schema.ts';
+} from '../db/schema';
 import { eq, and, sql, count, desc, asc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import { AuthRequest } from '../middleware/auth.ts';
+import { AuthRequest } from '../middleware/auth';
 import path from 'path';
 import fs from 'fs/promises';
-import { generateTicketPackForRoadmap } from '../services/ticketPackGenerator.service.ts';
-import { extractRoadmapMetadata } from '../services/roadmapMetadataExtractor.service.ts';
-import { ImplementationMetricsService } from '../services/implementationMetrics.service.ts';
-import { getOrCreateRoadmapForTenant } from '../services/roadmapOs.service.ts';
-import { refreshVectorStoreContent } from '../services/tenantVectorStore.service.ts';
-import { getModerationStatus } from '../services/ticketModeration.service.ts';
-import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes.ts';
+import { generateTicketPackForRoadmap } from '../services/ticketPackGenerator.service';
+import { extractRoadmapMetadata } from '../services/roadmapMetadataExtractor.service';
+import { ImplementationMetricsService } from '../services/implementationMetrics.service';
+import { getOrCreateRoadmapForTenant } from '../services/roadmapOs.service';
+import { refreshVectorStoreContent } from '../services/tenantVectorStore.service';
+import { getModerationStatus } from '../services/ticketModeration.service';
+import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
 import { AuthorityCategory, CanonicalDiscoveryNotes } from '@roadmap/shared';
-import { generateRawTickets, ParsedTicket, InventoryEmptyError } from '../services/diagnosticIngestion.service.ts';
-import { Sop01Outputs } from '../services/sop01Engine.ts';
-import { sendClarificationRequestEmail } from '../services/email.service.ts';
+import { generateRawTickets, ParsedTicket, InventoryEmptyError } from '../services/diagnosticIngestion.service';
+import { Sop01Outputs } from '../services/sop01Engine';
+import { sendClarificationRequestEmail } from '../services/email.service';
 
 // META-TICKET v2: Gate & SOP Architecture Imports
 import {
@@ -35,11 +35,11 @@ import {
   canIngestDiscoveryNotes,
   canGenerateSopTickets,
   canAssembleRoadmap
-} from '../services/gate.service.ts';
-import { generateSop01Outputs } from '../services/sop01Engine.ts';
-import { persistSop01OutputsForTenant } from '../services/sop01Persistence.ts';
-import { buildNormalizedIntakeContext } from '../services/intakeNormalizer.ts';
-import { validateBriefModeSchema } from '../services/schemaGuard.service.ts';
+} from '../services/gate.service';
+import { generateSop01Outputs } from '../services/sop01Engine';
+import { persistSop01OutputsForTenant } from '../services/sop01Persistence';
+import { buildNormalizedIntakeContext } from '../services/intakeNormalizer';
+import { validateBriefModeSchema } from '../services/schemaGuard.service';
 
 const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 
@@ -2412,18 +2412,96 @@ export async function createBaselineForFirm(req: AuthRequest, res: Response) {
     if (!requireSuperAdmin(req, res)) return;
 
     const { tenantId } = req.params;
-    const { metrics, source = 'manual' } = req.body;
+    const body = req.body || {};
 
-    const roadmap = await getOrCreateRoadmapForTenant(tenantId);
+    const { db } = await import('../db/index');
+    const { firmBaselineIntake } = await import('../db/schema');
+    const { eq } = await import('drizzle-orm');
 
-    const result = await ImplementationMetricsService.createBaselineSnapshot(
+    // Load existing (unique by tenant)
+    const existing = await db
+      .select()
+      .from(firmBaselineIntake)
+      .where(eq(firmBaselineIntake.tenantId, tenantId))
+      .limit(1);
+
+    const current = existing[0];
+
+// IF status is already COMPLETE, do NOT mutate baseline here.
+// Instead: create a baseline snapshot (T3.2) and return 200.
+if (current && (current as any).status === 'COMPLETE') {
+  const roadmap = await getOrCreateRoadmapForTenant(tenantId);
+
+  // Build RawMetrics from the locked baseline row
+  const rawMetrics: any = {
+    monthlyLeadVolume: (current as any).monthlyLeadVolume ?? null,
+    avgResponseTimeMinutes: (current as any).avgResponseTimeMinutes ?? null,
+    closeRatePercent: (current as any).closeRatePercent ?? null,
+    avgJobValue: (current as any).avgJobValue ?? null,
+    currentTools: (current as any).currentTools ?? [],
+    salesRepsCount: (current as any).salesRepsCount ?? null,
+    opsAdminCount: (current as any).opsAdminCount ?? null,
+    primaryBottleneck: (current as any).primaryBottleneck ?? null,
+  };
+
+  const { snapshotId, metrics } = await ImplementationMetricsService.createBaselineSnapshot(
+    tenantId,
+    roadmap.id,
+    rawMetrics,
+    'api'
+  );
+
+  return res.status(200).json({
+    ok: true,
+    baselineLocked: true,
+    baseline: current,
+    snapshot: { id: snapshotId, metrics },
+  });
+}
+
+
+    // Tools Transformation: Must be array
+    let tools: string[] = [];
+    if (Array.isArray(body.currentTools)) {
+      tools = body.currentTools.filter((t: any) => typeof t === 'string' && t.trim().length > 0).map((t: string) => t.trim());
+    } else if (typeof body.currentTools === 'string') {
+      // Allow comma-separated transform as fallback/migration aid mentioned in ticket
+      tools = body.currentTools.split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0);
+    }
+
+    const payload: any = {
       tenantId,
-      roadmap.id,
-      metrics,
-      source
-    );
+      monthlyLeadVolume: typeof body.monthlyLeadVolume === 'number' ? body.monthlyLeadVolume : null,
+      avgResponseTimeMinutes: typeof body.avgResponseTimeMinutes === 'number' ? body.avgResponseTimeMinutes : null,
+      closeRatePercent: typeof body.closeRatePercent === 'number' ? body.closeRatePercent : null,
+      avgJobValue: typeof body.avgJobValue === 'number' ? body.avgJobValue : null,
+      currentTools: tools,
+      salesRepsCount: typeof body.salesRepsCount === 'number' ? body.salesRepsCount : null,
+      opsAdminCount: typeof body.opsAdminCount === 'number' ? body.opsAdminCount : null,
+      primaryBottleneck: typeof body.primaryBottleneck === 'string' ? body.primaryBottleneck : null,
+      status: body.status === 'COMPLETE' ? 'COMPLETE' : 'DRAFT',
+      updatedAt: new Date(),
+    };
 
-    return res.json({ ok: true, ...result });
+    // UPSERT into firm_baseline_intake
+    try {
+      const row = await db
+        .insert(firmBaselineIntake)
+        .values({
+          ...payload,
+          createdAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: firmBaselineIntake.tenantId,
+          set: payload,
+        })
+        .returning();
+
+      return res.status(200).json({ ok: true, baseline: row[0] || null });
+    } catch (dbErr: any) {
+      console.error('Database error in createBaselineForFirm:', dbErr);
+      return res.status(500).json({ error: 'Failed to persist baseline data' });
+    }
   } catch (error: any) {
     console.error('Create baseline error:', error);
     return res.status(500).json({ error: error.message || 'Failed to create baseline' });
@@ -3684,7 +3762,7 @@ export async function ingestDiscoveryNotes(req: AuthRequest, res: Response) {
 
     // 4. Trigger Findings Extraction (F1-F4)
     // Dynamic import to avoid circular dep issues in this monolithic file
-    const { FindingsService } = await import('../services/findings.service.ts');
+    const { FindingsService } = await import('../services/findings.service');
 
     // Safety check for import
     if (!FindingsService) {
@@ -3800,7 +3878,7 @@ export async function generateAssistedProposals(req: AuthRequest, res: Response)
     console.log(`[generateAssistedProposals:${requestId}] Request for tenant ${tenantId}`);
 
     // Dynamic import to avoid circular dependencies
-    const { AssistedSynthesisProposalsService, ProposalGenerationError } = await import('../services/assistedSynthesisProposals.service.ts');
+    const { AssistedSynthesisProposalsService, ProposalGenerationError } = await import('../services/assistedSynthesisProposals.service');
 
     // Generate proposals using LLM (with requestId for tracing)
     const draft = await AssistedSynthesisProposalsService.generateProposals(tenantId);
@@ -4254,7 +4332,7 @@ export async function getAgentSession(req: AuthRequest, res: Response) {
 
     console.log(`[getAgentSession:${requestId}] Request for tenant ${tenantId}`);
 
-    const { AssistedSynthesisAgentService } = await import('../services/assistedSynthesisAgent.service.ts');
+    const { AssistedSynthesisAgentService } = await import('../services/assistedSynthesisAgent.service');
 
     const session = await AssistedSynthesisAgentService.getOrCreateSession(
       tenantId,
@@ -4307,7 +4385,7 @@ export async function sendAgentMessage(req: AuthRequest, res: Response) {
 
     console.log(`[sendAgentMessage:${requestId}] Request for tenant ${tenantId}, session ${sessionId}`);
 
-    const { AssistedSynthesisAgentService, AgentOperationError } = await import('../services/assistedSynthesisAgent.service.ts');
+    const { AssistedSynthesisAgentService, AgentOperationError } = await import('../services/assistedSynthesisAgent.service');
 
     const result = await AssistedSynthesisAgentService.sendMessage(
       tenantId,
@@ -4366,7 +4444,7 @@ export async function resetAgentSession(req: AuthRequest, res: Response) {
 
     console.log(`[resetAgentSession:${requestId}] Request for tenant ${tenantId}, session ${sessionId}`);
 
-    const { AssistedSynthesisAgentService } = await import('../services/assistedSynthesisAgent.service.ts');
+    const { AssistedSynthesisAgentService } = await import('../services/assistedSynthesisAgent.service');
 
     await AssistedSynthesisAgentService.resetSession(tenantId, sessionId, requestId);
 
@@ -4382,3 +4460,75 @@ export async function resetAgentSession(req: AuthRequest, res: Response) {
     });
   }
 }
+/**
+ * GET /api/superadmin/firms/:tenantId/roi-baseline
+ * Reads latest row from firm_baseline_intake (Owner-provided starting state).
+ * Contract: always 200 with { baseline: <row|null> } unless unexpected error.
+ */
+export async function getRoiBaselineForFirm(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+
+    const tenantId = req.params.tenantId;
+
+    const { db } = await import('../db/index');
+    const { firmBaselineIntake } = await import('../db/schema');
+    const { eq, desc } = await import('drizzle-orm');
+
+    const rows = await db
+      .select()
+      .from(firmBaselineIntake)
+      .where(eq(firmBaselineIntake.tenantId, tenantId))
+      .orderBy(desc(firmBaselineIntake.createdAt))
+      .limit(1);
+
+    return res.status(200).json({ baseline: rows[0] ?? null });
+  } catch (error: any) {
+    console.error('getRoiBaselineForFirm error:', error);
+    return res.status(500).json({ error: error?.message || 'Failed to fetch ROI baseline' });
+  }
+}
+
+
+/**
+ * POST /api/superadmin/firms/:tenantId/roi-baseline/lock
+ * Locks baseline (sets status=LOCKED). Reject if missing.
+ */
+export async function lockRoiBaselineForFirm(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+
+    const { tenantId } = req.params;
+
+    const { db } = await import('../db/index');
+    const { firmBaselineIntake } = await import('../db/schema');
+    const { eq } = await import('drizzle-orm');
+
+    const existing = await db
+      .select()
+      .from(firmBaselineIntake)
+      .where(eq(firmBaselineIntake.tenantId, tenantId))
+      .limit(1);
+
+    const current = existing[0];
+    if (!current) {
+      return res.status(404).json({ error: 'Baseline not found' });
+    }
+
+    if ((current as any).status === 'LOCKED') {
+      return res.status(200).json({ baseline: current });
+    }
+
+    const updated = await db
+      .update(firmBaselineIntake)
+      .set({ status: 'LOCKED', updatedAt: new Date() } as any)
+      .where(eq(firmBaselineIntake.tenantId, tenantId))
+      .returning();
+
+    return res.status(200).json({ baseline: updated[0] ?? null });
+  } catch (error: any) {
+    console.error('lockRoiBaselineForFirm error:', error);
+    return res.status(500).json({ error: error?.message || 'Failed to lock ROI baseline' });
+  }
+}
+

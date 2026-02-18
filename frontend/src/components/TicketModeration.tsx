@@ -89,7 +89,6 @@ export default function TicketModeration() {
         if (!alive) return;
         setError(e?.message ?? "Failed to load moderation session.");
       } finally {
-        if (!alive) return;
         setLoading(false);
       }
     }

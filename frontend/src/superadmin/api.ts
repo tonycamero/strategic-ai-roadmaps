@@ -593,4 +593,11 @@ export const superadminApi = {
     const filename = `${safeName}_Executive_Brief_${new Date().toISOString().split('T')[0]}.pdf`;
     return downloadFile(`/firms/${tenantId}/executive-brief/download`, filename);
   },
+
+  // ROI Baseline (Canonical firm_baseline_intake)
+  getROIBaseline: (tenantId: string) =>
+    apiGet<{ baseline: any }>(`/firms/${tenantId}/roi-baseline`),
+
+  saveROIBaseline: (tenantId: string, payload: any) =>
+    apiPost<{ ok: boolean; baseline: any }>(`/firms/${tenantId}/metrics/baseline`, payload),
 };

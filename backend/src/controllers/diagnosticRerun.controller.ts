@@ -1,12 +1,12 @@
 import { Response, NextFunction } from 'express';
-import { AuthRequest } from '../middleware/auth.ts';
-import { db } from '../db/index.ts';
-import { tenants, executiveBriefs, diagnostics } from '../db/schema.ts';
+import { AuthRequest } from '../middleware/auth';
+import { db } from '../db/index';
+import { tenants, executiveBriefs, diagnostics } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import { buildNormalizedIntakeContext } from '../services/intakeNormalizer.ts';
-import { generateSop01Outputs } from '../services/sop01Engine.ts';
-import { persistSop01OutputsForTenant } from '../services/sop01Persistence.ts';
-import { ingestDiagnostic } from '../services/diagnosticIngestion.service.ts';
+import { buildNormalizedIntakeContext } from '../services/intakeNormalizer';
+import { generateSop01Outputs } from '../services/sop01Engine';
+import { persistSop01OutputsForTenant } from '../services/sop01Persistence';
+import { ingestDiagnostic } from '../services/diagnosticIngestion.service';
 
 function isUuid(val: string): boolean {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -74,7 +74,7 @@ export async function rerunSop01ForFirm(req: AuthRequest, res: Response, next: N
         }
 
         // ENTRY CONDITION 2: Check ticket stats (must be zero total, zero pending)
-        const { getModerationStatus } = await import('../services/ticketModeration.service.ts');
+        const { getModerationStatus } = await import('../services/ticketModeration.service');
         const ticketStats = await getModerationStatus(tenantId, tenant.lastDiagnosticId);
         console.log('[SOP-01 RERUN] Ticket stats:', ticketStats);
 

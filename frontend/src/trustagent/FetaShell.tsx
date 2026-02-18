@@ -88,7 +88,7 @@ export function FetaShell({ panelOpen, handlePanelClose }: FetaShellProps) {
         if (raw.includes('{{cta:create_my_roadmap}}')) {
             cta = { type: 'create_roadmap', label: 'Create My Roadmap' };
         }
-        let options = optionsBlock ? JSON.parse(optionsBlock).map((o: any) => ({ ...o, nextStepId: o.id })) : undefined;
+        const options = optionsBlock ? JSON.parse(optionsBlock).map((o: any) => ({ ...o, nextStepId: o.id })) : undefined;
         return { message, cta, options };
     };
 

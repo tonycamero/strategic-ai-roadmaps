@@ -1,5 +1,5 @@
-import { NarrativeBlock } from '../../types.ts';
-import { ConstraintType } from '../../taxonomy.ts';
+import { NarrativeBlock } from '../../types';
+import { ConstraintType } from '../../taxonomy';
 
 export const C2_OwnershipAmbiguity: NarrativeBlock = {
     id: 'C2_OwnershipAmbiguity',

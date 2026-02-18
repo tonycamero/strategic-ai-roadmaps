@@ -2,10 +2,10 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { db } from '../db/index.ts';
-import { agentConfigs, agentLogs, tenants } from '../db/schema.ts';
+import { db } from '../db/index';
+import { agentConfigs, agentLogs, tenants } from '../db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
-import { provisionAssistantForConfig } from '../services/assistantProvisioning.service.ts';
+import { provisionAssistantForConfig } from '../services/assistantProvisioning.service';
 
 type RoleType = 'owner' | 'ops' | 'tc' | 'agent_support';
 

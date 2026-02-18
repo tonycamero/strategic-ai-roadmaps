@@ -1,5 +1,5 @@
-import { createOpenAIClient } from '../ai/openaiClient.ts';
-import { db } from '../db/index.ts';
+import { createOpenAIClient } from '../ai/openaiClient';
+import { db } from '../db/index';
 import {
     assistedSynthesisAgentSessions,
     assistedSynthesisAgentMessages,
@@ -7,7 +7,7 @@ import {
     diagnostics,
     executiveBriefs,
     tenantDocuments
-} from '../db/schema.ts';
+} from '../db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 

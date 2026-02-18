@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
-import { db } from '../db/index.ts';
+import { db } from '../db/index';
 import { eq, and, sql, desc } from 'drizzle-orm';
-import { executiveBriefs, tenants, intakes, intakeVectors, users, auditEvents, executiveBriefArtifacts } from '../db/schema.ts';
-import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes.ts';
-import { validateBriefModeSchema } from '../services/schemaGuard.service.ts';
-import { generateRequestId, getRequestId } from '../utils/requestId.ts';
-import { sendBriefError } from '../utils/briefErrorResponse.ts';
+import { executiveBriefs, tenants, intakes, intakeVectors, users, auditEvents, executiveBriefArtifacts } from '../db/schema';
+import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
+import { validateBriefModeSchema } from '../services/schemaGuard.service';
+import { generateRequestId, getRequestId } from '../utils/requestId';
+import { sendBriefError } from '../utils/briefErrorResponse';
 
 /**
  * Helper: Resolve the logical approval status of an Executive Brief.
@@ -97,7 +97,7 @@ export const getExecutiveBrief = async (req: AuthRequest, res: Response) => {
         }
 
         // Check for PDF artifact (EXEC-BRIEF-PDF-ARTIFACT-CONSISTENCY-022)
-        const { selectLatestPdfArtifact } = await import('../services/pdf/executiveBriefArtifactSelector.ts');
+        const { selectLatestPdfArtifact } = await import('../services/pdf/executiveBriefArtifactSelector');
         const artifact = await selectLatestPdfArtifact({
             tenantId,
             briefId: brief.id
@@ -264,8 +264,8 @@ export const generateExecutiveBrief = async (req: AuthRequest, res: Response) =>
             .where(eq(intakeVectors.tenantId, tenantId));
 
         // 4. Execute canonical synthesis pipeline (EXEC-BRIEF-SYNTHESIS-PIPELINE-001)
-        const { executeSynthesisPipeline, SynthesisError } = await import('../services/executiveBriefSynthesis.service.ts');
-        const { validateExecutiveBriefSynthesisOrThrow, logContractValidation } = await import('../services/executiveBriefValidation.service.ts');
+        const { executeSynthesisPipeline, SynthesisError } = await import('../services/executiveBriefSynthesis.service');
+        const { validateExecutiveBriefSynthesisOrThrow, logContractValidation } = await import('../services/executiveBriefValidation.service');
 
         let synthesis: any;
         let pipelineResult: any;
@@ -693,7 +693,7 @@ export const approveExecutiveBrief = async (req: AuthRequest, res: Response) => 
 
         if (tenant) {
             // Import delivery service dynamically to avoid circular dependencies
-            import('../services/executiveBriefDelivery.ts')
+            import('../services/executiveBriefDelivery')
                 .then(({ generateAndDeliverPrivateBriefPDF }) => {
                     return generateAndDeliverPrivateBriefPDF(updatedBrief, tenant);
                 })
@@ -919,7 +919,7 @@ export const deliverExecutiveBrief = async (req: AuthRequest, res: Response) => 
 
         // 3. Trigger delivery (Async/await to ensure success before 200)
         // Dynamically import to resolve circular dependencies/mocks if any
-        const { generateAndDeliverPrivateBriefPDF } = await import('../services/executiveBriefDelivery.ts');
+        const { generateAndDeliverPrivateBriefPDF } = await import('../services/executiveBriefDelivery');
         const deliveryResult = await generateAndDeliverPrivateBriefPDF(brief, tenant, true);
 
         const deliveredTo = (deliveryResult && 'deliveredTo' in deliveryResult) ? deliveryResult.deliveredTo : 'unknown';
@@ -995,7 +995,7 @@ export const generateExecutiveBriefPDF = async (req: AuthRequest, res: Response)
 
         const [tenant] = await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1);
 
-        const { generateAndDeliverPrivateBriefPDF } = await import('../services/executiveBriefDelivery.ts');
+        const { generateAndDeliverPrivateBriefPDF } = await import('../services/executiveBriefDelivery');
         await generateAndDeliverPrivateBriefPDF(brief, tenant, false);
 
         return res.status(200).json({ success: true, message: 'PDF generated' });
@@ -1019,7 +1019,7 @@ export const downloadExecutiveBrief = async (req: AuthRequest, res: Response) =>
         }
 
         // Get artifact (EXEC-BRIEF-PDF-ARTIFACT-CONSISTENCY-022)
-        const { selectLatestPdfArtifact } = await import('../services/pdf/executiveBriefArtifactSelector.ts');
+        const { selectLatestPdfArtifact } = await import('../services/pdf/executiveBriefArtifactSelector');
         const artifact = await selectLatestPdfArtifact({
             tenantId
         }, 'download');
@@ -1067,8 +1067,8 @@ export const downloadExecutiveBrief = async (req: AuthRequest, res: Response) =>
             if (tenant) {
                 try {
                     // EXEC-BRIEF-VALIDATION-KIT-003B: Validate synthesis before rendering
-                    const { validateExecutiveBriefSynthesisOrThrow, logContractValidation } = await import('../services/executiveBriefValidation.service.ts');
-                    const { SynthesisError } = await import('../services/executiveBriefSynthesis.service.ts');
+                    const { validateExecutiveBriefSynthesisOrThrow, logContractValidation } = await import('../services/executiveBriefValidation.service');
+                    const { SynthesisError } = await import('../services/executiveBriefSynthesis.service');
 
                     // Reconstruct synthesis from stored brief (legacy format)
                     // Note: This is a best-effort reconstruction since we store in legacy format
@@ -1125,7 +1125,7 @@ export const downloadExecutiveBrief = async (req: AuthRequest, res: Response) =>
                         throw validationError;
                     }
 
-                    const { renderPrivateLeadershipBriefToPDF } = await import('../services/pdf/executiveBriefRenderer.ts');
+                    const { renderPrivateLeadershipBriefToPDF } = await import('../services/pdf/executiveBriefRenderer');
                     const pdfBuffer = await renderPrivateLeadershipBriefToPDF(brief, tenant.name, targetMode);
 
                     // Attempt to cache back to /tmp if it was just missing (and mode matched)

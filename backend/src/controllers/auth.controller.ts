@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
-import { db } from '../db/index.ts';
-import { users, tenants } from '../db/schema.ts';
+import { db } from '../db/index';
+import { users, tenants } from '../db/schema';
 import crypto from 'crypto';
 import { eq } from 'drizzle-orm';
-import { hashPassword, comparePassword, generateToken } from '../utils/auth.ts';
+import { hashPassword, comparePassword, generateToken } from '../utils/auth';
 import { LoginRequest, RegisterRequest } from '@roadmap/shared';
 import { ZodError } from 'zod';
-import { sendPasswordResetEmail } from '../services/email.service.ts';
+import { sendPasswordResetEmail } from '../services/email.service';
 
 export async function login(req: Request, res: Response) {
   try {

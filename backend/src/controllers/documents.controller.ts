@@ -1,8 +1,8 @@
 import { Response } from 'express';
-import { db } from '../db/index.ts';
-import { tenantDocuments, tenants, users } from '../db/schema.ts';
+import { db } from '../db/index';
+import { tenantDocuments, tenants, users } from '../db/schema';
 import { eq, and, ne, desc } from 'drizzle-orm';
-import { AuthRequest } from '../middleware/auth.ts';
+import { AuthRequest } from '../middleware/auth';
 import path from 'path';
 import fs from 'fs/promises';
 import os from 'os';
@@ -192,7 +192,7 @@ export async function downloadDocument(req: AuthRequest, res: Response) {
     // If stored in S3 and no DB content, redirect to a short-lived signed URL
     if (document.storageProvider === 's3' && document.filePath) {
       try {
-        const { s3GetSignedUrl } = await import('../services/storage.ts');
+        const { s3GetSignedUrl } = await import('../services/storage');
         const url = await s3GetSignedUrl({ key: document.filePath });
         return res.redirect(302, url);
       } catch (e) {

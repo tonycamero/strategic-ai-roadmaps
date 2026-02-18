@@ -25,6 +25,14 @@
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "src/scripts",
+    "src/__tests__",
+    "src/tests",
+    "src/narrative",
+    "src/ai",
+    "src/services/pdfGenerator.tsx",
+    "**/*.spec.ts",
+    "**/*.test.ts"
   ]
 }
