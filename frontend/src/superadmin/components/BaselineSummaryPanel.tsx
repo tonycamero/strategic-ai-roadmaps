@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { superadminApi } from '../api';
 
 interface BaselineData {
     id: string;
@@ -70,22 +71,8 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
         try {
             setSaving(true);
             setError(null);
-            const token = localStorage.getItem('token');
-            const res = await fetch(`/api/superadmin/firms/${tenantId}/metrics/baseline`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(draft),
-            });
 
-            if (res.status === 409) {
-                const j = await res.json().catch(() => ({}));
-                throw new Error(j?.error || 'Baseline is COMPLETE and locked');
-            }
-
-            if (!res.ok) throw new Error('Failed to save baseline');
+            const res = await superadminApi.saveROIBaseline(tenantId, draft);
 
             setShowEditor(false);
             await fetchBaseline();
@@ -106,26 +93,14 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
         setLoading(true);
         setError(null);
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`/api/superadmin/firms/${tenantId}/roi-baseline`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-
-            if (res.status === 404) {
-                // No baseline yet - this is expected
-                setBaseline(null);
-                return;
-            }
-
-            if (!res.ok) {
-                throw new Error('Failed to fetch baseline');
-            }
-
-            const data = await res.json();
-            // Backend now returns { ok: true, baseline: ... }
+            const data = await superadminApi.getROIBaseline(tenantId);
             setBaseline(data.baseline);
         } catch (err: any) {
-            setError(err.message);
+            if (err.status === 404) {
+                setBaseline(null);
+            } else {
+                setError(err.message);
+            }
         } finally {
             setLoading(false);
         }

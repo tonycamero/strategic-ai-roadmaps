@@ -59,7 +59,7 @@ export function DiscoveryReviewPage({ tenantId, onApprove, onRequestChanges }: P
 
   useEffect(() => {
     loadDiscoveryNote();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [tenantId]);
 
   async function loadDiscoveryNote() {

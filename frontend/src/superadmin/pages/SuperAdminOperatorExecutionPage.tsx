@@ -33,12 +33,14 @@ export default function SuperAdminOperatorExecutionPage() {
                 setShowBuilder(true);
                 break;
 
-            case 'SEND_REVIEW_LINK':
-                // Copy tenant review link to clipboard
-                const reviewLink = `${window.location.origin}/tenant/discovery-review`;
-                navigator.clipboard.writeText(reviewLink);
-                alert(`Review link copied to clipboard:\n${reviewLink}`);
-                break;
+            case 'SEND_REVIEW_LINK': {
+  // Copy tenant review link to clipboard
+  const reviewLink = `${window.location.origin}/tenant/discovery-review`;
+  navigator.clipboard.writeText(reviewLink);
+  alert(`Review link copied to clipboard:\n${reviewLink}`);
+  break;
+}
+
 
             case 'GENERATE_TICKETS':
                 await generateTickets();

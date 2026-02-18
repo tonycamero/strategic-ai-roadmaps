@@ -14,6 +14,9 @@ export default function Onepager() {
         window.scrollTo(0, 0);
     }, []);
 
+    const [perspective, setPerspective] = useState<'founder' | 'exec'>('founder');
+
+
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-blue-500/30">
             {/* Header */}
@@ -239,10 +242,6 @@ export default function Onepager() {
                         </div>
 
                         {/* Perspective Lens Toggle */}
-                        {(() => {
-                            const [perspective, setPerspective] = useState<'founder' | 'exec'>('founder');
-
-                            return (
                                 <div className="max-w-2xl mx-auto">
                                     {/* Toggle UI */}
                                     <div className="flex justify-center mb-8">
@@ -285,8 +284,7 @@ export default function Onepager() {
                                         )}
                                     </div>
                                 </div>
-                            );
-                        })()}
+
 
                         {/* CTA Button */}
                         <div className="text-center">
