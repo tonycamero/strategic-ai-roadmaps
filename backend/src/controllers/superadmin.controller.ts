@@ -2455,26 +2455,25 @@ export async function createBaselineForFirm(req: AuthRequest, res: Response) {
       updatedAt: new Date(),
     };
 
-    let row;
-    if (!current) {
-      const inserted = await db
+    // UPSERT into firm_baseline_intake
+    try {
+      const row = await db
         .insert(firmBaselineIntake)
         .values({
           ...payload,
           createdAt: new Date(),
         })
+        .onConflictDoUpdate({
+          target: firmBaselineIntake.tenantId,
+          set: payload,
+        })
         .returning();
-      row = inserted[0];
-    } else {
-      const updated = await db
-        .update(firmBaselineIntake)
-        .set(payload)
-        .where(eq(firmBaselineIntake.tenantId, tenantId))
-        .returning();
-      row = updated[0];
-    }
 
-    return res.status(200).json({ ok: true, baseline: row ?? null });
+      return res.status(200).json({ ok: true, baseline: row[0] || null });
+    } catch (dbErr: any) {
+      console.error('Database error in createBaselineForFirm:', dbErr);
+      return res.status(500).json({ error: 'Failed to persist baseline data' });
+    }
   } catch (error: any) {
     console.error('Create baseline error:', error);
     return res.status(500).json({ error: error.message || 'Failed to create baseline' });
