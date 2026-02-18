@@ -1,6 +1,6 @@
-import { AssembledNarrative, NarrativeBlock, NarrativeConditions } from './types.ts';
-import * as Content from './content/index.ts';
-import { ConstraintType, FailureModeType, TimingType, RoleType, SeverityType, OutcomeType } from './taxonomy.ts';
+import { AssembledNarrative, NarrativeBlock, NarrativeConditions } from './types';
+import * as Content from './content/index';
+import { ConstraintType, FailureModeType, TimingType, RoleType, SeverityType, OutcomeType } from './taxonomy';
 
 // --- PRIORITY MAPS (Deterministic Tie-Breaking) ---
 // Lower index = Higher priority.

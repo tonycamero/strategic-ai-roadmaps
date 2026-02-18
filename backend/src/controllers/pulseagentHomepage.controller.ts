@@ -12,8 +12,8 @@ import {
   logEvent,
   getHomepageAssistantDebug,
   type PageContext,
-} from '../services/publicAgentSession.service.ts';
-import { HOMEPAGE_PULSEAGENT_PROMPT } from '../trustagent/homepagePrompt.v2.backup.ts';
+} from '../services/publicAgentSession.service';
+import { HOMEPAGE_PULSEAGENT_PROMPT } from '../trustagent/homepagePrompt.v2.backup';
 
 interface ChatRequest {
   sessionId?: string;

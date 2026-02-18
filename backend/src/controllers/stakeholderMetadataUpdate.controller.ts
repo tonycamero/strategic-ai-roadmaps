@@ -1,8 +1,8 @@
 import { Response } from 'express';
-import { db } from '../db/index.ts';
-import { intakeVectors, intakes } from '../db/schema.ts';
+import { db } from '../db/index';
+import { intakeVectors, intakes } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import { AuthRequest } from '../middleware/auth.ts';
+import { AuthRequest } from '../middleware/auth';
 
 /**
  * POST /api/superadmin/tenants/:tenantId/update-stakeholder-metadata

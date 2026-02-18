@@ -3,10 +3,10 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import * as readline from 'readline';
-import { db } from '../db/index.ts';
-import { tenants, roadmaps } from '../db/schema.ts';
+import { db } from '../db/index';
+import { tenants, roadmaps } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import { ImplementationMetricsService } from '../services/implementationMetrics.service.ts';
+import { ImplementationMetricsService } from '../services/implementationMetrics.service';
 
 const rl = readline.createInterface({
   input: process.stdin,

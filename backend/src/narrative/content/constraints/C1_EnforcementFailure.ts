@@ -1,5 +1,5 @@
-import { NarrativeBlock } from '../../types.ts';
-import { ConstraintType } from '../../taxonomy.ts';
+import { NarrativeBlock } from '../../types';
+import { ConstraintType } from '../../taxonomy';
 
 export const C1_EnforcementFailure: NarrativeBlock = {
     id: 'C1_EnforcementFailure',

@@ -11,10 +11,10 @@
  */
 
 import { Request, Response } from 'express';
-import { queryAssistant } from '../services/assistantQuery.service.ts';
-import { computeCapabilityProfile } from '../shared/types/capability-profile.ts';
-import { db } from '../db/index.ts';
-import { tenants } from '../db/schema.ts';
+import { queryAssistant } from '../services/assistantQuery.service';
+import { computeCapabilityProfile } from '../shared/types/capability-profile';
+import { db } from '../db/index';
+import { tenants } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
 interface AuthRequest extends Request {

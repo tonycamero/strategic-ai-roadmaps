@@ -1,5 +1,5 @@
-import { db } from '../db/index.ts';
-import { diagnostics, discoveryCallNotes, sopTickets } from '../db/schema.ts';
+import { db } from '../db/index';
+import { diagnostics, discoveryCallNotes, sopTickets } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 
 export interface MilestoneStatus {

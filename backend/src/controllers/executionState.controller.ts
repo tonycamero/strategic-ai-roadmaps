@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { getExecutionState } from '../services/executionState.service.ts';
+import { getExecutionState } from '../services/executionState.service';
 
 /**
  * GET /api/superadmin/execution/:tenantId/:diagnosticId

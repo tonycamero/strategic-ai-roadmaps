@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { stripPdfSuppressedMeta, mitigateRepetition, footerLine } from '../../services/pdf/executiveBriefPdfRules.ts';
+import { stripPdfSuppressedMeta, mitigateRepetition, footerLine } from '../../services/pdf/executiveBriefPdfRules';
 
 describe('PDF Markup Pass - Presentation Rules', () => {
     describe('stripPdfSuppressedMeta', () => {

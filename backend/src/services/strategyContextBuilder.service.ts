@@ -5,12 +5,12 @@
  * Wires together existing metadataParser + tacticResolver services.
  */
 
-import type { StrategyContext, PersonaRole, RoadmapSignals, TacticalFrame } from '../types/strategyContext.ts';
-import { db } from '../db/index.ts';
-import { roadmapSections, intakes, roadmaps } from '../db/schema.ts';
+import type { StrategyContext, PersonaRole, RoadmapSignals, TacticalFrame } from '../types/strategyContext';
+import { db } from '../db/index';
+import { roadmapSections, intakes, roadmaps } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
-import { deriveRoadmapSignals, formatSignalsForPrompt, type RoadmapSection, type DiagnosticData } from './roadmapAnalysis/metadataParser.ts';
-import { resolveTacticalFrame } from './roadmapAnalysis/tacticResolver.ts';
+import { deriveRoadmapSignals, formatSignalsForPrompt, type RoadmapSection, type DiagnosticData } from './roadmapAnalysis/metadataParser';
+import { resolveTacticalFrame } from './roadmapAnalysis/tacticResolver';
 
 export interface BuildStrategyContextParams {
   tenantId: string;

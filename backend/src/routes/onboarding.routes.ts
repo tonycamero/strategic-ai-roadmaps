@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { authenticate, requireTenantAccess } from '../middleware/auth.ts';
-import * as onboardingController from '../controllers/onboarding.controller.ts';
+import { authenticate, requireTenantAccess } from '../middleware/auth';
+import * as onboardingController from '../controllers/onboarding.controller';
 
 const router = Router();
 

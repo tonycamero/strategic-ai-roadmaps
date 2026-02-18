@@ -1,13 +1,13 @@
 import { Request, Response } from 'express';
-import { db } from '../db/index.ts';
-import { invites, users, tenants, intakeVectors } from '../db/schema.ts';
+import { db } from '../db/index';
+import { invites, users, tenants, intakeVectors } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
-import { generateInviteToken, hashPassword, generateToken } from '../utils/auth.ts';
-import { sendInviteEmail } from '../utils/email.ts';
-import { AuthRequest } from '../middleware/auth.ts';
+import { generateInviteToken, hashPassword, generateToken } from '../utils/auth';
+import { sendInviteEmail } from '../utils/email';
+import { AuthRequest } from '../middleware/auth';
 import { CreateInviteRequest, AcceptInviteRequest } from '@roadmap/shared';
 import { ZodError } from 'zod';
-import { onboardingProgressService } from '../services/onboardingProgress.service.ts';
+import { onboardingProgressService } from '../services/onboardingProgress.service';
 
 export async function createInvite(req: AuthRequest, res: Response) {
   try {

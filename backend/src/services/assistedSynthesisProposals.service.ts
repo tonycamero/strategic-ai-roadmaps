@@ -1,6 +1,6 @@
-import { createOpenAIClient } from '../ai/openaiClient.ts';
-import { db } from '../db/index.ts';
-import { discoveryCallNotes, diagnostics, executiveBriefs } from '../db/schema.ts';
+import { createOpenAIClient } from '../ai/openaiClient';
+import { db } from '../db/index';
+import { discoveryCallNotes, diagnostics, executiveBriefs } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
 
 /**

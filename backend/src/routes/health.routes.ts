@@ -1,10 +1,10 @@
 
 import { Router } from 'express';
 // @ts-ignore
-import { db } from '../db/index.ts';
+import { db } from '../db/index';
 // @ts-ignore
 import { sql } from 'drizzle-orm';
-import { config } from '../config/env.ts';
+import { config } from '../config/env';
 
 const router = Router();
 

@@ -1,10 +1,10 @@
 import { Response } from 'express';
-import { db } from '../db/index.ts';
-import { intakeVectors, intakes, users, tenants, invites } from '../db/schema.ts';
+import { db } from '../db/index';
+import { intakeVectors, intakes, users, tenants, invites } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
-import { AuthRequest } from '../middleware/auth.ts';
-import { generateInviteToken } from '../utils/auth.ts';
-import * as emailService from '../services/email.service.ts';
+import { AuthRequest } from '../middleware/auth';
+import { generateInviteToken } from '../utils/auth';
+import * as emailService from '../services/email.service';
 
 /**
  * Create a new intake vector (stakeholder role definition)

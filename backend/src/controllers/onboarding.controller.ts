@@ -1,8 +1,8 @@
 import { Response } from 'express';
-import { AuthRequest } from '../middleware/auth.ts';
-import { onboardingProgressService } from '../services/onboardingProgress.service.ts';
-import { db } from '../db/index.ts';
-import { tenants } from '../db/schema.ts';
+import { AuthRequest } from '../middleware/auth';
+import { onboardingProgressService } from '../services/onboardingProgress.service';
+import { db } from '../db/index';
+import { tenants } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
 /**

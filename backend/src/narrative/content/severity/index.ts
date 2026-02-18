@@ -1,5 +1,5 @@
-import { NarrativeBlock } from '../../types.ts';
-import { SeverityType } from '../../taxonomy.ts';
+import { NarrativeBlock } from '../../types';
+import { SeverityType } from '../../taxonomy';
 
 export const SEV_LOW: NarrativeBlock = {
     id: 'SEV_LOW',

@@ -1,6 +1,6 @@
 import crypto from 'crypto';
-import type { CapabilityProfile } from '../shared/types/capability-profile.ts';
-import type { AgentConfig } from '../db/schema.ts';
+import type { CapabilityProfile } from '../shared/types/capability-profile';
+import type { AgentConfig } from '../db/schema';
 
 export interface AgentPromptContext {
   firmName: string;
@@ -131,9 +131,9 @@ export async function buildContextFromConfig(
   // Optionally load diagnostics and compute signals
   if (options?.enableDiagnostics) {
     try {
-      const { deriveRoadmapSignals, formatSignalsForPrompt } = await import('./roadmapAnalysis/metadataParser.ts');
-      const { db } = await import('../db/index.ts');
-      const { roadmapSections: roadmapSectionsTable, roadmaps, intakes } = await import('../db/schema.ts');
+      const { deriveRoadmapSignals, formatSignalsForPrompt } = await import('./roadmapAnalysis/metadataParser');
+      const { db } = await import('../db/index');
+      const { roadmapSections: roadmapSectionsTable, roadmaps, intakes } = await import('../db/schema');
       const { eq } = await import('drizzle-orm');
 
       // Load roadmap sections via join on roadmaps table for tenant filtering

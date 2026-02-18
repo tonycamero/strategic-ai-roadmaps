@@ -4,8 +4,8 @@
  * Evaluates Hayes Section 6 content against production-ready checklist.
  */
 
-import { db } from '../db/index.ts';
-import { roadmapSections, tenants, roadmaps } from '../db/schema.ts';
+import { db } from '../db/index';
+import { roadmapSections, tenants, roadmaps } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
 const HAYES_TENANT_ID = '4e2c6eb1-0767-43d6-b6a4-3fca8efd3f64';

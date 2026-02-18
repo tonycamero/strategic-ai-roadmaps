@@ -13,7 +13,7 @@ This backend is deployed as a Netlify Function using a prebuilt CommonJS artifac
 ## Absolute Rules
 
 1. All relative imports in backend/src MUST include explicit `.ts` extensions.
-   - Example: `import { x } from '../services/foo.service.ts'`
+   - Example: `import { x } from '../services/foo.service'`
    - Index files must be explicit: `./content/index.ts`
    - No extensionless relative imports. Ever.
 

@@ -4,9 +4,9 @@
  */
 
 import { Router } from 'express';
-import { pulseagentPublicGuard } from '../middleware/pulseagentPublicGuard.ts';
-import { ipRateLimiter, sessionRateLimiter } from '../middleware/pulseagentRateLimit.ts';
-import * as trustagentHomepageController from '../controllers/trustagentHomepage.controller.ts';
+import { pulseagentPublicGuard } from '../middleware/pulseagentPublicGuard';
+import { ipRateLimiter, sessionRateLimiter } from '../middleware/pulseagentRateLimit';
+import * as trustagentHomepageController from '../controllers/trustagentHomepage.controller';
 
 const router = Router();
 
