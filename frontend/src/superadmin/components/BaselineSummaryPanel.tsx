@@ -11,7 +11,7 @@ interface BaselineData {
     salesRepsCount: number | null;
     opsAdminCount: number | null;
     primaryBottleneck: string | null;
-    status: 'DRAFT' | 'COMPLETE' | 'LOCKED';
+    status: 'DRAFT' | 'COMPLETE';
     createdAt: string;
     updatedAt: string;
 }
@@ -27,7 +27,6 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
     const [error, setError] = useState<string | null>(null);
     const [showEditor, setShowEditor] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [lockBusy, setLockBusy] = useState(false);
 
     type BaselineDraft = Omit<BaselineData, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>;
 
@@ -72,8 +71,8 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
             setSaving(true);
             setError(null);
             const token = localStorage.getItem('token');
-            const res = await fetch(`/api/superadmin/firms/${tenantId}/roi-baseline`, {
-                method: 'PUT',
+            const res = await fetch(`/api/superadmin/firms/${tenantId}/metrics/baseline`, {
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`,
@@ -83,7 +82,7 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
 
             if (res.status === 409) {
                 const j = await res.json().catch(() => ({}));
-                throw new Error(j?.error || 'Baseline is locked');
+                throw new Error(j?.error || 'Baseline is COMPLETE and locked');
             }
 
             if (!res.ok) throw new Error('Failed to save baseline');
@@ -97,27 +96,11 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
         }
     }
 
-    async function lockBaseline() {
-        try {
-            setLockBusy(true);
-            setError(null);
-            const token = localStorage.getItem('token');
-            const res = await fetch(`/api/superadmin/firms/${tenantId}/roi-baseline/lock`, {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) throw new Error('Failed to lock baseline');
-            await fetchBaseline();
-        } catch (e: any) {
-            setError(e.message || 'Failed to lock baseline');
-        } finally {
-            setLockBusy(false);
-        }
-    }
-
     useEffect(() => {
         fetchBaseline();
     }, [tenantId]);
+
+    const isLocked = baseline?.status === 'COMPLETE';
 
     async function fetchBaseline() {
         setLoading(true);
@@ -139,6 +122,7 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
             }
 
             const data = await res.json();
+            // Backend now returns { ok: true, baseline: ... }
             setBaseline(data.baseline);
         } catch (err: any) {
             setError(err.message);
@@ -226,22 +210,20 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
                             <div className="px-2 py-1 bg-slate-800 border border-slate-700 text-slate-400 text-[10px] font-bold rounded uppercase">
                                 Baseline
                             </div>
-                            {baseline?.status !== 'LOCKED' && (
-                                <>
-                                    <button
-                                        onClick={openEdit}
-                                        className="px-3 py-1 bg-slate-800 border border-slate-700 text-slate-200 text-[10px] font-bold rounded uppercase hover:bg-slate-700"
-                                    >
-                                        Edit Baseline
-                                    </button>
-                                    <button
-                                        onClick={lockBaseline}
-                                        disabled={lockBusy}
-                                        className="px-3 py-1 bg-amber-900/20 border border-amber-500/30 text-amber-300 text-[10px] font-bold rounded uppercase hover:bg-amber-900/30 disabled:opacity-50"
-                                    >
-                                        {lockBusy ? 'Locking…' : 'Lock Baseline'}
-                                    </button>
-                                </>
+                            <button
+                                onClick={openEdit}
+                                className="px-3 py-1 bg-slate-800 border border-slate-700 text-slate-200 text-[10px] font-bold rounded uppercase hover:bg-slate-700"
+                            >
+                                {isLocked ? 'View Baseline' : 'Edit Baseline'}
+                            </button>
+                            {isLocked ? (
+                                <div className="px-2 py-1 bg-teal-900/20 border border-teal-500/30 text-teal-400 text-[10px] font-bold rounded uppercase">
+                                    Locked
+                                </div>
+                            ) : (
+                                <div className="px-2 py-1 bg-amber-900/20 border border-amber-500/30 text-amber-400 text-[10px] font-bold rounded uppercase">
+                                    Draft
+                                </div>
                             )}
                             {!hasRoadmap && (
                                 <div className="px-2 py-1 bg-amber-900/20 border border-amber-500/30 text-amber-400 text-[10px] font-bold rounded uppercase">
@@ -382,13 +364,25 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
                         </div>
 
                         <div className="p-6 grid grid-cols-2 gap-4">
+                            {isLocked && (
+                                <div className="col-span-2 bg-amber-900/10 border border-amber-500/20 rounded p-3 flex items-center gap-3 mb-2">
+                                    <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m11 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span className="text-[11px] text-amber-200/80 font-mono uppercase tracking-tight">
+                                        Locked — Snapshot Required to Modify
+                                    </span>
+                                </div>
+                            )}
+
                             <label className="text-xs text-slate-400">
                                 Monthly Lead Volume
                                 <input
                                     type="number"
+                                    disabled={isLocked}
                                     value={draft.monthlyLeadVolume ?? ''}
                                     onChange={(e) => setDraft({ ...draft, monthlyLeadVolume: e.target.value === '' ? null : Number(e.target.value) })}
-                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600"
+                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600 disabled:opacity-50"
                                 />
                             </label>
 
@@ -396,9 +390,10 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
                                 Avg Response Time (minutes)
                                 <input
                                     type="number"
+                                    disabled={isLocked}
                                     value={draft.avgResponseTimeMinutes ?? ''}
                                     onChange={(e) => setDraft({ ...draft, avgResponseTimeMinutes: e.target.value === '' ? null : Number(e.target.value) })}
-                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600"
+                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600 disabled:opacity-50"
                                 />
                             </label>
 
@@ -406,9 +401,10 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
                                 Close Rate (%)
                                 <input
                                     type="number"
+                                    disabled={isLocked}
                                     value={draft.closeRatePercent ?? ''}
                                     onChange={(e) => setDraft({ ...draft, closeRatePercent: e.target.value === '' ? null : Number(e.target.value) })}
-                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600"
+                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600 disabled:opacity-50"
                                 />
                             </label>
 
@@ -416,9 +412,10 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
                                 Avg Job Value
                                 <input
                                     type="number"
+                                    disabled={isLocked}
                                     value={draft.avgJobValue ?? ''}
                                     onChange={(e) => setDraft({ ...draft, avgJobValue: e.target.value === '' ? null : Number(e.target.value) })}
-                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600"
+                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600 disabled:opacity-50"
                                 />
                             </label>
 
@@ -426,9 +423,10 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
                                 Sales Reps Count
                                 <input
                                     type="number"
+                                    disabled={isLocked}
                                     value={draft.salesRepsCount ?? ''}
                                     onChange={(e) => setDraft({ ...draft, salesRepsCount: e.target.value === '' ? null : Number(e.target.value) })}
-                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600"
+                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600 disabled:opacity-50"
                                 />
                             </label>
 
@@ -436,9 +434,10 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
                                 Ops/Admin Count
                                 <input
                                     type="number"
+                                    disabled={isLocked}
                                     value={draft.opsAdminCount ?? ''}
                                     onChange={(e) => setDraft({ ...draft, opsAdminCount: e.target.value === '' ? null : Number(e.target.value) })}
-                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600"
+                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600 disabled:opacity-50"
                                 />
                             </label>
 
@@ -446,9 +445,10 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
                                 Primary Bottleneck
                                 <input
                                     type="text"
+                                    disabled={isLocked}
                                     value={draft.primaryBottleneck ?? ''}
                                     onChange={(e) => setDraft({ ...draft, primaryBottleneck: e.target.value === '' ? null : e.target.value })}
-                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600"
+                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600 disabled:opacity-50"
                                 />
                             </label>
 
@@ -456,6 +456,7 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
                                 Current Tools (comma-separated)
                                 <input
                                     type="text"
+                                    disabled={isLocked}
                                     value={(draft.currentTools ?? []).join(', ')}
                                     onChange={(e) =>
                                         setDraft({
@@ -466,21 +467,23 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
                                                 .filter((x) => x.length > 0),
                                         })
                                     }
-                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600"
+                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600 disabled:opacity-50"
                                 />
                             </label>
 
-                            <label className="text-xs text-slate-400">
-                                Status
-                                <select
-                                    value={draft.status}
-                                    onChange={(e) => setDraft({ ...draft, status: e.target.value as any })}
-                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600"
-                                >
-                                    <option value="DRAFT">DRAFT</option>
-                                    <option value="COMPLETE">COMPLETE</option>
-                                </select>
-                            </label>
+                            {!isLocked && (
+                                <label className="text-xs text-slate-400">
+                                    Status
+                                    <select
+                                        value={draft.status}
+                                        onChange={(e) => setDraft({ ...draft, status: e.target.value as any })}
+                                        className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600"
+                                    >
+                                        <option value="DRAFT">DRAFT</option>
+                                        <option value="COMPLETE">COMPLETE</option>
+                                    </select>
+                                </label>
+                            )}
 
                             <div className="col-span-2 flex justify-end gap-2 pt-2">
                                 <button
@@ -489,13 +492,15 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
                                 >
                                     Cancel
                                 </button>
-                                <button
-                                    onClick={saveDraft}
-                                    disabled={saving}
-                                    className="px-4 py-2 bg-teal-900/30 border border-teal-500/30 text-teal-200 text-xs font-bold rounded hover:bg-teal-900/40 disabled:opacity-50"
-                                >
-                                    {saving ? 'Saving…' : 'Save'}
-                                </button>
+                                {!isLocked && (
+                                    <button
+                                        onClick={saveDraft}
+                                        disabled={saving}
+                                        className="px-4 py-2 bg-teal-900/30 border border-teal-500/30 text-teal-200 text-xs font-bold rounded hover:bg-teal-900/40 disabled:opacity-50"
+                                    >
+                                        {saving ? 'Saving…' : 'Save'}
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>

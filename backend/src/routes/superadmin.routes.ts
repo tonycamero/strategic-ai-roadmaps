@@ -158,8 +158,7 @@ router.post('/tickets/generate/:tenantId/:diagnosticId', async (req, res, next) 
 // GET /api/superadmin/firms/:tenantId/metrics - Get performance metrics
 router.get('/firms/:tenantId/metrics', superadminController.getMetricsForFirm);
 router.get('/firms/:tenantId/roi-baseline', superadminController.getRoiBaselineForFirm);
-router.put('/firms/:tenantId/roi-baseline', superadminController.upsertRoiBaselineForFirm);
-router.post('/firms/:tenantId/roi-baseline/lock', superadminController.lockRoiBaselineForFirm);
+router.get('/firms/:tenantId/roi-baseline', superadminController.getRoiBaselineForFirm);
 // POST /api/superadmin/firms/:tenantId/metrics/baseline - Create baseline snapshot
 router.post('/firms/:tenantId/metrics/baseline', superadminController.createBaselineForFirm);
 

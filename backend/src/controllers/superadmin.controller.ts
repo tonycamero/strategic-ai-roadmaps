@@ -2412,18 +2412,69 @@ export async function createBaselineForFirm(req: AuthRequest, res: Response) {
     if (!requireSuperAdmin(req, res)) return;
 
     const { tenantId } = req.params;
-    const { metrics, source = 'manual' } = req.body;
+    const body = req.body || {};
 
-    const roadmap = await getOrCreateRoadmapForTenant(tenantId);
+    const { db } = await import('../db/index');
+    const { firmBaselineIntake } = await import('../db/schema');
+    const { eq } = await import('drizzle-orm');
 
-    const result = await ImplementationMetricsService.createBaselineSnapshot(
+    // Load existing (unique by tenant)
+    const existing = await db
+      .select()
+      .from(firmBaselineIntake)
+      .where(eq(firmBaselineIntake.tenantId, tenantId))
+      .limit(1);
+
+    const current = existing[0];
+
+    // IF status is already COMPLETE, it is immutable via this endpoint (Authority Discipline)
+    if (current && (current as any).status === 'COMPLETE') {
+      return res.status(409).json({ error: 'Baseline is COMPLETE and locked. Snapshot required to modify.' });
+    }
+
+    // Tools Transformation: Must be array
+    let tools: string[] = [];
+    if (Array.isArray(body.currentTools)) {
+      tools = body.currentTools.filter((t: any) => typeof t === 'string' && t.trim().length > 0).map((t: string) => t.trim());
+    } else if (typeof body.currentTools === 'string') {
+      // Allow comma-separated transform as fallback/migration aid mentioned in ticket
+      tools = body.currentTools.split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0);
+    }
+
+    const payload: any = {
       tenantId,
-      roadmap.id,
-      metrics,
-      source
-    );
+      monthlyLeadVolume: typeof body.monthlyLeadVolume === 'number' ? body.monthlyLeadVolume : null,
+      avgResponseTimeMinutes: typeof body.avgResponseTimeMinutes === 'number' ? body.avgResponseTimeMinutes : null,
+      closeRatePercent: typeof body.closeRatePercent === 'number' ? body.closeRatePercent : null,
+      avgJobValue: typeof body.avgJobValue === 'number' ? body.avgJobValue : null,
+      currentTools: tools,
+      salesRepsCount: typeof body.salesRepsCount === 'number' ? body.salesRepsCount : null,
+      opsAdminCount: typeof body.opsAdminCount === 'number' ? body.opsAdminCount : null,
+      primaryBottleneck: typeof body.primaryBottleneck === 'string' ? body.primaryBottleneck : null,
+      status: body.status === 'COMPLETE' ? 'COMPLETE' : 'DRAFT',
+      updatedAt: new Date(),
+    };
 
-    return res.json({ ok: true, ...result });
+    let row;
+    if (!current) {
+      const inserted = await db
+        .insert(firmBaselineIntake)
+        .values({
+          ...payload,
+          createdAt: new Date(),
+        })
+        .returning();
+      row = inserted[0];
+    } else {
+      const updated = await db
+        .update(firmBaselineIntake)
+        .set(payload)
+        .where(eq(firmBaselineIntake.tenantId, tenantId))
+        .returning();
+      row = updated[0];
+    }
+
+    return res.status(200).json({ ok: true, baseline: row ?? null });
   } catch (error: any) {
     console.error('Create baseline error:', error);
     return res.status(500).json({ error: error.message || 'Failed to create baseline' });
@@ -4411,82 +4462,6 @@ export async function getRoiBaselineForFirm(req: AuthRequest, res: Response) {
   }
 }
 
-/**
- * PUT /api/superadmin/firms/:tenantId/roi-baseline
- * Upsert baseline intake row (one row per tenant). Reject if LOCKED.
- */
-export async function upsertRoiBaselineForFirm(req: AuthRequest, res: Response) {
-  try {
-    if (!requireSuperAdmin(req, res)) return;
-
-    const { tenantId } = req.params;
-    const body = req.body || {};
-
-    const { db } = await import('../db/index');
-    const { firmBaselineIntake } = await import('../db/schema');
-    const { eq } = await import('drizzle-orm');
-
-    // Load existing (unique by tenant)
-    const existing = await db
-      .select()
-      .from(firmBaselineIntake)
-      .where(eq(firmBaselineIntake.tenantId, tenantId))
-      .limit(1);
-
-    const current = existing[0];
-
-    if (current && (current as any).status === 'LOCKED') {
-      return res.status(409).json({ error: 'Baseline is locked' });
-    }
-
-    // JS/TS normalize
-    const normalizedTools =
-      Array.isArray(body.currentTools)
-        ? body.currentTools.filter((x: any) => typeof x === 'string' && x.trim().length > 0).map((x: string) => x.trim())
-        : (typeof body.currentTools === 'string'
-          ? body.currentTools.split(',').map((x: string) => x.trim()).filter((x: string) => x.length > 0)
-          : undefined);
-
-    const payload: any = {
-      tenantId,
-      monthlyLeadVolume: body.monthlyLeadVolume ?? null,
-      avgResponseTimeMinutes: body.avgResponseTimeMinutes ?? null,
-      closeRatePercent: body.closeRatePercent ?? null,
-      avgJobValue: body.avgJobValue ?? null,
-      currentTools: normalizedTools ?? (current ? (current as any).currentTools : []),
-      salesRepsCount: body.salesRepsCount ?? null,
-      opsAdminCount: body.opsAdminCount ?? null,
-      primaryBottleneck: body.primaryBottleneck ?? null,
-      status: body.status ?? (current ? (current as any).status : 'DRAFT'),
-      updatedAt: new Date(),
-    };
-
-    let row;
-
-    if (!current) {
-      const inserted = await db
-        .insert(firmBaselineIntake)
-        .values({
-          ...payload,
-          createdAt: new Date(),
-        })
-        .returning();
-      row = inserted[0];
-    } else {
-      const updated = await db
-        .update(firmBaselineIntake)
-        .set(payload)
-        .where(eq(firmBaselineIntake.tenantId, tenantId))
-        .returning();
-      row = updated[0];
-    }
-
-    return res.status(200).json({ baseline: row ?? null });
-  } catch (error: any) {
-    console.error('upsertRoiBaselineForFirm error:', error);
-    return res.status(500).json({ error: error?.message || 'Failed to upsert ROI baseline' });
-  }
-}
 
 /**
  * POST /api/superadmin/firms/:tenantId/roi-baseline/lock
