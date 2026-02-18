@@ -6,8 +6,8 @@ import fs from 'fs';
 // Load .env
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-import { generateStage6TicketsFromInputs } from '../services/diagnosticIngestion.service.ts';
-import { extractInventoryFromArtifacts, getArtifactRawText } from '../services/diagnosticIngestion.service.ts';
+import { generateStage6TicketsFromInputs } from '../services/diagnosticIngestion.service';
+import { extractInventoryFromArtifacts, getArtifactRawText } from '../services/diagnosticIngestion.service';
 
 const CANONICAL_DIR = path.resolve(__dirname, '../../../docs/canonical-runs/northshore-logistics');
 

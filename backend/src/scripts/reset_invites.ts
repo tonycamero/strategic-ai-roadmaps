@@ -1,8 +1,8 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { db } from '../db/index.ts';
-import { invites } from '../db/schema.ts';
+import { db } from '../db/index';
+import { invites } from '../db/schema';
 import { inArray } from 'drizzle-orm';
 
 async function resetInvites() {

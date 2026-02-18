@@ -1,5 +1,5 @@
-import { db } from '../db/index.ts';
-import { agentRoutingRules, agentConfigs } from '../db/schema.ts';
+import { db } from '../db/index';
+import { agentRoutingRules, agentConfigs } from '../db/schema';
 import { and, eq } from 'drizzle-orm';
 
 export type AgentRoleType = 'owner' | 'ops' | 'tc' | 'agent_support';

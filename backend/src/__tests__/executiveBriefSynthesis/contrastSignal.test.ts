@@ -1,7 +1,7 @@
 
 import { describe, it, expect } from 'vitest';
-import { synthesizeAssertions, assembleSections, generateDeterministicId } from '../../services/executiveBriefSynthesis.service.ts';
-import { Pattern, ExecutiveAssertionBlock } from '../../types/executiveBrief.ts';
+import { synthesizeAssertions, assembleSections, generateDeterministicId } from '../../services/executiveBriefSynthesis.service';
+import { Pattern, ExecutiveAssertionBlock } from '../../types/executiveBrief';
 
 // Mock Pattern Factory
 function createMockPattern(

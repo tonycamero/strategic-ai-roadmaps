@@ -168,7 +168,7 @@ export const executiveBriefs = pgTable('executive_briefs', {
   generatedAt: timestamp('generated_at', { withTimezone: true }).notNull().defaultNow(),
 
   // Synthesis sections (stored as JSONB)
-  synthesis: jsonb('synthesis').notNull().$type<import('../types/executiveBrief.ts').ExecutiveBriefSynthesis>(),
+  synthesis: jsonb('synthesis').notNull().$type<import('../types/executiveBrief').ExecutiveBriefSynthesis>(),
 
   // Signals (stored as JSONB)
   signals: jsonb('signals').notNull().$type<{

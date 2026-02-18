@@ -1,5 +1,5 @@
-import { assembleNarrative } from '../engine.ts';
-import { ConstraintType, FailureModeType, TimingType, SeverityType, OutcomeType } from '../taxonomy.ts';
+import { assembleNarrative } from '../engine';
+import { ConstraintType, FailureModeType, TimingType, SeverityType, OutcomeType } from '../taxonomy';
 
 // MOCK PACKET
 const mockPacket = {

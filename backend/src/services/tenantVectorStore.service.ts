@@ -9,8 +9,8 @@
 import OpenAI from 'openai';
 import fs from 'fs';
 import path from 'path';
-import { db } from '../db/index.ts';
-import { tenantVectorStores, tenantDocuments, discoveryCallNotes } from '../db/schema.ts';
+import { db } from '../db/index';
+import { tenantVectorStores, tenantDocuments, discoveryCallNotes } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
 
 const openai = new OpenAI({

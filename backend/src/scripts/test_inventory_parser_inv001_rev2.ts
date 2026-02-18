@@ -1,6 +1,6 @@
 import 'dotenv/config';
-import { getArtifactRawText, extractInventoryFromArtifacts } from '../services/diagnosticIngestion.service.ts';
-import { Sop01Outputs } from '../services/sop01Engine.ts';
+import { getArtifactRawText, extractInventoryFromArtifacts } from '../services/diagnosticIngestion.service';
+import { Sop01Outputs } from '../services/sop01Engine';
 
 async function runUnitTests() {
     console.log('🧪 Running Unit Tests: Parser & Normalizer (SAR-STAGE6-PARSER-FIX-INV001-REV2)\n');

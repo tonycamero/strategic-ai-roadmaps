@@ -3,10 +3,10 @@ import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 import { eq, and, desc } from 'drizzle-orm';
-import { db } from '../db/index.ts';
-import { executiveBriefArtifacts, users, intakeVectors, executiveBriefs } from '../db/schema.ts';
-import { renderPrivateLeadershipBriefToPDF } from './pdf/executiveBriefRenderer.ts';
-import { sendEmail } from './email.service.ts';
+import { db } from '../db/index';
+import { executiveBriefArtifacts, users, intakeVectors, executiveBriefs } from '../db/schema';
+import { renderPrivateLeadershipBriefToPDF } from './pdf/executiveBriefRenderer';
+import { sendEmail } from './email.service';
 
 /**
  * Executive Brief Delivery Service
@@ -206,7 +206,7 @@ export async function generateAndDeliverPrivateBriefPDF(brief: any, tenant: any,
   console.log(`[ExecutiveBriefDelivery] tenantId=${tenant.id} targetMode=${targetMode} briefMode=${persistedMode} enforced=${isEnforced}`);
 
   // STEP 1: Check for existing immutable artifact (EXEC-BRIEF-PDF-ARTIFACT-CONSISTENCY-022)
-  const { selectLatestPdfArtifact } = await import('./pdf/executiveBriefArtifactSelector.ts');
+  const { selectLatestPdfArtifact } = await import('./pdf/executiveBriefArtifactSelector');
   const existingArtifact = await selectLatestPdfArtifact({
     tenantId: tenant.id,
     briefId: brief.id
@@ -221,7 +221,7 @@ export async function generateAndDeliverPrivateBriefPDF(brief: any, tenant: any,
   const briefStamp = brief.updatedAt || brief.generatedAt || new Date(0);
   const artifactStamp = existingArtifact?.createdAt || new Date(0);
 
-  const { isMirrorNarrativeEnabled } = await import('./executiveBriefSynthesis.service.ts');
+  const { isMirrorNarrativeEnabled } = await import('./executiveBriefSynthesis.service');
   const needsMirror = isMirrorNarrativeEnabled();
   const hasMirror = brief.synthesis?.content?.isMirrorNarrative === true;
   const isMissingMirror = needsMirror && !hasMirror;
@@ -259,8 +259,8 @@ export async function generateAndDeliverPrivateBriefPDF(brief: any, tenant: any,
 
       // EXEC-BRIEF-PDF-CONTRACT-VIOLATION-023: Resolve canonical synthesis
       // If brief.synthesis is missing required fields (content/meta), regenerate it
-      const { validateExecutiveBriefSynthesisOrThrow, logContractValidation } = await import('./executiveBriefValidation.service.ts');
-      const { SynthesisError, executeSynthesisPipeline } = await import('./executiveBriefSynthesis.service.ts');
+      const { validateExecutiveBriefSynthesisOrThrow, logContractValidation } = await import('./executiveBriefValidation.service');
+      const { SynthesisError, executeSynthesisPipeline } = await import('./executiveBriefSynthesis.service');
 
       let canonicalSynthesis: any = brief.synthesis;
       let synthesisSource = 'existing';

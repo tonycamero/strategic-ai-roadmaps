@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeParagraphs, keepWithNext } from '../executiveBriefPdfRules.ts';
+import { normalizeParagraphs, keepWithNext } from '../executiveBriefPdfRules';
 
 describe('PDF Pagination & Normalization', () => {
 

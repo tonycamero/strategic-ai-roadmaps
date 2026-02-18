@@ -1,8 +1,8 @@
 // src/trustagent/services/roadmapQnAContext.service.ts
 
 import { eq, and } from 'drizzle-orm';
-import { db } from '../../db/index.ts';
-import { tenants, sopTickets, roadmaps, roadmapSections, intakes } from '../../db/schema.ts';
+import { db } from '../../db/index';
+import { tenants, sopTickets, roadmaps, roadmapSections, intakes } from '../../db/schema';
 import {
   RoadmapQnAContext,
   RoadmapTicket,
@@ -11,7 +11,7 @@ import {
   SprintSummary,
   TopTicketByImpact,
   EnrichedProfile
-} from '../types/roadmapQnA.ts';
+} from '../types/roadmapQnA';
 
 const TIME_VALUE_PER_HOUR = 35;
 const LEAD_VALUE = 35;

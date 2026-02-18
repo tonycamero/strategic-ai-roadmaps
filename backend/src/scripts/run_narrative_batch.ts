@@ -1,10 +1,10 @@
 
 import fs from 'fs';
 import path from 'path';
-import { db } from '../db/index.ts';
-import { tenants, executiveBriefs } from '../db/schema.ts';
+import { db } from '../db/index';
+import { tenants, executiveBriefs } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
-import { renderPrivateLeadershipBriefToPDF } from '../services/pdf/executiveBriefRenderer.ts';
+import { renderPrivateLeadershipBriefToPDF } from '../services/pdf/executiveBriefRenderer';
 
 // Minimal args parser
 const args = process.argv.slice(2);

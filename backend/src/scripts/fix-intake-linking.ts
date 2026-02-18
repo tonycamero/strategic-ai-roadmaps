@@ -1,6 +1,6 @@
 import 'dotenv/config';
-import { db } from '../db/index.ts';
-import { intakeVectors, intakes, users } from '../db/schema.ts';
+import { db } from '../db/index';
+import { intakeVectors, intakes, users } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
 async function run() {

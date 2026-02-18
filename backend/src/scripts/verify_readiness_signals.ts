@@ -1,8 +1,8 @@
 
-import { db } from '../db/index.ts';
-import { tenants, users, auditEvents } from '../db/schema.ts';
+import { db } from '../db/index';
+import { tenants, users, auditEvents } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import { signalReadiness, getFirmWorkflowStatus } from '../controllers/superadmin.controller.ts';
+import { signalReadiness, getFirmWorkflowStatus } from '../controllers/superadmin.controller';
 import { Request, Response } from 'express';
 import { randomUUID } from 'crypto';
 import { AuthorityCategory } from '@roadmap/shared';

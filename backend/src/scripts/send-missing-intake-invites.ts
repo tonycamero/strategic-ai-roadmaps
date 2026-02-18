@@ -1,9 +1,9 @@
 import 'dotenv/config';
-import { db } from '../db/index.ts';
-import { intakeVectors, invites, tenants, users } from '../db/schema.ts';
+import { db } from '../db/index';
+import { intakeVectors, invites, tenants, users } from '../db/schema';
 import { eq, and, isNull, ne } from 'drizzle-orm';
-import { generateInviteToken } from '../utils/auth.ts';
-import * as emailService from '../services/email.service.ts';
+import { generateInviteToken } from '../utils/auth';
+import * as emailService from '../services/email.service';
 
 /**
  * One-time backfill script to dispatch missing invites for a specific tenant.

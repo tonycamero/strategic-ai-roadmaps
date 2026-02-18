@@ -2,8 +2,8 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import OpenAI from 'openai';
-import { db } from './src/db/index.ts';
-import { agentConfigs } from './src/db/schema.ts';
+import { db } from './src/db/index';
+import { agentConfigs } from './src/db/schema';
 import { eq } from 'drizzle-orm';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });

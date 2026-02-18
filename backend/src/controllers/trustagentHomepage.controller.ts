@@ -18,7 +18,7 @@ import { Request, Response } from 'express';
 import {
     getHomepageAssistantDebug,
     type PageContext,
-} from '../services/publicAgentSession.service.ts';
+} from '../services/publicAgentSession.service';
 
 // FE-TA Imports (ONLY for 'feta' branch)
 // NOTE: These must be pure logic imports (no persistence)

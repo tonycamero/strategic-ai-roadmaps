@@ -2,7 +2,7 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { RoadmapRefreshService } from '../services/roadmapRefresh.service.ts';
+import { RoadmapRefreshService } from '../services/roadmapRefresh.service';
 
 async function main() {
   const tenantId = process.argv[2];

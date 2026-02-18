@@ -1,15 +1,15 @@
 
 import { Request, Response } from 'express';
-import { db } from '../db/index.ts';
-import { diagnosticSnapshots, users, tenants } from '../db/schema.ts';
+import { db } from '../db/index';
+import { diagnosticSnapshots, users, tenants } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { generateToken, hashPassword } from '../utils/auth.ts';
+import { generateToken, hashPassword } from '../utils/auth';
 
 // Legacy imports from original HEAD
 
-import { DiagnosticMap } from '../types/diagnostic.ts';
+import { DiagnosticMap } from '../types/diagnostic';
 
 const SaveSnapshotSchema = z.object({
   email: z.string().email(),

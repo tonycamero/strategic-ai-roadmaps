@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { AuthRequest } from '../middleware/auth.ts';
+import { AuthRequest } from '../middleware/auth';
 
 export async function getDiagnosticTickets(req: AuthRequest, res: Response) {
     return res.json({ tickets: [] });

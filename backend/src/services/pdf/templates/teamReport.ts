@@ -3,8 +3,8 @@
  * Renders team synthesis with role comparisons
  */
 
-import { PDF_STYLES } from './styles.ts';
-import { buildCoverPage } from './cover.ts';
+import { PDF_STYLES } from './styles';
+import { buildCoverPage } from './cover';
 
 interface TeamReportPayload {
     teamReport: {

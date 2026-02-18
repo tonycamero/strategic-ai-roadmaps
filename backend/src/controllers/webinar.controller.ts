@@ -5,8 +5,8 @@
 
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { db } from '../db/index.ts';
-import { webinarSettings, webinarRegistrations, evidenceBindings, evidenceArtifacts } from '../db/schema.ts';
+import { db } from '../db/index';
+import { webinarSettings, webinarRegistrations, evidenceBindings, evidenceArtifacts } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import {
     FETA_REGISTRY,
@@ -19,7 +19,7 @@ import {
     type RoleAnswers,
     type RoleEvidence
 } from '@roadmap/shared';
-import { assembleNarrative } from '../narrative/engine.ts';
+import { assembleNarrative } from '../narrative/engine';
 
 // In-memory session store with composite keys: ${role}:${sessionId}
 const WEBINAR_SESSIONS = new Map<string, any>();

@@ -8,8 +8,8 @@
 
 import path from 'path';
 import dotenv from 'dotenv';
-import { db } from '../db/index.ts';
-import { tenants } from '../db/schema.ts';
+import { db } from '../db/index';
+import { tenants } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { fileURLToPath } from 'url';
 

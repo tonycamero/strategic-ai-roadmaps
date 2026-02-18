@@ -2,14 +2,14 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { db } from '../db/index.ts';
-import { tenants, tenantDocuments, sopTickets } from '../db/schema.ts';
+import { db } from '../db/index';
+import { tenants, tenantDocuments, sopTickets } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
-import { FindingsService } from '../services/findings.service.ts';
-import { generateTicketsFromFindings } from '../services/ticketGeneration.service.ts';
+import { FindingsService } from '../services/findings.service';
+import { generateTicketsFromFindings } from '../services/ticketGeneration.service';
 // Use relative path to avoid workspace resolution issues in scripts
-import { CanonicalDiscoveryNotes, CanonicalFindingsObject } from '../../../shared/src/canon.ts';
-import { invalidateDownstreamArtifacts } from '../services/compilerInvalidation.service.ts';
+import { CanonicalDiscoveryNotes, CanonicalFindingsObject } from '../../../shared/src/canon';
+import { invalidateDownstreamArtifacts } from '../services/compilerInvalidation.service';
 
 async function verify() {
     console.log("=== START VERIFICATION: CANONICAL V2 PIPELINE ===");

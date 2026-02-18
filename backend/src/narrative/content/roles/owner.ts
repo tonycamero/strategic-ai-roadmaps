@@ -1,5 +1,5 @@
-import { NarrativeBlock } from '../../types.ts';
-import { RolePatternType } from '../../taxonomy.ts';
+import { NarrativeBlock } from '../../types';
+import { RolePatternType } from '../../taxonomy';
 
 export const O1_Heroics: NarrativeBlock = {
     id: 'O1_Heroics',

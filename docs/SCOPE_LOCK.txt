@@ -1,0 +1,30 @@
+SCOPE LOCK — STRATEGIC AI ROADMAPS
+
+This document defines the current frozen execution scope.
+
+1. ROI Baseline Surface
+- Backend contract: firm_baseline_intake (no schema renames)
+- API: GET /api/superadmin/firms/:tenantId/roi-baseline
+- 200 + null = NO DATA
+- Non-200 = ERROR state
+- No additional modeling logic inside controller
+
+2. SuperAdmin Execution Surface
+- ROI Baseline Summary remains collapsable
+- Edit allowed when status = DRAFT or ESTIMATED
+- Immutable when status = LOCKED
+- No silent auto-locking
+
+3. Build Discipline
+- Backend builds with tsconfig.json (no vercel config)
+- No .ts import specifiers in runtime code
+- Scripts excluded from production build
+
+4. No Schema Migrations
+- No renaming of firm_baseline_intake
+- No creation of roi_baselines table
+- No drift from main without explicit meta-ticket
+
+Anything outside this scope requires a new META-TICKET.
+
+END.

@@ -1,5 +1,5 @@
-import { NarrativeBlock } from '../../types.ts';
-import { OutcomeType } from '../../taxonomy.ts';
+import { NarrativeBlock } from '../../types';
+import { OutcomeType } from '../../taxonomy';
 
 export const R1_RevenueLeak: NarrativeBlock = {
     id: 'R1_RevenueLeak',
