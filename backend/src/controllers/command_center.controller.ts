@@ -1,11 +1,11 @@
 import { Response } from 'express';
-import { db } from '../db/index.ts';
-import { tenants, users, auditEvents, roadmaps } from '../db/schema.ts';
+import { db } from '../db/index';
+import { tenants, users, auditEvents, roadmaps } from '../db/schema';
 import { eq, and, sql, desc, inArray, ilike, or } from 'drizzle-orm';
-import { AuthRequest } from '../middleware/auth.ts';
-import { getManyOnboardingStates, invalidateOnboardingStateCache } from '../services/onboardingState.service.ts';
+import { AuthRequest } from '../middleware/auth';
+import { getManyOnboardingStates, invalidateOnboardingStateCache } from '../services/onboardingState.service';
 import { AuthorityCategory } from '@roadmap/shared';
-import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes.ts';
+import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
 
 // ============================================================================
 // HELPERS

@@ -1,6 +1,6 @@
 
-import { db } from './db/index.ts';
-import { tenants, diagnostics } from './db/schema.ts';
+import { db } from './db/index';
+import { tenants, diagnostics } from './db/schema';
 import { eq } from 'drizzle-orm';
 
 async function main() {

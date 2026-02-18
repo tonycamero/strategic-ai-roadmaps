@@ -1,8 +1,8 @@
 
 import 'dotenv/config';
-import { db } from '../db/index.ts';
+import { db } from '../db/index';
 import { sql } from 'drizzle-orm';
-import { users, invites, intakeVectors } from '../db/schema.ts';
+import { users, invites, intakeVectors } from '../db/schema';
 
 async function main() {
     console.log('Starting safe email normalization...');

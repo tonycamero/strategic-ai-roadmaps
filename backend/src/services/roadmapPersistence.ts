@@ -1,10 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { db } from '../db/index.ts';
-import { tenants, tenantDocuments } from '../db/schema.ts';
+import { db } from '../db/index';
+import { tenants, tenantDocuments } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
-import { getStorageProvider, s3PutText } from './storage.ts';
+import { getStorageProvider, s3PutText } from './storage';
 
 type RoadmapSectionKey =
   | 'summary'

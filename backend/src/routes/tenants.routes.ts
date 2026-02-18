@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import * as tenantsController from '../controllers/tenants.controller.ts';
-import * as intakeVectorController from '../controllers/intakeVector.controller.ts';
-import { authenticate, requireRole, requireTenantAccess } from '../middleware/auth.ts';
+import * as tenantsController from '../controllers/tenants.controller';
+import * as intakeVectorController from '../controllers/intakeVector.controller';
+import { authenticate, requireRole, requireTenantAccess } from '../middleware/auth';
 
 const router = Router();
 

@@ -12,9 +12,9 @@
 
 import fs from 'fs';
 import path from 'path';
-import { db } from '../db/index.ts';
-import { tenants } from '../db/schema.ts';
-import { getOrCreateRoadmapForTenant, upsertRoadmapSection, getSectionMetadata } from '../services/roadmapOs.service.ts';
+import { db } from '../db/index';
+import { tenants } from '../db/schema';
+import { getOrCreateRoadmapForTenant, upsertRoadmapSection, getSectionMetadata } from '../services/roadmapOs.service';
 
 const STORAGE_DIR = path.join(__dirname, '../../storage/roadmaps');
 

@@ -6,9 +6,9 @@
  */
 
 import OpenAI from 'openai';
-import { RoadmapContext, RoadmapGenerationResult } from '../types/diagnostic.ts';
-import { TICKETS_TO_ROADMAP_SYSTEM_PROMPT } from '../trustagent/prompts/ticketsToRoadmap.ts';
-import { buildSopPackSection } from './sopPackRenderer.service.ts';
+import { RoadmapContext, RoadmapGenerationResult } from '../types/diagnostic';
+import { TICKETS_TO_ROADMAP_SYSTEM_PROMPT } from '../trustagent/prompts/ticketsToRoadmap';
+import { buildSopPackSection } from './sopPackRenderer.service';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY

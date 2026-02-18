@@ -19,9 +19,9 @@ import {
     synthesizeAssertions,
     assembleSections,
     SynthesisError
-} from '../../services/executiveBriefSynthesis.service.ts';
-import { validateExecutiveBriefSynthesisOrThrow } from '../../services/executiveBriefValidation.service.ts';
-import type { ExecutiveBriefSynthesis } from '../../types/executiveBrief.ts';
+} from '../../services/executiveBriefSynthesis.service';
+import { validateExecutiveBriefSynthesisOrThrow } from '../../services/executiveBriefValidation.service';
+import type { ExecutiveBriefSynthesis } from '../../types/executiveBrief';
 
 const FIXTURES_DIR = join(__dirname, '../fixtures/executiveBriefSynthesis');
 const GOLDEN_DIR = join(FIXTURES_DIR, 'golden');

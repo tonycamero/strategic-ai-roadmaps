@@ -5,7 +5,7 @@ import {
     RoleType,
     SeverityType,
     OutcomeType
-} from './taxonomy.ts';
+} from './taxonomy';
 
 export interface NarrativeConditions {
     constraint: ConstraintType;

@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "dist"
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": [
+    "src/**/__tests__/**",
+    "src/**/__mocks__/**",
+    "src/tests/**",
+    "src/scripts/**",
+    "src/narrative/**",
+    "src/services/pdfGenerator.tsx",
+    "src/debug_temp.ts",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
+}

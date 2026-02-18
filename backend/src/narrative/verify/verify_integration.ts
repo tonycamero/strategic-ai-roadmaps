@@ -1,5 +1,5 @@
-import { calculateBoardReadyPacket } from '../../controllers/webinar.controller.ts';
-import { assembleNarrative } from '../engine.ts';
+import { calculateBoardReadyPacket } from '../../controllers/webinar.controller';
+import { assembleNarrative } from '../engine';
 
 // Mock Role Payloads (Simulating an "Ops-Heavy / Low Trust" scenario)
 const MOCK_PAYLOADS = {

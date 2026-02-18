@@ -1,8 +1,8 @@
 
 import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { executeSynthesisPipeline, extractFacts, extractPatterns, synthesizeAssertions, assembleSections, getValidationBreakdown } from '../../../services/executiveBriefSynthesis.service.ts';
-import { ExecutiveAssertionBlock } from '../../../types/executiveBrief.ts';
+import { executeSynthesisPipeline, extractFacts, extractPatterns, synthesizeAssertions, assembleSections, getValidationBreakdown } from '../../../services/executiveBriefSynthesis.service';
+import { ExecutiveAssertionBlock } from '../../../types/executiveBrief';
 
 // Manually enable Mode 2 for forensic replay if needed, but per ticket instructions we stick to deterministic first.
 // "Run pipeline (in a deterministic non-LLM mode; if Mode 2 exists, disable it for this step)."

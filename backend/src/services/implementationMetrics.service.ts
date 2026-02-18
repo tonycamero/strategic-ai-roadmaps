@@ -1,4 +1,4 @@
-import { db } from '../db/index.ts';
+import { db } from '../db/index';
 import { and, eq, asc } from 'drizzle-orm';
 import {
   implementationSnapshots,
@@ -7,8 +7,8 @@ import {
   type NewImplementationSnapshot,
   type RoadmapOutcome,
   type NewRoadmapOutcome,
-} from '../db/schema.ts';
-import { normalizeMetrics, validateMetrics, type NormalizedMetrics, type RawMetrics } from './metricNormalizer.service.ts';
+} from '../db/schema';
+import { normalizeMetrics, validateMetrics, type NormalizedMetrics, type RawMetrics } from './metricNormalizer.service';
 
 export type SnapshotLabel = 'baseline' | '30d' | '60d' | '90d' | 'custom';
 export type SnapshotSource = 'manual' | 'api' | 'ghl_export' | 'hubspot_export';

@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { nanoid } from 'nanoid';
-import { db } from '../db/index.ts';
+import { db } from '../db/index';
 import {
   users, intakes, tenants, roadmaps, auditEvents, tenantDocuments,
   discoveryCallNotes, roadmapSections, ticketPacks, ticketInstances,
@@ -8,23 +8,23 @@ import {
   roadmapOutcomes, agentConfigs, agentThreads, webinarSettings,
   diagnostics, executiveBriefs, sopTickets, ticketModerationSessions,
   ticketsDraft, intakeClarifications
-} from '../db/schema.ts';
+} from '../db/schema';
 import { eq, and, sql, count, desc, asc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import { AuthRequest } from '../middleware/auth.ts';
+import { AuthRequest } from '../middleware/auth';
 import path from 'path';
 import fs from 'fs/promises';
-import { generateTicketPackForRoadmap } from '../services/ticketPackGenerator.service.ts';
-import { extractRoadmapMetadata } from '../services/roadmapMetadataExtractor.service.ts';
-import { ImplementationMetricsService } from '../services/implementationMetrics.service.ts';
-import { getOrCreateRoadmapForTenant } from '../services/roadmapOs.service.ts';
-import { refreshVectorStoreContent } from '../services/tenantVectorStore.service.ts';
-import { getModerationStatus } from '../services/ticketModeration.service.ts';
-import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes.ts';
+import { generateTicketPackForRoadmap } from '../services/ticketPackGenerator.service';
+import { extractRoadmapMetadata } from '../services/roadmapMetadataExtractor.service';
+import { ImplementationMetricsService } from '../services/implementationMetrics.service';
+import { getOrCreateRoadmapForTenant } from '../services/roadmapOs.service';
+import { refreshVectorStoreContent } from '../services/tenantVectorStore.service';
+import { getModerationStatus } from '../services/ticketModeration.service';
+import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
 import { AuthorityCategory, CanonicalDiscoveryNotes } from '@roadmap/shared';
-import { generateRawTickets, ParsedTicket, InventoryEmptyError } from '../services/diagnosticIngestion.service.ts';
-import { Sop01Outputs } from '../services/sop01Engine.ts';
-import { sendClarificationRequestEmail } from '../services/email.service.ts';
+import { generateRawTickets, ParsedTicket, InventoryEmptyError } from '../services/diagnosticIngestion.service';
+import { Sop01Outputs } from '../services/sop01Engine';
+import { sendClarificationRequestEmail } from '../services/email.service';
 
 // META-TICKET v2: Gate & SOP Architecture Imports
 import {
@@ -35,11 +35,11 @@ import {
   canIngestDiscoveryNotes,
   canGenerateSopTickets,
   canAssembleRoadmap
-} from '../services/gate.service.ts';
-import { generateSop01Outputs } from '../services/sop01Engine.ts';
-import { persistSop01OutputsForTenant } from '../services/sop01Persistence.ts';
-import { buildNormalizedIntakeContext } from '../services/intakeNormalizer.ts';
-import { validateBriefModeSchema } from '../services/schemaGuard.service.ts';
+} from '../services/gate.service';
+import { generateSop01Outputs } from '../services/sop01Engine';
+import { persistSop01OutputsForTenant } from '../services/sop01Persistence';
+import { buildNormalizedIntakeContext } from '../services/intakeNormalizer';
+import { validateBriefModeSchema } from '../services/schemaGuard.service';
 
 const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 
@@ -3684,7 +3684,7 @@ export async function ingestDiscoveryNotes(req: AuthRequest, res: Response) {
 
     // 4. Trigger Findings Extraction (F1-F4)
     // Dynamic import to avoid circular dep issues in this monolithic file
-    const { FindingsService } = await import('../services/findings.service.ts');
+    const { FindingsService } = await import('../services/findings.service');
 
     // Safety check for import
     if (!FindingsService) {
@@ -3800,7 +3800,7 @@ export async function generateAssistedProposals(req: AuthRequest, res: Response)
     console.log(`[generateAssistedProposals:${requestId}] Request for tenant ${tenantId}`);
 
     // Dynamic import to avoid circular dependencies
-    const { AssistedSynthesisProposalsService, ProposalGenerationError } = await import('../services/assistedSynthesisProposals.service.ts');
+    const { AssistedSynthesisProposalsService, ProposalGenerationError } = await import('../services/assistedSynthesisProposals.service');
 
     // Generate proposals using LLM (with requestId for tracing)
     const draft = await AssistedSynthesisProposalsService.generateProposals(tenantId);
@@ -4254,7 +4254,7 @@ export async function getAgentSession(req: AuthRequest, res: Response) {
 
     console.log(`[getAgentSession:${requestId}] Request for tenant ${tenantId}`);
 
-    const { AssistedSynthesisAgentService } = await import('../services/assistedSynthesisAgent.service.ts');
+    const { AssistedSynthesisAgentService } = await import('../services/assistedSynthesisAgent.service');
 
     const session = await AssistedSynthesisAgentService.getOrCreateSession(
       tenantId,
@@ -4307,7 +4307,7 @@ export async function sendAgentMessage(req: AuthRequest, res: Response) {
 
     console.log(`[sendAgentMessage:${requestId}] Request for tenant ${tenantId}, session ${sessionId}`);
 
-    const { AssistedSynthesisAgentService, AgentOperationError } = await import('../services/assistedSynthesisAgent.service.ts');
+    const { AssistedSynthesisAgentService, AgentOperationError } = await import('../services/assistedSynthesisAgent.service');
 
     const result = await AssistedSynthesisAgentService.sendMessage(
       tenantId,
@@ -4366,7 +4366,7 @@ export async function resetAgentSession(req: AuthRequest, res: Response) {
 
     console.log(`[resetAgentSession:${requestId}] Request for tenant ${tenantId}, session ${sessionId}`);
 
-    const { AssistedSynthesisAgentService } = await import('../services/assistedSynthesisAgent.service.ts');
+    const { AssistedSynthesisAgentService } = await import('../services/assistedSynthesisAgent.service');
 
     await AssistedSynthesisAgentService.resetSession(tenantId, sessionId, requestId);
 

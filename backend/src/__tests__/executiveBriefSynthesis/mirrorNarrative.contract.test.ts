@@ -11,13 +11,13 @@
 
 // Load env FIRST (before any OpenAI imports)
 import '../helpers/loadEnv';
-import { loadBackendEnv } from '../helpers/loadEnv.ts';
+import { loadBackendEnv } from '../helpers/loadEnv';
 loadBackendEnv();
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { executeSynthesisPipeline } from '../../services/executiveBriefSynthesis.service.ts';
+import { executeSynthesisPipeline } from '../../services/executiveBriefSynthesis.service';
 
 const FIXTURES_DIR = join(process.cwd(), 'src/__tests__/fixtures/executiveBriefSynthesis');
 

@@ -8,7 +8,7 @@
 
 import dotenv from 'dotenv';
 import OpenAI from 'openai';
-import { HOMEPAGE_TRUSTAGENT_PROMPT } from '../trustagent/homepagePrompt.ts';
+import { HOMEPAGE_TRUSTAGENT_PROMPT } from '../trustagent/homepagePrompt';
 
 dotenv.config();
 

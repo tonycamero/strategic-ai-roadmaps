@@ -9,8 +9,8 @@ import {
   handleListConfigs,
   handleGetConfig,
   handleUpdateConfig,
-} from '../controllers/agentConfig.controller.ts';
-import { authenticate } from '../middleware/auth.ts';
+} from '../controllers/agentConfig.controller';
+import { authenticate } from '../middleware/auth';
 
 const router = Router();
 

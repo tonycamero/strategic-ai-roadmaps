@@ -1,5 +1,5 @@
-import { NarrativeBlock } from '../../types.ts';
-import { ConstraintType } from '../../taxonomy.ts';
+import { NarrativeBlock } from '../../types';
+import { ConstraintType } from '../../taxonomy';
 
 export const C5_CapacitySaturation: NarrativeBlock = {
     id: 'C5_CapacitySaturation',

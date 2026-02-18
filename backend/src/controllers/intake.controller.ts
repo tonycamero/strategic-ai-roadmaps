@@ -1,11 +1,11 @@
 import { Response } from 'express';
-import { db } from '../db/index.ts';
-import { intakes, users, tenants, intakeVectors } from '../db/schema.ts';
+import { db } from '../db/index';
+import { intakes, users, tenants, intakeVectors } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
-import { AuthRequest } from '../middleware/auth.ts';
+import { AuthRequest } from '../middleware/auth';
 import { SubmitIntakeRequest } from '@roadmap/shared';
 import { ZodError } from 'zod';
-import { onboardingProgressService } from '../services/onboardingProgress.service.ts';
+import { onboardingProgressService } from '../services/onboardingProgress.service';
 
 export async function submitIntake(req: AuthRequest, res: Response) {
   try {

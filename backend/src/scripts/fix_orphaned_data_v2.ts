@@ -1,6 +1,6 @@
 
-import { db } from '../db/index.ts';
-import { ticketInstances, ticketPacks } from '../db/schema.ts';
+import { db } from '../db/index';
+import { ticketInstances, ticketPacks } from '../db/schema';
 import { eq, inArray, notInArray } from 'drizzle-orm';
 
 async function main() {
