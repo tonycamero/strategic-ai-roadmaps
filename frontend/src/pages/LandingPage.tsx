@@ -291,7 +291,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 6. COPILOT MODULE */}
+      {/* 6. TRUST CONSOLE MODULE */}
       <section className="py-32 border-t border-slate-800 bg-slate-900 overflow-hidden">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid md:grid-cols-2 gap-20 items-center">

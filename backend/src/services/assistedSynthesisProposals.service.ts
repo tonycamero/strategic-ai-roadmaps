@@ -1,7 +1,7 @@
-import { createOpenAIClient } from '../ai/openaiClient.ts';
-import { db } from '../db/index.ts';
-import { discoveryCallNotes, diagnostics, executiveBriefs } from '../db/schema.ts';
-import { eq, desc } from 'drizzle-orm';
+import { createOpenAIClient } from '../ai/openaiClient';
+import { db } from '../db/index';
+import { discoveryCallNotes, diagnostics, executiveBriefs, users, intakes } from '../db/schema';
+import { eq, and, desc } from 'drizzle-orm';
 
 /**
  * ProposedFinding Draft Schema
@@ -11,13 +11,20 @@ export interface ProposedFindingItem {
     id: string;
     type: 'CurrentFact' | 'FrictionPoint' | 'Goal' | 'Constraint';
     text: string;
-    evidenceRefs: Array<{
-        artifact: 'raw' | 'execBrief' | 'diagnostic' | 'qna';
+    anchors: Array<{
+        source: 'RAW_NOTES' | 'INTAKE' | 'DISCOVERY_QA' | 'DIAGNOSTIC' | 'EXEC_BRIEF';
+        speaker?: string;
         quote: string;
-        location?: string;
     }>;
     status: 'pending' | 'accepted' | 'rejected';
     editedText?: string;
+    mechanical_effect?: string;
+    operational_effect?: string;
+    economic_vector?: string; // One of ALLOWED_ECONOMIC_VECTORS
+    archetype_selected?: string; // One of 9
+    runners_up_archetypes?: string[]; // exactly 2
+    deciding_signal?: string;
+    confidence?: 'LOW' | 'MED' | 'HIGH';
 }
 
 export interface ProposedFindingsDraft {
@@ -70,6 +77,18 @@ export class AssistedSynthesisProposalsService {
             .orderBy(desc(executiveBriefs.createdAt))
             .limit(1);
 
+        // Load team member intakes (full verbatim)
+        const tenantIntakes = await db
+            .select({
+                id: intakes.id,
+                roleLabel: intakes.role,
+                displayName: users.name,
+                answers: intakes.answers
+            })
+            .from(intakes)
+            .innerJoin(users, eq(intakes.userId, users.id))
+            .where(eq(intakes.tenantId, tenantId));
+
         if (!discoveryRaw) {
             throw new Error('NO_DISCOVERY_NOTES: Cannot generate proposals without discovery notes');
         }
@@ -92,42 +111,82 @@ export class AssistedSynthesisProposalsService {
         const operatingReality = execBrief?.synthesis?.content?.operatingReality || (execBrief?.synthesis as any)?.operatingReality || '';
         const constraints = execBrief?.synthesis?.content?.constraintLandscape || (execBrief?.synthesis as any)?.constraintLandscape || '';
 
+        const intakeContent = tenantIntakes.map(ti => {
+            const answers = typeof ti.answers === 'string' ? ti.answers : JSON.stringify(ti.answers);
+            return `Role: ${ti.roleLabel}\nUser: ${ti.displayName}\nAnswers:\n${answers}`;
+        }).join('\n---\n');
+
+        // Token Risk Logging
+        const totalContextSize = (rawNotes + diagnosticOverview + diagnosticOpportunities + execSummary + operatingReality + constraints + intakeContent).length;
+        console.log(`[AssistedSynthesis:Bulk] Total context size: ${totalContextSize} chars`);
+        if (totalContextSize > 150000) {
+            console.warn(`[AssistedSynthesis:Bulk] EXTREME TOKEN PRESSURE: ${totalContextSize} chars.`);
+        }
+
         // 4. Build strict LLM prompt
-        const systemPrompt = `You are a findings extraction agent. Your job is to analyze discovery artifacts and propose ATOMIC, EVIDENCE-ANCHORED findings.
+        const systemPrompt = `You are a findings extraction agent for StrategicAI. Your job is to analyze discovery artifacts and propose ATOMIC, EVIDENCE-ANCHORED findings. 
 
-RULES (STRICT):
-1. Output ONLY valid JSON matching the schema below
-2. Each finding must be a SINGLE atomic claim (one fact, one friction point, one goal, one constraint)
-3. Each finding MUST include at least 1 evidenceRef with a SHORT direct quote from sources
-4. Do NOT infer, assume, or create findings without evidence
-5. Do NOT include solution language, implementation steps, or recommendations
-6. Do NOT create narrative text - only structured findings
-7. If evidence is insufficient for a claim, OMIT that finding
+GOVERNANCE RULES (STRICT):
 
-FINDING TYPES:
-- CurrentFact: Verifiable statements about the current state (from raw notes, exec brief)
-- FrictionPoint: Explicit pain points, problems, or gaps (from raw notes, exec brief, diagnostic)
-- Goal: Explicit desired outcomes or future states (from raw notes, diagnostic)
-- Constraint: Explicit limitations, boundaries, or requirements (from raw notes, exec brief)
+G1 — DISCIPLINE-FIRST GATE:
+- NEVER recommend automation or tooling unless the artifacts PROVE existance of:
+    (a) ownership discipline (explicit owner-of-process)
+    (b) state discipline (clear definitions of states / "done")
+    (c) queue discipline (how work enters / is handled)
+    (d) exception discipline (what happens when it breaks)
+- If artifacts are silent: classification must be "premature tooling". Framed as a discipline gap.
 
-OUTPUT SCHEMA:
+G2 — ECONOMIC CONCRETENESS:
+- Use ONLY specific mechanisms from the ALLOWED_ECONOMIC_VECTORS list.
+- BAN GENERIC TERMS: "revenue friction", "wasted resources", "efficiency", "optimize", "leverage", "synergy", "unlock".
+- No invented ROI or dollar amounts.
+
+G3 — ARCHETYPE ROTATION:
+- Evaluate ALL 9 archetypes before selecting: Authority, Capacity, Data, Incentive, RevenueModel, Throughput, EscalationCulture, DemandQualification, StructuralAmbiguity.
+- Output MUST include selected archetype + 2 runners-up + deciding_signal (the observable operational test).
+
+G4 — ROOT-CAUSE COLLAPSE:
+- Cite anchors for BOTH items when deduping.
+- Merge or separate with a concrete deciding_signal.
+
+ALLOWED_ECONOMIC_VECTORS:
+- overtime_inflation
+- idle_labor_idle_capacity
+- spoilage_waste
+- rework_labor
+- refunds_comps_chargebacks
+- missed_peak_conversion_dropped_orders
+- margin_dilution_discounting_promo_leakage
+- rush_insertion_schedule_thrash_cost
+- escalation_time_cost_owner_manager_interruptions
+- warranty_callbacks_repeat_work
+
+OUTPUT SCHEMA (JSON):
 {
   "items": [
     {
       "id": "unique-id",
       "type": "CurrentFact" | "FrictionPoint" | "Goal" | "Constraint",
       "text": "Single atomic claim statement",
-      "evidenceRefs": [
+      "anchors": [
         {
-          "artifact": "raw" | "execBrief" | "diagnostic",
-          "quote": "Short excerpt from source (max 100 chars)",
-          "location": "optional section name"
+          "source": "RAW_NOTES" | "INTAKE" | "DISCOVERY_QA" | "DIAGNOSTIC" | "EXEC_BRIEF",
+          "speaker": "Name or Role",
+          "quote": "Short verbatim excerpt"
         }
       ],
-      "status": "pending"
+      "status": "pending",
+      "mechanical_effect": "State failure / queue break / etc",
+      "operational_effect": "Observable delay / rework / symptom",
+      "economic_vector": "One from ALLOWED_ECONOMIC_VECTORS",
+      "archetype_selected": "Authority | Capacity | Data | Incentive | RevenueModel | Throughput | EscalationCulture | DemandQualification | StructuralAmbiguity",
+      "runners_up_archetypes": ["Archetype", "Archetype"],
+      "deciding_signal": "Operational test to confirm"
     }
   ]
-}`;
+}
+
+UNLIMITED proposals are permitted if evidence-backed (Target 30+).`;
 
         const userPrompt = `SOURCES:
 
@@ -142,6 +201,9 @@ ${operatingReality.substring(0, 2000)}
 
 EXECUTIVE BRIEF - Constraints:
 ${constraints.substring(0, 1000)}
+
+TEAM MEMBER INTAKES (VERBATIM):
+${intakeContent.substring(0, 5000)}
 
 DIAGNOSTIC - Overview:
 ${diagnosticOverview.substring(0, 1500)}
@@ -187,17 +249,51 @@ Extract and propose atomic findings. Return ONLY valid JSON.`;
         if (execBrief?.id) sourceArtifactIds.push(execBrief.id);
 
         const draft: ProposedFindingsDraft = {
-            version: 'v2.0-proposal-1',
-            items: proposedItems.items.map((item: any) => ({
-                ...item,
-                status: 'pending'
-            })),
+            version: 'v3.5-hardened',
+            items: [],
             generatedBy: 'assistedSynthesisProposals.service',
             sourceArtifactIds,
             createdAt: new Date()
         };
 
-        console.log(`[AssistedSynthesis] Generated ${draft.items.length} proposed findings for tenant ${tenantId}`);
+        const ALLOWED_VECTORS = [
+            'overtime_inflation', 'idle_labor_idle_capacity', 'spoilage_waste', 'rework_labor',
+            'refunds_comps_chargebacks', 'missed_peak_conversion_dropped_orders',
+            'margin_dilution_discounting_promo_leakage', 'rush_insertion_schedule_thrash_cost',
+            'escalation_time_cost_owner_manager_interruptions', 'warranty_callbacks_repeat_work'
+        ];
+
+        const BANNED_REGEX = /revenue friction|wasted resources|efficiency|optimiz(e|ing|ation)|leverage|synergy|unlock/i;
+
+        for (const item of proposedItems.items) {
+            try {
+                // G5: Server-side validation
+                if (!item.anchors || !Array.isArray(item.anchors) || item.anchors.length === 0) {
+                    console.warn(`[AssistedSynthesis:Validation] Dropping proposal: No anchors. Type: ${item.type}`);
+                    continue;
+                }
+
+                if (!ALLOWED_VECTORS.includes(item.economic_vector)) {
+                    console.warn(`[AssistedSynthesis:Validation] Dropping proposal: Invalid economic vector "${item.economic_vector}".`);
+                    continue;
+                }
+
+                const contentToScan = `${item.text} ${item.mechanical_effect} ${item.operational_effect} ${item.deciding_signal}`;
+                if (BANNED_REGEX.test(contentToScan)) {
+                    console.warn(`[AssistedSynthesis:Validation] Dropping proposal: Banned words detected.`);
+                    continue;
+                }
+
+                draft.items.push({
+                    ...item,
+                    status: 'pending'
+                });
+            } catch (err) {
+                console.error('[AssistedSynthesis:Validation] Error validating item:', err);
+            }
+        }
+
+        console.log(`[AssistedSynthesis] Generated ${draft.items.length} proposed findings (after G5 validation) for tenant ${tenantId}`);
         return draft;
     }
 }

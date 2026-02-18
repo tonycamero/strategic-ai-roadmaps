@@ -1,5 +1,5 @@
-import { NarrativeBlock } from '../../types.ts';
-import { ConstraintType } from '../../taxonomy.ts';
+import { NarrativeBlock } from '../../types';
+import { ConstraintType } from '../../taxonomy';
 
 export const C3_VisibilityCollapse: NarrativeBlock = {
     id: 'C3_VisibilityCollapse',

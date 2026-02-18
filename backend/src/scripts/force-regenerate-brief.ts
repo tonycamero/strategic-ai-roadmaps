@@ -1,8 +1,8 @@
 import 'dotenv/config';
-import { db } from '../db/index.ts';
-import { executiveBriefs, intakeVectors, intakes } from '../db/schema.ts';
+import { db } from '../db/index';
+import { executiveBriefs, intakeVectors, intakes } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
-import { generateExecutiveBriefV0 } from '../controllers/executiveBrief.controller.ts';
+import { generateExecutiveBriefV0 } from '../controllers/executiveBrief.controller';
 
 const TENANT_ID = 'ec32ea41-d056-462d-8321-c2876c9af263';
 

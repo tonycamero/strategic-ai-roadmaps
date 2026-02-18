@@ -127,7 +127,7 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
       const welcomeMsg: ConversationMessage = {
         id: 'init-roadmap',
         speaker: 'agent',
-        message: "Hello. I'm your Executive Roadmap Copilot. How can I help you execute on your strategy today?",
+        message: "Alright — I’m here. What are we looking at?",
         timestamp: new Date()
       };
       setMessages([welcomeMsg]);
@@ -369,7 +369,7 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
     if (cta.type === 'book_call') {
       const params = generateBookingParams(visitorContext);
       // TODO: Replace with actual booking URL when available
-      const bookingUrl = `mailto:tony@scend.cash?subject=Strategic AI Roadmap - Discovery Call&body=Source: ${agentType === 'roadmap' ? 'TrustAgent' : 'TrustConsole'}%0A${params ? `Context: ${params}` : ''}`;
+      const bookingUrl = `mailto:tony@scend.cash?subject=Strategic AI Roadmap - Discovery Call&body=Source: Trust Console Agent%0A${params ? `Context: ${params}` : ''}`;
       window.open(bookingUrl, '_blank');
     } else if (cta.type === 'view_sample_roadmap') {
       setLocation('/cohort');
@@ -585,7 +585,7 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
         onClick={handleBubbleClick}
         className="fixed top-20 right-5 z-[80] cursor-pointer hover:scale-110 transition-transform duration-200 safe-top safe-right"
         style={{ top: 'max(5rem, env(safe-area-inset-top))', right: 'max(1.25rem, env(safe-area-inset-right))' }}
-        aria-label="Open TrustAgent"
+        aria-label="Open Trust Console Agent"
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
@@ -671,9 +671,9 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
           {/* Header */}
           <div className="p-6 border-b border-slate-800 flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-slate-100">{agentType === 'roadmap' ? 'TrustAgent' : config.panel.title}</h3>
+              <h3 className="text-lg font-semibold text-slate-100">{agentType === 'roadmap' ? 'Trust Console Agent' : config.panel.title}</h3>
               <p className="text-xs text-slate-400">
-                {agentType === 'roadmap' ? 'Your Executive Roadmap Copilot' : config.panel.subtitle}
+                {agentType === 'roadmap' ? 'Trust Console Agent' : config.panel.subtitle}
               </p>
             </div>
             <button
@@ -689,7 +689,7 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {messages.length === 0 && !isLoading ? (
               <div className="text-center text-slate-400 mt-8">
-                <p className="mb-4">👋 Hi! I'm TrustAgent.</p>
+                <p className="mb-4">Hello. I'm your Trust Console Agent.</p>
                 <p className="text-sm">Click a suggestion below to start chatting.</p>
               </div>
             ) : messages.length === 0 && isLoading ? (

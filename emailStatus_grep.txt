@@ -1,0 +1,8 @@
+/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/controllers/superadmin.controller.ts:386:    let emailStatus: 'SENT' | 'FAILED' = 'SENT';
+/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/controllers/superadmin.controller.ts:411:        emailStatus = 'FAILED';
+/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/controllers/superadmin.controller.ts:431:        emailStatus,
+/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/controllers/superadmin.controller.ts:446:      metadata: { intakeId, questionId, blocking, emailStatus }
+/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/controllers/superadmin.controller.ts:510:    let emailStatus: 'SENT' | 'FAILED' = 'SENT';
+/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/controllers/superadmin.controller.ts:522:      emailStatus = 'FAILED';
+/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/controllers/superadmin.controller.ts:529:        emailStatus,
+/home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/db/schema.ts:869:  emailStatus: varchar('email_status', { length: 20 }).notNull().default('NOT_SENT'), // NOT_SENT | SENT | FAILED

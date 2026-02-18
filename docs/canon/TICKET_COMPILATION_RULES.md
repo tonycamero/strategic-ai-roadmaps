@@ -108,4 +108,89 @@ The Ticket Compiler may **only** generate tickets of the following classes.
 This document is the **Canonical Source of Truth** for Ticket Compilation logic.
 Any ticket generated without explicit Finding traceability, or containing solutioneering/prioritization logic, is **Invalid Input** and must be rejected before Roadmap usage.
 
+---
+
+## 9. Execution Gate Anchor (Authority Boundary)
+
+### 9.1 Ticket Acceptance ≠ Stage Completion
+
+The status `ACCEPTED` means:
+
+- The ticket is authorized as a valid unit of work.
+- The ticket may be considered for Roadmap compilation.
+
+It does NOT mean:
+
+- The Diagnostic stage is COMPLETE.
+- The Roadmap stage is READY.
+- The system may advance execution state.
+
+Stage transitions are governed exclusively by:
+
+backend/src/services/executionTruth.service.ts
+
+---
+
+### 9.2 Stage Saturation Requirement
+
+The existence of one or more `ACCEPTED` tickets does not satisfy the DIAGNOSTIC stage.
+
+Diagnostic stage is COMPLETE only when:
+
+1. Required Diagnostic-class tickets have been generated.
+2. Required non-diagnostic tickets (if mandated by stage contract) are resolved.
+3. Operator authority confirms sufficiency.
+4. No blocking clarification or invalidation signal exists.
+
+Ticket quantity is irrelevant.
+Authority confirmation is mandatory.
+
+---
+
+### 9.3 Roadmap Eligibility Gate
+
+A ticket may only be included in a Roadmap if:
+
+- Status = ACCEPTED
+- Ticket is not INVALIDATED
+- Source Findings remain valid
+- ExecutionTruthService confirms DIAGNOSTIC stage COMPLETE
+
+If Diagnostic stage is not COMPLETE, Roadmap compilation must fail closed.
+
+---
+
+### 9.4 Acceptance Authority Rule
+
+Transition from PROPOSED → ACCEPTED must be:
+
+- Explicit
+- Persisted
+- Audit-traceable
+
+Implicit acceptance (e.g., bulk toggles, UI inference) is forbidden.
+
+---
+
+### 9.5 Atomic Authority Principle
+
+Tickets represent atomic execution claims.
+
+Authority over the Ticket does not imply authority over the Stage.
+
+Stage authority must be independently verified through ExecutionTruthService.
+
+---
+
+### 9.6 Supersession Behavior
+
+If a referenced Finding is invalidated:
+
+- Ticket must transition to INVALIDATED.
+- Ticket cannot remain ACCEPTED silently.
+- ExecutionTruthService must re-evaluate downstream stage state.
+
+No silent drift permitted.
+
+
 **END OF DOCUMENT**

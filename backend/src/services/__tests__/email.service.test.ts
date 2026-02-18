@@ -8,7 +8,7 @@ describe('Email Service Configuration', () => {
         vi.stubEnv('FROM_EMAIL', 'test@example.com');
         vi.resetModules();
 
-        const emailService = await import('../email.service.ts');
+        const emailService = await import('../email.service');
         // We can't easily check the private fromHeader constant unless we export it,
         // but we can check if the module loaded without throwing.
         expect(emailService).toBeDefined();
@@ -20,7 +20,7 @@ describe('Email Service Configuration', () => {
         // Need to reset modules to re-import
         vi.resetModules();
 
-        await expect(import('../email.service.ts')).rejects.toThrow("FROM_EMAIL environment variable is not defined");
+        await expect(import('../email.service')).rejects.toThrow("FROM_EMAIL environment variable is not defined");
 
         vi.unstubAllEnvs();
     });

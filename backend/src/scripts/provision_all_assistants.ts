@@ -5,10 +5,10 @@
  * Run with: npm run provision:assistants
  */
 
-import { db } from '../db/index.ts';
-import { agentConfigs, users } from '../db/schema.ts';
+import { db } from '../db/index';
+import { agentConfigs, users } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import { provisionAssistantForConfig } from '../services/assistantProvisioning.service.ts';
+import { provisionAssistantForConfig } from '../services/assistantProvisioning.service';
 
 async function main() {
   console.log('=== Provisioning All Active Assistants ===\n');

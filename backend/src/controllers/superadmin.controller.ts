@@ -1,30 +1,31 @@
 import { Response } from 'express';
 import { nanoid } from 'nanoid';
-import { db } from '../db/index.ts';
+import { db } from '../db/index';
 import {
   users, intakes, tenants, roadmaps, auditEvents, tenantDocuments,
   discoveryCallNotes, roadmapSections, ticketPacks, ticketInstances,
   tenantMetricsDaily, webinarRegistrations, implementationSnapshots,
   roadmapOutcomes, agentConfigs, agentThreads, webinarSettings,
   diagnostics, executiveBriefs, sopTickets, ticketModerationSessions,
-  ticketsDraft, intakeClarifications
-} from '../db/schema.ts';
+  ticketsDraft, intakeClarifications, impersonationSessions
+} from '../db/schema';
 import { eq, and, sql, count, desc, asc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import { AuthRequest } from '../middleware/auth.ts';
+import { AuthRequest } from '../middleware/auth';
 import path from 'path';
 import fs from 'fs/promises';
-import { generateTicketPackForRoadmap } from '../services/ticketPackGenerator.service.ts';
-import { extractRoadmapMetadata } from '../services/roadmapMetadataExtractor.service.ts';
-import { ImplementationMetricsService } from '../services/implementationMetrics.service.ts';
-import { getOrCreateRoadmapForTenant } from '../services/roadmapOs.service.ts';
-import { refreshVectorStoreContent } from '../services/tenantVectorStore.service.ts';
-import { getModerationStatus } from '../services/ticketModeration.service.ts';
-import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes.ts';
+import { generateToken, generateImpersonationToken } from '../utils/auth';
+import { generateTicketPackForRoadmap } from '../services/ticketPackGenerator.service';
+import { extractRoadmapMetadata } from '../services/roadmapMetadataExtractor.service';
+import { ImplementationMetricsService } from '../services/implementationMetrics.service';
+import { getOrCreateRoadmapForTenant } from '../services/roadmapOs.service';
+import { refreshVectorStoreContent } from '../services/tenantVectorStore.service';
+import { getModerationStatus } from '../services/ticketModeration.service';
+import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
 import { AuthorityCategory, CanonicalDiscoveryNotes } from '@roadmap/shared';
-import { generateRawTickets, ParsedTicket, InventoryEmptyError } from '../services/diagnosticIngestion.service.ts';
-import { Sop01Outputs } from '../services/sop01Engine.ts';
-import { sendClarificationRequestEmail } from '../services/email.service.ts';
+import { generateRawTickets, ParsedTicket, InventoryEmptyError } from '../services/diagnosticIngestion.service';
+import { Sop01Outputs } from '../services/sop01Engine';
+import { sendClarificationRequestEmail } from '../services/email.service';
 
 // META-TICKET v2: Gate & SOP Architecture Imports
 import {
@@ -35,11 +36,11 @@ import {
   canIngestDiscoveryNotes,
   canGenerateSopTickets,
   canAssembleRoadmap
-} from '../services/gate.service.ts';
-import { generateSop01Outputs } from '../services/sop01Engine.ts';
-import { persistSop01OutputsForTenant } from '../services/sop01Persistence.ts';
-import { buildNormalizedIntakeContext } from '../services/intakeNormalizer.ts';
-import { validateBriefModeSchema } from '../services/schemaGuard.service.ts';
+} from '../services/gate.service';
+import { generateSop01Outputs } from '../services/sop01Engine';
+import { persistSop01OutputsForTenant } from '../services/sop01Persistence';
+import { buildNormalizedIntakeContext } from '../services/intakeNormalizer';
+import { validateBriefModeSchema } from '../services/schemaGuard.service';
 
 const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 
@@ -80,6 +81,114 @@ function requireExecutiveAuthority(req: AuthRequest, res: Response): boolean {
   }
   return true;
 }
+
+// ============================================================================
+// POST /api/superadmin/impersonate - Impersonate Tenant Owner (Hardened)
+// ============================================================================
+
+export async function impersonateTenantOwner(req: AuthRequest, res: Response) {
+  try {
+    // 1. Strict Authority Check
+    if (!requireSuperAdmin(req, res)) return;
+
+    const { tenantId } = (req as any).body;
+    if (!tenantId) {
+      return res.status(400).json({ error: 'Missing tenantId' });
+    }
+
+    // 2. Fetch Tenant and Owner
+    const [tenant] = await db
+      .select({
+        id: tenants.id,
+        name: tenants.name,
+        ownerUserId: tenants.ownerUserId,
+      })
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
+
+    if (!tenant) {
+      return res.status(404).json({ error: 'Tenant not found' });
+    }
+
+    if (!tenant.ownerUserId) {
+      return res.status(400).json({ error: 'Tenant has no assigned owner' });
+    }
+
+    const [ownerUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, tenant.ownerUserId))
+      .limit(1);
+
+    if (!ownerUser) {
+      return res.status(404).json({ error: 'Owner user not found' });
+    }
+
+    // 3. Create Impersonation Session (Audit)
+    // Using a UUID for session tracking
+    const sessionId = randomUUID();
+
+    await db.insert(impersonationSessions).values({
+      id: sessionId,
+      superAdminId: req.user!.userId,
+      tenantId: tenant.id,
+      ownerUserId: ownerUser.id,
+      reason: 'SuperAdmin Impersonation Action',
+      startedAt: new Date(),
+    });
+
+    // 4. Generate Hardened Impersonation Token
+    // Uses distinct 'impersonation' type, actor claim, and short TTL (15m)
+    const token = generateImpersonationToken(
+      {
+        id: ownerUser.id,
+        email: ownerUser.email,
+        role: ownerUser.role as UserRole, // explicit cast
+        isInternal: ownerUser.isInternal,
+        tenantId: tenant.id
+      },
+      {
+        id: req.user!.userId,
+        email: req.user!.email
+      },
+      sessionId
+    );
+
+    // 5. Audit Event
+    await db.insert(auditEvents).values({
+      tenantId: tenant.id,
+      actorUserId: req.user!.userId,
+      actorRole: req.user!.role as string,
+      eventType: 'IMPERSONATION_STARTED',
+      entityType: 'user',
+      entityId: ownerUser.id,
+      metadata: {
+        targetEmail: ownerUser.email,
+        sessionId: sessionId,
+        expiresIn: '15m'
+      } as any,
+    });
+
+    // 6. Return Token & Profile & Session Info
+    return res.json({
+      token,
+      sessionId,
+      user: {
+        id: ownerUser.id,
+        email: ownerUser.email,
+        name: ownerUser.name,
+        role: ownerUser.role,
+        tenantId: tenant.id,
+      },
+    });
+
+  } catch (error) {
+    console.error('Impersonation error:', error);
+    return res.status(500).json({ error: 'Failed to impersonate user' });
+  }
+}
+
 
 // ============================================================================
 // GET /api/superadmin/overview - Global Dashboard Stats
@@ -1568,6 +1677,9 @@ export async function updateFirmStatus(req: AuthRequest, res: Response) {
     if (region !== undefined) updates.region = region;
     if (status !== undefined) updates.status = status;
     if (notes !== undefined) updates.notes = notes;
+    if (req.body.intakeWindowState !== undefined) updates.intakeWindowState = req.body.intakeWindowState;
+    if (req.body.intakeClosedAt !== undefined) updates.intakeClosedAt = req.body.intakeClosedAt;
+    if (req.body.intakeSnapshotId !== undefined) updates.intakeSnapshotId = req.body.intakeSnapshotId;
 
     if (Object.keys(updates).length === 1) { // only updatedAt
       return res.status(400).json({ error: 'No updates provided' });
@@ -3490,7 +3602,8 @@ export async function lockDiagnostic(req: AuthRequest, res: Response) {
       actorRole: req.user?.role,
       eventType: 'DIAGNOSTIC_LOCKED',
       entityType: 'diagnostic',
-      entityId: diagnosticId
+      entityId: null, // diagnosticId is nanoid, not uuid
+      metadata: { diagnosticId }
     });
 
     return res.json({ success: true });
@@ -3550,7 +3663,8 @@ export async function publishDiagnostic(req: AuthRequest, res: Response) {
       actorRole: req.user?.role,
       eventType: 'DIAGNOSTIC_PUBLISHED',
       entityType: 'diagnostic',
-      entityId: diagnosticId
+      entityId: null, // diagnosticId is nanoid, not uuid
+      metadata: { diagnosticId }
     });
 
     return res.json({ success: true });
@@ -3684,7 +3798,7 @@ export async function ingestDiscoveryNotes(req: AuthRequest, res: Response) {
 
     // 4. Trigger Findings Extraction (F1-F4)
     // Dynamic import to avoid circular dep issues in this monolithic file
-    const { FindingsService } = await import('../services/findings.service.ts');
+    const { FindingsService } = await import('../services/findings.service');
 
     // Safety check for import
     if (!FindingsService) {
@@ -3800,7 +3914,7 @@ export async function generateAssistedProposals(req: AuthRequest, res: Response)
     console.log(`[generateAssistedProposals:${requestId}] Request for tenant ${tenantId}`);
 
     // Dynamic import to avoid circular dependencies
-    const { AssistedSynthesisProposalsService, ProposalGenerationError } = await import('../services/assistedSynthesisProposals.service.ts');
+    const { AssistedSynthesisProposalsService, ProposalGenerationError } = await import('../services/assistedSynthesisProposals.service');
 
     // Generate proposals using LLM (with requestId for tracing)
     const draft = await AssistedSynthesisProposalsService.generateProposals(tenantId);
@@ -4254,7 +4368,7 @@ export async function getAgentSession(req: AuthRequest, res: Response) {
 
     console.log(`[getAgentSession:${requestId}] Request for tenant ${tenantId}`);
 
-    const { AssistedSynthesisAgentService } = await import('../services/assistedSynthesisAgent.service.ts');
+    const { AssistedSynthesisAgentService } = await import('../services/assistedSynthesisAgent.service');
 
     const session = await AssistedSynthesisAgentService.getOrCreateSession(
       tenantId,
@@ -4307,7 +4421,7 @@ export async function sendAgentMessage(req: AuthRequest, res: Response) {
 
     console.log(`[sendAgentMessage:${requestId}] Request for tenant ${tenantId}, session ${sessionId}`);
 
-    const { AssistedSynthesisAgentService, AgentOperationError } = await import('../services/assistedSynthesisAgent.service.ts');
+    const { AssistedSynthesisAgentService, AgentOperationError } = await import('../services/assistedSynthesisAgent.service');
 
     const result = await AssistedSynthesisAgentService.sendMessage(
       tenantId,
@@ -4366,7 +4480,7 @@ export async function resetAgentSession(req: AuthRequest, res: Response) {
 
     console.log(`[resetAgentSession:${requestId}] Request for tenant ${tenantId}, session ${sessionId}`);
 
-    const { AssistedSynthesisAgentService } = await import('../services/assistedSynthesisAgent.service.ts');
+    const { AssistedSynthesisAgentService } = await import('../services/assistedSynthesisAgent.service');
 
     await AssistedSynthesisAgentService.resetSession(tenantId, sessionId, requestId);
 

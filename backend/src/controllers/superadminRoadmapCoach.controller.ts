@@ -6,8 +6,8 @@
  */
 
 import { Request, Response } from 'express';
-import { buildStrategyContext } from '../services/strategyContextBuilder.service.ts';
-import type { PersonaRole } from '../types/strategyContext.ts';
+import { buildStrategyContext } from '../services/strategyContextBuilder.service';
+import type { PersonaRole } from '../types/strategyContext';
 
 interface SandboxRequest extends Request {
   body: {

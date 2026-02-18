@@ -1,7 +1,7 @@
-import { db } from '../db/index.ts';
-import { tenantDocuments, tenants } from '../db/schema.ts';
+import { db } from '../db/index';
+import { tenantDocuments, tenants } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
-import { Sop01Outputs } from './sop01Engine.ts';
+import { Sop01Outputs } from './sop01Engine';
 
 /**
  * Normalizes unknown content to a UTF-8 string.

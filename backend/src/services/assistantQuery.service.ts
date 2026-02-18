@@ -6,15 +6,15 @@
  */
 
 import OpenAI from 'openai';
-import { db } from '../db/index.ts';
-import { agentConfigs, agentThreads, users, agentMessages, agentLogs, roadmapSections, intakes } from '../db/schema.ts';
+import { db } from '../db/index';
+import { agentConfigs, agentThreads, users, agentMessages, agentLogs, roadmapSections, intakes } from '../db/schema';
 import { and, eq } from 'drizzle-orm';
-import { wrapUserMessageWithRoleContext } from '../config/role-runtime-context.ts';
-import type { CapabilityProfile } from '../shared/types/capability-profile.ts';
-import { buildStrategyContext } from './strategyContextBuilder.service.ts';
-import { saveStrategyContext } from './strategyContextStore.service.ts';
-import type { PersonaRole } from '../types/strategyContext.ts';
-import { getOrCreateVectorStore } from './tenantVectorStore.service.ts';
+import { wrapUserMessageWithRoleContext } from '../config/role-runtime-context';
+import type { CapabilityProfile } from '../shared/types/capability-profile';
+import { buildStrategyContext } from './strategyContextBuilder.service';
+import { saveStrategyContext } from './strategyContextStore.service';
+import type { PersonaRole } from '../types/strategyContext';
+import { getOrCreateVectorStore } from './tenantVectorStore.service';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,

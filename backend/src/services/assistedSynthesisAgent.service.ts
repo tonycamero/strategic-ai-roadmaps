@@ -1,13 +1,15 @@
-import { createOpenAIClient } from '../ai/openaiClient.ts';
-import { db } from '../db/index.ts';
+import { createOpenAIClient } from '../ai/openaiClient';
+import { db } from '../db/index';
 import {
     assistedSynthesisAgentSessions,
     assistedSynthesisAgentMessages,
     discoveryCallNotes,
     diagnostics,
     executiveBriefs,
-    tenantDocuments
-} from '../db/schema.ts';
+    tenantDocuments,
+    users,
+    intakes
+} from '../db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
@@ -275,9 +277,23 @@ export class AssistedSynthesisAgentService {
             .orderBy(desc(tenantDocuments.createdAt))
             .limit(1);
 
+        // Load team member intakes (full verbatim)
+        const tenantIntakes = await db
+            .select({
+                id: intakes.id,
+                roleLabel: intakes.role,
+                displayName: users.name,
+                answers: intakes.answers
+            })
+            .from(intakes)
+            .innerJoin(users, eq(intakes.userId, users.id))
+            .where(and(
+                eq(intakes.tenantId, tenantId)
+            ));
+
         const proposedFindings = proposedDoc ? JSON.parse(proposedDoc.content) : null;
 
-        return {
+        const context = {
             discoveryNotes: discoveryRaw?.notes || null,
             diagnostic: diagnostic ? {
                 overview: diagnostic.overview,
@@ -286,8 +302,26 @@ export class AssistedSynthesisAgentService {
                 discoveryQuestions: diagnostic.discoveryQuestions
             } : null,
             executiveBrief: execBrief?.synthesis || null,
-            proposedFindings: proposedFindings?.items || []
+            proposedFindings: proposedFindings?.items || [],
+            teamMemberIntakes: tenantIntakes.map(ti => ({
+                id: ti.id,
+                roleLabel: ti.roleLabel,
+                displayName: ti.displayName,
+                contentText: typeof ti.answers === 'string' ? ti.answers : JSON.stringify(ti.answers)
+            }))
         };
+
+        // Token Risk Logging
+        const estimatedChars = JSON.stringify(context).length;
+        console.log(`[AssistedSynthesisAgent:${requestId}] Loaded context size: ${estimatedChars} chars`);
+
+        // TODO: If estimatedChars > threshold, implement selective injection by relevance.
+        // For now, fail loudly if extreme token pressure detected.
+        if (estimatedChars > 150000) {
+            console.warn(`[AssistedSynthesisAgent:${requestId}] EXTREME TOKEN PRESSURE: ${estimatedChars} chars. Context may be truncated.`);
+        }
+
+        return context;
     }
 
     /**
@@ -303,6 +337,12 @@ export class AssistedSynthesisAgentService {
             type: 'CurrentFact' | 'FrictionPoint' | 'Goal' | 'Constraint';
             sources?: string[];
             status: 'pending' | 'accepted' | 'rejected';
+        }>;
+        teamMemberIntakes: Array<{
+            id: string;
+            roleLabel: string;
+            displayName: string;
+            contentText: string;
         }>;
     }): string {
         const snapshot = {
@@ -326,19 +366,57 @@ export class AssistedSynthesisAgentService {
         const discoveryContent = context.discoveryNotes ? JSON.stringify(context.discoveryNotes, null, 2) : 'No discovery notes available.';
         const diagnosticContent = context.diagnostic ? JSON.stringify(context.diagnostic, null, 2) : 'No diagnostic data available.';
         const execBriefContent = context.executiveBrief ? JSON.stringify(context.executiveBrief, null, 2) : 'No executive brief available.';
+        const intakeContent = context.teamMemberIntakes.length > 0
+            ? JSON.stringify(context.teamMemberIntakes, null, 2)
+            : 'No team member intakes available.';
 
-        return `You are an interpretive assistant for Stage 5 Assisted Synthesis in a strategic AI roadmapping tool.
+        return `You are an interpretive assistant for StrategicAI Stage 5 Assisted Synthesis.
+Your job is to help the operator understand, verify, and resolve findings while strictly adhering to corporate discipline.
 
-STRICT SCOPE:
-- You are provided with a read-only snapshot of the PROPOSED FINDINGS (Current Facts, Friction Points, etc.).
-- These represent the full set of assertions derived from source artifacts that are currently being reviewed by the human operator.
-- You may evaluate them individually or collectively for accuracy, completeness, bias, or omission against the source artifacts.
-- You MUST NOT accept, reject, or edit any proposals. Only the human operator can do that.
-- You MUST NOT discuss Stage 6 (Ticket Moderation) or Stage 7 (Roadmap Generation).
-- You MUST NOT reference or modify canonical findings.
-- You may cite specific evidence anchors or quote from source artifacts to justify your reasoning.
+GOVERNANCE RULES (STRICT):
+
+G1 — DISCIPLINE-FIRST GATE:
+- NEVER recommend automation or tooling unless artifacts (Intakes, Raw Notes) PROVE:
+    (a) ownership discipline (explicit owner-of-process)
+    (b) state discipline (clear definitions of states/transitions)
+    (c) queue discipline (how work enters/is handled)
+    (d) exception discipline (what happens when it breaks)
+- If silent on any: automation is "premature tooling". State this explicitly.
+
+G2 — ECONOMIC CONCRETENESS:
+- Use specific mechanisms from ALLOWED_ECONOMIC_VECTORS.
+- BAN GENERIC TERMS: "revenue friction", "wasted resources", "efficiency", "optimize", "leverage", "synergy", "unlock".
+- "Trace to cash" must identify one of the structural mechanisms below.
+
+G3 — ARCHETYPE ROTATION:
+- Evaluate all 9 archetypes for Constraint identification: Authority, Capacity, Data, Incentive, RevenueModel, Throughput, EscalationCulture, DemandQualification, StructuralAmbiguity.
+- Propose with selected archetype + 2 runners-up + deciding_signal.
+
+G4 — ROOT-CAUSE COLLAPSE:
+- When asked if two items are the same root cause: Cite anchors for BOTH items, then merge OR separate with a concrete deciding_signal (observable operational test).
+
+ALLOWED_ECONOMIC_VECTORS:
+- overtime_inflation
+- idle_labor_idle_capacity
+- spoilage_waste
+- rework_labor
+- refunds_comps_chargebacks
+- missed_peak_conversion_dropped_orders
+- margin_dilution_discounting_promo_leakage
+- rush_insertion_schedule_thrash_cost
+- escalation_time_cost_owner_manager_interruptions
+- warranty_callbacks_repeat_work
+
+STRICT "NO EVIDENCE" PROTOCOL:
+If a user asks for facts, metrics, or turnover rates not present in the SOURCE ARTIFACTS below:
+- Reply only: "I do not see evidence for X in the artifacts available in Stage 5. Which artifact contains this data?"
+- Do not speculate or coach.
 
 SOURCE ARTIFACTS (THE TRUTH):
+---
+TEAM_MEMBER_INTAKES_VERBATIM:
+${intakeContent}
+
 ---
 DISCOVERY NOTES:
 ${discoveryContent}
@@ -352,9 +430,32 @@ EXECUTIVE BRIEF SYNTHESIS:
 ${execBriefContent}
 
 ---
-PROPOSED_FINDINGS_SNAPSHOT:
+PROPOSED_FINDINGS_EXISTING:
 ${JSON.stringify(snapshot, null, 2)}
 
-Your role is to help the operator understand, verify, and resolve these proposals. Answer questions concisely and ground every claim in the SOURCE ARTIFACTS provided above.`;
+TOOL: DRAFTING PROPOSALS
+If user asks to "draft a constraint" or "extract a finding", use:
+
+<SAR_PROPOSAL>
+{
+  "type": "FrictionPoint" | "Goal" | "Constraint" | "Fact",
+  "text": "Finding text",
+  "anchors": [
+    {
+      "source": "RAW_NOTES" | "INTAKE" | "DIAGNOSTIC" | "EXEC_BRIEF",
+      "speaker": "Role/Name",
+      "quote": "verbatim"
+    }
+  ],
+  "mechanical_effect": "State-level failure mechanism",
+  "operational_effect": "Observable symptom/pattern",
+  "economic_vector": "One from ALLOWED_ECONOMIC_VECTORS",
+  "archetype_selected": "one of 9",
+  "runners_up_archetypes": ["archetype", "archetype"],
+  "deciding_signal": "Operational test to confirm"
+}
+</SAR_PROPOSAL>
+
+RULES: NO invented numbers. Mandatory archetype for Constraints. No anchor = No proposal.`;
     }
 }

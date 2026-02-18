@@ -105,4 +105,73 @@ Within each section, tickets must be ordered deterministically:
 This document is the **Canonical Source of Truth** for Roadmap Compilation logic.
 Any Roadmap generated with timelines, prioritization, or non-ticket content is **Invalid Output** and is considered a hallucination.
 
+---
+
+## 9. Execution Gate Anchor (Authority Boundary)
+
+### 9.1 Artifact ≠ Stage Completion
+
+The existence of a valid Roadmap artifact does NOT satisfy the ROADMAP execution stage.
+
+Compilation is a mechanical assembly event.
+Completion is an authority-verified transition.
+
+A Roadmap may exist in the following states:
+
+- Compiled (artifactPresent = true)
+- Reviewed
+- Finalized
+- Superseded
+
+Only ExecutionTruthService determines whether the ROADMAP step is COMPLETE.
+
+---
+
+### 9.2 Stage Satisfaction Requirements
+
+The ROADMAP stage is COMPLETE only when:
+
+1. A valid Roadmap artifact exists (compiled under these rules).
+2. All upstream stages (Diagnostic) are COMPLETE.
+3. A verifiable authority event confirms finalization.
+4. No blocking clarification or invalidation signal exists.
+
+If any requirement is missing or ambiguous → ROADMAP is NOT COMPLETE.
+
+---
+
+### 9.3 Compilation Lock Rule
+
+Roadmap compilation must be gated by ExecutionTruthService.
+
+The compiler must refuse to generate a Roadmap if:
+
+- Diagnostic stage is not COMPLETE.
+- Tickets are not in an ACCEPTED + authorized state.
+- Upstream dependency chain is invalid.
+
+---
+
+### 9.4 Supersession Rule
+
+If the ACCEPTED ticket set changes:
+
+- A new Roadmap is compiled.
+- Previous Roadmap is archived.
+- ExecutionTruthService re-evaluates stage status.
+
+No silent mutation permitted.
+
+---
+
+### 9.5 Authority Separation Principle
+
+This document governs compilation mechanics only.
+
+Stage authority and completion state are governed exclusively by:
+
+backend/src/services/executionTruth.service.ts
+
+This separation is intentional and mandatory.
+
 **END OF DOCUMENT**

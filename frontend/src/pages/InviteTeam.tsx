@@ -61,12 +61,16 @@ export default function InviteTeam() {
 
   const sendInviteMutation = useMutation({
     mutationFn: (vectorId: string) => api.sendIntakeVectorInvite(vectorId),
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['intake-vectors'] });
+      alert(`Invite sent successfully to ${data.to || 'recipient'}!`);
     },
     onError: (error: any) => {
+      console.error('Send invite error:', error);
       if (error?.status === 403) {
         setIsLocked(true);
+      } else {
+        alert(`Failed to send invite: ${error.message || 'Unknown error'}`);
       }
     }
   });

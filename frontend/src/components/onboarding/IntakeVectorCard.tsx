@@ -183,10 +183,10 @@ export function IntakeVectorCard({
                         <button
                             onClick={() => onSendInvite(vector.id)}
                             disabled={isSendingInvite}
-                            className="text-[10px] font-bold text-indigo-500/50 hover:text-indigo-400 transition-colors uppercase tracking-widest flex items-center gap-1"
+                            className={`text-[10px] font-bold text-indigo-500/50 hover:text-indigo-400 transition-colors uppercase tracking-widest flex items-center gap-1 ${isSendingInvite ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             <Mail className="w-3 h-3" />
-                            Resend Link
+                            {isSendingInvite ? 'Sending...' : 'Resend Link'}
                         </button>
                     )}
                 </div>

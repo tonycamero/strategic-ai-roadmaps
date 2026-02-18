@@ -10,6 +10,7 @@
     "db:generate": "drizzle-kit generate:pg",
     "db:push": "drizzle-kit push:pg",
     "db:migrate": "tsx src/db/migrate.ts",
+    "db:driftcheck": "tsx src/db/driftCheck.cli.ts",
     "db:studio": "drizzle-kit studio",
     "openai:capabilities": "dotenv -e .env -- tsx src/scripts/openai_capabilities.ts",
     "provision:assistants": "dotenv -e .env -- tsx src/scripts/provision_all_assistants.ts",
@@ -27,7 +28,8 @@
     "fix:orphans": "dotenv -e .env -- tsx src/scripts/fix_orphaned_data_v2.ts",
     "test": "vitest run",
     "test:brief-determinism": "vitest run src/__tests__/executiveBriefSynthesis",
-    "gen:brief-goldens": "tsx src/scripts/generateGoldenOutputs.ts"
+    "gen:brief-goldens": "tsx src/scripts/generateGoldenOutputs.ts",
+    "test:gate": "tsx src/services/gate.service.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.675.0",

@@ -79,7 +79,7 @@ export default function Onepager() {
                                             Evidence observed
                                         </div>
                                         <div className="text-lg md:text-xl font-medium leading-snug text-white">
-                                            {spec.bottleneck.summary || spec.observations[0]?.claim || "Evidence will appear here after your TrustAgent session."}
+                                            {spec.bottleneck.summary || spec.observations[0]?.claim || "Evidence will appear here after your Trust Console Agent session."}
                                         </div>
                                     </div>
 
@@ -250,8 +250,8 @@ export default function Onepager() {
                                             <button
                                                 onClick={() => setPerspective('founder')}
                                                 className={`px-6 py-2 text-sm font-medium rounded-md transition-all ${perspective === 'founder'
-                                                        ? 'bg-blue-600 text-white'
-                                                        : 'text-slate-400 hover:text-white'
+                                                    ? 'bg-blue-600 text-white'
+                                                    : 'text-slate-400 hover:text-white'
                                                     }`}
                                             >
                                                 Founder
@@ -259,8 +259,8 @@ export default function Onepager() {
                                             <button
                                                 onClick={() => setPerspective('exec')}
                                                 className={`px-6 py-2 text-sm font-medium rounded-md transition-all ${perspective === 'exec'
-                                                        ? 'bg-blue-600 text-white'
-                                                        : 'text-slate-400 hover:text-white'
+                                                    ? 'bg-blue-600 text-white'
+                                                    : 'text-slate-400 hover:text-white'
                                                     }`}
                                             >
                                                 Executive Team

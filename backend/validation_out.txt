@@ -1,0 +1,55 @@
+npm warn config ignoring workspace config at /home/tonycamero/code/Strategic_AI_Roadmaps/backend/.npmrc
+[ENV] Loaded environment from: /home/tonycamero/code/Strategic_AI_Roadmaps/backend/.env
+
+========== DRIZZLE SQL ==========
+select "id", "owner_user_id", "name", "cohort_label", "segment", "region", "status", "business_type", "team_headcount", "baseline_monthly_leads", "firm_size_tier", "discovery_complete", "last_diagnostic_id", "intake_window_state", "intake_snapshot_id", "intake_closed_at", "intake_locked_at", "intake_locked_by_user_id", "notes", "readiness_notes", "created_at", "updated_at", "slug", "domain", "discovery_acknowledged_at", "knowledge_base_ready_at", "roles_validated_at", "exec_ready_at" from "tenants"
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "owner_user_id", "name", "cohort_label", "segment", "region", "status", "business_type", "team_headcount", "baseline_monthly_leads", "firm_size_tier", "discovery_complete", "last_diagnostic_id", "intake_window_state", "intake_snapshot_id", "intake_closed_at", "intake_locked_at", "intake_locked_by_user_id", "notes", "readiness_notes", "created_at", "updated_at", "slug", "domain", "discovery_acknowledged_at", "knowledge_base_ready_at", "roles_validated_at", "exec_ready_at" from "tenants" where "tenants"."id" = $1 limit $2
+PARAMS: [ 'ec32ea41-d056-462d-8321-c2876c9af263', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "user_id", "role", "answers", "coaching_feedback", "tenant_id", "status", "completed_at", "created_at" from "intakes" where ("intakes"."tenant_id" = $1 and "intakes"."status" = $2) order by "intakes"."created_at" desc
+PARAMS: [ 'ec32ea41-d056-462d-8321-c2876c9af263', 'completed' ]
+=================================
+
+[getTenantIntakes] Found 5 completed intakes for tenant ec32ea41-d056-462d-8321-c2876c9af263
+[getTenantIntakes]   - exec_sponsor: 904a2b64-3d47-47bb-8b47-3aa65c6320ff
+[getTenantIntakes]   - delivery: ed2dbb98-ca96-47cd-bed4-007c2c51a526
+[getTenantIntakes]   - sales: 1ac534ff-3216-461e-bfa2-4511de550b47
+[getTenantIntakes]   - ops: b2e6013e-2585-4f36-8698-110c68206052
+[getTenantIntakes]   - owner: 50c6fe36-bbec-4577-9aaf-55ae6e0d4162
+
+========== DRIZZLE SQL ==========
+select "question_id", "original_response", "clarification_prompt", "clarification_response", "status" from "intake_clarifications" where "intake_clarifications"."tenant_id" = $1
+PARAMS: [ 'ec32ea41-d056-462d-8321-c2876c9af263' ]
+=================================
+
+--- 1. NormalizedIntakeContext ---
+firmSizeTier: MISSING (Check logic)
+chokePoints: [
+  "Multiple team members reported as overloaded/bottlenecked"
+]
+contradictions: [
+  "Owner reports system struggles, but ops lists extensive tech stack"
+]
+rolePatterns: "MISSING (Check logic)"
+
+--- 2. buildSelectionContext ---
+deliveryBottlenecks: undefined
+teamCoordinationPain: true
+pipelinePain: true
+reportingPain: true
+
+--- 3. Resolved ConstraintProfile ---
+LOGIC MISSING IN CURRENT CODEBASE
+
+--- 4. deriveDeterministicAICandidates ---
+LOGIC MISSING IN CURRENT CODEBASE
+TypeError: (0 , import_inventory_service.getAllInventory) is not a function
+    at validationRun (/home/tonycamero/code/Strategic_AI_Roadmaps/backend/validation_run.ts:57:32)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)

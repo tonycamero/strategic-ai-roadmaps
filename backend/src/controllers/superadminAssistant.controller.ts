@@ -6,9 +6,9 @@
  */
 
 import { Request, Response } from 'express';
-import { queryAssistant, type ThreadVisibility } from '../services/assistantQuery.service.ts';
-import { db } from '../db/index.ts';
-import { tenants } from '../db/schema.ts';
+import { queryAssistant, type ThreadVisibility } from '../services/assistantQuery.service';
+import { db } from '../db/index';
+import { tenants } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
 interface AuthRequest extends Request {

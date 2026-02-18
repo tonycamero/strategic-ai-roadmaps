@@ -5,8 +5,8 @@
  */
 
 import { Request, Response } from 'express';
-import { db } from '../db/index.ts';
-import { tenants, agentThreads, agentMessages } from '../db/schema.ts';
+import { db } from '../db/index';
+import { tenants, agentThreads, agentMessages } from '../db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 
 interface AuthRequest extends Request {

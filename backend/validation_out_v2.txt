@@ -1,0 +1,94 @@
+npm warn config ignoring workspace config at /home/tonycamero/code/Strategic_AI_Roadmaps/backend/.npmrc
+[ENV] Loaded environment from: /home/tonycamero/code/Strategic_AI_Roadmaps/backend/.env
+
+========== DRIZZLE SQL ==========
+select "id", "owner_user_id", "name", "cohort_label", "segment", "region", "status", "business_type", "team_headcount", "baseline_monthly_leads", "firm_size_tier", "discovery_complete", "last_diagnostic_id", "intake_window_state", "intake_snapshot_id", "intake_closed_at", "intake_locked_at", "intake_locked_by_user_id", "notes", "readiness_notes", "created_at", "updated_at", "slug", "domain", "discovery_acknowledged_at", "knowledge_base_ready_at", "roles_validated_at", "exec_ready_at" from "tenants"
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "owner_user_id", "name", "cohort_label", "segment", "region", "status", "business_type", "team_headcount", "baseline_monthly_leads", "firm_size_tier", "discovery_complete", "last_diagnostic_id", "intake_window_state", "intake_snapshot_id", "intake_closed_at", "intake_locked_at", "intake_locked_by_user_id", "notes", "readiness_notes", "created_at", "updated_at", "slug", "domain", "discovery_acknowledged_at", "knowledge_base_ready_at", "roles_validated_at", "exec_ready_at" from "tenants" where "tenants"."id" = $1 limit $2
+PARAMS: [ 'ec32ea41-d056-462d-8321-c2876c9af263', 1 ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "user_id", "role", "answers", "coaching_feedback", "tenant_id", "status", "completed_at", "created_at" from "intakes" where ("intakes"."tenant_id" = $1 and "intakes"."status" = $2) order by "intakes"."created_at" desc
+PARAMS: [ 'ec32ea41-d056-462d-8321-c2876c9af263', 'completed' ]
+=================================
+
+[getTenantIntakes] Found 5 completed intakes for tenant ec32ea41-d056-462d-8321-c2876c9af263
+[getTenantIntakes]   - exec_sponsor: 904a2b64-3d47-47bb-8b47-3aa65c6320ff
+[getTenantIntakes]   - delivery: ed2dbb98-ca96-47cd-bed4-007c2c51a526
+[getTenantIntakes]   - sales: 1ac534ff-3216-461e-bfa2-4511de550b47
+[getTenantIntakes]   - ops: b2e6013e-2585-4f36-8698-110c68206052
+[getTenantIntakes]   - owner: 50c6fe36-bbec-4577-9aaf-55ae6e0d4162
+
+========== DRIZZLE SQL ==========
+select "question_id", "original_response", "clarification_prompt", "clarification_response", "status" from "intake_clarifications" where "intake_clarifications"."tenant_id" = $1
+PARAMS: [ 'ec32ea41-d056-462d-8321-c2876c9af263' ]
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "user_id", "role", "answers", "coaching_feedback", "tenant_id", "status", "completed_at", "created_at" from "intakes" where "intakes"."tenant_id" = $1
+PARAMS: [ 'ec32ea41-d056-462d-8321-c2876c9af263' ]
+=================================
+
+--- 1. NormalizedIntakeContext ---
+firmSizeTier: REJECTED/MISSING (Current DB has micro-tier headcount)
+chokePoints: [
+  "Multiple team members reported as overloaded/bottlenecked"
+]
+contradictions: [
+  "Owner reports system struggles, but ops lists extensive tech stack"
+]
+rolePatterns: "MISSING (Logic not present)"
+
+--- 2. buildSelectionContext ---
+deliveryBottlenecks: FALSE (Logic not present or regex miss)
+teamCoordinationPain: true
+pipelinePain: true
+reportingPain: true
+
+--- 3. Resolved ConstraintProfile ---
+LOGIC MISSING IN CURRENT CODEBASE
+
+--- 4. deriveDeterministicAICandidates ---
+LOGIC MISSING IN CURRENT CODEBASE
+[Inventory] Loaded 10 items from pipeline.inventory.json
+[Inventory] Loaded 9 items from crm.inventory.json
+[Inventory] Loaded 12 items from ops.inventory.json
+[Inventory] Loaded 8 items from onboarding.inventory.json
+[Inventory] Loaded 8 items from marketing.inventory.json
+[Inventory] Loaded 7 items from finance.inventory.json
+[Inventory] Loaded 6 items from reporting.inventory.json
+[Inventory] Loaded 6 items from team.inventory.json
+[Inventory] Loaded 5 items from chamber.inventory.json
+[Inventory] Loaded 8 items from sidecars.inventory.json
+[Inventory] Total items loaded: 79
+[InventorySelection] Selected 18 tickets: { core: 7, recommended: 7, advanced: 4, sidecars: 3 }
+
+--- 5. selectInventoryTickets Phase 1 (Core/Sprint 30) ---
+1. [Pipeline] PM_UNIFY_LEAD_CAPTURE - Unify all lead capture sources into a single standardized GHL pipeline
+2. [Pipeline] PM_PIPELINE_STANDARDIZATION - Standardize all pipeline stages, definitions, and required fields
+3. [Pipeline] PM_AUTO_ASSIGNMENT - Implement automated round-robin or rules-based lead assignment
+4. [Pipeline] PM_SOURCE_ENFORCEMENT - Enforce consistent lead source attribution using tags and custom fields
+5. [Ops] OPS_INTERNAL_TASK_ENGINE - Standardize internal task generation from lead intake through delivery
+6. [Ops] OPS_HANDOFF_PROTOCOL - Automate handoffs between sales, operations, and delivery teams
+7. [Client Onboarding] ONB-001 - Standardized Client Onboarding Form → Pipeline → Task Checklist
+
+--- RAW INTAKE SNIPPETS (For Analysis) ---
+Role: owner
+  Priorities: Stop missing calls and opportunities we’re already paying for
+
+Get out of daily dispatch and problem-solving
+
+Grow revenue without adding more office staff or chaos
+  Frustration: I don’t trust that every call or lead is being handled properly. We’re busy, but it feels reactive. I’m constantly pulled in to fix scheduling issues, answer questions, or deal with problems I find out about too late. There’s no clear picture of how the day actually went unless something breaks.
+  Bottlenecks: Dispatch and admin are stretched thin, especially during busy days or after hours. I also end up being a bottleneck because decisions come back to me when things aren’t clear.
+  Barriers: Operational chaos. I don’t feel confident increasing volume because I know the cracks will widen — missed calls, poor follow-up, and scheduling issues.
+Role: ops
+Role: sales
+Role: delivery
+Role: exec_sponsor

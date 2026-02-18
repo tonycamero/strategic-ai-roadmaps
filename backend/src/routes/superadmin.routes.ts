@@ -1,18 +1,18 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
-import { authenticate, requireRole, AuthRequest } from '../middleware/auth.ts';
-import { requireExecutive, requireDelegateOrHigher } from '../middleware/authority.ts';
+import { authenticate, requireRole, AuthRequest } from '../middleware/auth';
+import { requireExecutive, requireDelegateOrHigher } from '../middleware/authority';
 import { AuthorityCategory, RoleToAuthorityMap } from '@roadmap/shared';
-import * as superadminController from '../controllers/superadmin.controller.ts';
-import * as intakeVectorController from '../controllers/intakeVector.controller.ts';
-import * as executiveBriefController from '../controllers/executiveBrief.controller.ts';
-import * as stakeholderRepairController from '../controllers/stakeholderRepair.controller.ts';
-import * as stakeholderMetadataUpdateController from '../controllers/stakeholderMetadataUpdate.controller.ts';
-import * as ticketModerationController from '../controllers/ticketModeration.controller.ts';
+import * as superadminController from '../controllers/superadmin.controller';
+import * as intakeVectorController from '../controllers/intakeVector.controller';
+import * as executiveBriefController from '../controllers/executiveBrief.controller';
+import * as stakeholderRepairController from '../controllers/stakeholderRepair.controller';
+import * as stakeholderMetadataUpdateController from '../controllers/stakeholderMetadataUpdate.controller';
+import * as ticketModerationController from '../controllers/ticketModeration.controller';
 
-import * as snapshotController from '../controllers/snapshot.controller.ts';
-import * as executionStateController from '../controllers/executionState.controller.ts';
+import * as snapshotController from '../controllers/snapshot.controller';
+import * as executionStateController from '../controllers/executionState.controller';
 
 const router = Router();
 
@@ -33,6 +33,9 @@ router.use(authenticate);
 
 // GET /api/superadmin/truth-probe - Operator Lifecycle Truth Probe
 router.get('/truth-probe', superadminController.getTruthProbe);
+
+// POST /api/superadmin/impersonate - Impersonate Tenant Owner (TICKET-SA-IMPERSONATION)
+router.post('/impersonate', superadminController.impersonateTenantOwner);
 
 // Lock to internal users only
 router.use((req: AuthRequest, res: Response, next: NextFunction) => {
@@ -149,7 +152,7 @@ router.post('/firms/:tenantId/extract-metadata', superadminController.extractMet
 
 // POST /api/superadmin/tickets/generate/:tenantId/:diagnosticId - Generate tickets from Discovery Synthesis (Discovery Gated)
 router.post('/tickets/generate/:tenantId/:diagnosticId', async (req, res, next) => {
-  const { handleGenerateTicketsFromDiscovery } = await import('../controllers/ticketGeneration.controller.ts');
+  const { handleGenerateTicketsFromDiscovery } = await import('../controllers/ticketGeneration.controller');
   return handleGenerateTicketsFromDiscovery(req, res, next);
 });
 
@@ -171,7 +174,7 @@ router.post('/firms/:tenantId/metrics/compute-outcome', superadminController.com
 // POST /api/superadmin/firms/:tenantId/export/case-study - REMOVED (Legacy)
 
 // Ticket Moderation Endpoints - REMOVED (Stubbed)
-import { validateTicketSchema } from '../middleware/schemaValidation.ts';
+import { validateTicketSchema } from '../middleware/schemaValidation';
 
 // POST /api/superadmin/tickets/approve - Approve tickets — PHASE 1: DELEGATE OR HIGHER
 router.post('/tickets/approve', requireDelegateOrHigher(), ticketModerationController.approveDiagnosticTickets);
@@ -190,7 +193,7 @@ router.get('/tickets/:tenantId/:diagnosticId', async (req, res) => {
     }
 
     // Delegate to existing service (no SQL in routes)
-    const { getTicketsForDiagnostic, getModerationStatus } = await import('../services/ticketModeration.service.ts');
+    const { getTicketsForDiagnostic, getModerationStatus } = await import('../services/ticketModeration.service');
     const [tickets, status] = await Promise.all([
       getTicketsForDiagnostic(tenantId, diagnosticId),
       getModerationStatus(tenantId, diagnosticId)
@@ -214,7 +217,7 @@ router.get('/tickets/:tenantId/:diagnosticId', async (req, res) => {
 
 
 /*
-import { getDeprecationPhase, DeprecationPhase, getDeprecationWarning } from '../services/sunset.service.ts';
+import { getDeprecationPhase, DeprecationPhase, getDeprecationWarning } from '../services/sunset.service';
 
 function wrapLegacyFinalize(handler: any) {
   return async (req: Request, res: Response, next: NextFunction) => {

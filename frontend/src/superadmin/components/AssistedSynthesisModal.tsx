@@ -3,20 +3,28 @@
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { superadminApi } from '../api';
 import AssistedSynthesisAgentConsole from './AssistedSynthesisAgentConsole';
 
 interface ProposedFindingItem {
     id: string;
     type: 'CurrentFact' | 'FrictionPoint' | 'Goal' | 'Constraint';
     text: string;
-    evidenceRefs: Array<{
-        artifact: 'raw' | 'execBrief' | 'diagnostic' | 'qna';
+    anchors: Array<{
+        source: 'RAW_NOTES' | 'INTAKE' | 'DISCOVERY_QA' | 'DIAGNOSTIC' | 'EXEC_BRIEF';
+        speaker?: string;
         quote: string;
-        location?: string;
     }>;
     status: 'pending' | 'accepted' | 'rejected';
     editedText?: string;
     operatorNote?: string;
+    mechanical_effect?: string;
+    operational_effect?: string;
+    economic_vector?: string;
+    archetype_selected?: string;
+    runners_up_archetypes?: string[];
+    deciding_signal?: string;
+    confidence?: 'LOW' | 'MED' | 'HIGH';
 }
 
 interface AssistedSynthesisModalProps {
@@ -28,17 +36,19 @@ interface AssistedSynthesisModalProps {
         diagnostic?: any;
         executiveBrief?: any;
     };
+    teamMemberIntakes?: any[];
     onRefresh?: () => void;
 }
 
-export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onRefresh }: AssistedSynthesisModalProps) {
+export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, teamMemberIntakes = [], onRefresh }: AssistedSynthesisModalProps) {
     const [proposals, setProposals] = useState<ProposedFindingItem[]>([]);
     const [requiresGeneration, setRequiresGeneration] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
-    const [activeSourceTab, setActiveSourceTab] = useState<'notes' | 'diagnostic' | 'brief' | 'qa'>('notes');
+    const [activeSourceTab, setActiveSourceTab] = useState<'notes' | 'diagnostic' | 'brief' | 'qa' | 'intakes'>('notes');
     const [isSaving, setIsSaving] = useState(false);
     const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
     const [error, setError] = useState<{ code: string; message: string; requestId?: string } | null>(null);
+    const [expandedClusters, setExpandedClusters] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
         if (open) {
@@ -49,27 +59,44 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
 
     const loadProposedFindings = async () => {
         try {
-            // STRIKE 1: API method does not exist on SuperAdmin API surface
-            // const data = await superadminApi.getProposedFindings({ tenantId });
-            console.warn("getProposedFindings disabled (Strike 1)");
-            setRequiresGeneration(true);
-            setProposals([]);
+            // ENABLED: Feature active
+            const data = await superadminApi.getProposedFindings(tenantId);
+            setProposals(deduplicateProposals(data.items || []));
+            setRequiresGeneration(data.requiresGeneration);
         } catch (err) {
             console.error('Failed to load proposed findings:', err);
             setRequiresGeneration(true);
         }
     };
 
+    const deduplicateProposals = (items: ProposedFindingItem[]) => {
+        const seen = new Set<string>();
+        return items.filter(item => {
+            const normalizedText = item.text.trim().toLowerCase();
+            if (seen.has(normalizedText)) return false;
+            seen.add(normalizedText);
+            return true;
+        });
+    };
+
+    const safeMarkdown = (content: any): string => {
+        if (!content) return '';
+        if (typeof content === 'string') return content;
+        if (content.markdown) return content.markdown;
+        if (content.content) return content.content;
+        if (content.list && Array.isArray(content.list)) return content.list.join('\n\n');
+        if (Array.isArray(content)) return content.join('\n\n');
+        return JSON.stringify(content, null, 2);
+    };
+
     const handleGenerateProposals = async () => {
         setIsGenerating(true);
         setError(null);
         try {
-            // STRIKE 1: API method does not exist on SuperAdmin API surface
-            // const data = await superadminApi.generateAssistedProposals({ tenantId });
-            throw new Error("Feature currently disabled in SuperAdmin Console (API Surface Compliance)");
-
-            // setProposals(data.items);
-            // setRequiresGeneration(false);
+            // ENABLED: Feature active
+            const data = await superadminApi.generateAssistedProposals(tenantId);
+            setProposals(deduplicateProposals(data.items || []));
+            setRequiresGeneration(false);
         } catch (err: any) {
             console.error('Failed to generate proposals:', err);
 
@@ -86,35 +113,39 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
     };
 
     const handleAccept = (id: string) => {
-        setProposals(prev => prev.map(p => p.id === id ? { ...p, status: 'accepted' as const } : p));
+        setProposals((prev: ProposedFindingItem[]) => prev.map(p => p.id === id ? { ...p, status: 'accepted' as const } : p));
     };
 
     const handleReject = (id: string) => {
-        setProposals(prev => prev.map(p => p.id === id ? { ...p, status: 'rejected' as const } : p));
+        setProposals((prev: ProposedFindingItem[]) => prev.map(p => p.id === id ? { ...p, status: 'rejected' as const } : p));
     };
 
     const handleEdit = (id: string, newText: string) => {
-        setProposals(prev => prev.map(p => p.id === id ? { ...p, editedText: newText } : p));
+        setProposals((prev: ProposedFindingItem[]) => prev.map(p => p.id === id ? { ...p, editedText: newText } : p));
     };
 
-    const handleAddProposal = (type: ProposedFindingItem['type']) => {
+    const handleAddProposal = (type: ProposedFindingItem['type'], initialData?: Partial<ProposedFindingItem>) => {
         const newProposal: ProposedFindingItem = {
             id: `human-${Date.now()}`,
             type,
             text: '',
-            evidenceRefs: [],
+            anchors: [],
             status: 'pending',
-            operatorNote: 'Human Added (Pre-Canonical)'
+            operatorNote: 'Human Added (Pre-Canonical)',
+            ...initialData
         };
-        setProposals(prev => [...prev, newProposal]);
+        setProposals((prev: ProposedFindingItem[]) => [...prev, newProposal]);
     };
 
     const handleDeclareCanon = async () => {
         setIsSaving(true);
         try {
-            // STRIKE 1: API method does not exist on SuperAdmin API surface
-            // await superadminApi.declareCanonicalFindings({ tenantId, findings: accepted });
-            throw new Error("Feature currently disabled in SuperAdmin Console (API Surface Compliance)");
+            // ENABLED: Feature active
+            await superadminApi.declareCanonicalFindings(tenantId, (proposals || []).filter(p => p.status === 'accepted').map(p => ({
+                ...p,
+                // Ensure legacy archetypes are mapped to the new field if needed during declaration
+                archetype_selected: p.archetype_selected || (p as any).archetype
+            })));
             await onRefresh?.();
 
             onClose();
@@ -126,22 +157,56 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
         }
     };
 
-    const scrollToArtifact = (artifact: string) => {
-        setActiveSourceTab(artifact as any);
+    const toggleCluster = (archetype: string) => {
+        setExpandedClusters((prev: Record<string, boolean>) => ({ ...prev, [archetype]: !prev[archetype] }));
+    };
+
+    const scrollToSource = (source: string) => {
+        const mapping: Record<string, string> = {
+            'INTAKE': 'intakes',
+            'TEAM_MEMBER_INTAKE': 'intakes',
+            'RAW_NOTES': 'notes',
+            'DISCOVERY_NOTES': 'notes',
+            'EXEC_BRIEF': 'brief',
+            'DIAGNOSTIC': 'diagnostic'
+        };
+        const targetTab = mapping[source.toUpperCase()] || 'notes';
+        setActiveSourceTab(targetTab as any);
+    };
+
+    const handleExportData = () => {
+        const exportData = {
+            metadata: {
+                tenantId,
+                timestamp: new Date().toISOString(),
+                exportedBy: 'AssistedSynthesisModal'
+            },
+            proposals,
+            artifacts,
+            sessionStats: {
+                total: proposals.length,
+                pending: proposals.filter((p: ProposedFindingItem) => p.status === 'pending').length,
+                accepted: proposals.filter((p: ProposedFindingItem) => p.status === 'accepted').length,
+                rejected: proposals.filter((p: ProposedFindingItem) => p.status === 'rejected').length
+            }
+        };
+
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `synthesis-export-${tenantId}-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     };
 
     if (!open) return null;
 
-    const sections = [
-        { type: 'CurrentFact' as const, label: 'Current Facts', color: 'indigo' },
-        { type: 'FrictionPoint' as const, label: 'Friction Points', color: 'red' },
-        { type: 'Goal' as const, label: 'Goals', color: 'emerald' },
-        { type: 'Constraint' as const, label: 'Constraints', color: 'amber' },
-    ];
-
-    const pendingCount = proposals.filter(p => p.status === 'pending').length;
-    const acceptedCount = proposals.filter(p => p.status === 'accepted').length;
-    const rejectedCount = proposals.filter(p => p.status === 'rejected').length;
+    const pendingCount = proposals.filter((p: ProposedFindingItem) => p.status === 'pending').length;
+    const acceptedCount = proposals.filter((p: ProposedFindingItem) => p.status === 'accepted').length;
+    const rejectedCount = proposals.filter((p: ProposedFindingItem) => p.status === 'rejected').length;
     const allResolved = proposals.length > 0 && pendingCount === 0;
 
     return (
@@ -261,14 +326,23 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
                     <div className="w-2/5 border-r border-slate-800 bg-slate-900 flex flex-col overflow-hidden">
                         <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Proposed Findings (Draft)</h3>
-                            {!requiresGeneration && proposals.length > 0 && (
+                            <div className="flex items-center gap-3">
                                 <button
-                                    onClick={() => setShowRegenerateConfirm(true)}
-                                    className="text-[9px] font-bold text-amber-400 uppercase hover:text-amber-300 transition-colors"
+                                    onClick={handleExportData}
+                                    className="text-[9px] font-bold text-slate-500 hover:text-indigo-400 uppercase tracking-wider flex items-center gap-1 transition-colors"
+                                    title="Export JSON"
                                 >
-                                    ↻ Regenerate
+                                    <span>⇩</span> JSON
                                 </button>
-                            )}
+                                {!requiresGeneration && proposals.length > 0 && (
+                                    <button
+                                        onClick={() => setShowRegenerateConfirm(true)}
+                                        className="text-[9px] font-bold text-amber-400 uppercase hover:text-amber-300 transition-colors"
+                                    >
+                                        ↻ Regenerate
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
                         {requiresGeneration || proposals.length === 0 ? (
@@ -302,91 +376,186 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
                             </div>
                         ) : (
                             <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-thin scrollbar-thumb-slate-800">
-                                {sections.map(section => (
-                                    <div key={section.type} className="space-y-4">
-                                        <div className="flex items-center gap-3">
-                                            <h4 className={`text-xs font-black uppercase tracking-widest text-${section.color}-400`}>{section.label}</h4>
-                                            <div className="h-px flex-1 bg-slate-800" />
-                                            <button
-                                                onClick={() => handleAddProposal(section.type)}
-                                                className="text-[9px] font-bold text-slate-500 hover:text-indigo-400 uppercase transition-colors"
-                                                title="Add human-authored proposal"
-                                            >
-                                                + Add
-                                            </button>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            {proposals.filter(p => p.type === section.type).map(proposal => (
-                                                <div
-                                                    key={proposal.id}
-                                                    className={`group relative p-2 rounded border transition-all ${proposal.status === 'accepted' ? `bg-${section.color}-900/5 border-${section.color}-500/30` :
-                                                        proposal.status === 'rejected' ? 'bg-red-900/5 border-red-500/20 opacity-50' :
-                                                            'bg-slate-950 border-slate-800'
-                                                        }`}
-                                                >
-                                                    {/* Badge row + buttons on same line for ultra-compact */}
-                                                    <div className="flex items-center justify-between mb-1.5">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-${section.color}-900/20 text-${section.color}-400 border border-${section.color}-500/20`}>
-                                                                {section.label.replace(/s$/, '')}
-                                                            </span>
-                                                            {proposal.operatorNote && (
-                                                                <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-purple-900/20 text-purple-400 border border-purple-500/20">
-                                                                    {proposal.operatorNote}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5">
-                                                            <button
-                                                                onClick={() => handleReject(proposal.id)}
-                                                                className={`px-2 py-0.5 rounded transition-all text-[10px] font-bold ${proposal.status === 'rejected' ? 'text-red-400 bg-red-900/20 border border-red-500/30' : 'text-slate-500 hover:text-red-400 hover:bg-red-950/50'}`}
-                                                            >
-                                                                ✕
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleAccept(proposal.id)}
-                                                                className={`px-2 py-0.5 rounded transition-all text-[10px] font-bold ${proposal.status === 'accepted' ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-500/30' : 'text-slate-500 hover:text-emerald-400 hover:bg-emerald-950/50'}`}
-                                                            >
-                                                                ✓
-                                                            </button>
-                                                        </div>
-                                                    </div>
+                                {(() => {
+                                    // G2 Implementation: Mechanical clustering by Archetype
+                                    const clusters = proposals.reduce((acc, p) => {
+                                        const arch = p.archetype_selected || (p as any).archetype || 'UNCLASSIFIED';
+                                        if (!acc[arch]) acc[arch] = [];
+                                        acc[arch].push(p);
+                                        return acc;
+                                    }, {} as Record<string, ProposedFindingItem[]>);
 
-                                                    {/* Text - inline editable */}
-                                                    <div
-                                                        contentEditable
-                                                        suppressContentEditableWarning
-                                                        onBlur={(e) => handleEdit(proposal.id, e.currentTarget.textContent || '')}
-                                                        className="text-sm text-slate-300 leading-snug mb-1 focus:outline-none focus:ring-1 focus:ring-indigo-500/30 rounded px-1 py-0.5"
+                                    const sortedEntries = (Object.entries(clusters) as [string, ProposedFindingItem[]][]).sort(([a], [b]) => {
+                                        if (a === 'UNCLASSIFIED') return 1;
+                                        if (b === 'UNCLASSIFIED') return -1;
+                                        return a.localeCompare(b);
+                                    });
+
+                                    return sortedEntries.map(([archetype, clusterItems]) => {
+                                        const isExpanded = expandedClusters[archetype] !== false; // Default to expanded
+                                        return (
+                                            <div key={archetype} className="space-y-4">
+                                                <div className="flex items-center gap-3">
+                                                    <button
+                                                        onClick={() => toggleCluster(archetype)}
+                                                        className="flex items-center gap-3 hover:text-white transition-colors group/arch"
                                                     >
-                                                        {proposal.editedText !== undefined ? proposal.editedText : proposal.text}
+                                                        <span className={`text-[10px] transform transition-transform ${isExpanded ? 'rotate-90' : ''}`}>▶</span>
+                                                        <h4 className="text-xs font-black uppercase tracking-widest text-indigo-400 group-hover/arch:text-indigo-300">
+                                                            {archetype === 'UNCLASSIFIED' ? 'Uncategorized Findings' : archetype}
+                                                        </h4>
+                                                    </button>
+                                                    <div className="h-px flex-1 bg-slate-800" />
+                                                    <div className="flex items-center gap-4">
+                                                        <span className="text-[9px] font-bold text-slate-500 uppercase">{clusterItems.length} items</span>
+                                                        <button
+                                                            onClick={() => handleAddProposal('CurrentFact', { archetype })}
+                                                            className="text-[9px] font-bold text-slate-500 hover:text-indigo-400 uppercase transition-colors"
+                                                            title="Add human-authored proposal to this cluster"
+                                                        >
+                                                            + Add
+                                                        </button>
                                                     </div>
+                                                </div>
 
-                                                    {/* Evidence chips - ultra-compact */}
-                                                    {proposal.evidenceRefs && proposal.evidenceRefs.length > 0 && (
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {proposal.evidenceRefs.map((ref, idx) => (
-                                                                <button
-                                                                    key={idx}
-                                                                    onClick={() => scrollToArtifact(ref.artifact)}
-                                                                    className="group/ref px-1.5 py-0.5 bg-slate-900 border border-slate-700 rounded text-[8px] text-slate-400 hover:text-indigo-400 hover:border-indigo-500/30 transition-all cursor-pointer"
-                                                                    title={ref.quote}
+                                                {isExpanded && (
+                                                    <div className="space-y-2">
+                                                        {clusterItems.map((proposal: ProposedFindingItem) => (
+                                                            <div
+                                                                key={proposal.id}
+                                                                className={`group relative p-3 rounded-lg border transition-all ${proposal.status === 'accepted' ? 'bg-emerald-900/5 border-emerald-500/30' :
+                                                                    proposal.status === 'rejected' ? 'bg-red-900/5 border-red-500/20 opacity-50' :
+                                                                        'bg-slate-950 border-slate-800'
+                                                                    }`}
+                                                            >
+                                                                <div className="flex items-center justify-between mb-2">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${proposal.type === 'FrictionPoint' ? 'bg-red-900/20 text-red-400 border border-red-500/20' :
+                                                                            proposal.type === 'Constraint' ? 'bg-amber-900/20 text-amber-400 border border-amber-500/20' :
+                                                                                proposal.type === 'Goal' ? 'bg-emerald-900/20 text-emerald-400 border border-emerald-500/20' :
+                                                                                    'bg-indigo-900/20 text-indigo-400 border border-indigo-500/20'
+                                                                            }`}>
+                                                                            {proposal.type}
+                                                                        </span>
+                                                                        {proposal.economic_vector && (
+                                                                            <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-purple-900/20 text-purple-400 border border-purple-500/20">
+                                                                                {proposal.economic_vector}
+                                                                            </span>
+                                                                        )}
+                                                                        {!proposal.archetype_selected && !(proposal as any).archetype && (
+                                                                            <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-slate-800 text-slate-500 border border-slate-700">
+                                                                                LEGACY
+                                                                            </span>
+                                                                        )}
+                                                                        {proposal.confidence && (
+                                                                            <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700">
+                                                                                {proposal.confidence} CONFIDENCE
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <button
+                                                                            onClick={() => handleReject(proposal.id)}
+                                                                            className={`px-2 py-0.5 rounded transition-all text-[10px] font-bold ${proposal.status === 'rejected' ? 'text-red-400 bg-red-900/20 border border-red-500/30' : 'text-slate-500 hover:text-red-400 hover:bg-red-950/50'}`}
+                                                                        >
+                                                                            ✕
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleAccept(proposal.id)}
+                                                                            className={`px-2 py-0.5 rounded transition-all text-[10px] font-bold ${proposal.status === 'accepted' ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-500/30' : 'text-slate-500 hover:text-emerald-400 hover:bg-emerald-950/50'}`}
+                                                                        >
+                                                                            ✓
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div
+                                                                    contentEditable
+                                                                    suppressContentEditableWarning
+                                                                    onBlur={(e) => handleEdit(proposal.id, e.currentTarget.textContent || '')}
+                                                                    className="text-sm text-slate-300 leading-snug mb-3 focus:outline-none focus:ring-1 focus:ring-indigo-500/30 rounded px-1 py-0.5"
                                                                 >
-                                                                    <span className="font-bold uppercase">{ref.artifact}</span>
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
-                                            {proposals.filter(p => p.type === section.type).length === 0 && (
-                                                <div className="text-[10px] text-slate-600 font-bold uppercase py-4 border border-dashed border-slate-800 rounded-lg text-center">
-                                                    No proposals in this category
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
+                                                                    {proposal.editedText !== undefined ? proposal.editedText : proposal.text}
+                                                                </div>
+
+                                                                {proposal.deciding_signal && (
+                                                                    <div className="mb-3 p-2 bg-indigo-950/20 border border-indigo-500/10 rounded">
+                                                                        <div className="text-[8px] font-black uppercase text-indigo-400/60 mb-1">Deciding Signal</div>
+                                                                        <div className="text-[10px] text-indigo-200/80 italic leading-tight">{proposal.deciding_signal}</div>
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Cascade Block */}
+                                                                {(proposal.mechanical_effect || proposal.operational_effect) && (
+                                                                    <div className="grid grid-cols-2 gap-2 mb-3">
+                                                                        {proposal.mechanical_effect && (
+                                                                            <div className="p-2 rounded bg-slate-900/50 border border-slate-800/50">
+                                                                                <div className="text-[8px] font-black uppercase text-slate-500 mb-1">Mechanical</div>
+                                                                                <div className="text-[10px] text-slate-400 leading-tight">{proposal.mechanical_effect}</div>
+                                                                            </div>
+                                                                        )}
+                                                                        {proposal.operational_effect && (
+                                                                            <div className="p-2 rounded bg-slate-900/50 border border-slate-800/50">
+                                                                                <div className="text-[8px] font-black uppercase text-slate-500 mb-1">Operational</div>
+                                                                                <div className="text-[10px] text-slate-400 leading-tight">{proposal.operational_effect}</div>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Runners Up Block (G3) */}
+                                                                {proposal.runners_up_archetypes && proposal.runners_up_archetypes.length > 0 && (
+                                                                    <div className="mb-3 flex items-center gap-2">
+                                                                        <span className="text-[8px] font-black uppercase text-slate-500 tracking-wider">Rotated:</span>
+                                                                        <div className="flex gap-1">
+                                                                            {proposal.runners_up_archetypes.map((arch, idx) => (
+                                                                                <span key={idx} className="text-[8px] font-bold text-slate-400 bg-slate-900 px-1 rounded border border-slate-800">
+                                                                                    {arch}
+                                                                                </span>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+
+                                                                {proposal.anchors && proposal.anchors.length > 0 && (
+                                                                    <div className="flex flex-wrap gap-1">
+                                                                        {proposal.anchors.map((anchor, idx) => (
+                                                                            <button
+                                                                                key={idx}
+                                                                                onClick={() => scrollToSource(anchor.source)}
+                                                                                className="group/ref px-2 py-1 bg-slate-900 border border-slate-800 rounded text-[9px] text-slate-500 hover:text-indigo-400 hover:border-indigo-500/50 transition-all cursor-pointer truncate max-w-[150px]"
+                                                                                title={anchor.quote}
+                                                                            >
+                                                                                <span className="font-black uppercase mr-1">{anchor.source}</span>
+                                                                                <span className="opacity-50 italic">"{anchor.quote.substring(0, 20)}..."</span>
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                                {/* Fallback for legacy evidenceRefs */}
+                                                                {(!proposal.anchors || proposal.anchors.length === 0) && (proposal as any).evidenceRefs && (proposal as any).evidenceRefs.length > 0 && (
+                                                                    <div className="flex flex-wrap gap-1">
+                                                                        {((proposal as any).evidenceRefs as any[]).map((ref, idx) => (
+                                                                            <button
+                                                                                key={idx}
+                                                                                onClick={() => scrollToSource(ref.artifact)}
+                                                                                className="group/ref px-2 py-1 bg-slate-900 border border-slate-800 rounded text-[9px] text-slate-400/50 hover:text-indigo-400 hover:border-indigo-500/50 transition-all cursor-pointer truncate max-w-[150px]"
+                                                                                title={ref.quote}
+                                                                            >
+                                                                                <span className="font-black uppercase mr-1">LEGACY: {ref.artifact}</span>
+                                                                                <span className="opacity-50 italic">"{ref.quote.substring(0, 20)}..."</span>
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    });
+                                })()}
                             </div>
                         )}
                     </div>
@@ -398,7 +567,7 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
                             <div className="flex gap-1">
                                 {[
                                     { id: 'notes', label: 'Raw Notes' },
-                                    { id: 'qa', label: 'Discovery Q&A' },
+                                    { id: 'intakes', label: 'Intakes' },
                                     { id: 'diagnostic', label: 'Diagnostic' },
                                     { id: 'brief', label: 'Exec Brief' }
                                 ].map(tab => (
@@ -438,7 +607,7 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
                                                     {narrative ? (
                                                         <div className="prose prose-invert prose-sm max-w-none">
                                                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                                {narrative}
+                                                                {safeMarkdown(narrative)}
                                                             </ReactMarkdown>
                                                         </div>
                                                     ) : (
@@ -461,29 +630,13 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
                                     })()}
                                 </div>
                             )}
-                            {activeSourceTab === 'qa' && (
-                                <div className="space-y-6 text-sm text-slate-300 leading-relaxed break-words">
-                                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-4 px-1">Iterative Discovery Q&A</h4>
-                                    {artifacts.diagnostic?.outputs?.discoveryQuestions ? (
-                                        <div className="prose prose-invert prose-sm max-w-none bg-slate-900/40 p-6 rounded-xl border border-slate-800/50">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                {artifacts.diagnostic.outputs.discoveryQuestions}
-                                            </ReactMarkdown>
-                                        </div>
-                                    ) : (
-                                        <div className="italic text-slate-500 text-center py-20 uppercase tracking-widest text-[10px] font-black opacity-30">
-                                            No Q&A Data Captured
-                                        </div>
-                                    )}
-                                </div>
-                            )}
                             {activeSourceTab === 'diagnostic' && (
                                 <div className="space-y-8">
                                     <div>
                                         <h4 className="text-indigo-400 text-xs font-black uppercase tracking-widest mb-4">1. Strategic Overview</h4>
                                         <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400">
                                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                {artifacts.diagnostic?.outputs?.overview || 'No Overview'}
+                                                {safeMarkdown(artifacts.diagnostic?.outputs?.overview || 'No Overview')}
                                             </ReactMarkdown>
                                         </div>
                                     </div>
@@ -491,7 +644,7 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
                                         <h4 className="text-emerald-400 text-xs font-black uppercase tracking-widest mb-4">2. AI Opportunities</h4>
                                         <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400">
                                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                {artifacts.diagnostic?.outputs?.aiOpportunities || 'No AI Opportunities'}
+                                                {safeMarkdown(artifacts.diagnostic?.outputs?.aiOpportunities || 'No AI Opportunities')}
                                             </ReactMarkdown>
                                         </div>
                                     </div>
@@ -499,7 +652,7 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
                                         <h4 className="text-amber-400 text-xs font-black uppercase tracking-widest mb-4">3. Roadmap Skeleton</h4>
                                         <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400">
                                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                {artifacts.diagnostic?.outputs?.roadmapSkeleton || 'No Roadmap Skeleton'}
+                                                {safeMarkdown(artifacts.diagnostic?.outputs?.roadmapSkeleton || 'No Roadmap Skeleton')}
                                             </ReactMarkdown>
                                         </div>
                                     </div>
@@ -507,7 +660,7 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
                                         <h4 className="text-purple-400 text-xs font-black uppercase tracking-widest mb-4">4. Discovery Questions</h4>
                                         <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400">
                                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                {artifacts.diagnostic?.outputs?.discoveryQuestions || 'No Discovery Questions'}
+                                                {safeMarkdown(artifacts.diagnostic?.outputs?.discoveryQuestions || 'No Discovery Questions')}
                                             </ReactMarkdown>
                                         </div>
                                     </div>
@@ -519,40 +672,79 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
                                         <div>
                                             <h4 className="text-indigo-400 text-xs font-black uppercase tracking-widest mb-4">1. Executive Summary</h4>
                                             <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400">
-                                                {artifacts.executiveBrief.synthesis.executiveSummary}
+                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                    {safeMarkdown(artifacts.executiveBrief.synthesis.executiveSummary)}
+                                                </ReactMarkdown>
                                             </div>
                                         </div>
                                     )}
                                     {artifacts.executiveBrief?.synthesis?.operatingReality && (
                                         <div>
                                             <h4 className="text-emerald-400 text-xs font-black uppercase tracking-widest mb-4">2. Operating Reality</h4>
-                                            <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400 whitespace-pre-wrap">
-                                                {artifacts.executiveBrief.synthesis.operatingReality}
+                                            <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400">
+                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                    {safeMarkdown(artifacts.executiveBrief.synthesis.operatingReality)}
+                                                </ReactMarkdown>
                                             </div>
                                         </div>
                                     )}
                                     {artifacts.executiveBrief?.synthesis?.constraintLandscape && (
                                         <div>
                                             <h4 className="text-amber-400 text-xs font-black uppercase tracking-widest mb-4">3. Constraint Landscape</h4>
-                                            <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400 whitespace-pre-wrap">
-                                                {artifacts.executiveBrief.synthesis.constraintLandscape}
+                                            <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400">
+                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                    {safeMarkdown(artifacts.executiveBrief.synthesis.constraintLandscape)}
+                                                </ReactMarkdown>
                                             </div>
                                         </div>
                                     )}
                                     {artifacts.executiveBrief?.synthesis?.blindSpotRisks && (
                                         <div>
                                             <h4 className="text-red-400 text-xs font-black uppercase tracking-widest mb-4">4. Blind Spot Risks</h4>
-                                            <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400 whitespace-pre-wrap">
-                                                {artifacts.executiveBrief.synthesis.blindSpotRisks}
+                                            <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400">
+                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                    {safeMarkdown(artifacts.executiveBrief.synthesis.blindSpotRisks)}
+                                                </ReactMarkdown>
                                             </div>
                                         </div>
                                     )}
                                     {artifacts.executiveBrief?.synthesis?.alignmentSignals && (
                                         <div>
                                             <h4 className="text-cyan-400 text-xs font-black uppercase tracking-widest mb-4">5. Alignment Signals</h4>
-                                            <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400 whitespace-pre-wrap">
-                                                {artifacts.executiveBrief.synthesis.alignmentSignals}
+                                            <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400">
+                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                    {safeMarkdown(artifacts.executiveBrief.synthesis.alignmentSignals)}
+                                                </ReactMarkdown>
                                             </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            {activeSourceTab === 'intakes' && (
+                                <div className="space-y-6">
+                                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-4 px-1">Raw Stakeholder Intakes</h4>
+                                    {teamMemberIntakes && teamMemberIntakes.length > 0 ? (
+                                        <div className="space-y-4">
+                                            {teamMemberIntakes.map((intake, idx) => (
+                                                <div key={idx} className="bg-slate-900/40 p-5 rounded-xl border border-slate-800/50 space-y-3">
+                                                    <div className="flex justify-between items-center bg-slate-950/50 -mx-5 -mt-5 px-5 py-2 border-b border-slate-800/50 rounded-t-xl mb-3">
+                                                        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Respondent: {intake.userName || intake.respondentName || 'Unknown'}</span>
+                                                        <span className="text-[9px] text-slate-500 font-mono uppercase">{new Date(intake.completedAt || intake.createdAt).toLocaleDateString()}</span>
+                                                    </div>
+                                                    {intake.answers && typeof intake.answers === 'object' && Object.entries(intake.answers).map(([key, value]: [string, any], vIdx: number) => (
+                                                        <div key={vIdx} className="space-y-1">
+                                                            <div className="text-[9px] font-black uppercase text-slate-500 tracking-tighter opacity-80">{key.replace(/_/g, ' ')}</div>
+                                                            <div className="text-xs text-slate-300 leading-relaxed italic border-l-2 border-slate-800 pl-3">
+                                                                "{typeof value === 'string' ? value : JSON.stringify(value)}"
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="italic text-slate-500 text-center py-20 uppercase tracking-widest text-[10px] font-black opacity-30">
+                                            No Intake Data Found
                                         </div>
                                     )}
                                 </div>
@@ -566,6 +758,7 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
                                 currentFactsPending={proposals.filter(p => p.type === 'CurrentFact' && p.status === 'pending').length}
                                 // Stable version: only resets when proposals are regenerated/updated
                                 contextVersion={artifacts?.diagnostic?.id || 'default'}
+                                onAddProposal={(p) => handleAddProposal(p.type, p)}
                             />
                         </div>
                     </div>

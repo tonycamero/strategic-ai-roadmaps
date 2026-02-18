@@ -1,5 +1,5 @@
-import { config } from './config/env.ts';
-import { app } from './app.ts';
+import { config } from './config/env';
+import { app } from './app';
 
 const PORT = process.env.PORT || 3001;
 
@@ -15,7 +15,7 @@ if (!isNetlify && !isVercel) {
 
     // PHASE 2: DB FINGERPRINT
     try {
-      const { db } = await import('./db/index.ts');
+      const { db } = await import('./db/index');
       const { sql } = await import('drizzle-orm');
 
       const dbUrl = config.dbUrl || '';

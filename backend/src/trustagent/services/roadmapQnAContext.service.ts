@@ -1,8 +1,8 @@
 // src/trustagent/services/roadmapQnAContext.service.ts
 
 import { eq, and } from 'drizzle-orm';
-import { db } from '../../db/index.ts';
-import { tenants, sopTickets, roadmaps, roadmapSections, intakes } from '../../db/schema.ts';
+import { db } from '../../db/index';
+import { getExecutionState } from '../../services/executionState.service';
 import {
   RoadmapQnAContext,
   RoadmapTicket,
@@ -11,7 +11,8 @@ import {
   SprintSummary,
   TopTicketByImpact,
   EnrichedProfile
-} from '../types/roadmapQnA.ts';
+} from '../types/roadmapQnA';
+import { tenants, sopTickets, roadmaps, roadmapSections, intakes, tenantDocuments, diagnostics } from '../../db/schema';
 
 const TIME_VALUE_PER_HOUR = 35;
 const LEAD_VALUE = 35;
@@ -179,6 +180,26 @@ export async function buildRoadmapQnAContext(
     return null;
   }
 
+  // --- Execution Truth (Single Source of Status) ---
+let executionState = null;
+
+try {
+  // We do not currently store diagnosticId in context,
+  // so we derive latest diagnostic for tenant.
+  const latestDiagnostic = await db.query.diagnostics.findFirst({
+    where: eq(diagnostics.tenantId, tenantId),
+    orderBy: (d, { desc }) => [desc(d.createdAt)],
+  });
+
+  if (latestDiagnostic) {
+    executionState = await getExecutionState({
+      tenantId,
+      diagnosticId: latestDiagnostic.id,
+    });
+  }
+} catch (err) {
+  console.warn('[RoadmapQnAContext] Failed to load execution state:', err);
+}
   // 2) Roadmap (by tenantId - updated schema uses tenantId not ownerId)
   const roadmap = await db.query.roadmaps.findFirst({
     where: eq(roadmaps.tenantId, tenantId)
@@ -274,6 +295,23 @@ export async function buildRoadmapQnAContext(
   const diagnosticDate =
     (tenant.updatedAt as Date | null)?.toISOString() ?? new Date().toISOString();
 
+  // 8) Fetch SOP-01 Documents (Diagnostic, Roadmap Skeleton, etc.)
+  // We look for category='sop_output' and sopNumber='SOP-01'
+  const sopDocs = await db.query.tenantDocuments.findMany({
+    where: and(
+      eq(tenantDocuments.tenantId, tenantId),
+      eq(tenantDocuments.category, 'sop_output'),
+      eq(tenantDocuments.sopNumber, 'SOP-01')
+    )
+  });
+
+  const docMap = new Map<string, string>();
+  for (const d of sopDocs) {
+    if (d.outputNumber && d.content) {
+      docMap.set(d.outputNumber, d.content);
+    }
+  }
+
   const context: RoadmapQnAContext = {
     tenantId,
     firmName: tenant.name,
@@ -289,12 +327,12 @@ export async function buildRoadmapQnAContext(
     ownerProfile,
     teamProfiles: [], // Future: sales, ops, delivery
 
-    // Longform SOP-01 docs can be wired in later by querying tenant_documents
-    executiveSummaryMarkdown: undefined,
-    diagnosticMarkdown: undefined,
-    aiLeverageMarkdown: undefined,
-    roadmapSkeletonMarkdown: undefined,
-    discoveryNotesMarkdown: undefined,
+    // Populated from SOP-01 outputs
+    executiveSummaryMarkdown: undefined, // Not currently part of SOP-01 basic output set
+    diagnosticMarkdown: docMap.get('DIAGNOSTIC_MAP'),
+    aiLeverageMarkdown: docMap.get('AI_LEVERAGE_MAP'),
+    roadmapSkeletonMarkdown: docMap.get('ROADMAP_SKELETON'),
+    discoveryNotesMarkdown: docMap.get('DISCOVERY_QUESTIONS'),
 
     ticketRollup,
     tickets,

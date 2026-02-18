@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken, TokenPayload } from '../utils/auth.ts';
+import { verifyToken, TokenPayload } from '../utils/auth';
 import type { UserRole } from '@roadmap/shared';
-import { db } from '../db/index.ts';
-import { auditEvents, tenants } from '../db/schema.ts';
+import { db } from '../db/index';
+import { auditEvents, tenants } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
 import { AuthorityCategory } from '@roadmap/shared';

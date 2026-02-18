@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { eq, like, isNull, or, sql } from 'drizzle-orm';
-import * as schema from '../db/schema.ts';
+import * as schema from '../db/schema';
 
 /**
  * Backfill Script: SA-IV-RETROFIT-BACKFILL-1

@@ -9,8 +9,8 @@ import {
     intakes,
     auditEvents,
     intakeClarifications
-} from '../db/schema.ts';
-import { db } from '../db/index.ts';
+} from '../db/schema';
+import { db } from '../db/index';
 import { eq, desc, and } from 'drizzle-orm';
 
 // ============================================================================
@@ -79,6 +79,7 @@ export async function canGenerateDiagnostics(tenantId: string): Promise<GateChec
         .select()
         .from(executiveBriefs)
         .where(eq(executiveBriefs.tenantId, tenantId))
+        .orderBy(desc(executiveBriefs.createdAt))
         .limit(1);
 
     if (!brief || (brief.status !== 'APPROVED' && brief.status !== 'DELIVERED')) {

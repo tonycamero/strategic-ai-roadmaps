@@ -1,7 +1,8 @@
 import { Router } from 'express';
-import * as tenantsController from '../controllers/tenants.controller.ts';
-import * as intakeVectorController from '../controllers/intakeVector.controller.ts';
-import { authenticate, requireRole, requireTenantAccess } from '../middleware/auth.ts';
+import * as tenantsController from '../controllers/tenants.controller';
+import * as intakeVectorController from '../controllers/intakeVector.controller';
+import { authenticate, requireRole, requireTenantAccess } from '../middleware/auth';
+import * as baselineIntakeController from '../controllers/baselineIntake.controller';
 
 const router = Router();
 
@@ -61,6 +62,22 @@ router.post(
   authenticate,
   requireTenantAccess(),
   intakeVectorController.sendIntakeVectorInvite
+);
+
+// ===========================================
+// BASELINE INTAKE (Superadmin / Owner)
+// ===========================================
+
+router.get(
+  '/:tenantId/baseline-intake',
+  authenticate, // Authenticated middleware handles logic inside controller
+  baselineIntakeController.getBaselineIntake
+);
+
+router.post(
+  '/:tenantId/baseline-intake',
+  authenticate,
+  baselineIntakeController.upsertBaselineIntake
 );
 
 export default router;

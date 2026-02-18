@@ -1,0 +1,5 @@
+/home/tonycamero/code/Strategic_AI_Roadmaps/frontend/src/superadmin/components/ClarificationPipelineSubSection.tsx:11:    emailStatus: 'NOT_SENT' | 'SENT' | 'FAILED';
+/home/tonycamero/code/Strategic_AI_Roadmaps/frontend/src/superadmin/components/ClarificationPipelineSubSection.tsx:65:                                    {c.emailStatus === 'FAILED' ? (
+/home/tonycamero/code/Strategic_AI_Roadmaps/frontend/src/superadmin/components/ClarificationPipelineSubSection.tsx:69:                                    ) : c.emailStatus === 'SENT' ? (
+/home/tonycamero/code/Strategic_AI_Roadmaps/frontend/src/superadmin/components/ClarificationPipelineSubSection.tsx:103:                                            {c.emailStatus === 'FAILED' ? 'Email failed to deliver.' : 'Awaiting response from stakeholder...'}
+/home/tonycamero/code/Strategic_AI_Roadmaps/frontend/src/superadmin/components/ClarificationPipelineSubSection.tsx:105:                                        {c.emailStatus === 'FAILED' && (

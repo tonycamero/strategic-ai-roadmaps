@@ -1,0 +1,14 @@
+[ENV] Loaded environment from: /home/tonycamero/code/Strategic_AI_Roadmaps/backend/.env
+
+========== DRIZZLE SQL ==========
+select "id", "owner_user_id", "name", "cohort_label", "segment", "region", "status", "business_type", "team_headcount", "baseline_monthly_leads", "firm_size_tier", "discovery_complete", "last_diagnostic_id", "intake_window_state", "intake_snapshot_id", "intake_closed_at", "intake_locked_at", "intake_locked_by_user_id", "notes", "readiness_notes", "created_at", "updated_at", "slug", "domain", "discovery_acknowledged_at", "knowledge_base_ready_at", "roles_validated_at", "exec_ready_at" from "tenants"
+=================================
+
+--- ALL TENANTS ---
+[bae93021-b0c9-4c18-9ef3-3b8ac1e8469f] Prairie Peak Marketing
+[8b250627-c79a-4b89-9821-fe41df7d577b] open source design and consulting 
+[e4d42754-b394-4562-9df2-85b66ad8e354] Ninkasi Brewing Company
+[ec32ea41-d056-462d-8321-c2876c9af263] Cascade Climate Solutions
+[883a5307-6354-49ad-b8e3-765ff64dc1af] Northshore Logistics Solutions
+[26e5feb8-eeb1-403c-b9a9-c2125fa9cac2] Shakey's Restaurant
+-------------------

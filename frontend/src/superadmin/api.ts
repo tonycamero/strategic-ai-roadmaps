@@ -588,6 +588,10 @@ export const superadminApi = {
   resendIntakeClarificationEmail: (clarificationId: string) =>
     apiPost<any>(`/clarifications/${clarificationId}/resend`, {}),
 
+  // Impersonation
+  impersonateTenantOwner: (tenantId: string) =>
+    apiPost<{ token: string; user: any; sessionId: string }>(`/impersonate`, { tenantId }),
+
   downloadExecutiveBrief: (tenantId: string, firmName?: string) => {
     const safeName = firmName ? firmName.replace(/[^a-z0-9]/gi, '_') : 'firm';
     const filename = `${safeName}_Executive_Brief_${new Date().toISOString().split('T')[0]}.pdf`;

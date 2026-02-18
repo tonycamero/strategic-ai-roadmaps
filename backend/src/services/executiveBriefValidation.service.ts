@@ -15,13 +15,13 @@
  * - Deterministic ordering: violations sorted by path ASC, then rule ASC
  */
 
-import { SynthesisError } from './executiveBriefSynthesis.service.ts';
+import { SynthesisError } from './executiveBriefSynthesis.service';
 import type {
     ExecutiveAssertionBlock,
     ExecutiveBriefSynthesis,
     ExecutiveBriefSectionKey,
     Pattern
-} from '../types/executiveBrief.ts';
+} from '../types/executiveBrief';
 
 // Helper to convert snake/caps to camelCase
 function keyToCamel(s: string): string {

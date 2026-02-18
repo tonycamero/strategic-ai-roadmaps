@@ -1,7 +1,7 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { wrapUserMessageWithRoleContext } from '../config/role-runtime-context.ts';
+import { wrapUserMessageWithRoleContext } from '../config/role-runtime-context';
 
 /**
  * Smoke test for role-aware context wrapper

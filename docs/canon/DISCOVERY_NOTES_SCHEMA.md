@@ -85,4 +85,67 @@ All content within the Discovery Notes must adhere to these invariants:
 This document is the **Canonical Source of Truth** for the Discovery Notes format.
 Any Discovery Note that contains fields not listed here, or violates the Prohibitions, is **Invalid Input** and must be rejected by the Findings Compiler.
 
+
+---
+
+## 6. Execution Authority Boundary
+
+### 6.1 Discovery ≠ Completion
+
+The existence of a valid Discovery Note:
+
+- Does not satisfy OWNER_INTAKE.
+- Does not satisfy TEAM_INTAKES.
+- Does not satisfy DIAGNOSTIC.
+- Does not satisfy any execution stage.
+
+Discovery is input evidence only.
+
+Stage state is determined exclusively by:
+
+backend/src/services/executionTruth.service.ts
+
+---
+
+### 6.2 Evidence vs Authority
+
+Discovery Notes are:
+
+- Evidence of stated reality.
+- Raw signal input to the Findings Compiler.
+
+Discovery Notes are not:
+
+- Authorization artifacts.
+- Approval events.
+- Gate satisfiers.
+
+No downstream stage may infer readiness based on the presence of Discovery content.
+
+---
+
+### 6.3 Invalidation Cascade (Authority Safe)
+
+If Discovery changes:
+
+- Findings must be invalidated.
+- Tickets derived from those findings must be invalidated.
+- Roadmaps compiled from those tickets must be archived.
+- ExecutionTruthService must re-evaluate all stage states.
+
+No silent continuation is permitted.
+
+---
+
+### 6.4 Fail-Closed Principle
+
+If Discovery content is malformed, incomplete, or ambiguous:
+
+- Findings compilation must reject.
+- Ticket generation must halt.
+- Stage state must remain LOCKED.
+
+Ambiguity never escalates state.
+
+
 **END OF DOCUMENT**

@@ -1,6 +1,5 @@
-
 {
-"name": "strategic-ai-roadmap-portal",
+  "name": "strategic-ai-roadmap-portal",
   "version": "1.0.0",
   "private": true,
   "packageManager": "pnpm@10.28.1",
@@ -11,6 +10,7 @@
   ],
   "scripts": {
     "dev": "concurrently \"pnpm --filter frontend dev\" \"pnpm --filter backend dev\"",
+    "typecheck": "pnpm -r exec tsc -p tsconfig.json",
     "build": "pnpm -r --filter @roadmap/shared --filter @roadmap/backend --filter @roadmap/frontend build",
     "frontend": "pnpm --filter frontend dev",
     "backend": "pnpm --filter backend dev",

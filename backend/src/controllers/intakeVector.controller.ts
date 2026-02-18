@@ -1,10 +1,10 @@
 import { Response } from 'express';
-import { db } from '../db/index.ts';
-import { intakeVectors, intakes, users, tenants, invites } from '../db/schema.ts';
+import { db } from '../db/index';
+import { intakeVectors, intakes, users, tenants, invites } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
-import { AuthRequest } from '../middleware/auth.ts';
-import { generateInviteToken } from '../utils/auth.ts';
-import * as emailService from '../services/email.service.ts';
+import { AuthRequest } from '../middleware/auth';
+import { generateInviteToken } from '../utils/auth';
+import * as emailService from '../services/email.service';
 
 /**
  * Create a new intake vector (stakeholder role definition)
@@ -228,6 +228,7 @@ export async function sendIntakeVectorInvite(req: AuthRequest, res: Response) {
         }
 
         const { id } = req.params;
+        console.log(`[SendInvite] Request received for vectorId=${id}`);
 
         // 1. Fetch vector + tenant
         const [vector] = await db
@@ -365,6 +366,7 @@ export async function sendIntakeVectorInvite(req: AuthRequest, res: Response) {
                 tenant.name,
                 vector.roleLabel
             );
+            console.log(`[EmailService] Result:`, result);
 
             // 4. Update Status + Audit Log
             const [updated] = await db

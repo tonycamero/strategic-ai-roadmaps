@@ -8,7 +8,7 @@ import { api } from '../../lib/api';
  * Shows:
  * - Their intake status
  * - Roadmap progress relevant to their role
- * - TrustAgent for questions
+ * - Trust Console Agent for questions
  */
 export default function TeamMemberDashboard() {
   const { user, logout } = useAuth();
@@ -119,7 +119,7 @@ export default function TeamMemberDashboard() {
               Need Help?
             </h2>
             <p className="text-slate-400 text-sm">
-              Use the TrustAgent assistant (bottom right) to ask questions about the roadmap, your role, or next steps.
+              Use the Trust Console Agent (bottom right) to ask questions about the roadmap, your role, or next steps.
             </p>
             <div className="mt-4 flex gap-2 text-xs text-slate-500">
               <span className="px-2 py-1 bg-slate-800 rounded">Ask about priorities</span>

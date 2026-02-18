@@ -11,12 +11,12 @@ import {
     Pattern,
     ExecutiveBriefSynthesis,
     ExecutiveBriefSectionKey
-} from '../types/executiveBrief.ts';
+} from '../types/executiveBrief';
 import { createHash } from 'crypto';
-import { ExecutiveBriefAssertionExpansionService, ExpansionCandidate } from './executiveBriefAssertionExpansion.service.ts';
-import { generateMirrorNarrative, repairMirrorNarrative, enforceTriadDepth } from './executiveBriefMirrorNarrative.service.ts';
-import { validateMirrorNarrativeOrThrow } from './executiveBriefValidation.service.ts';
-import { enforceMirrorContract } from './executiveBrief/mirrorNarrative/enforcement.service.ts';
+import { ExecutiveBriefAssertionExpansionService, ExpansionCandidate } from './executiveBriefAssertionExpansion.service';
+import { generateMirrorNarrative, repairMirrorNarrative, enforceTriadDepth } from './executiveBriefMirrorNarrative.service';
+import { validateMirrorNarrativeOrThrow } from './executiveBriefValidation.service';
+import { enforceMirrorContract } from './executiveBrief/mirrorNarrative/enforcement.service';
 
 
 function sanitizeNarrativeText(input: string, taxonomyTokens: string[]): string {
@@ -1002,12 +1002,12 @@ function selectTopAssertions(
  * 5. Final Assembly
  */
 export async function executeSynthesisPipeline(
-  vectors: IntakeVector[],
-  options?: { tenantId?: string; briefId?: string; action?: string }
+    vectors: IntakeVector[],
+    options?: { tenantId?: string; briefId?: string; action?: string }
 ): Promise<ExecutiveBriefSynthesis> {
-  const tenantId = options?.tenantId || 'unknown';
-  const briefId = options?.briefId || 'none';
-  const action = options?.action || 'generate';
+    const tenantId = options?.tenantId || 'unknown';
+    const briefId = options?.briefId || 'none';
+    const action = options?.action || 'generate';
 
     // Local diagnostic state
     const diagnostics: any = {
@@ -1038,7 +1038,9 @@ export async function executeSynthesisPipeline(
         const initialValidation = getValidationBreakdown(assertions);
 
         // Mode 2: Expansion Fallback (Track B)
-        if (isExpansionEnabled() && initialValidation.valid < TARGET_ASSERTION_COUNT) {
+        const expansionEnabled = isExpansionEnabled();
+
+        if (expansionEnabled && initialValidation.valid < TARGET_ASSERTION_COUNT) {
             diagnostics.expansionInvoked = true;
 
             const expFacts = facts.map(f => ({
@@ -1102,7 +1104,7 @@ export async function executeSynthesisPipeline(
                 assertions = [...assertions, ...trackBCandidates];
             }
         }
-    
+
         // Final Selection + Deterministic Ordering
         const { selected } = selectTopAssertions(assertions, facts, patterns);
 

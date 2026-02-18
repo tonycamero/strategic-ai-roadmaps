@@ -7,7 +7,7 @@
  */
 
 import OpenAI from 'openai';
-import { ExecutiveAssertionBlock, Pattern, ExecutiveBriefSectionKey, MirrorSection } from '../types/executiveBrief.ts';
+import { ExecutiveAssertionBlock, Pattern, ExecutiveBriefSectionKey, MirrorSection } from '../types/executiveBrief';
 
 // Lazy initialization
 let openai: OpenAI | null = null;

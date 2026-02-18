@@ -146,13 +146,49 @@ export const firmBaselineIntake = pgTable('firm_baseline_intake', {
   opsAdminCount: integer('ops_admin_count'),
   primaryBottleneck: text('primary_bottleneck'),
 
+  // META-TICKET V2.4: Economic Injection
+  weeklyRevenue: integer('weekly_revenue'),
+  peakHourRevenuePct: integer('peak_hour_revenue_pct'),
+  laborPct: integer('labor_pct'),
+  overtimePct: integer('overtime_pct'),
+  grossMarginPct: integer('gross_margin_pct'),
+  averageTicket: integer('average_ticket'),
+  economicConfidenceLevel: varchar('economic_confidence_level', { length: 20 }).default('ESTIMATED'), // DRAFT | ESTIMATED | OPERATOR_VERIFIED | LOCKED
+
   // Status
   status: varchar('status', { length: 20 }).notNull().default('DRAFT'), // DRAFT | COMPLETE
+
+  // Lock
+  baselineLockedAt: timestamp('baseline_locked_at', { withTimezone: true }),
+  lockedByUserId: uuid('locked_by_user_id').references(() => users.id, { onDelete: 'set null' }),
 
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   tenantIdIdx: index('idx_firm_baseline_intake_tenant_id').on(table.tenantId),
+}));
+
+// ============================================================================
+// BASELINE REVIEW CYCLES (30/60/90 day validation)
+// ============================================================================
+
+export const baselineReviewCycles = pgTable('baseline_review_cycles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  cycleNumber: integer('cycle_number').notNull(), // 30, 60, 90, etc.
+  reviewDate: timestamp('review_date', { withTimezone: true }).defaultNow(),
+
+  updatedValues: jsonb('updated_values').$type<Record<string, any>>().notNull(),
+  deltaFromV1: jsonb('delta_from_v1').$type<Record<string, any>>().notNull(),
+
+  confidenceLevel: varchar('confidence_level', { length: 20 }).default('LOW'),
+  notes: text('notes'),
+
+  validatedByUserId: uuid('validated_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  tenantCycleIdx: uniqueIndex('idx_baseline_review_cycles_tenant_cycle').on(table.tenantId, table.cycleNumber),
 }));
 
 
@@ -168,7 +204,7 @@ export const executiveBriefs = pgTable('executive_briefs', {
   generatedAt: timestamp('generated_at', { withTimezone: true }).notNull().defaultNow(),
 
   // Synthesis sections (stored as JSONB)
-  synthesis: jsonb('synthesis').notNull().$type<import('../types/executiveBrief.ts').ExecutiveBriefSynthesis>(),
+  synthesis: jsonb('synthesis').notNull().$type<import('../types/executiveBrief').ExecutiveBriefSynthesis>(),
 
   // Signals (stored as JSONB)
   signals: jsonb('signals').notNull().$type<{
@@ -1064,6 +1100,9 @@ export type NewExecutiveBrief = typeof executiveBriefs.$inferInsert;
 
 export type FirmBaselineIntake = typeof firmBaselineIntake.$inferSelect;
 export type NewFirmBaselineIntake = typeof firmBaselineIntake.$inferInsert;
+
+export type BaselineReviewCycle = typeof baselineReviewCycles.$inferSelect;
+export type NewBaselineReviewCycle = typeof baselineReviewCycles.$inferInsert;
 
 // ============================================================================
 // ASSISTED SYNTHESIS AGENT SESSIONS (Stage 5 only - bounded persistence)

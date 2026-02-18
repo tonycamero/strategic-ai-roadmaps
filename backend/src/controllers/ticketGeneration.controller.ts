@@ -1,11 +1,11 @@
 import { Response, NextFunction } from 'express';
-import { AuthRequest } from '../middleware/auth.ts';
-import { db } from '../db/index.ts';
-import { tenantDocuments } from '../db/schema.ts';
+import { AuthRequest } from '../middleware/auth';
+import { db } from '../db/index';
+import { tenantDocuments } from '../db/schema';
 import { eq, and, desc } from 'drizzle-orm';
-import { generateTicketsFromFindings } from '../services/ticketGeneration.service.ts';
+import { generateTicketsFromFindings } from '../services/ticketGeneration.service';
 import { CanonicalFindingsObject } from '@roadmap/shared/src/canon';
-// import { canGenerateSopTickets } from '../services/gate.service.ts'; // Optional: keep gating if relevant
+// import { canGenerateSopTickets } from '../services/gate.service'; // Optional: keep gating if relevant
 
 export async function handleGenerateTicketsFromDiscovery(req: AuthRequest, res: Response, next: NextFunction) {
     try {

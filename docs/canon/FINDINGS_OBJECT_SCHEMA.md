@@ -100,4 +100,75 @@ Every finding item within the object must possess:
 This document is the **Canonical Source of Truth** for the Findings Object structure.
 Any object that contains fields, entities, or inferences not strictly defined here is **Invalid Input** and must be rejected by the Ticket Compiler.
 
+
+---
+
+## 8. Execution Authority Boundary
+
+### 8.1 Findings ≠ Stage Progress
+
+The existence of a Findings Object:
+
+- Does not satisfy any onboarding stage.
+- Does not unlock Diagnostic generation.
+- Does not mark Diagnostic as COMPLETE.
+- Does not imply Roadmap readiness.
+
+Findings are structured signal only.
+
+Execution state is compiled exclusively by:
+
+backend/src/services/executionTruth.service.ts
+
+---
+
+### 8.2 Evidence vs Authority Separation
+
+Findings are:
+
+- Mechanical extraction artifacts.
+- Deterministic intermediate representation (IR).
+- Input to Ticket Compilation.
+
+Findings are not:
+
+- Approval artifacts.
+- Sufficiency confirmations.
+- Authority signals.
+- Gate satisfiers.
+
+No stage transition may reference the existence of Findings as proof of completion.
+
+---
+
+### 8.3 Diagnostic Boundary Clarification
+
+The generation of a Diagnostic artifact requires:
+
+- Executive Brief COMPLETE (per ExecutionTruth)
+- Operator sufficiency confirmation event
+- No blocking clarification outstanding
+
+The mere presence of Findings does not authorize Diagnostic generation.
+
+---
+
+### 8.4 Fail-Closed Requirement
+
+If Findings are:
+
+- Missing
+- Malformed
+- Out-of-sync with Discovery
+- Referencing invalid source hashes
+
+Then:
+
+- Ticket compilation must halt.
+- Diagnostic generation must reject.
+- ExecutionTruth must return LOCKED.
+
+No fallback behavior is permitted.
+
+
 **END OF DOCUMENT**

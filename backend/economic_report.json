@@ -1,0 +1,62 @@
+[ENV] Loaded environment from: /home/tonycamero/code/Strategic_AI_Roadmaps/backend/.env
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "monthly_lead_volume", "avg_response_time_minutes", "close_rate_percent", "avg_job_value", "current_tools", "sales_reps_count", "ops_admin_count", "primary_bottleneck", "status", "created_at", "updated_at" from "firm_baseline_intake"
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "tenant_id", "roadmap_id", "snapshot_date", "label", "source", "metrics", "notes", "created_at" from "implementation_snapshots"
+=================================
+
+
+========== DRIZZLE SQL ==========
+select "id", "owner_user_id", "name", "cohort_label", "segment", "region", "status", "business_type", "team_headcount", "baseline_monthly_leads", "firm_size_tier", "discovery_complete", "last_diagnostic_id", "intake_window_state", "intake_snapshot_id", "intake_closed_at", "intake_locked_at", "intake_locked_by_user_id", "notes", "readiness_notes", "created_at", "updated_at", "slug", "domain", "discovery_acknowledged_at", "knowledge_base_ready_at", "roles_validated_at", "exec_ready_at" from "tenants"
+=================================
+
+{
+  "baselines": [
+    {
+      "tenantName": "Northshore Logistics Solutions",
+      "id": "88d099f8-ed5e-440e-86fe-cabc29adb4e9",
+      "tenantId": "883a5307-6354-49ad-b8e3-765ff64dc1af",
+      "monthlyLeadVolume": 85,
+      "avgResponseTimeMinutes": 240,
+      "closeRatePercent": 18,
+      "avgJobValue": 7500,
+      "currentTools": [
+        "CRM",
+        "Scheduling",
+        "Invoicing",
+        "Email/Comms"
+      ],
+      "salesRepsCount": 5,
+      "opsAdminCount": 5,
+      "primaryBottleneck": "“Lead follow-up and quoting are inconsistent due to manual handoffs between sales, dispatch, and billing. We lose momentum on inbound requests, and operational visibility lags behind sales commitments.”",
+      "status": "COMPLETE",
+      "createdAt": "2026-01-19T11:13:18.362Z",
+      "updatedAt": "2026-01-19T15:38:33.423Z"
+    }
+  ],
+  "snapshots": [
+    {
+      "tenantName": "Northshore Logistics Solutions",
+      "id": "5e68ca98-1d97-4a18-93f4-4bae124a726c",
+      "tenantId": "883a5307-6354-49ad-b8e3-765ff64dc1af",
+      "roadmapId": "f1950fad-bf8b-4191-a494-0d9548366c0b",
+      "snapshotDate": "2026-01-19T07:38:34.000Z",
+      "label": "baseline",
+      "source": "manual",
+      "metrics": {
+        "lead_response_minutes": 240,
+        "close_rate": 18,
+        "weekly_ops_hours": 200,
+        "lead_to_appt_rate": 30,
+        "crm_adoption_rate": 40,
+        "nps": 20
+      },
+      "notes": null,
+      "createdAt": "2026-01-19T06:46:52.923Z"
+    }
+  ]
+}

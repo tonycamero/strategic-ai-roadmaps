@@ -38,7 +38,7 @@ export interface TrustAgentShellProps {
 }
 
 export function TrustAgentShell({
-  title = 'TrustAgent',
+  title = 'Trust Console Agent',
   subtitle = 'Your AI assistant',
   messages = [],
   isLoading = false,

@@ -24,6 +24,36 @@ import { BaselineSummaryPanel } from '../components/BaselineSummaryPanel';
 import { superadminApi } from '../api';
 import { SuperAdminTenantDetail, IntakeRoleDefinition } from '../types';
 
+// SA-INTAKE-AUTHORITY-DRIFT-DB-TRUTH-001: Canonical State Helper
+// Pure function to determine authority-based intake state
+function computeCanonicalIntakeWindowState(args: {
+    truthProbe: TruthProbeData | null;
+    tenant: SuperAdminTenantDetail["tenant"] | null;
+}): 'OPEN' | 'CLOSED' {
+    const { truthProbe, tenant } = args;
+
+    // 1. TruthProbe Authority (Highest)
+    if (truthProbe?.intake?.windowState === 'OPEN' || truthProbe?.intake?.windowState === 'CLOSED') {
+        return truthProbe.intake.windowState;
+    }
+    // 1b. TruthProbe Immutable Artifact
+    if (truthProbe?.intake?.closedAt) {
+        return 'CLOSED';
+    }
+
+    // 2. Tenant Immutable Artifacts (DB Truth)
+    if (tenant?.intakeClosedAt) return 'CLOSED';
+    if (tenant?.intakeSnapshotId) return 'CLOSED';
+
+    // 3. Legacy Fallback (Mutable Column)
+    if (tenant?.intakeWindowState === 'OPEN' || tenant?.intakeWindowState === 'CLOSED') {
+        return tenant.intakeWindowState;
+    }
+
+    // 4. Default Safe State
+    return 'OPEN';
+}
+
 // Inline type definition
 type FirmDetailResponse = {
     tenantSummary: {
@@ -97,6 +127,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     // Phase 7: Snapshot State
     const [snapshotData, setSnapshotData] = useState<SnapshotData | null>(null);
     const [snapshotLoading, setSnapshotLoading] = useState(false);
+    const { user } = useAuth();
     const { category } = useSuperAdminAuthority();
 
     // Truth Probe State
@@ -147,6 +178,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     const [isSynthesisOpen, setSynthesisOpen] = useState(false);
     const [synthesisNotes, setSynthesisNotes] = useState<string | null>(null);
     const [gateLockedMessage, setGateLockedMessage] = useState<string | null>(null);
+    const [impersonating, setImpersonating] = useState(false);
     // @ANCHOR:SA_FIRM_DETAIL_STATE_END
 
     const refreshData = async () => {
@@ -267,6 +299,39 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     }, [params?.tenantId]);
 
     // ============================================================================
+    // CANONICAL INTAKE WINDOW STATE (Authority Order: TruthProbe -> Tenant -> OPEN)
+    // Hoisted before getCanonicalStatus so it can be used safely
+    // ============================================================================
+    const intakeWindowState = computeCanonicalIntakeWindowState({ truthProbe, tenant: data?.tenant ?? null });
+    // NOTE: canLockIntake moved below getCanonicalStatus to avoid ReferenceError
+
+    // Phase 1C: Debug Logging (Gated)
+    useEffect(() => {
+        if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
+            console.log("[Intake Canon]", {
+                truthProbe_windowState: truthProbe?.intake?.windowState,
+                truthProbe_closedAt: (truthProbe?.intake as any)?.closedAt,
+                tenant_intakeWindowState: data?.tenant?.intakeWindowState,
+                tenant_intakeClosedAt: data?.tenant?.intakeClosedAt,
+                tenant_intakeSnapshotId: data?.tenant?.intakeSnapshotId,
+                canonical: intakeWindowState,
+            });
+        }
+    }, [truthProbe, data?.tenant, intakeWindowState]);
+
+    // SA-INTAKE-INDICATORS-CANON-001: Regression Guard
+    useEffect(() => {
+        if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
+            if (intakeWindowState === 'CLOSED' && getCanonicalStatus(1) !== 'COMPLETE') {
+                console.warn('[Intake Canon] REGRESSION: Intake Window CLOSED but Gate Status not COMPLETE', {
+                    window: intakeWindowState,
+                    status: getCanonicalStatus(1)
+                });
+            }
+        }
+    }, [intakeWindowState]);
+
+    // ============================================================================
     // CANONICAL STATUS SYSTEM (LOCKED, READY, COMPLETE)
     // ============================================================================
 
@@ -275,9 +340,8 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         if (truthProbe) {
             // s1: Intake
             if (stage === 1) {
-                const isClosed = truthProbe.intake.windowState === 'CLOSED';
-                const isSufficient = truthProbe.intake.sufficiencyHint === 'COMPLETE';
-                return (isClosed || isSufficient) ? 'COMPLETE' : 'READY';
+                const isClosed = intakeWindowState === 'CLOSED';
+                return isClosed ? 'COMPLETE' : 'READY';
             }
 
             // s2: Executive Brief
@@ -285,8 +349,8 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                 const state = truthProbe.executiveBrief.state;
                 const isApproved = ['APPROVED', 'DELIVERED', 'REVIEWED'].includes(state || '');
                 if (isApproved) return 'COMPLETE';
-                // If intake is complete/sufficient, Brief is READY
-                const s1Complete = truthProbe.intake.windowState === 'CLOSED' || truthProbe.intake.sufficiencyHint === 'COMPLETE';
+                // If intake is complete, Brief is READY
+                const s1Complete = intakeWindowState === 'CLOSED';
                 return s1Complete ? 'READY' : 'LOCKED';
             }
 
@@ -303,6 +367,8 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
             // s4: Discovery
             if (stage === 4) {
                 if (truthProbe.discovery.exists) return 'COMPLETE';
+                // SA-INTAKE-AUTHORITY-DRIFT-FIX: Waterfall progression
+                if (truthProbe.diagnostic.state === 'published') return 'READY';
                 return truthProbe.readiness.canRunDiscovery ? 'READY' : 'LOCKED';
             }
 
@@ -333,9 +399,10 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         if (!data) return 'LOCKED';
         const { tenant, latestRoadmap } = data;
 
-        // s1: Intake (Source: intakeWindowState OR All Roles Complete)
-        const allRolesComplete = intakeRoles.length > 0 && intakeRoles.every(r => r.intakeStatus === 'COMPLETED');
-        const s1 = (tenant.intakeWindowState === 'CLOSED' || allRolesComplete) ? 'COMPLETE' : 'READY';
+        // s1: Intake (Canonical: tenant.intakeWindowState only - fallback)
+        // s1: Intake (Canonical: tenant.intakeWindowState only - fallback)
+        // SA-INTAKE-INDICATORS-CANON-001: Use canonical intakeWindowState strictly
+        const s1 = (intakeWindowState === 'CLOSED') ? 'COMPLETE' : 'READY';
         if (stage === 1) return s1;
 
         // s2: Executive Brief (Consultation Anchor)
@@ -385,6 +452,10 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         return 'LOCKED';
     };
 
+    // SA-INTAKE-AUTHORITY-DRIFT-DB-TRUTH-001: Gate by canonical status
+    // Defined here to ensure getCanonicalStatus is in scope
+    const canLockIntake = intakeWindowState === 'OPEN' && getCanonicalStatus(1) === 'READY' && !isGenerating;
+
     const getStatusStyles = (status: 'LOCKED' | 'READY' | 'COMPLETE') => {
         switch (status) {
             case 'COMPLETE':
@@ -407,6 +478,9 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     };
 
     const getStakeholderDotColor = (role: IntakeRoleDefinition) => {
+        // SA-INTAKE-INDICATORS-CANON-001: Force GREEN if intake is globally closed
+        if (intakeWindowState === 'CLOSED') return 'bg-emerald-500';
+
         if (role.intakeStatus === 'COMPLETED') return 'bg-emerald-500'; // COMPLETE -> GREEN
         if (role.isAccepted) return 'bg-yellow-500'; // READY -> YELLOW
         return 'bg-red-500'; // LOCKED -> RED
@@ -530,8 +604,35 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     // META-TICKET V2: EXECUTION HANDLERS
     // ============================================================================
 
+    const handleImpersonate = async () => {
+        if (!params?.tenantId || !data?.owner) return;
+        if (!confirm(`Are you sure you want to impersonate ${data.owner.name}?`)) return;
+
+        // Open window immediately to avoid popup blockers
+        const newWindow = window.open('', '_blank');
+        if (newWindow) {
+            newWindow.document.title = 'Impersonating...';
+            newWindow.document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;background-color:#0f172a;color:#cbd5e1;">Initializing secure session...</div>';
+        }
+
+        setImpersonating(true);
+        try {
+            const { token, user } = await superadminApi.impersonateTenantOwner(params.tenantId);
+            const url = `/impersonate?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`;
+            if (newWindow) {
+                newWindow.location.href = url;
+            }
+        } catch (err: any) {
+            setError(err.message);
+            if (newWindow) newWindow.close();
+        } finally {
+            setImpersonating(false);
+        }
+    };
+
     const handleLockIntake = async () => {
         if (!params?.tenantId) return;
+        if (!canLockIntake) return;
         if (!window.confirm('Confirm Intake Lock? This freezes the intake window.')) return;
         setIsGenerating(true);
         setGateLockedMessage(null);
@@ -540,6 +641,19 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
             await refreshData();
         } catch (err: any) {
             console.error('Lock Intake Error:', err);
+
+            // SA-INTAKE-AUTHORITY-DRIFT-DB-TRUTH-001: Immediate Reconciliation
+            const isAlreadyLocked =
+                err.message?.includes('already locked') ||
+                err.errorCode === 'GATE_LOCKED' ||
+                (err.status === 403 && err.message?.toLowerCase().includes('lock'));
+
+            if (isAlreadyLocked) {
+                setGateLockedMessage("Intake is already locked. Reconciling state...");
+                await refreshData();
+                return;
+            }
+
             if (err.errorCode === 'GATE_LOCKED' || err.status === 403) {
                 setGateLockedMessage(err.message || 'Intake locking is currently unavailable.');
             } else {
@@ -624,26 +738,33 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         }
     };
 
-    const handleLockDiagnostic = async () => {
+    const handleApproveDiagnostic = async () => {
         if (!params?.tenantId || !data?.latestDiagnostic?.id) return;
-        if (!window.confirm('Lock Diagnostic? This prevents further regeneration.')) return;
+        if (!window.confirm('Approve Diagnostic? This will LOCK the artifacts and PUBLISH them to the tenant.')) return;
+
         setIsGenerating(true);
         setGateLockedMessage(null);
         try {
+            // Step 1: Lock
             await superadminApi.lockDiagnostic(params.tenantId, data.latestDiagnostic.id);
+
+            // Step 2: Publish immediately (Chained)
+            await superadminApi.publishDiagnostic(params.tenantId, data.latestDiagnostic.id);
+
             await refreshData();
         } catch (err: any) {
-            console.error('Lock Diagnostic Error:', err);
+            console.error('Approve Diagnostic Error:', err);
             if (err.errorCode === 'GATE_LOCKED' || err.status === 403) {
-                setGateLockedMessage(err.message || 'Diagnostic locking is currently unavailable.');
+                setGateLockedMessage(err.message || 'Diagnostic approval is currently unavailable.');
             } else {
-                setError(err.message);
+                setError(err.message || 'Failed to approve diagnostic.');
             }
         } finally {
             setIsGenerating(false);
         }
     };
 
+    // Keep strict publish for retry/recovery from 'locked' state
     const handlePublishDiagnostic = async () => {
         if (!params?.tenantId || !data?.latestDiagnostic?.id) return;
         if (!window.confirm('Publish Diagnostic? This makes artifacts visible to Discovery.')) return;
@@ -691,9 +812,30 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
             await refreshData();
         } catch (err: any) {
             console.error('Close intake error:', err);
-            setError(`Closure Error: ${err.message}`);
+            setError(`Failed to close intake: ${err.message}`);
         } finally {
             setIsGenerating(false);
+        }
+    };
+
+    // SA-MISSING-WINDOW-CONTROL-001: Add Re-Open capability
+    const handleOpenIntakeWindow = async () => {
+        if (!params?.tenantId) return;
+        if (!window.confirm('Confirm Re-Open Intake? This will allow stakeholders to submit/update their answers.')) return;
+
+        try {
+            // Re-use updateTenant to set intake window to OPEN
+            await superadminApi.updateTenant(params.tenantId, {
+                intakeWindowState: 'OPEN',
+                intakeClosedAt: null as any, // Force null to clear DB
+                intakeSnapshotId: null as any // Force null to clear DB
+            });
+
+            // Optimistic update (or wait for SWR revalidation)
+            await refreshData();
+        } catch (err: any) {
+            console.error('Re-open intake error:', err);
+            setError(`Failed to re-open intake: ${err.message}`);
         }
     };
 
@@ -1108,6 +1250,18 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                 <span>{tenant.ownerName}</span>
                                 <span className="w-1 h-1 bg-slate-700 rounded-full" />
                                 <span>Created {new Date(tenant.createdAt).toLocaleDateString()}</span>
+                                {owner && (
+                                    <>
+                                        <span className="w-1 h-1 bg-slate-700 rounded-full" />
+                                        <button
+                                            onClick={handleImpersonate}
+                                            disabled={impersonating}
+                                            className="text-xs text-purple-400 hover:text-purple-300 underline disabled:opacity-50"
+                                        >
+                                            {impersonating ? 'Starting session...' : 'Impersonate Owner'}
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
                         <div className="flex flex-col items-end gap-2">
@@ -1118,10 +1272,23 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                             {(() => {
                                 // EXEC-RESTORE-REVIEW-PANELS-AND-KILL-DIVERGENCE-022: Override with TruthProbe
                                 let phase = tenant.executionPhase;
-                                if (truthProbe) {
-                                    if (truthProbe.intake.windowState === 'CLOSED' && phase === 'INTAKE_OPEN') {
+
+                                if (truthProbe?.executiveBrief?.state) {
+                                    const s = truthProbe.executiveBrief.state;
+
+                                    if (s === 'APPROVED' || s === 'DELIVERED' || s === 'REVIEWED') {
+                                        phase = 'EXEC_BRIEF_APPROVED';
+                                    } else if (s === 'DRAFT') {
+                                        phase = 'EXEC_BRIEF_DRAFT';
+                                    } else if (intakeWindowState === 'CLOSED') {
                                         phase = 'INTAKE_CLOSED';
+                                    } else {
+                                        phase = 'INTAKE_OPEN';
                                     }
+                                } else if (intakeWindowState === 'CLOSED') {
+                                    phase = 'INTAKE_CLOSED';
+                                } else {
+                                    phase = 'INTAKE_OPEN';
                                 }
 
                                 if (!phase) return null;
@@ -1129,7 +1296,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                 return (
                                     <div className={`
                                         px-3 py-1 border rounded-full text-[10px] font-bold uppercase tracking-widest
-                                        ${phase === 'EXEC_BRIEF_APPROVED'
+                                        ${(phase === 'EXEC_BRIEF_APPROVED' || phase === 'INTAKE_CLOSED')
                                             ? 'bg-emerald-900/30 border-emerald-500/50 text-emerald-400'
                                             : phase === 'EXEC_BRIEF_DRAFT'
                                                 ? 'bg-amber-900/30 border-amber-500/50 text-amber-400'
@@ -1164,11 +1331,9 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                             <span className="text-slate-300">
                                 {(() => {
                                     if (truthProbe) {
-                                        return truthProbe.intake.windowState === 'CLOSED' ? 'CLOSED' : 'OPEN';
+                                        return intakeWindowState === 'CLOSED' ? 'CLOSED' : 'OPEN';
                                     }
-                                    return (tenant.intakeWindowState === 'CLOSED' || (intakeRoles.length > 0 && intakeRoles.every(r => r.intakeStatus === 'COMPLETED')))
-                                        ? 'CLOSED'
-                                        : `${intakes.filter(i => i.status === 'completed').length}/${intakes.length} COMPLETE`;
+                                    return intakeWindowState === 'CLOSED' ? 'CLOSED' : 'OPEN';
                                 })()}
                             </span>
                         </div>
@@ -1191,7 +1356,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                             setIntakeModalOpen(true);
                         }}
                         stakeholderDotColorHelper={getStakeholderDotColor}
-                        readOnly={tenant.intakeWindowState === 'CLOSED'}
+                        readOnly={intakeWindowState === 'CLOSED'}
                     />
                 </AuthorityGuard>
 
@@ -1217,7 +1382,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                         const checkDivergence = () => {
                                             if (!truthProbe || !data?.tenant) return false;
                                             // 1. Intake
-                                            if (truthProbe.intake.windowState && truthProbe.intake.windowState !== data.tenant.intakeWindowState) return true;
+                                            if (intakeWindowState && intakeWindowState !== data.tenant.intakeWindowState) return true;
 
                                             // 2. Brief
                                             const truthState = truthProbe.executiveBrief.state || '';
@@ -1320,14 +1485,25 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                         id: 1,
                                         label: 'Intake',
                                         status: getCanonicalStatus(1),
-                                        action: getCanonicalStatus(1) === 'READY' ? (
+                                        action: canLockIntake ? (
                                             <button
-                                                onClick={handleLockIntake}
-                                                className="mt-2 text-[10px] uppercase font-bold text-indigo-400 hover:text-indigo-300 border border-indigo-900/50 bg-indigo-950/30 px-3 py-1.5 rounded transition-colors"
+                                                onClick={() => { if (!canLockIntake) return; handleLockIntake(); }}
+                                                disabled={!canLockIntake}
+                                                className="mt-2 text-[10px] uppercase font-bold text-indigo-400 hover:text-indigo-300 border border-indigo-900/50 bg-indigo-950/30 px-3 py-1.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 Lock Intake
                                             </button>
-                                        ) : null
+                                        ) : (
+                                            // MISSING BUTTON RECOVERY: Allow re-opening if closed
+                                            intakeWindowState === 'CLOSED' ? (
+                                                <button
+                                                    onClick={handleOpenIntakeWindow}
+                                                    className="mt-2 text-[10px] uppercase font-bold text-amber-500 hover:text-amber-400 border border-amber-900/50 bg-amber-950/30 px-3 py-1.5 rounded transition-colors"
+                                                >
+                                                    Re-Open Intake
+                                                </button>
+                                            ) : null
+                                        )
                                     },
                                     {
                                         id: 2,
@@ -1417,11 +1593,11 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                                     return (
                                                         <div className="flex gap-2 mt-2">
                                                             <button
-                                                                onClick={handleLockDiagnostic}
+                                                                onClick={handleApproveDiagnostic}
                                                                 disabled={isGenerating}
-                                                                className="text-[10px] uppercase font-bold text-amber-400 hover:text-amber-300 border border-amber-900/50 bg-amber-950/30 px-3 py-1.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                className="text-[10px] uppercase font-bold text-emerald-400 hover:text-emerald-300 border border-emerald-900/50 bg-emerald-950/30 px-3 py-1.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                             >
-                                                                Lock
+                                                                Approve
                                                             </button>
                                                             <button
                                                                 onClick={handleGenerateDiagnostic}
@@ -1439,7 +1615,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                                             onClick={handlePublishDiagnostic}
                                                             className="mt-2 text-[10px] uppercase font-bold text-emerald-400 hover:text-emerald-300 border border-emerald-900/50 bg-emerald-950/30 px-3 py-1.5 rounded transition-colors"
                                                         >
-                                                            Publish
+                                                            Approve (Retry)
                                                         </button>
                                                     );
                                                 }
@@ -1470,7 +1646,11 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                             if (status === 'READY' || status === 'COMPLETE') {
                                                 return (
                                                     <button
-                                                        onClick={openDiscoveryModal}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            console.log('[Discovery] Ingest button clicked');
+                                                            openDiscoveryModal();
+                                                        }}
                                                         className="mt-2 text-[10px] uppercase font-bold text-indigo-400 hover:text-indigo-300 border border-indigo-900/50 bg-indigo-950/30 px-3 py-1.5 rounded transition-colors"
                                                     >
                                                         {status === 'COMPLETE' ? 'Edit Raw Notes' : 'Ingest Notes (Raw)'}
@@ -1589,6 +1769,8 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                 <BaselineSummaryPanel
                                     tenantId={tenant.id}
                                     hasRoadmap={!!latestRoadmap}
+                                    isSuperAdmin={user?.role === 'superadmin'}
+                                    isImpersonating={impersonating}
                                 />
                             </div>
                         ) : (
@@ -1609,7 +1791,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                         )}
 
                         {/* 1. Strategic Context & Capacity ROI - Collapsed by default */}
-                        {tenant.intakeWindowState === 'CLOSED' && (
+                        {intakeWindowState === 'CLOSED' && (
                             showROIPanel ? (
                                 <div className="animate-in fade-in slide-in-from-top-2 duration-200">
                                     <div className="flex justify-end mb-1">
@@ -1683,7 +1865,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                     <DiagnosticCompleteCard
 
                                         status={truthProbe?.diagnostic?.state || data?.latestDiagnostic?.status || 'GENERATED'}
- 
+
                                         onReview={openDiagnosticModal}
                                     />
                                 );
@@ -1691,7 +1873,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                             return null;
                         })()}
                         {/* 3. Ticket Moderation (Waterfall Step 4) */}
-                        {tenant.intakeWindowState === 'CLOSED' && (
+                        {intakeWindowState === 'CLOSED' && (
                             <AuthorityGuard requiredCategory={AuthorityCategory.EXECUTIVE}>
                                 <div>
                                     <div className="text-[10px] text-slate-500 uppercase font-extrabold mb-2">Ticket Moderation {tenant.lastDiagnosticId ? '(Active)' : '(Pending)'}</div>
@@ -1742,11 +1924,11 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
 
 
                         {/* 4. Roadmap Readiness (when available) */}
-                        {tenant.intakeWindowState === 'CLOSED' && moderationStatus?.readyForRoadmap && (
+                        {intakeWindowState === 'CLOSED' && moderationStatus?.readyForRoadmap && (
                             <AuthorityGuard requiredCategory={AuthorityCategory.EXECUTIVE}>
                                 <RoadmapReadinessPanel
                                     tenantId={tenant.id}
-                                    intakeWindowState={tenant.intakeWindowState}
+                                    intakeWindowState={intakeWindowState}
                                     briefStatus={tenant.executiveBriefStatus || null}
                                     moderationStatus={moderationStatus ? {
                                         readyForRoadmap: moderationStatus.readyForRoadmap,
@@ -1804,7 +1986,13 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                     onClose={() => setDiscoveryOpen(false)}
                     onSave={handleIngestDiscovery}
                     isSaving={discoverySaving}
-                    referenceQuestions={diagData?.outputs?.discoveryQuestions}
+                    referenceQuestions={
+                        typeof diagData?.outputs?.discoveryQuestions === 'string'
+                            ? diagData.outputs.discoveryQuestions
+                            : (Array.isArray(diagData?.outputs?.discoveryQuestions?.list)
+                                ? diagData.outputs.discoveryQuestions.list.join('\n\n')
+                                : JSON.stringify(diagData?.outputs?.discoveryQuestions || '', null, 2))
+                    }
                 />
 
                 <AssistedSynthesisModal
@@ -1816,6 +2004,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                         diagnostic: diagData,
                         executiveBrief: execBriefData
                     }}
+                    teamMemberIntakes={data?.intakes || []}
                     onRefresh={refreshData}
                 />
 
@@ -1824,7 +2013,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                 {intakeModalOpen && selectedIntake && (
                     <IntakeModal
                         intake={selectedIntake}
-                        intakeWindowState={tenant?.intakeWindowState || 'CLOSED'}
+                        intakeWindowState={intakeWindowState}
                         onClose={() => {
                             setIntakeModalOpen(false);
                             setSelectedIntake(null);
@@ -1886,7 +2075,7 @@ function StrategicStakeholdersPanel({
                 <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">Strategic Stakeholders</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                     {roles.map(role => {
-                        const intakeComplete = role.intakeStatus === 'COMPLETED';
+                        const hasIntakeAccess = role.intakeStatus === 'COMPLETED' || role.intakeStatus === 'IN_PROGRESS';
 
                         return (
                             <div
@@ -1908,7 +2097,7 @@ function StrategicStakeholdersPanel({
 
 
                                 {/* Hover Overlay with View Intake Button */}
-                                {intakeComplete && (
+                                {hasIntakeAccess && (
                                     <div className="absolute inset-0 bg-slate-900/95 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center z-10 pointer-events-none group-hover:pointer-events-auto">
                                         <button
                                             onClick={(e: React.MouseEvent) => {

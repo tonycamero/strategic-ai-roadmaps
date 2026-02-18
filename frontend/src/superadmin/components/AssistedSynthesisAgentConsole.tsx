@@ -1,6 +1,8 @@
 // frontend/src/superadmin/components/AssistedSynthesisAgentConsole.tsx
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { superadminApi } from '../api';
+import ReactMarkdown from 'react-markdown';
 
 interface AgentMessage {
     id: string;
@@ -14,6 +16,126 @@ interface AssistedSynthesisAgentConsoleProps {
     currentFactsPending: number;
     contextVersion: string;
     onReset?: () => void;
+    onAddProposal?: (proposal: ProposalBlock) => void;
+}
+
+interface ProposalBlock {
+    type: 'CurrentFact' | 'FrictionPoint' | 'Goal' | 'Constraint';
+    text: string;
+    anchors: Array<{
+        source: string;
+        speaker?: string;
+        quote: string;
+    }>;
+    confidence: 'LOW' | 'MED' | 'HIGH';
+    mechanical_effect?: string;
+    operational_effect?: string;
+    economic_vector?: string;
+    archetype_selected?: string;
+    runners_up_archetypes?: string[];
+    deciding_signal?: string;
+}
+
+function ProposalCard({ proposal, onAdd }: { proposal: ProposalBlock; onAdd?: (p: ProposalBlock) => void }) {
+    const [added, setAdded] = useState(false);
+
+    const handleAdd = () => {
+        if (onAdd) {
+            onAdd(proposal);
+            setAdded(true);
+        }
+    };
+
+    return (
+        <div className="mt-3 mb-1 bg-slate-900 border border-indigo-500/30 rounded-lg overflow-hidden">
+            <div className="px-3 py-2 bg-indigo-900/20 border-b border-indigo-500/20 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-indigo-300">
+                        Suggest: {proposal.type}
+                    </span>
+                    {(proposal.archetype_selected || (proposal as any).archetype) && (
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-indigo-900/40 text-indigo-200 border border-indigo-500/30">
+                            {proposal.archetype_selected || (proposal as any).archetype}
+                        </span>
+                    )}
+                    {(!proposal.archetype_selected && !(proposal as any).archetype) && (
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-slate-800 text-slate-500 border border-slate-700">
+                            LEGACY
+                        </span>
+                    )}
+                    <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                        {proposal.confidence} Confidence
+                    </span>
+                </div>
+                {added && <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">✓ ADDED</span>}
+            </div>
+            <div className="p-3 space-y-3">
+                <p className="text-xs text-white font-medium leading-relaxed">"{proposal.text}"</p>
+
+                {proposal.deciding_signal && (
+                    <div className="p-2 bg-indigo-950/20 border border-indigo-500/10 rounded">
+                        <p className="text-[9px] uppercase font-bold text-indigo-400/60 tracking-wider mb-1">Deciding Signal:</p>
+                        <p className="text-[10px] text-indigo-200/80 italic leading-tight">
+                            {proposal.deciding_signal}
+                        </p>
+                    </div>
+                )}
+
+                <div className="space-y-1">
+                    <p className="text-[9px] uppercase font-bold text-slate-500 tracking-wider">Evidence:</p>
+                    {proposal.anchors.map((anchor, idx) => (
+                        <div key={idx} className="pl-2 border-l-2 border-slate-700">
+                            <p className="text-[10px] text-slate-400 italic">"{anchor.quote}"</p>
+                            <p className="text-[9px] text-slate-600">— {anchor.source} {anchor.speaker ? `(${anchor.speaker})` : ''}</p>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Cascade Block */}
+                {(proposal.mechanical_effect || proposal.operational_effect || proposal.economic_vector || proposal.runners_up_archetypes) && (
+                    <div className="space-y-2 p-2 bg-slate-950/50 rounded border border-slate-800">
+                        <div className="flex justify-between items-center mb-1">
+                            <p className="text-[9px] uppercase font-bold text-indigo-400 tracking-wider">Economic Cascade</p>
+                            {proposal.runners_up_archetypes && proposal.runners_up_archetypes.length > 0 && (
+                                <div className="text-[8px] text-slate-500 uppercase font-black">
+                                    Rotated: {proposal.runners_up_archetypes.join(' | ')}
+                                </div>
+                            )}
+                        </div>
+                        <div className="grid grid-cols-1 gap-1.5">
+                            {proposal.mechanical_effect && (
+                                <div className="text-[10px]">
+                                    <span className="text-slate-500 font-bold uppercase mr-1">Mechanical:</span>
+                                    <span className="text-slate-300 font-mono">{proposal.mechanical_effect}</span>
+                                </div>
+                            )}
+                            {proposal.operational_effect && (
+                                <div className="text-[10px]">
+                                    <span className="text-slate-500 font-bold uppercase mr-1">Operational:</span>
+                                    <span className="text-slate-300 font-mono">{proposal.operational_effect}</span>
+                                </div>
+                            )}
+                            {proposal.economic_vector && (
+                                <div className="text-[10px]">
+                                    <span className="text-slate-500 font-bold uppercase mr-1">Economic:</span>
+                                    <span className="text-slate-300 font-mono italic text-indigo-300/80">{proposal.economic_vector}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {!added && (
+                    <button
+                        onClick={handleAdd}
+                        className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold uppercase tracking-wider rounded transition-colors flex items-center justify-center gap-2"
+                    >
+                        <span>+</span> Add to Drafts
+                    </button>
+                )}
+            </div>
+        </div>
+    );
 }
 
 /**
@@ -27,7 +149,8 @@ export default function AssistedSynthesisAgentConsole({
     tenantId,
     currentFactsPending,
     contextVersion,
-    onReset
+    onReset,
+    onAddProposal
 }: AssistedSynthesisAgentConsoleProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [messages, setMessages] = useState<AgentMessage[]>([]);
@@ -41,18 +164,18 @@ export default function AssistedSynthesisAgentConsole({
 
     // Load session on mount
     useEffect(() => {
-        if (isExpanded && currentFactsPending > 0) {
+        if (isExpanded) {
             loadSession();
         }
     }, [isExpanded, tenantId, contextVersion]);
 
-    // Auto-reset when Current Facts resolved
-    useEffect(() => {
-        if (prevPendingRef.current > 0 && currentFactsPending === 0 && sessionId) {
-            handleAutoReset();
-        }
-        prevPendingRef.current = currentFactsPending;
-    }, [currentFactsPending]);
+    // Disabled Auto-reset to allow conversation to persist after facts resolved
+    // useEffect(() => {
+    //     if (prevPendingRef.current > 0 && currentFactsPending === 0 && sessionId) {
+    //         handleAutoReset();
+    //     }
+    //     prevPendingRef.current = currentFactsPending;
+    // }, [currentFactsPending]);
 
     // Auto-scroll to bottom on new messages
     useEffect(() => {
@@ -62,79 +185,65 @@ export default function AssistedSynthesisAgentConsole({
     const loadSession = async () => {
         try {
             setError(null);
-            // STRIKE 1: API method does not exist on SuperAdmin API surface
-            // const session = await superadminApi.getAgentSession({ tenantId, kind: contextVersion });
-            // setSessionId(session.sessionId);
-            // setMessages(session.messages);
-            setMessages([{
-                id: 'system-disabled',
-                role: 'assistant',
-                content: 'Agent features are currently disabled in the SuperAdmin Console.',
-                createdAt: new Date()
-            }]);
+            // ENABLED: Feature active
+            const session = await superadminApi.getAgentSession(tenantId, contextVersion);
+            setSessionId(session.sessionId);
+            setMessages(session.messages || []);
         } catch (err) {
-            console.error('[AgentConsole] Failed to load session:', err);
-            setError({
-                code: 'LOAD_FAILED',
-                message: err instanceof Error ? err.message : 'Failed to load agent session.'
-            });
+            console.error('Failed to load agent session:', err);
+            // Silent fail or retry? Usually silent for load
         }
     };
 
     const handleSendMessage = async () => {
-        if (!inputValue.trim() || isLoading) return;
+        if (!inputValue.trim() || !sessionId) return;
 
-        const userMessage = inputValue.trim();
+        const userMsg = inputValue.trim();
         setInputValue('');
         setIsLoading(true);
         setError(null);
 
-        // Optimistic update
+        // Optimistic UI update
+        const tempId = Date.now().toString();
         const optimisticMessage: AgentMessage = {
-            id: `temp-${Date.now()}`,
+            id: tempId,
             role: 'user',
-            content: userMessage,
+            content: userMsg,
             createdAt: new Date()
         };
-        setMessages(prev => [...prev, optimisticMessage]);
+
+        setMessages((prev: AgentMessage[]) => [...prev, optimisticMessage]);
 
         try {
-            // STRIKE 1: API method does not exist on SuperAdmin API surface
-            // const result = await superadminApi.sendAgentMessage({ tenantId, message: userMessage, kind: contextVersion });
+            const result = await superadminApi.sendAgentMessage(tenantId, sessionId, userMsg);
 
-            throw new Error("Feature currently disabled in SuperAdmin Console (API Surface Compliance)");
+            const replyMessage: AgentMessage = {
+                id: result.messageId,
+                role: 'assistant',
+                content: result.reply,
+                createdAt: new Date()
+            };
 
-            /*
-            // Replace optimistic + add assistant
-            setMessages(prev => [
-                ...prev.filter(m => m.id !== optimisticMessage.id),
-                { ...optimisticMessage, id: `user-${Date.now()}` },
-                {
-                    id: result.messageId,
-                    role: 'assistant',
-                    content: result.reply,
-                    createdAt: new Date()
-                }
-            ]);
-            */
-        } catch (err) {
-            // Remove optimistic message on error
-            setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
-
+            setMessages((prev: AgentMessage[]) => [...prev, replyMessage]);
+        } catch (err: any) {
+            console.error('Failed to send message:', err);
+            // Revert optimistic update (optional, or just show error)
             setError({
-                code: 'SEND_FAILED',
-                message: err instanceof Error ? err.message : 'Failed to send message.'
+                code: err.response?.data?.code || 'SEND_FAILED',
+                message: err.message || 'Failed to send message',
+                requestId: err.response?.data?.requestId
             });
+            // Ideally revert the user message or mark as failed
         } finally {
             setIsLoading(false);
         }
     };
 
     const handleAutoReset = async () => {
+        if (!sessionId) return;
+
         try {
-            // STRIKE 1: API method does not exist on SuperAdmin API surface
-            // await superadminApi.resetAgentSession({ tenantId, kind: contextVersion });
-            console.warn("resetAgentSession disabled (Strike 1)");
+            await superadminApi.resetAgentSession(tenantId, sessionId);
 
             setMessages([]);
             setSessionId(null);
@@ -157,9 +266,10 @@ export default function AssistedSynthesisAgentConsole({
         );
     }
 
-    if (currentFactsPending === 0) {
-        return null; //  Don't show console after CF resolved
-    }
+    // Simplified: Always allow access to the agent console during synthesis
+    // if (currentFactsPending === 0) {
+    //     return null; //  Don't show console after CF resolved
+    // }
 
     if (!isExpanded) {
         return (
@@ -217,21 +327,48 @@ export default function AssistedSynthesisAgentConsole({
                     </div>
                 )}
 
-                {messages.map((msg, idx) => (
-                    <div
-                        key={msg.id || idx}
-                        className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
+                {messages.map((msg: AgentMessage, idx: number) => {
+                    // PARSE MESSAGE CONTENT for <SAR_PROPOSAL> blocks
+                    const parts = msg.content.split(/(<SAR_PROPOSAL>[\s\S]*?<\/SAR_PROPOSAL>)/g);
+
+                    return (
                         <div
-                            className={`max-w-[80%] px-3 py-2 rounded-lg text-xs ${msg.role === 'user'
-                                ? 'bg-indigo-900/30 text-indigo-200 border border-indigo-500/30'
-                                : 'bg-slate-900 text-slate-300 border border-slate-700'
-                                }`}
+                            key={msg.id || idx}
+                            className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} gap-1`}
                         >
-                            {msg.content}
+                            <div
+                                className={`max-w-[85%] px-3 py-2 rounded-lg text-xs ${msg.role === 'user'
+                                    ? 'bg-indigo-900/30 text-indigo-200 border border-indigo-500/30'
+                                    : 'bg-slate-900/80 text-slate-300 border border-slate-700'
+                                    }`}
+                            >
+                                {parts.map((part: string, pIdx: number) => {
+                                    if (part.startsWith('<SAR_PROPOSAL>')) {
+                                        try {
+                                            const jsonStr = part.replace(/<\/?SAR_PROPOSAL>/g, '').trim();
+                                            const proposal = JSON.parse(jsonStr) as ProposalBlock;
+                                            return <ProposalCard key={pIdx} proposal={proposal} onAdd={onAddProposal} />;
+                                        } catch (e) {
+                                            return <div key={pIdx} className="text-red-400 text-[10px] p-2 border border-red-500/30 rounded">Error parsing proposal block</div>;
+                                        }
+                                    } else if (part.trim()) {
+                                        return (
+                                            <div key={pIdx} className="prose prose-invert prose-xs max-w-none leading-relaxed">
+                                                <ReactMarkdown>
+                                                    {part}
+                                                </ReactMarkdown>
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                })}
+                            </div>
+                            <span className="text-[9px] text-slate-600 px-1">
+                                {msg.role === 'assistant' ? 'Agent' : 'You'}
+                            </span>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
                 <div ref={messagesEndRef} />
             </div>
 

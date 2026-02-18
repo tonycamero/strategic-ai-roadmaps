@@ -3,16 +3,21 @@ import { useLocation } from 'wouter';
 import { useAuth } from '../context/AuthContext';
 import { api, ApiError } from '../lib/api';
 
-function getRoleBasedRoute(role: string): string {
-  if (role === 'ops' || role === 'sales' || role === 'delivery') {
-return `/intake/${role}`;
+function getRoleBasedRoute(role?: string): string {
+  const r = (role ?? '').trim().toLowerCase();
+
+  if (r === 'ops' || r === 'sales' || r === 'delivery') {
+    return `/intake/${r}`;
   }
-  if (role === 'exec_sponsor') {
+
+  if (r === 'exec_sponsor') {
     return '/intake/exec_sponsor';
   }
-  if (role === 'superadmin') {
+
+  if (r === 'superadmin') {
     return '/superadmin/firms';
   }
+
   return '/dashboard';
 }
 

@@ -63,6 +63,15 @@ export default function SuperAdminFirmDetailPage() {
   const [discoveryModalOpen, setDiscoveryModalOpen] = useState(false);
   const [discoveryDraft, setDiscoveryDraft] = useState('');
   const [savingDiscovery, setSavingDiscovery] = useState(false);
+  const [impersonating, setImpersonating] = useState(false);
+
+  // SA-INTAKE-AUTHORITY-FINAL-SWEEP-002: Canonical Authority
+  const [truthProbe, setTruthProbe] = useState<any | null>(null); // Weak typing to avoid importing heavy component types if not needed
+
+  useEffect(() => {
+    if (!params?.tenantId) return;
+    superadminApi.getTruthProbe(params.tenantId).then(setTruthProbe).catch(console.error);
+  }, [params?.tenantId]);
 
   useEffect(() => {
     if (!params?.tenantId) return;
@@ -71,34 +80,34 @@ export default function SuperAdminFirmDetailPage() {
       .then((response) => {
         const firmDetail = response as unknown as FirmDetailResponse;
         // Map FirmDetailResponse to SuperAdminTenantDetail format
-       setData({
-  tenant: {
-    id: firmDetail.tenantSummary.id,
-    name: firmDetail.tenantSummary.name,
-    cohortLabel: firmDetail.tenantSummary.cohortLabel,
-    segment: firmDetail.tenantSummary.segment,
-    region: firmDetail.tenantSummary.region,
-    status: firmDetail.tenantSummary.status,
-    notes: firmDetail.tenantSummary.notes,
-    createdAt: firmDetail.tenantSummary.createdAt,
-    ownerEmail: firmDetail.owner?.email || '',
-    ownerName: firmDetail.owner?.name || '',
-    lastDiagnosticId: firmDetail.tenantSummary.lastDiagnosticId,
+        setData({
+          tenant: {
+            id: firmDetail.tenantSummary.id,
+            name: firmDetail.tenantSummary.name,
+            cohortLabel: firmDetail.tenantSummary.cohortLabel,
+            segment: firmDetail.tenantSummary.segment,
+            region: firmDetail.tenantSummary.region,
+            status: firmDetail.tenantSummary.status,
+            notes: firmDetail.tenantSummary.notes,
+            createdAt: firmDetail.tenantSummary.createdAt,
+            ownerEmail: firmDetail.owner?.email || '',
+            ownerName: firmDetail.owner?.name || '',
+            lastDiagnosticId: firmDetail.tenantSummary.lastDiagnosticId,
 
-    // required by SuperAdminTenantDetail
-    intakeWindowState: (firmDetail.tenantSummary as any).intakeWindowState ?? 'OPEN',
-    discoveryComplete: (firmDetail.tenantSummary as any).discoveryComplete ?? false,
-  diagnosticStatus: (firmDetail as any).diagnosticStatus ?? null,
-executiveBriefStatus: (firmDetail as any).executiveBriefStatus ?? null,
+            // required by SuperAdminTenantDetail
+            intakeWindowState: (firmDetail.tenantSummary as any).intakeWindowState ?? 'OPEN',
+            discoveryComplete: (firmDetail.tenantSummary as any).discoveryComplete ?? false,
+            diagnosticStatus: (firmDetail as any).diagnosticStatus ?? null,
+            executiveBriefStatus: (firmDetail as any).executiveBriefStatus ?? null,
 
-  },
+          },
 
-  owner: firmDetail.owner,
-  teamMembers: firmDetail.teamMembers,
-  intakes: firmDetail.intakes,
-  roadmaps: firmDetail.roadmaps,
-  recentActivity: firmDetail.recentActivity,
-} as any);
+          owner: firmDetail.owner,
+          teamMembers: firmDetail.teamMembers,
+          intakes: firmDetail.intakes,
+          roadmaps: firmDetail.roadmaps,
+          recentActivity: firmDetail.recentActivity,
+        } as any);
 
       })
       .catch((err) => setError(err.message));
@@ -193,6 +202,32 @@ executiveBriefStatus: (firmDetail as any).executiveBriefStatus ?? null,
     }
   }
 
+  async function handleImpersonate() {
+    if (!params?.tenantId || !data?.owner) return;
+    if (!confirm(`Are you sure you want to impersonate ${data.owner.name}?`)) return;
+
+    // Open window immediately to avoid popup blockers
+    const newWindow = window.open('', '_blank');
+    if (newWindow) {
+      newWindow.document.title = 'Impersonating...';
+      newWindow.document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;">Initializing secure session...</div>';
+    }
+
+    setImpersonating(true);
+    try {
+      const { token, user } = await superadminApi.impersonateTenantOwner(params.tenantId);
+      const url = `/impersonate?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`;
+      if (newWindow) {
+        newWindow.location.href = url;
+      }
+    } catch (err: any) {
+      setError(err.message);
+      if (newWindow) newWindow.close();
+    } finally {
+      setImpersonating(false);
+    }
+  }
+
   if (error) return <div className="text-red-400">Error: {error}</div>;
   if (!params?.tenantId) return <div>Missing tenant ID.</div>;
   if (!data) return <div className="text-slate-400">Loading firm…</div>;
@@ -212,6 +247,27 @@ executiveBriefStatus: (firmDetail as any).executiveBriefStatus ?? null,
     }
   }
 
+  // SA-INTAKE-AUTHORITY-FINAL-SWEEP-002: Replicate Control Plane Logic
+  const computeCanonicalIntakeWindowState = () => {
+    // 1. TruthProbe Authoritative (if present)
+    if (truthProbe?.intake?.windowState === 'OPEN' || truthProbe?.intake?.windowState === 'CLOSED') {
+      return truthProbe.intake.windowState;
+    }
+
+    // 2. TruthProbe Derived (Closed At)
+    if (truthProbe?.intake?.closedAt) {
+      return 'CLOSED';
+    }
+
+    // 3. Immutable Artifacts (on tenant if available, or fallbacks)
+    // Note: Legacy firmDetail might not have all immutable fields, so we rely heavily on TruthProbe here.
+
+    // 4. Tenant Column Fallback (Mutable)
+    return tenant.intakeWindowState;
+  };
+
+  const canonicalIntakeWindowState = computeCanonicalIntakeWindowState();
+
   return (
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-4">
@@ -222,9 +278,26 @@ executiveBriefStatus: (firmDetail as any).executiveBriefStatus ?? null,
           <p className="text-sm text-slate-400">
             {tenant.ownerName} &lt;{tenant.ownerEmail}&gt;
           </p>
-          <p className="mt-1 text-xs text-slate-500">
-            Created {new Date(tenant.createdAt).toLocaleString()}
-          </p>
+          <div className="flex gap-2 items-center mt-1">
+            <p className="text-xs text-slate-500">
+              Created {new Date(tenant.createdAt).toLocaleString()}
+            </p>
+            {owner && (
+              <button
+                onClick={handleImpersonate}
+                disabled={impersonating}
+                className="text-xs text-purple-400 hover:text-purple-300 underline disabled:opacity-50 ml-2"
+              >
+                {impersonating ? 'Starting session...' : 'Impersonate Owner'}
+              </button>
+            )}
+            {/* SA-INTAKE-AUTHORITY-FINAL-SWEEP-002: Explicit Intake Status Display */}
+            {canonicalIntakeWindowState === 'CLOSED' && (
+              <span className="px-1.5 py-0.5 rounded bg-emerald-900/40 text-emerald-400 text-[10px] border border-emerald-800 font-medium">
+                INTAKE CLOSED
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="text-xs text-slate-400">
@@ -611,7 +684,8 @@ executiveBriefStatus: (firmDetail as any).executiveBriefStatus ?? null,
       {selectedIntake && (
         <IntakeModal
           intake={selectedIntake}
-          intakeWindowState={tenant.intakeWindowState || 'OPEN'}
+          // SA-INTAKE-AUTHORITY-FINAL-SWEEP-002: Use Canonical State
+          intakeWindowState={canonicalIntakeWindowState || 'OPEN'}
           onClose={() => setSelectedIntake(null)}
         />
       )}

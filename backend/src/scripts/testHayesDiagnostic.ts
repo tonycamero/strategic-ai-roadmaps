@@ -9,8 +9,8 @@ dotenv.config();
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { ingestDiagnostic } from '../services/diagnosticIngestion.service.ts';
-import type { DiagnosticMap } from '../types/diagnostic.ts';
+import { ingestDiagnostic } from '../services/diagnosticIngestion.service';
+import type { DiagnosticMap } from '../types/diagnostic';
 
 async function main() {
   console.log('\n🧪 TESTING HAYES DIAGNOSTIC → SOP TICKET ENGINE');

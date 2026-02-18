@@ -19,15 +19,15 @@
  * instruction set without any "ignored" layers.
  */
 
-import { HOMEPAGE_TRUSTAGENT_CONSTITUTION } from './homepagePromptCore.ts';
-import { HOMEPAGE_PROMPT_SYSTEM } from './homepagePromptSystem.ts';
-import { HOMEPAGE_PROMPT_TONE } from './homepagePromptTone.ts';
-import { HOMEPAGE_PROMPT_CTA } from './homepagePromptCTA.ts';
-import { HOMEPAGE_PROMPT_MEMORY } from './homepagePromptMemory.ts';
-import { HOMEPAGE_TRUSTAGENT_FAILSAFE } from './homepagePromptFailsafe.ts';
-import { HOMEPAGE_TRUSTAGENT_HANDOFF } from './homepagePromptHandoff.ts';
-import { HOMEPAGE_TRUSTAGENT_LOOP } from './homepagePromptLoop.ts';
-import { HOMEPAGE_TRUSTAGENT_ADAPTIVE_DEPTH } from './homepagePromptAdaptiveDepth.ts';
+import { HOMEPAGE_TRUSTAGENT_CONSTITUTION } from './homepagePromptCore';
+import { HOMEPAGE_PROMPT_SYSTEM } from './homepagePromptSystem';
+import { HOMEPAGE_PROMPT_TONE } from './homepagePromptTone';
+import { HOMEPAGE_PROMPT_CTA } from './homepagePromptCTA';
+import { HOMEPAGE_PROMPT_MEMORY } from './homepagePromptMemory';
+import { HOMEPAGE_TRUSTAGENT_FAILSAFE } from './homepagePromptFailsafe';
+import { HOMEPAGE_TRUSTAGENT_HANDOFF } from './homepagePromptHandoff';
+import { HOMEPAGE_TRUSTAGENT_LOOP } from './homepagePromptLoop';
+import { HOMEPAGE_TRUSTAGENT_ADAPTIVE_DEPTH } from './homepagePromptAdaptiveDepth';
 
 const SECTION_BREAK = '\n\n---\n\n';
 

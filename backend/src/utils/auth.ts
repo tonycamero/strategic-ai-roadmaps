@@ -12,6 +12,10 @@ export interface TokenPayload {
   role: UserRole;
   isInternal: boolean;
   tenantId: string | null; // Multi-tenant: tenant key
+  // Hardened Impersonation Claims
+  act?: { sub: string; email: string }; // Actor (SuperAdmin)
+  typ?: 'auth' | 'impersonation';
+  jti?: string; // Session ID binding
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -22,8 +26,33 @@ export async function comparePassword(password: string, hash: string): Promise<b
   return bcrypt.compare(password, hash);
 }
 
-export function generateToken(payload: TokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+export function generateToken(payload: TokenPayload, expiresIn: string = '7d'): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn });
+}
+
+export function generateImpersonationToken(
+  targetUser: { id: string; email: string; role: UserRole; isInternal: boolean; tenantId: string | null },
+  actorUser: { id: string; email: string },
+  sessionId: string
+): string {
+  const payload: TokenPayload = {
+    userId: targetUser.id,
+    id: targetUser.id,
+    email: targetUser.email,
+    role: targetUser.role,
+    isInternal: targetUser.isInternal,
+    tenantId: targetUser.tenantId,
+    // Impersonation Claims
+    act: {
+      sub: actorUser.id,
+      email: actorUser.email
+    },
+    typ: 'impersonation',
+    jti: sessionId
+  };
+
+  // Hardened: 15 minute expiry
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '15m' });
 }
 
 export function verifyToken(token: string): TokenPayload {

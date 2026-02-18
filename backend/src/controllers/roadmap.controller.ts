@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { db } from '../db/index.ts';
+import { db } from '../db/index';
 import {
     tenants,
     roadmaps,
@@ -8,11 +8,11 @@ import {
     ticketPacks,
     auditEvents,
     tenantDocuments
-} from '../db/schema.ts';
+} from '../db/schema';
 import { eq, and, asc, desc, sql } from 'drizzle-orm';
-import { AuthRequest } from '../middleware/auth.ts';
-import { getOrCreateRoadmapForTenant } from '../services/roadmapOs.service.ts';
-import { generateTicketPackForRoadmap } from '../services/ticketPackGenerator.service.ts';
+import { AuthRequest } from '../middleware/auth';
+import { getOrCreateRoadmapForTenant } from '../services/roadmapOs.service';
+import { generateTicketPackForRoadmap } from '../services/ticketPackGenerator.service';
 
 /**
  * GET /api/roadmap/sections
