@@ -27,7 +27,7 @@ export async function comparePassword(password: string, hash: string): Promise<b
 }
 
 export function generateToken(payload: TokenPayload, expiresIn: string = '7d'): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn });
+  return jwt.sign(payload as any, JWT_SECRET, { expiresIn: expiresIn as any });
 }
 
 export function generateImpersonationToken(
@@ -52,7 +52,7 @@ export function generateImpersonationToken(
   };
 
   // Hardened: 15 minute expiry
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '15m' });
+  return jwt.sign(payload as any, JWT_SECRET, { expiresIn: '15m' as any });
 }
 
 export function verifyToken(token: string): TokenPayload {

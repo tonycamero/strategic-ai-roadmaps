@@ -22,7 +22,7 @@ import { getOrCreateRoadmapForTenant } from '../services/roadmapOs.service';
 import { refreshVectorStoreContent } from '../services/tenantVectorStore.service';
 import { getModerationStatus } from '../services/ticketModeration.service';
 import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
-import { AuthorityCategory, CanonicalDiscoveryNotes } from '@roadmap/shared';
+import { AuthorityCategory, CanonicalDiscoveryNotes, UserRole } from '@roadmap/shared';
 import { generateRawTickets, ParsedTicket, InventoryEmptyError } from '../services/diagnosticIngestion.service';
 import { Sop01Outputs } from '../services/sop01Engine';
 import { sendClarificationRequestEmail } from '../services/email.service';
