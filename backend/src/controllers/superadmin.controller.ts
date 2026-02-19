@@ -7,7 +7,7 @@ import {
   tenantMetricsDaily, webinarRegistrations, implementationSnapshots,
   roadmapOutcomes, agentConfigs, agentThreads, webinarSettings,
   diagnostics, executiveBriefs, sopTickets, ticketModerationSessions,
-  ticketsDraft, intakeClarifications
+  ticketsDraft, intakeClarifications, impersonationSessions
 } from '../db/schema';
 import { eq, and, sql, count, desc, asc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
@@ -2427,38 +2427,24 @@ export async function createBaselineForFirm(req: AuthRequest, res: Response) {
 
     const current = existing[0];
 
-// IF status is already COMPLETE, do NOT mutate baseline here.
-// Instead: create a baseline snapshot (T3.2) and return 200.
-if (current && (current as any).status === 'COMPLETE') {
-  const roadmap = await getOrCreateRoadmapForTenant(tenantId);
+    // ========================================================================
+    // IMMUTABILITY CHECK (Task 2.3)
+    // ========================================================================
+    if (current && (current as any).status !== 'DRAFT') {
+      // If legacy behavior (COMPLETE triggers snapshot) is desired, it acts as a side-effect,
+      // NOT a mutation of the baseline itself.
+      // However, the mandate says: "If baseline.status != 'DRAFT', reject POST update with 409"
+      // UNLESS valid for legacy snapshot trigger.
+      // We will Fail-Closed here for any data mutation attempt.
 
-  // Build RawMetrics from the locked baseline row
-  const rawMetrics: any = {
-    monthlyLeadVolume: (current as any).monthlyLeadVolume ?? null,
-    avgResponseTimeMinutes: (current as any).avgResponseTimeMinutes ?? null,
-    closeRatePercent: (current as any).closeRatePercent ?? null,
-    avgJobValue: (current as any).avgJobValue ?? null,
-    currentTools: (current as any).currentTools ?? [],
-    salesRepsCount: (current as any).salesRepsCount ?? null,
-    opsAdminCount: (current as any).opsAdminCount ?? null,
-    primaryBottleneck: (current as any).primaryBottleneck ?? null,
-  };
-
-  const { snapshotId, metrics } = await ImplementationMetricsService.createBaselineSnapshot(
-    tenantId,
-    roadmap.id,
-    rawMetrics,
-    'api'
-  );
-
-  return res.status(200).json({
-    ok: true,
-    baselineLocked: true,
-    baseline: current,
-    snapshot: { id: snapshotId, metrics },
-  });
-}
-
+      // Legacy "Create Snapshot" side-effect trap:
+      // If the body implies a "lock" action or just a periodic save, we must be careful.
+      // Current instruction: "If baseline.status != 'DRAFT', reject POST update with 409"
+      return res.status(409).json({
+        error: 'BASELINE_IMMUTABLE',
+        message: 'Baseline is locked (status != DRAFT) and cannot be modified.'
+      });
+    }
 
     // Tools Transformation: Must be array
     let tools: string[] = [];
@@ -2469,16 +2455,61 @@ if (current && (current as any).status === 'COMPLETE') {
       tools = body.currentTools.split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0);
     }
 
+    // ========================================================================
+    // VALIDATION (Task 2.2 - Fail Closed)
+    // ========================================================================
+    const validateInt = (val: any, min = 0, max = Infinity, fieldName: string) => {
+      // Confirm null/blank inputs are allowed: return null for undefined/null/""
+      if (val === null || val === undefined || val === '') return null;
+      const num = Number(val);
+      if (!Number.isInteger(num)) {
+        throw new Error(`Invalid format: ${fieldName} must be an integer`);
+      }
+      if (num < min || num > max) {
+        throw new Error(`Invalid range: ${fieldName} must be between ${min} and ${max}`);
+      }
+      return num;
+    };
+
+    // New Economics
+    const weeklyRevenue = validateInt(body.weeklyRevenue, 0, Infinity, 'weeklyRevenue');
+    const peakHourRevenuePct = validateInt(body.peakHourRevenuePct, 0, 100, 'peakHourRevenuePct');
+    const laborPct = validateInt(body.laborPct, 0, 100, 'laborPct');
+    const overtimePct = validateInt(body.overtimePct, 0, 100, 'overtimePct');
+    const grossMarginPct = validateInt(body.grossMarginPct, 0, 100, 'grossMarginPct');
+    const maxThroughputPerHour = validateInt(body.maxThroughputPerHour, 0, Infinity, 'maxThroughputPerHour');
+    const avgThroughputPerHour = validateInt(body.avgThroughputPerHour, 0, Infinity, 'avgThroughputPerHour');
+
+    // Existing Metrics (preserve existing loose checking or tighten? Mandate says "remain as-is but enforce >= 0 if provided")
+    const monthlyLeadVolume = validateInt(body.monthlyLeadVolume, 0, Infinity, 'monthlyLeadVolume');
+    const avgResponseTimeMinutes = validateInt(body.avgResponseTimeMinutes, 0, Infinity, 'avgResponseTimeMinutes');
+    const closeRatePercent = validateInt(body.closeRatePercent, 0, 100, 'closeRatePercent'); // Enforcing 0-100 logic for rates
+    const avgJobValue = validateInt(body.avgJobValue, 0, Infinity, 'avgJobValue');
+    const salesRepsCount = validateInt(body.salesRepsCount, 0, Infinity, 'salesRepsCount');
+    const opsAdminCount = validateInt(body.opsAdminCount, 0, Infinity, 'opsAdminCount');
+
+    // Construct Payload
     const payload: any = {
       tenantId,
-      monthlyLeadVolume: typeof body.monthlyLeadVolume === 'number' ? body.monthlyLeadVolume : null,
-      avgResponseTimeMinutes: typeof body.avgResponseTimeMinutes === 'number' ? body.avgResponseTimeMinutes : null,
-      closeRatePercent: typeof body.closeRatePercent === 'number' ? body.closeRatePercent : null,
-      avgJobValue: typeof body.avgJobValue === 'number' ? body.avgJobValue : null,
+      // Existing
+      monthlyLeadVolume,
+      avgResponseTimeMinutes,
+      closeRatePercent,
+      avgJobValue,
+      salesRepsCount,
+      opsAdminCount,
       currentTools: tools,
-      salesRepsCount: typeof body.salesRepsCount === 'number' ? body.salesRepsCount : null,
-      opsAdminCount: typeof body.opsAdminCount === 'number' ? body.opsAdminCount : null,
       primaryBottleneck: typeof body.primaryBottleneck === 'string' ? body.primaryBottleneck : null,
+
+      // New Economics
+      weeklyRevenue,
+      peakHourRevenuePct,
+      laborPct,
+      overtimePct,
+      grossMarginPct,
+      maxThroughputPerHour,
+      avgThroughputPerHour,
+
       status: body.status === 'COMPLETE' ? 'COMPLETE' : 'DRAFT',
       updatedAt: new Date(),
     };
@@ -2497,16 +2528,36 @@ if (current && (current as any).status === 'COMPLETE') {
         })
         .returning();
 
-      return res.status(200).json({ ok: true, baseline: row[0] || null });
+      const updatedBaseline = row[0] || null;
+
+      // Check if we just completed it -> trigger legacy snapshot side-effect?
+      // Mandate: "If status COMPLETE triggers snapshot legacy... ensure it does not mutate baseline fields."
+      // The old code did this check at the TOP. But now we do it AFTER save if status changed to COMPLETE.
+      // However, old code checked `current.status === 'COMPLETE'`.
+      // If we are transition TO COMPLETE, we might want to snapshot.
+      // But for strict Task 2, we just stick to "Baseline persistence". Snapshot logic is effectively removed from the top 
+      // block which used to return early. 
+      // If the USER wants legacy snapshot, they'd call /metrics/snapshot explicitly?
+      // Re-reading original code: It returned early if ALREADY complete.
+      // Now we return ERROR if ALREADY complete.
+      // So if it wasn't complete, and we make it complete, we just save it.
+
+      return res.status(200).json({ ok: true, baseline: updatedBaseline });
     } catch (dbErr: any) {
       console.error('Database error in createBaselineForFirm:', dbErr);
       return res.status(500).json({ error: 'Failed to persist baseline data' });
     }
   } catch (error: any) {
     console.error('Create baseline error:', error);
+    if (error.message.startsWith('Invalid')) {
+      return res.status(400).json({ error: error.message });
+    }
     return res.status(500).json({ error: error.message || 'Failed to create baseline' });
   }
 }
+
+// Canonical Alias (Task 2.4 - Item 2)
+export const createRoiBaselineForFirm = createBaselineForFirm;
 
 // ============================================================================
 // POST /api/superadmin/firms/:tenantId/metrics/snapshot - Create Time Snapshot (T3.3)
@@ -4520,15 +4571,107 @@ export async function lockRoiBaselineForFirm(req: AuthRequest, res: Response) {
     }
 
     const updated = await db
+    const updatedBaseline = await db
       .update(firmBaselineIntake)
       .set({ status: 'LOCKED', updatedAt: new Date() } as any)
       .where(eq(firmBaselineIntake.tenantId, tenantId))
       .returning();
 
-    return res.status(200).json({ baseline: updated[0] ?? null });
+    return res.status(200).json({ baseline: updatedBaseline[0] ?? null });
   } catch (error: any) {
     console.error('lockRoiBaselineForFirm error:', error);
     return res.status(500).json({ error: error?.message || 'Failed to lock ROI baseline' });
   }
 }
 
+// ============================================================================
+// POST /api/superadmin/firms/:tenantId/impersonate - Impersonate Tenant Owner
+// ============================================================================
+
+export async function impersonateTenantOwner(req: AuthRequest, res: Response) {
+  try {
+    if (!requireExecutiveAuthority(req, res)) return;
+
+    const { tenantId } = req.params;
+    const superAdminId = req.user?.userId || req.user?.id;
+
+    if (!superAdminId) return res.status(401).json({ error: 'Unauthorized - Missing User ID' });
+
+    // 1. Get Tenant Owner
+    const [tenant] = await db
+      .select({
+        id: tenants.id,
+        ownerUserId: tenants.ownerUserId,
+        name: tenants.name,
+      })
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
+
+    if (!tenant) {
+      return res.status(404).json({ error: 'Tenant not found' });
+    }
+
+    if (!tenant.ownerUserId) {
+      return res.status(400).json({ error: 'Tenant has no assigned owner' });
+    }
+
+    const [ownerUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, tenant.ownerUserId))
+      .limit(1);
+
+    if (!ownerUser) {
+      return res.status(404).json({ error: 'Owner user not found' });
+    }
+
+    // 2. Create Impersonation Session
+    const [session] = await db
+      .insert(impersonationSessions)
+      .values({
+        superAdminId,
+        tenantId,
+        ownerUserId: ownerUser.id,
+        reason: 'SuperAdmin Impersonation',
+      })
+      .returning();
+
+    // 3. Generate Token for Owner
+    // Import generateToken from utils/auth locally to avoid circular deps if any
+    const { generateToken } = require('../utils/auth');
+    const token = generateToken({
+      userId: ownerUser.id,
+      email: ownerUser.email,
+      role: ownerUser.role as any,
+      isInternal: false,
+      tenantId: tenant.id,
+    });
+
+    // 4. Audit Log
+    await db.insert(auditEvents).values({
+      tenantId,
+      actorUserId: superAdminId,
+      actorRole: req.user?.role as string,
+      eventType: 'SA_IMPERSONATE_START',
+      entityType: 'impersonation_session',
+      entityId: session.id,
+      metadata: { ownerEmail: ownerUser.email },
+    });
+
+    return res.json({
+      token,
+      user: {
+        id: ownerUser.id,
+        email: ownerUser.email,
+        name: ownerUser.name,
+        role: ownerUser.role,
+      },
+      sessionId: session.id,
+    });
+
+  } catch (error) {
+    console.error('Impersonate tenant owner error:', error);
+    return res.status(500).json({ error: 'Failed to start impersonation session' });
+  }
+}
