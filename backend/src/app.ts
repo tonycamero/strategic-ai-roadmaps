@@ -1,4 +1,5 @@
 import express from 'express';
+import { corsMiddleware } from "./middleware/cors";
 import path from 'path';
 import cors, { type CorsOptions } from 'cors';
 import { requestIdMiddleware } from './utils/requestId';
@@ -31,6 +32,10 @@ import agentConfigRoutes from './routes/agentConfig.routes';
 import clarificationRoutes from './routes/clarification.routes';
 
 const app = express();
+app.use(corsMiddleware);
+app.options("*", corsMiddleware);
+
+app.use(express.json());
 
 // Trust proxy - required for Vercel/Netlify + proper IP handling/rate limiting
 app.set('trust proxy', 1);

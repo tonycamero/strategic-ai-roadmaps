@@ -1,38 +1,25 @@
-import { Request, Response, NextFunction } from "express";
+import cors from "cors";
+import { Request } from "express";
 
-/**
- * Allowed UI origins
- * Add new deploy URLs here ONLY — never use '*'
- */
-const ALLOWED_ORIGINS = [
+const allowedOrigins = [
   "https://portal.strategicai.app",
   "https://staging-sar-portal.strategicai.app",
   "http://localhost:5173",
-  "http://localhost:5174",
+  "http://localhost:3000"
 ];
 
-export function corsMiddleware(req: Request, res: Response, next: NextFunction) {
-  const origin = req.headers.origin;
+export const corsMiddleware = cors({
+  origin: (origin, callback) => {
+    // allow non-browser requests (curl, health checks, netlify warmup)
+    if (!origin) return callback(null, true);
 
-  if (origin && ALLOWED_ORIGINS.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-  }
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, origin); // reflect exact origin
+    }
 
-  res.setHeader("Vary", "Origin");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, X-Requested-With"
-  );
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-  );
-
-  // Handle browser preflight
-  if (req.method === "OPTIONS") {
-    return res.status(204).end();
-  }
-
-  next();
-}
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
+  credentials: true,
+  methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization"],
+});
