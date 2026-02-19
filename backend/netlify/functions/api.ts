@@ -15,15 +15,32 @@ function normalizePathToExpressApiPrefix(path: string) {
   return path;
 }
 
+function corsHeaders(origin?: string) {
+  const allowed = new Set([
+    "https://portal.strategicai.app",
+    "https://staging-sar-portal.strategicai.app",
+    "http://localhost:5173",
+  ]);
+
+  const value = origin && allowed.has(origin) ? origin : "https://portal.strategicai.app";
+
+  return {
+    "Access-Control-Allow-Origin": value,
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+    "Access-Control-Allow-Credentials": "true",
+    "Vary": "Origin",
+  };
+}
+
 export const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
   // Explicit CORS preflight handling
   if (event.httpMethod === "OPTIONS") {
+    const origin = event.headers?.origin || event.headers?.Origin;
     return {
       statusCode: 204,
       headers: {
-        "Access-Control-Allow-Origin": "https://portal.strategicai.app",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+        ...corsHeaders(origin),
         "Access-Control-Max-Age": "86400",
       },
       body: "",
@@ -37,11 +54,11 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
 
   const response = await handlerFn(patchedEvent, context);
 
+  const origin = event.headers?.origin || event.headers?.Origin;
+
   response.headers = {
     ...(response.headers ?? {}),
-    "Access-Control-Allow-Origin": "https://portal.strategicai.app",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+    ...corsHeaders(origin),
   };
 
   return response;
