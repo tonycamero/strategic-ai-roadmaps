@@ -601,6 +601,10 @@ export const superadminApi = {
   saveROIBaseline: (tenantId: string, payload: any) =>
     apiPost<{ ok: boolean; baseline: any }>(`/firms/${tenantId}/metrics/baseline`, payload),
 
+  // New Save (Task 4 - Canonical POST)
+  saveRoiBaselineCanonical: (tenantId: string, payload: unknown) =>
+    apiPost<{ baseline: any | null }>(`/firms/${tenantId}/roi-baseline`, payload),
+
   // Impersonation
   impersonateTenantOwner: (tenantId: string) =>
     apiPost<{
