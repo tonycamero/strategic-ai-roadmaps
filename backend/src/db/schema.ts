@@ -146,6 +146,15 @@ export const firmBaselineIntake = pgTable('firm_baseline_intake', {
   opsAdminCount: integer('ops_admin_count'),
   primaryBottleneck: text('primary_bottleneck'),
 
+  // Economics (added for Stage 5 Gravity)
+  weeklyRevenue: integer('weekly_revenue'),
+  peakHourRevenuePct: integer('peak_hour_revenue_pct'),
+  laborPct: integer('labor_pct'),
+  overtimePct: integer('overtime_pct'),
+  grossMarginPct: integer('gross_margin_pct'),
+  maxThroughputPerHour: integer('max_throughput_per_hour'),
+  avgThroughputPerHour: integer('avg_throughput_per_hour'),
+
   // Status
   status: varchar('status', { length: 20 }).notNull().default('DRAFT'), // DRAFT | COMPLETE
 
