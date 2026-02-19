@@ -46,37 +46,10 @@ function ScrollToTop() {
 
 function RootRedirect() {
   const [location, setLocation] = useLocation();
-  const { isAuthenticated, login } = useAuth(); // Added login to destructuring
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
-    // Check for impersonation token in URL
-    const searchParams = new URLSearchParams(window.location.search);
-    const impersonationToken = searchParams.get('impersonationToken');
 
-    // PARKED: Impersonation feature disabled
-    if (false && impersonationToken) {
-      // We need to decode the token to get the user object for the login method
-      // But since verifyToken is a backend util, we'll try a simpler approach first:
-      // Just set the token and let AuthProvider hydrate the user on mount/update is tricky 
-      // because AuthProvider reads from localStorage on mount. 
-
-      // BETTER: Set local storage and force reload to ensure clean state if needed, 
-      // OR better yet, use the login method if we can construct a minimal user.
-      // Given AuthContext implementation:
-      // const login = (newToken: string, newUser: User) => { ... }
-
-      // We'll set localStorage manually and let the app reload/redirect to pick it up cleanly
-      localStorage.setItem('token', impersonationToken);
-
-      // We also need to fetch the user or decode the token. 
-      // For now, let's rely on the AuthProvider to potentially re-fetch or we force a reload.
-      // Actually, AuthProvider only reads on mount. 
-
-      // Let's do a hard reload to /dashboard to ensure AuthProvider picks up the new token
-      // This is robust/safe for an "open in new tab" flow.
-      window.location.href = '/dashboard';
-      return;
-    }
 
     if (location !== '/') return;
     setLocation(isAuthenticated ? '/dashboard' : '/login', { replace: true });
@@ -108,6 +81,7 @@ function App() {
                 {/* Auth */}
                 <Route path="/login" component={Auth} />
                 <Route path="/signup" component={Signup} />
+
                 {/* Canonical password reset routes */}
                 <Route path="/request-reset" component={RequestPasswordReset} />
                 <Route path="/reset-password" component={ResetPassword} />
@@ -121,59 +95,87 @@ function App() {
 
                 {/* Onboarding (with sidebar) */}
                 <ProtectedRoute path="/dashboard">
-                  <OnboardingLayout><Dashboard /></OnboardingLayout>
+                  <OnboardingLayout>
+                    <Dashboard />
+                  </OnboardingLayout>
                 </ProtectedRoute>
 
                 <ProtectedRoute path="/organization-type">
-                  <OnboardingLayout><OrganizationType /></OnboardingLayout>
+                  <OnboardingLayout>
+                    <OrganizationType />
+                  </OnboardingLayout>
                 </ProtectedRoute>
 
                 <ProtectedRoute path="/business-profile">
-                  <OnboardingLayout><BusinessProfile /></OnboardingLayout>
+                  <OnboardingLayout>
+                    <BusinessProfile />
+                  </OnboardingLayout>
                 </ProtectedRoute>
 
                 <ProtectedRoute path="/invite-team">
-                  <OnboardingLayout><InviteTeam /></OnboardingLayout>
+                  <OnboardingLayout>
+                    <InviteTeam />
+                  </OnboardingLayout>
                 </ProtectedRoute>
 
                 <ProtectedRoute path="/intake/owner">
-                  <OnboardingLayout><OwnerIntake /></OnboardingLayout>
+                  <OnboardingLayout>
+                    <OwnerIntake />
+                  </OnboardingLayout>
                 </ProtectedRoute>
 
                 <ProtectedRoute path="/intake/ops">
-                  <OnboardingLayout><OpsIntake /></OnboardingLayout>
+                  <OnboardingLayout>
+                    <OpsIntake />
+                  </OnboardingLayout>
                 </ProtectedRoute>
 
                 <ProtectedRoute path="/intake/sales">
-                  <OnboardingLayout><SalesIntake /></OnboardingLayout>
+                  <OnboardingLayout>
+                    <SalesIntake />
+                  </OnboardingLayout>
                 </ProtectedRoute>
 
                 <ProtectedRoute path="/intake/delivery">
-                  <OnboardingLayout><DeliveryIntake /></OnboardingLayout>
+                  <OnboardingLayout>
+                    <DeliveryIntake />
+                  </OnboardingLayout>
                 </ProtectedRoute>
 
                 <ProtectedRoute path="/intake/exec_sponsor">
-                  <OnboardingLayout><ExecutiveIntake /></OnboardingLayout>
+                  <OnboardingLayout>
+                    <ExecutiveIntake />
+                  </OnboardingLayout>
                 </ProtectedRoute>
 
                 <ProtectedRoute path="/team-intakes">
-                  <OnboardingLayout><TeamIntakesReview /></OnboardingLayout>
+                  <OnboardingLayout>
+                    <TeamIntakesReview />
+                  </OnboardingLayout>
                 </ProtectedRoute>
 
                 <ProtectedRoute path="/diagnostic-review">
-                  <OnboardingLayout><DiagnosticReview /></OnboardingLayout>
+                  <OnboardingLayout>
+                    <DiagnosticReview />
+                  </OnboardingLayout>
                 </ProtectedRoute>
 
                 <ProtectedRoute path="/discovery-call">
-                  <OnboardingLayout><DiscoveryCallScheduler /></OnboardingLayout>
+                  <OnboardingLayout>
+                    <DiscoveryCallScheduler />
+                  </OnboardingLayout>
                 </ProtectedRoute>
 
                 <ProtectedRoute path="/roadmap">
-                  <OnboardingLayout><RoadmapViewer /></OnboardingLayout>
+                  <OnboardingLayout>
+                    <RoadmapViewer />
+                  </OnboardingLayout>
                 </ProtectedRoute>
 
                 <ProtectedRoute path="/owner/case-study/:docId">
-                  <OnboardingLayout><CaseStudyViewer /></OnboardingLayout>
+                  <OnboardingLayout>
+                    <CaseStudyViewer />
+                  </OnboardingLayout>
                 </ProtectedRoute>
 
                 {/* Non-onboarding */}
@@ -196,8 +198,6 @@ function App() {
                 <ProtectedRoute path="/superadmin/pipeline" component={SuperAdminLayout} />
                 <ProtectedRoute path="/superadmin/firms/:tenantId/case-study/:docId" component={CaseStudyViewer} />
                 <ProtectedRoute path="/superadmin/tickets/:tenantId/:diagnosticId" component={TicketModeration} />
-
-
 
                 {/* 404 */}
                 <Route>
