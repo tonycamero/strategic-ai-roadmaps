@@ -83,9 +83,6 @@ router.get('/firms/:tenantId/detail', superadminController.getFirmDetailV2);
 // GET /api/superadmin/execution/:tenantId/:diagnosticId - Execution state aggregator
 router.get('/execution/:tenantId/:diagnosticId', executionStateController.getExecutionStateController);
 
-// PARKED: Impersonation feature
-// router.post('/firms/:tenantId/impersonate', requireExecutive(), superadminController.impersonateTenantOwner);
-
 // GET /api/superadmin/firms/:tenantId/client-context - Get client preview context
 router.get('/firms/:tenantId/client-context', superadminController.getClientContextForFirm);
 
@@ -117,12 +114,11 @@ router.post('/firms/:tenantId/generate-sop01', async (req, res, next) => {
   return generateSop01ForFirm(req, res, next);
 });
 
-// DECOMMISSIONED: legacy rerun endpoint (must remain unreachable).
-// All diagnostic generation must route through the canonical superadmin controller flow.
-// router.post('/diagnostic/rerun-sop01/:tenantId', async (req, res, next) => {
-//   const { rerunSop01ForFirm } = require('../controllers/diagnosticRerun.controller');
-//   return rerunSop01ForFirm(req, res, next);
-// });
+// POST /api/superadmin/diagnostic/rerun-sop01/:tenantId - Re-run SOP-01 (zero-ticket recovery)
+router.post('/diagnostic/rerun-sop01/:tenantId', async (req, res, next) => {
+  const { rerunSop01ForFirm } = require('../controllers/diagnosticRerun.controller');
+  return rerunSop01ForFirm(req, res, next);
+});
 
 // GET/POST discovery notes - REMOVED
 
@@ -162,11 +158,7 @@ router.post('/tickets/generate/:tenantId/:diagnosticId', async (req, res, next) 
 // GET /api/superadmin/firms/:tenantId/metrics - Get performance metrics
 router.get('/firms/:tenantId/metrics', superadminController.getMetricsForFirm);
 router.get('/firms/:tenantId/roi-baseline', superadminController.getRoiBaselineForFirm);
-
-// POST /api/superadmin/firms/:tenantId/roi-baseline - Create/Update baseline (Canonical Alias)
-router.post('/firms/:tenantId/roi-baseline', superadminController.createRoiBaselineForFirm);
-
-// POST /api/superadmin/firms/:tenantId/metrics/baseline - Create baseline snapshot (Legacy/Existing)
+// POST /api/superadmin/firms/:tenantId/metrics/baseline - Create baseline snapshot
 router.post('/firms/:tenantId/metrics/baseline', superadminController.createBaselineForFirm);
 
 // POST /api/superadmin/firms/:tenantId/metrics/snapshot - Create 30/60/90 snapshot

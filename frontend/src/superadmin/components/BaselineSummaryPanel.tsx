@@ -12,16 +12,6 @@ interface BaselineData {
     salesRepsCount: number | null;
     opsAdminCount: number | null;
     primaryBottleneck: string | null;
-
-    // New Economic Fields
-    weeklyRevenue: number | null;
-    peakHourRevenuePct: number | null;
-    laborPct: number | null;
-    overtimePct: number | null;
-    grossMarginPct: number | null;
-    maxThroughputPerHour: number | null;
-    avgThroughputPerHour: number | null;
-
     status: 'DRAFT' | 'COMPLETE';
     createdAt: string;
     updatedAt: string;
@@ -30,18 +20,6 @@ interface BaselineData {
 interface BaselineSummaryPanelProps {
     tenantId: string;
     hasRoadmap: boolean;
-}
-
-// TASK 3.1: Strict Integer Parsing Helper (Module Scope)
-function parseInteger(input: string, max: number = 2000000000): number | null {
-    if (input.trim() === '') return null;
-    const num = Number(input);
-
-    // Reject float inputs (e.g. 10.5) and NaN
-    if (!Number.isInteger(num)) return null;
-
-    // Clamp (assume min is always 0 for baseline metrics)
-    return Math.max(0, Math.min(num, max));
 }
 
 export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPanelProps) {
@@ -62,14 +40,6 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
         salesRepsCount: null,
         opsAdminCount: null,
         primaryBottleneck: null,
-        // New Fields
-        weeklyRevenue: null,
-        peakHourRevenuePct: null,
-        laborPct: null,
-        overtimePct: null,
-        grossMarginPct: null,
-        maxThroughputPerHour: null,
-        avgThroughputPerHour: null,
         status: 'DRAFT',
     };
 
@@ -82,12 +52,7 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
 
     function openEdit() {
         if (!baseline) return;
-        const {
-            monthlyLeadVolume, avgResponseTimeMinutes, closeRatePercent, avgJobValue,
-            currentTools, salesRepsCount, opsAdminCount, primaryBottleneck, status,
-            weeklyRevenue, peakHourRevenuePct, laborPct, overtimePct, grossMarginPct, maxThroughputPerHour, avgThroughputPerHour
-        } = baseline;
-
+        const { monthlyLeadVolume, avgResponseTimeMinutes, closeRatePercent, avgJobValue, currentTools, salesRepsCount, opsAdminCount, primaryBottleneck, status } = baseline;
         setDraft({
             monthlyLeadVolume,
             avgResponseTimeMinutes,
@@ -97,16 +62,6 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
             salesRepsCount,
             opsAdminCount,
             primaryBottleneck,
-
-            // New Fields
-            weeklyRevenue: weeklyRevenue ?? null,
-            peakHourRevenuePct: peakHourRevenuePct ?? null,
-            laborPct: laborPct ?? null,
-            overtimePct: overtimePct ?? null,
-            grossMarginPct: grossMarginPct ?? null,
-            maxThroughputPerHour: maxThroughputPerHour ?? null,
-            avgThroughputPerHour: avgThroughputPerHour ?? null,
-
             status,
         });
         setShowEditor(true);
@@ -117,17 +72,10 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
             setSaving(true);
             setError(null);
 
-            // TASK 4.2: Canonical Save
-            const res = await superadminApi.saveRoiBaselineCanonical(tenantId, draft);
-
-            if (res.baseline) {
-                setBaseline(res.baseline);
-            } else {
-                // Fallback: re-fetch if no baseline returned
-                await fetchBaseline();
-            }
+            const res = await superadminApi.saveROIBaseline(tenantId, draft);
 
             setShowEditor(false);
+            await fetchBaseline();
         } catch (e: any) {
             setError(e.message || 'Failed to save baseline');
         } finally {
@@ -331,16 +279,6 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
                                 </div>
                             </div>
 
-                            {/* New Economics Display Stubs (Can extend later, focus on Modal for now) */}
-                            {baseline.weeklyRevenue && (
-                                <div>
-                                    <div className="text-[11px] text-slate-500 mb-1">Weekly Revenue</div>
-                                    <div className="text-xl font-bold text-slate-200">
-                                        ${baseline.weeklyRevenue?.toLocaleString()}
-                                    </div>
-                                </div>
-                            )}
-
                             <div>
                                 <div className="text-[11px] text-slate-500 mb-1">Primary Bottleneck</div>
                                 <div className="text-sm text-slate-300 leading-tight">
@@ -381,9 +319,9 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
             )}
 
             {showEditor && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 overflow-y-auto py-10">
-                    <div className="w-full max-w-2xl bg-slate-950 border border-slate-800 rounded-xl shadow-2xl my-auto">
-                        <div className="px-6 py-4 border-b border-slate-800 bg-slate-900/30 flex items-center justify-between sticky top-0 backdrop-blur-sm z-10">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+                    <div className="w-full max-w-2xl bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
+                        <div className="px-6 py-4 border-b border-slate-800 bg-slate-900/30 flex items-center justify-between">
                             <div>
                                 <h3 className="text-sm font-bold text-slate-200 tracking-wider">
                                     {baseline ? 'Edit ROI Baseline' : 'Create ROI Baseline'}
@@ -418,7 +356,7 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
                                     type="number"
                                     disabled={isLocked}
                                     value={draft.monthlyLeadVolume ?? ''}
-                                    onChange={(e) => setDraft({ ...draft, monthlyLeadVolume: parseInteger(e.target.value) })}
+                                    onChange={(e) => setDraft({ ...draft, monthlyLeadVolume: e.target.value === '' ? null : Number(e.target.value) })}
                                     className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600 disabled:opacity-50"
                                 />
                             </label>
@@ -429,7 +367,7 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
                                     type="number"
                                     disabled={isLocked}
                                     value={draft.avgResponseTimeMinutes ?? ''}
-                                    onChange={(e) => setDraft({ ...draft, avgResponseTimeMinutes: parseInteger(e.target.value) })}
+                                    onChange={(e) => setDraft({ ...draft, avgResponseTimeMinutes: e.target.value === '' ? null : Number(e.target.value) })}
                                     className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600 disabled:opacity-50"
                                 />
                             </label>
@@ -440,7 +378,7 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
                                     type="number"
                                     disabled={isLocked}
                                     value={draft.closeRatePercent ?? ''}
-                                    onChange={(e) => setDraft({ ...draft, closeRatePercent: parseInteger(e.target.value, 100) })}
+                                    onChange={(e) => setDraft({ ...draft, closeRatePercent: e.target.value === '' ? null : Number(e.target.value) })}
                                     className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600 disabled:opacity-50"
                                 />
                             </label>
@@ -451,7 +389,7 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
                                     type="number"
                                     disabled={isLocked}
                                     value={draft.avgJobValue ?? ''}
-                                    onChange={(e) => setDraft({ ...draft, avgJobValue: parseInteger(e.target.value) })}
+                                    onChange={(e) => setDraft({ ...draft, avgJobValue: e.target.value === '' ? null : Number(e.target.value) })}
                                     className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600 disabled:opacity-50"
                                 />
                             </label>
@@ -462,7 +400,7 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
                                     type="number"
                                     disabled={isLocked}
                                     value={draft.salesRepsCount ?? ''}
-                                    onChange={(e) => setDraft({ ...draft, salesRepsCount: parseInteger(e.target.value) })}
+                                    onChange={(e) => setDraft({ ...draft, salesRepsCount: e.target.value === '' ? null : Number(e.target.value) })}
                                     className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600 disabled:opacity-50"
                                 />
                             </label>
@@ -473,94 +411,10 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
                                     type="number"
                                     disabled={isLocked}
                                     value={draft.opsAdminCount ?? ''}
-                                    onChange={(e) => setDraft({ ...draft, opsAdminCount: parseInteger(e.target.value) })}
+                                    onChange={(e) => setDraft({ ...draft, opsAdminCount: e.target.value === '' ? null : Number(e.target.value) })}
                                     className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600 disabled:opacity-50"
                                 />
                             </label>
-
-                            {/* New Economics (Task 3) */}
-                            <div className="col-span-2 border-t border-slate-800 my-2 pt-2 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                                Economic Factors
-                            </div>
-
-                            <label className="text-xs text-slate-400">
-                                Weekly Revenue
-                                <input
-                                    type="number"
-                                    disabled={isLocked}
-                                    value={draft.weeklyRevenue ?? ''}
-                                    onChange={(e) => setDraft({ ...draft, weeklyRevenue: parseInteger(e.target.value) })}
-                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600 disabled:opacity-50"
-                                />
-                            </label>
-
-                            <label className="text-xs text-slate-400">
-                                Gross Margin (%)
-                                <input
-                                    type="number"
-                                    disabled={isLocked}
-                                    value={draft.grossMarginPct ?? ''}
-                                    onChange={(e) => setDraft({ ...draft, grossMarginPct: parseInteger(e.target.value, 100) })}
-                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600 disabled:opacity-50"
-                                />
-                            </label>
-
-                            <label className="text-xs text-slate-400">
-                                Labor Cost (%)
-                                <input
-                                    type="number"
-                                    disabled={isLocked}
-                                    value={draft.laborPct ?? ''}
-                                    onChange={(e) => setDraft({ ...draft, laborPct: parseInteger(e.target.value, 100) })}
-                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600 disabled:opacity-50"
-                                />
-                            </label>
-
-                            <label className="text-xs text-slate-400">
-                                Overtime (%)
-                                <input
-                                    type="number"
-                                    disabled={isLocked}
-                                    value={draft.overtimePct ?? ''}
-                                    onChange={(e) => setDraft({ ...draft, overtimePct: parseInteger(e.target.value, 100) })}
-                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600 disabled:opacity-50"
-                                />
-                            </label>
-
-                            <label className="text-xs text-slate-400">
-                                Peak Hour Rev (%)
-                                <input
-                                    type="number"
-                                    disabled={isLocked}
-                                    value={draft.peakHourRevenuePct ?? ''}
-                                    onChange={(e) => setDraft({ ...draft, peakHourRevenuePct: parseInteger(e.target.value, 100) })}
-                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600 disabled:opacity-50"
-                                />
-                            </label>
-
-                            <label className="text-xs text-slate-400">
-                                Max Throughput / Hr
-                                <input
-                                    type="number"
-                                    disabled={isLocked}
-                                    value={draft.maxThroughputPerHour ?? ''}
-                                    onChange={(e) => setDraft({ ...draft, maxThroughputPerHour: parseInteger(e.target.value) })}
-                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600 disabled:opacity-50"
-                                />
-                            </label>
-
-                            <label className="text-xs text-slate-400">
-                                Avg Throughput / Hr
-                                <input
-                                    type="number"
-                                    disabled={isLocked}
-                                    value={draft.avgThroughputPerHour ?? ''}
-                                    onChange={(e) => setDraft({ ...draft, avgThroughputPerHour: parseInteger(e.target.value) })}
-                                    className="mt-1 w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-slate-600 disabled:opacity-50"
-                                />
-                            </label>
-
-                            <div className="col-span-2 border-t border-slate-800 my-2"></div>
 
                             <label className="text-xs text-slate-400 col-span-2">
                                 Primary Bottleneck
@@ -605,8 +459,6 @@ export function BaselineSummaryPanel({ tenantId, hasRoadmap }: BaselineSummaryPa
                                     </select>
                                 </label>
                             )}
-
-                            {/* If locked, status is implicit displayed in header/badge */}
 
                             <div className="col-span-2 flex justify-end gap-2 pt-2">
                                 <button

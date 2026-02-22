@@ -1,43 +1,32 @@
 import { Response } from 'express';
 import { nanoid } from 'nanoid';
+import { db } from '../db/index';
+import {
+  users, intakes, tenants, roadmaps, auditEvents, tenantDocuments,
+  discoveryCallNotes, roadmapSections, ticketPacks, ticketInstances,
+  tenantMetricsDaily, webinarRegistrations, implementationSnapshots,
+  roadmapOutcomes, agentConfigs, agentThreads, webinarSettings,
+  diagnostics, executiveBriefs, sopTickets, ticketModerationSessions,
+  ticketsDraft, intakeClarifications
+} from '../db/schema';
+import { eq, and, sql, count, desc, asc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+import { AuthRequest } from '../middleware/auth';
 import path from 'path';
 import fs from 'fs/promises';
-import { db } from '../db/index';
-
-import { eq, and, sql, count, desc, asc } from 'drizzle-orm';
-
-import { AuthRequest } from '../middleware/auth';
-import {
-  users,
-  intakes,
-  tenants,
-  roadmaps,
-  auditEvents,
-  tenantDocuments,
-  discoveryCallNotes,
-  roadmapSections,
-  ticketPacks,
-  ticketInstances,
-  tenantMetricsDaily,
-  webinarRegistrations,
-  implementationSnapshots,
-  roadmapOutcomes,
-  agentConfigs,
-  agentThreads,
-  webinarSettings,
-  diagnostics,
-  executiveBriefs,
-  sopTickets,
-  ticketModerationSessions,
-  ticketsDraft,
-  intakeClarifications,
-  impersonationSessions,
-} from '../db/schema';
-
+import { generateTicketPackForRoadmap } from '../services/ticketPackGenerator.service';
+import { extractRoadmapMetadata } from '../services/roadmapMetadataExtractor.service';
+import { ImplementationMetricsService } from '../services/implementationMetrics.service';
+import { getOrCreateRoadmapForTenant } from '../services/roadmapOs.service';
+import { refreshVectorStoreContent } from '../services/tenantVectorStore.service';
+import { getModerationStatus } from '../services/ticketModeration.service';
 import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
 import { AuthorityCategory, CanonicalDiscoveryNotes } from '@roadmap/shared';
+import { generateRawTickets, ParsedTicket, InventoryEmptyError } from '../services/diagnosticIngestion.service';
+import { Sop01Outputs } from '../services/sop01Engine';
+import { sendClarificationRequestEmail } from '../services/email.service';
 
+// META-TICKET v2: Gate & SOP Architecture Imports
 import {
   canLockIntake,
   canGenerateDiagnostics,
@@ -45,28 +34,11 @@ import {
   canPublishDiagnostics,
   canIngestDiscoveryNotes,
   canGenerateSopTickets,
-  canAssembleRoadmap,
+  canAssembleRoadmap
 } from '../services/gate.service';
-
-import { getOrCreateRoadmapForTenant } from '../services/roadmapOs.service';
-import { ImplementationMetricsService } from '../services/implementationMetrics.service';
-
-import { refreshVectorStoreContent } from '../services/tenantVectorStore.service';
-import { getModerationStatus } from '../services/ticketModeration.service';
-
-import {
-  generateRawTickets,
-  ParsedTicket,
-  InventoryEmptyError,
-} from '../services/diagnosticIngestion.service';
-
-import { generateTicketPackForRoadmap } from '../services/ticketPackGenerator.service';
-import { extractRoadmapMetadata } from '../services/roadmapMetadataExtractor.service';
-
-import { sendClarificationRequestEmail } from '../services/email.service';
-
-import { generateSop01DiagnosticsForTenant } from '../services/diagnosticsGeneration.service';
-
+import { generateSop01Outputs } from '../services/sop01Engine';
+import { persistSop01OutputsForTenant } from '../services/sop01Persistence';
+import { buildNormalizedIntakeContext } from '../services/intakeNormalizer';
 import { validateBriefModeSchema } from '../services/schemaGuard.service';
 
 const UPLOADS_DIR = path.join(__dirname, '../../uploads');
@@ -2455,24 +2427,38 @@ export async function createBaselineForFirm(req: AuthRequest, res: Response) {
 
     const current = existing[0];
 
-    // ========================================================================
-    // IMMUTABILITY CHECK (Task 2.3)
-    // ========================================================================
-    if (current && (current as any).status !== 'DRAFT') {
-      // If legacy behavior (COMPLETE triggers snapshot) is desired, it acts as a side-effect,
-      // NOT a mutation of the baseline itself.
-      // However, the mandate says: "If baseline.status != 'DRAFT', reject POST update with 409"
-      // UNLESS valid for legacy snapshot trigger.
-      // We will Fail-Closed here for any data mutation attempt.
+// IF status is already COMPLETE, do NOT mutate baseline here.
+// Instead: create a baseline snapshot (T3.2) and return 200.
+if (current && (current as any).status === 'COMPLETE') {
+  const roadmap = await getOrCreateRoadmapForTenant(tenantId);
 
-      // Legacy "Create Snapshot" side-effect trap:
-      // If the body implies a "lock" action or just a periodic save, we must be careful.
-      // Current instruction: "If baseline.status != 'DRAFT', reject POST update with 409"
-      return res.status(409).json({
-        error: 'BASELINE_IMMUTABLE',
-        message: 'Baseline is locked (status != DRAFT) and cannot be modified.'
-      });
-    }
+  // Build RawMetrics from the locked baseline row
+  const rawMetrics: any = {
+    monthlyLeadVolume: (current as any).monthlyLeadVolume ?? null,
+    avgResponseTimeMinutes: (current as any).avgResponseTimeMinutes ?? null,
+    closeRatePercent: (current as any).closeRatePercent ?? null,
+    avgJobValue: (current as any).avgJobValue ?? null,
+    currentTools: (current as any).currentTools ?? [],
+    salesRepsCount: (current as any).salesRepsCount ?? null,
+    opsAdminCount: (current as any).opsAdminCount ?? null,
+    primaryBottleneck: (current as any).primaryBottleneck ?? null,
+  };
+
+  const { snapshotId, metrics } = await ImplementationMetricsService.createBaselineSnapshot(
+    tenantId,
+    roadmap.id,
+    rawMetrics,
+    'api'
+  );
+
+  return res.status(200).json({
+    ok: true,
+    baselineLocked: true,
+    baseline: current,
+    snapshot: { id: snapshotId, metrics },
+  });
+}
+
 
     // Tools Transformation: Must be array
     let tools: string[] = [];
@@ -2483,61 +2469,16 @@ export async function createBaselineForFirm(req: AuthRequest, res: Response) {
       tools = body.currentTools.split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0);
     }
 
-    // ========================================================================
-    // VALIDATION (Task 2.2 - Fail Closed)
-    // ========================================================================
-    const validateInt = (val: any, min = 0, max = Infinity, fieldName: string) => {
-      // Confirm null/blank inputs are allowed: return null for undefined/null/""
-      if (val === null || val === undefined || val === '') return null;
-      const num = Number(val);
-      if (!Number.isInteger(num)) {
-        throw new Error(`Invalid format: ${fieldName} must be an integer`);
-      }
-      if (num < min || num > max) {
-        throw new Error(`Invalid range: ${fieldName} must be between ${min} and ${max}`);
-      }
-      return num;
-    };
-
-    // New Economics
-    const weeklyRevenue = validateInt(body.weeklyRevenue, 0, Infinity, 'weeklyRevenue');
-    const peakHourRevenuePct = validateInt(body.peakHourRevenuePct, 0, 100, 'peakHourRevenuePct');
-    const laborPct = validateInt(body.laborPct, 0, 100, 'laborPct');
-    const overtimePct = validateInt(body.overtimePct, 0, 100, 'overtimePct');
-    const grossMarginPct = validateInt(body.grossMarginPct, 0, 100, 'grossMarginPct');
-    const maxThroughputPerHour = validateInt(body.maxThroughputPerHour, 0, Infinity, 'maxThroughputPerHour');
-    const avgThroughputPerHour = validateInt(body.avgThroughputPerHour, 0, Infinity, 'avgThroughputPerHour');
-
-    // Existing Metrics (preserve existing loose checking or tighten? Mandate says "remain as-is but enforce >= 0 if provided")
-    const monthlyLeadVolume = validateInt(body.monthlyLeadVolume, 0, Infinity, 'monthlyLeadVolume');
-    const avgResponseTimeMinutes = validateInt(body.avgResponseTimeMinutes, 0, Infinity, 'avgResponseTimeMinutes');
-    const closeRatePercent = validateInt(body.closeRatePercent, 0, 100, 'closeRatePercent'); // Enforcing 0-100 logic for rates
-    const avgJobValue = validateInt(body.avgJobValue, 0, Infinity, 'avgJobValue');
-    const salesRepsCount = validateInt(body.salesRepsCount, 0, Infinity, 'salesRepsCount');
-    const opsAdminCount = validateInt(body.opsAdminCount, 0, Infinity, 'opsAdminCount');
-
-    // Construct Payload
     const payload: any = {
       tenantId,
-      // Existing
-      monthlyLeadVolume,
-      avgResponseTimeMinutes,
-      closeRatePercent,
-      avgJobValue,
-      salesRepsCount,
-      opsAdminCount,
+      monthlyLeadVolume: typeof body.monthlyLeadVolume === 'number' ? body.monthlyLeadVolume : null,
+      avgResponseTimeMinutes: typeof body.avgResponseTimeMinutes === 'number' ? body.avgResponseTimeMinutes : null,
+      closeRatePercent: typeof body.closeRatePercent === 'number' ? body.closeRatePercent : null,
+      avgJobValue: typeof body.avgJobValue === 'number' ? body.avgJobValue : null,
       currentTools: tools,
+      salesRepsCount: typeof body.salesRepsCount === 'number' ? body.salesRepsCount : null,
+      opsAdminCount: typeof body.opsAdminCount === 'number' ? body.opsAdminCount : null,
       primaryBottleneck: typeof body.primaryBottleneck === 'string' ? body.primaryBottleneck : null,
-
-      // New Economics
-      weeklyRevenue,
-      peakHourRevenuePct,
-      laborPct,
-      overtimePct,
-      grossMarginPct,
-      maxThroughputPerHour,
-      avgThroughputPerHour,
-
       status: body.status === 'COMPLETE' ? 'COMPLETE' : 'DRAFT',
       updatedAt: new Date(),
     };
@@ -2556,36 +2497,16 @@ export async function createBaselineForFirm(req: AuthRequest, res: Response) {
         })
         .returning();
 
-      const updatedBaseline = row[0] || null;
-
-      // Check if we just completed it -> trigger legacy snapshot side-effect?
-      // Mandate: "If status COMPLETE triggers snapshot legacy... ensure it does not mutate baseline fields."
-      // The old code did this check at the TOP. But now we do it AFTER save if status changed to COMPLETE.
-      // However, old code checked `current.status === 'COMPLETE'`.
-      // If we are transition TO COMPLETE, we might want to snapshot.
-      // But for strict Task 2, we just stick to "Baseline persistence". Snapshot logic is effectively removed from the top 
-      // block which used to return early. 
-      // If the USER wants legacy snapshot, they'd call /metrics/snapshot explicitly?
-      // Re-reading original code: It returned early if ALREADY complete.
-      // Now we return ERROR if ALREADY complete.
-      // So if it wasn't complete, and we make it complete, we just save it.
-
-      return res.status(200).json({ ok: true, baseline: updatedBaseline });
+      return res.status(200).json({ ok: true, baseline: row[0] || null });
     } catch (dbErr: any) {
       console.error('Database error in createBaselineForFirm:', dbErr);
       return res.status(500).json({ error: 'Failed to persist baseline data' });
     }
   } catch (error: any) {
     console.error('Create baseline error:', error);
-    if (error.message.startsWith('Invalid')) {
-      return res.status(400).json({ error: error.message });
-    }
     return res.status(500).json({ error: error.message || 'Failed to create baseline' });
   }
 }
-
-// Canonical Alias (Task 2.4 - Item 2)
-export const createRoiBaselineForFirm = createBaselineForFirm;
 
 // ============================================================================
 // POST /api/superadmin/firms/:tenantId/metrics/snapshot - Create Time Snapshot (T3.3)
@@ -3536,7 +3457,6 @@ export async function confirmSufficiency(req: AuthRequest, res: Response) {
 export async function generateDiagnostics(req: AuthRequest, res: Response) {
   try {
     if (!requireSuperAdmin(req, res)) return;
-
     const { tenantId } = req.params;
 
     const check = await canGenerateDiagnostics(tenantId);
@@ -3544,19 +3464,74 @@ export async function generateDiagnostics(req: AuthRequest, res: Response) {
       return res.status(403).json({ error: 'GATE_LOCKED', message: check.reason });
     }
 
-    const { diagnosticId } = await generateSop01DiagnosticsForTenant({
-  tenantId,
-  actorUserId: req.user?.id ?? null,
-});
+    // 1. Build Context
+    const normalized = await buildNormalizedIntakeContext(tenantId);
+
+    // 2. Generate (SOP-01 Engine)
+    const outputs = await generateSop01Outputs(normalized);
+
+    // 3. Persist outputs to the diagnostic record
+
+    // 4. Create/Update Diagnostic Record
+    // Check for existing 'generated' diagnostic
+    const [existing] = await db.select().from(diagnostics)
+      .where(and(eq(diagnostics.tenantId, tenantId), eq(diagnostics.status, 'generated')))
+      .limit(1);
+
+    let diagnosticId = existing?.id;
+    let isNewDiagnostic = false;
+
+    const diagnosticValues = {
+      id: nanoid(),
+      tenantId,
+      sopVersion: 'SOP-01',
+      status: 'generated' as const,
+      overview: { markdown: outputs.sop01DiagnosticMarkdown },
+      aiOpportunities: { markdown: outputs.sop01AiLeverageMarkdown },
+      roadmapSkeleton: { markdown: outputs.sop01RoadmapSkeletonMarkdown },
+      discoveryQuestions: {
+        list: outputs.sop01DiscoveryQuestionsMarkdown
+          .split('\n')
+          .map(q => q.trim())
+          .filter(Boolean)
+      },
+      generatedByUserId: req.user!.id || null,
+      updatedAt: new Date()
+    };
+
+    if (!diagnosticId) {
+      const [newDiag] = await db.insert(diagnostics).values(diagnosticValues).returning();
+      diagnosticId = newDiag.id;
+      isNewDiagnostic = true;
+
+      // Update tenant lastDiagnosticId
+      await db.update(tenants)
+        .set({ lastDiagnosticId: diagnosticId })
+        .where(eq(tenants.id, tenantId));
+    } else {
+      // Update existing record with fresh outputs
+      await db.update(diagnostics)
+        .set(diagnosticValues)
+        .where(eq(diagnostics.id, diagnosticId));
+    }
+
+    // ✅ Only insert audit event for new diagnostics (prevents duplicates)
+    if (isNewDiagnostic) {
+      await db.insert(auditEvents).values({
+        tenantId,
+        actorUserId: req.user!.id || null,
+        actorRole: req.user?.role,
+        eventType: 'DIAGNOSTIC_GENERATED',
+        entityType: 'diagnostic',
+        entityId: diagnosticId,
+        metadata: { version: 'v2' }
+      });
+    }
 
     return res.json({ success: true, diagnosticId });
-
   } catch (error: any) {
     console.error('Generate Diagnostics Error:', error);
-    return res.status(500).json({
-      error: 'Internal Server Error',
-      details: error.message,
-    });
+    return res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 }
 
@@ -3569,6 +3544,32 @@ export async function lockDiagnostic(req: AuthRequest, res: Response) {
     if (!check.allowed) {
       return res.status(403).json({ error: 'GATE_LOCKED', message: check.reason });
     }
+
+    await db.update(diagnostics)
+      .set({ status: 'locked' })
+      .where(eq(diagnostics.id, diagnosticId));
+
+    // ✅ Sync to tenant_documents once LOCKED (Requirement: Tenant sees locked artifacts)
+    const [diag] = await db.select().from(diagnostics).where(eq(diagnostics.id, diagnosticId)).limit(1);
+    if (diag) {
+      const outputs = {
+        sop01DiagnosticMarkdown: diag.overview,
+        sop01AiLeverageMarkdown: diag.aiOpportunities,
+        sop01RoadmapSkeletonMarkdown: diag.roadmapSkeleton,
+        sop01DiscoveryQuestionsMarkdown: diag.discoveryQuestions
+      };
+      await persistSop01OutputsForTenant(diag.tenantId, outputs as any);
+    }
+
+    // Audit
+    await db.insert(auditEvents).values({
+      tenantId: null,
+      actorUserId: req.user!.id || null,
+      actorRole: req.user?.role,
+      eventType: 'DIAGNOSTIC_LOCKED',
+      entityType: 'diagnostic',
+      entityId: diagnosticId
+    });
 
     return res.json({ success: true });
   } catch (error: any) {
@@ -4519,107 +4520,15 @@ export async function lockRoiBaselineForFirm(req: AuthRequest, res: Response) {
     }
 
     const updated = await db
-    const updatedBaseline = await db
       .update(firmBaselineIntake)
       .set({ status: 'LOCKED', updatedAt: new Date() } as any)
       .where(eq(firmBaselineIntake.tenantId, tenantId))
       .returning();
 
-    return res.status(200).json({ baseline: updatedBaseline[0] ?? null });
+    return res.status(200).json({ baseline: updated[0] ?? null });
   } catch (error: any) {
     console.error('lockRoiBaselineForFirm error:', error);
     return res.status(500).json({ error: error?.message || 'Failed to lock ROI baseline' });
   }
 }
 
-// ============================================================================
-// POST /api/superadmin/firms/:tenantId/impersonate - Impersonate Tenant Owner
-// ============================================================================
-
-export async function impersonateTenantOwner(req: AuthRequest, res: Response) {
-  try {
-    if (!requireExecutiveAuthority(req, res)) return;
-
-    const { tenantId } = req.params;
-    const superAdminId = req.user?.userId || req.user?.id;
-
-    if (!superAdminId) return res.status(401).json({ error: 'Unauthorized - Missing User ID' });
-
-    // 1. Get Tenant Owner
-    const [tenant] = await db
-      .select({
-        id: tenants.id,
-        ownerUserId: tenants.ownerUserId,
-        name: tenants.name,
-      })
-      .from(tenants)
-      .where(eq(tenants.id, tenantId))
-      .limit(1);
-
-    if (!tenant) {
-      return res.status(404).json({ error: 'Tenant not found' });
-    }
-
-    if (!tenant.ownerUserId) {
-      return res.status(400).json({ error: 'Tenant has no assigned owner' });
-    }
-
-    const [ownerUser] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, tenant.ownerUserId))
-      .limit(1);
-
-    if (!ownerUser) {
-      return res.status(404).json({ error: 'Owner user not found' });
-    }
-
-    // 2. Create Impersonation Session
-    const [session] = await db
-      .insert(impersonationSessions)
-      .values({
-        superAdminId,
-        tenantId,
-        ownerUserId: ownerUser.id,
-        reason: 'SuperAdmin Impersonation',
-      })
-      .returning();
-
-    // 3. Generate Token for Owner
-    // Import generateToken from utils/auth locally to avoid circular deps if any
-    const { generateToken } = require('../utils/auth');
-    const token = generateToken({
-      userId: ownerUser.id,
-      email: ownerUser.email,
-      role: ownerUser.role as any,
-      isInternal: false,
-      tenantId: tenant.id,
-    });
-
-    // 4. Audit Log
-    await db.insert(auditEvents).values({
-      tenantId,
-      actorUserId: superAdminId,
-      actorRole: req.user?.role as string,
-      eventType: 'SA_IMPERSONATE_START',
-      entityType: 'impersonation_session',
-      entityId: session.id,
-      metadata: { ownerEmail: ownerUser.email },
-    });
-
-    return res.json({
-      token,
-      user: {
-        id: ownerUser.id,
-        email: ownerUser.email,
-        name: ownerUser.name,
-        role: ownerUser.role,
-      },
-      sessionId: session.id,
-    });
-
-  } catch (error) {
-    console.error('Impersonate tenant owner error:', error);
-    return res.status(500).json({ error: 'Failed to start impersonation session' });
-  }
-}

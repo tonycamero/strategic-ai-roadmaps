@@ -15,19 +15,13 @@ describe('Email Service Configuration', () => {
         vi.unstubAllEnvs();
     });
 
-    it('should fall back to default FROM_EMAIL if missing', async () => {
-  vi.resetModules();
-  vi.unstubAllEnvs();
+    it('should throw if FROM_EMAIL is missing', async () => {
+        vi.stubEnv('FROM_EMAIL', '');
+        // Need to reset modules to re-import
+        vi.resetModules();
 
-  // Ensure FROM_EMAIL is absent
-  vi.stubEnv('FROM_EMAIL', '');
-  vi.stubEnv('EMAIL_FROM', '');
+        await expect(import('../email.service')).rejects.toThrow("FROM_EMAIL environment variable is not defined");
 
-  const mod = await import('../email.service');
-
-  // Should still import successfully and expose functions
-  expect(typeof mod.sendEmail).toBe('function');
-  expect(typeof mod.sendInviteEmail).toBe('function');
-  expect(typeof mod.sendPasswordResetEmail).toBe('function');
-});
+        vi.unstubAllEnvs();
+    });
 });
