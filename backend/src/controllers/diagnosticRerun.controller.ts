@@ -1,3 +1,4 @@
+throw new Error('DECOMMISSIONED: diagnosticRerun.controller.ts must remain unreachable. Use superadmin.controller canonical flow.');
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 

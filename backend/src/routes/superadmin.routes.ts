@@ -117,11 +117,12 @@ router.post('/firms/:tenantId/generate-sop01', async (req, res, next) => {
   return generateSop01ForFirm(req, res, next);
 });
 
-// POST /api/superadmin/diagnostic/rerun-sop01/:tenantId - Re-run SOP-01 (zero-ticket recovery)
-router.post('/diagnostic/rerun-sop01/:tenantId', async (req, res, next) => {
-  const { rerunSop01ForFirm } = require('../controllers/diagnosticRerun.controller');
-  return rerunSop01ForFirm(req, res, next);
-});
+// DECOMMISSIONED: legacy rerun endpoint (must remain unreachable).
+// All diagnostic generation must route through the canonical superadmin controller flow.
+// router.post('/diagnostic/rerun-sop01/:tenantId', async (req, res, next) => {
+//   const { rerunSop01ForFirm } = require('../controllers/diagnosticRerun.controller');
+//   return rerunSop01ForFirm(req, res, next);
+// });
 
 // GET/POST discovery notes - REMOVED
 
