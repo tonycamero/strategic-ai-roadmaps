@@ -1,32 +1,43 @@
 import { Response } from 'express';
 import { nanoid } from 'nanoid';
-import { db } from '../db/index';
-import {
-  users, intakes, tenants, roadmaps, auditEvents, tenantDocuments,
-  discoveryCallNotes, roadmapSections, ticketPacks, ticketInstances,
-  tenantMetricsDaily, webinarRegistrations, implementationSnapshots,
-  roadmapOutcomes, agentConfigs, agentThreads, webinarSettings,
-  diagnostics, executiveBriefs, sopTickets, ticketModerationSessions,
-  ticketsDraft, intakeClarifications, impersonationSessions
-} from '../db/schema';
-import { eq, and, sql, count, desc, asc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import { AuthRequest } from '../middleware/auth';
 import path from 'path';
 import fs from 'fs/promises';
-import { generateTicketPackForRoadmap } from '../services/ticketPackGenerator.service';
-import { extractRoadmapMetadata } from '../services/roadmapMetadataExtractor.service';
-import { ImplementationMetricsService } from '../services/implementationMetrics.service';
-import { getOrCreateRoadmapForTenant } from '../services/roadmapOs.service';
-import { refreshVectorStoreContent } from '../services/tenantVectorStore.service';
-import { getModerationStatus } from '../services/ticketModeration.service';
+import { db } from '../db/index';
+
+import { eq, and, sql, count, desc, asc } from 'drizzle-orm';
+
+import { AuthRequest } from '../middleware/auth';
+import {
+  users,
+  intakes,
+  tenants,
+  roadmaps,
+  auditEvents,
+  tenantDocuments,
+  discoveryCallNotes,
+  roadmapSections,
+  ticketPacks,
+  ticketInstances,
+  tenantMetricsDaily,
+  webinarRegistrations,
+  implementationSnapshots,
+  roadmapOutcomes,
+  agentConfigs,
+  agentThreads,
+  webinarSettings,
+  diagnostics,
+  executiveBriefs,
+  sopTickets,
+  ticketModerationSessions,
+  ticketsDraft,
+  intakeClarifications,
+  impersonationSessions,
+} from '../db/schema';
+
 import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
 import { AuthorityCategory, CanonicalDiscoveryNotes } from '@roadmap/shared';
-import { generateRawTickets, ParsedTicket, InventoryEmptyError } from '../services/diagnosticIngestion.service';
-import { Sop01Outputs } from '../services/sop01Engine';
-import { sendClarificationRequestEmail } from '../services/email.service';
 
-// META-TICKET v2: Gate & SOP Architecture Imports
 import {
   canLockIntake,
   canGenerateDiagnostics,
@@ -34,11 +45,28 @@ import {
   canPublishDiagnostics,
   canIngestDiscoveryNotes,
   canGenerateSopTickets,
-  canAssembleRoadmap
+  canAssembleRoadmap,
 } from '../services/gate.service';
-import { generateSop01Outputs } from '../services/sop01Engine';
-import { persistSop01OutputsForTenant } from '../services/sop01Persistence';
-import { buildNormalizedIntakeContext } from '../services/intakeNormalizer';
+
+import { getOrCreateRoadmapForTenant } from '../services/roadmapOs.service';
+import { ImplementationMetricsService } from '../services/implementationMetrics.service';
+
+import { refreshVectorStoreContent } from '../services/tenantVectorStore.service';
+import { getModerationStatus } from '../services/ticketModeration.service';
+
+import {
+  generateRawTickets,
+  ParsedTicket,
+  InventoryEmptyError,
+} from '../services/diagnosticIngestion.service';
+
+import { generateTicketPackForRoadmap } from '../services/ticketPackGenerator.service';
+import { extractRoadmapMetadata } from '../services/roadmapMetadataExtractor.service';
+
+import { sendClarificationRequestEmail } from '../services/email.service';
+
+import { generateSop01DiagnosticsForTenant } from '../services/diagnosticsGeneration.service';
+
 import { validateBriefModeSchema } from '../services/schemaGuard.service';
 
 const UPLOADS_DIR = path.join(__dirname, '../../uploads');
@@ -3508,6 +3536,7 @@ export async function confirmSufficiency(req: AuthRequest, res: Response) {
 export async function generateDiagnostics(req: AuthRequest, res: Response) {
   try {
     if (!requireSuperAdmin(req, res)) return;
+
     const { tenantId } = req.params;
 
     const check = await canGenerateDiagnostics(tenantId);
@@ -3515,74 +3544,19 @@ export async function generateDiagnostics(req: AuthRequest, res: Response) {
       return res.status(403).json({ error: 'GATE_LOCKED', message: check.reason });
     }
 
-    // 1. Build Context
-    const normalized = await buildNormalizedIntakeContext(tenantId);
-
-    // 2. Generate (SOP-01 Engine)
-    const outputs = await generateSop01Outputs(normalized);
-
-    // 3. Persist outputs to the diagnostic record
-
-    // 4. Create/Update Diagnostic Record
-    // Check for existing 'generated' diagnostic
-    const [existing] = await db.select().from(diagnostics)
-      .where(and(eq(diagnostics.tenantId, tenantId), eq(diagnostics.status, 'generated')))
-      .limit(1);
-
-    let diagnosticId = existing?.id;
-    let isNewDiagnostic = false;
-
-    const diagnosticValues = {
-      id: nanoid(),
-      tenantId,
-      sopVersion: 'SOP-01',
-      status: 'generated' as const,
-      overview: { markdown: outputs.sop01DiagnosticMarkdown },
-      aiOpportunities: { markdown: outputs.sop01AiLeverageMarkdown },
-      roadmapSkeleton: { markdown: outputs.sop01RoadmapSkeletonMarkdown },
-      discoveryQuestions: {
-        list: outputs.sop01DiscoveryQuestionsMarkdown
-          .split('\n')
-          .map(q => q.trim())
-          .filter(Boolean)
-      },
-      generatedByUserId: req.user!.id || null,
-      updatedAt: new Date()
-    };
-
-    if (!diagnosticId) {
-      const [newDiag] = await db.insert(diagnostics).values(diagnosticValues).returning();
-      diagnosticId = newDiag.id;
-      isNewDiagnostic = true;
-
-      // Update tenant lastDiagnosticId
-      await db.update(tenants)
-        .set({ lastDiagnosticId: diagnosticId })
-        .where(eq(tenants.id, tenantId));
-    } else {
-      // Update existing record with fresh outputs
-      await db.update(diagnostics)
-        .set(diagnosticValues)
-        .where(eq(diagnostics.id, diagnosticId));
-    }
-
-    // ✅ Only insert audit event for new diagnostics (prevents duplicates)
-    if (isNewDiagnostic) {
-      await db.insert(auditEvents).values({
-        tenantId,
-        actorUserId: req.user!.id || null,
-        actorRole: req.user?.role,
-        eventType: 'DIAGNOSTIC_GENERATED',
-        entityType: 'diagnostic',
-        entityId: diagnosticId,
-        metadata: { version: 'v2' }
-      });
-    }
+    const { diagnosticId } = await generateSop01DiagnosticsForTenant({
+  tenantId,
+  actorUserId: req.user?.id ?? null,
+});
 
     return res.json({ success: true, diagnosticId });
+
   } catch (error: any) {
     console.error('Generate Diagnostics Error:', error);
-    return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+    return res.status(500).json({
+      error: 'Internal Server Error',
+      details: error.message,
+    });
   }
 }
 
@@ -3595,32 +3569,6 @@ export async function lockDiagnostic(req: AuthRequest, res: Response) {
     if (!check.allowed) {
       return res.status(403).json({ error: 'GATE_LOCKED', message: check.reason });
     }
-
-    await db.update(diagnostics)
-      .set({ status: 'locked' })
-      .where(eq(diagnostics.id, diagnosticId));
-
-    // ✅ Sync to tenant_documents once LOCKED (Requirement: Tenant sees locked artifacts)
-    const [diag] = await db.select().from(diagnostics).where(eq(diagnostics.id, diagnosticId)).limit(1);
-    if (diag) {
-      const outputs = {
-        sop01DiagnosticMarkdown: diag.overview,
-        sop01AiLeverageMarkdown: diag.aiOpportunities,
-        sop01RoadmapSkeletonMarkdown: diag.roadmapSkeleton,
-        sop01DiscoveryQuestionsMarkdown: diag.discoveryQuestions
-      };
-      await persistSop01OutputsForTenant(diag.tenantId, outputs as any);
-    }
-
-    // Audit
-    await db.insert(auditEvents).values({
-      tenantId: null,
-      actorUserId: req.user!.id || null,
-      actorRole: req.user?.role,
-      eventType: 'DIAGNOSTIC_LOCKED',
-      entityType: 'diagnostic',
-      entityId: diagnosticId
-    });
 
     return res.json({ success: true });
   } catch (error: any) {

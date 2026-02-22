@@ -44,10 +44,11 @@ export async function canLockIntake(tenantId: string): Promise<GateCheckResult> 
     }
 
     const [brief] = await db
-        .select()
-        .from(executiveBriefs)
-        .where(eq(executiveBriefs.tenantId, tenantId))
-        .limit(1);
+  .select()
+  .from(executiveBriefs)
+  .where(eq(executiveBriefs.tenantId, tenantId))
+  .orderBy(desc(executiveBriefs.createdAt))
+  .limit(1);
 
     if (!brief) {
         return { allowed: false, reason: 'Executive Brief has not been generated' };
@@ -76,10 +77,11 @@ export async function canGenerateDiagnostics(tenantId: string): Promise<GateChec
 
     // New Requirement: Executive Brief MUST be delivered
     const [brief] = await db
-        .select()
-        .from(executiveBriefs)
-        .where(eq(executiveBriefs.tenantId, tenantId))
-        .limit(1);
+  .select()
+  .from(executiveBriefs)
+  .where(eq(executiveBriefs.tenantId, tenantId))
+  .orderBy(desc(executiveBriefs.createdAt))
+  .limit(1);
 
     if (!brief || (brief.status !== 'APPROVED' && brief.status !== 'DELIVERED')) {
         return { allowed: false, reason: 'Executive Brief must be approved before generating diagnostics.' };
@@ -160,86 +162,84 @@ export async function canPublishDiagnostics(diagnosticId: string): Promise<GateC
 
 /**
  * Gate 4: CAN INGEST DISCOVERY NOTES?
- * Requirement: Diagnostics PUBLISHED.
+ * Requirement: Current Diagnostic must be PUBLISHED.
+ *
+ * Deterministic rule:
+ * - Tenant must have lastDiagnosticId set
+ * - That diagnostic must exist
+ * - That diagnostic.status === 'published'
+ *
+ * Fail-closed posture:
+ * - If tenant or diagnostic cannot be resolved, deny.
  */
 export async function canIngestDiscoveryNotes(tenantId: string): Promise<GateCheckResult> {
-    const [tenant] = await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1);
+  // Resolve tenant deterministically
+  const [tenant] = await db
+    .select()
+    .from(tenants)
+    .where(eq(tenants.id, tenantId))
+    .limit(1);
 
-    // Check for any published diagnostic
-    const [publishedDiag] = await db
-        .select()
-        .from(diagnostics)
-        .where(eq(diagnostics.tenantId, tenantId)) // Simplified: usually we check lastDiagnosticId or status=published
-        // But for now, we just enforce that *a* diagnostic cycle has completed to "Published" status
-        // Correction: The schema tracks 'lastDiagnosticId'. Let's use that.
-        .limit(1);
+  if (!tenant) {
+    return { allowed: false, reason: 'Tenant not found.' };
+  }
 
-    // If we want strict "Current Diagnostic is Published":
-    if (!tenant.lastDiagnosticId) {
-        return { allowed: false, reason: 'No diagnostic found' };
-    }
+  if (!tenant.lastDiagnosticId) {
+    return { allowed: false, reason: 'No diagnostic cycle found for this tenant.' };
+  }
 
-    const [currentDiag] = await db
-        .select()
-        .from(diagnostics)
-        .where(eq(diagnostics.id, tenant.lastDiagnosticId))
-        .limit(1);
+  const [currentDiag] = await db
+    .select()
+    .from(diagnostics)
+    .where(eq(diagnostics.id, tenant.lastDiagnosticId))
+    .limit(1);
 
-    if (currentDiag?.status !== 'published') {
-        return { allowed: false, reason: 'Current Diagnostic must be PUBLISHED before discovery notes.' };
-    }
+  if (!currentDiag) {
+    return { allowed: false, reason: 'Referenced diagnostic record not found.' };
+  }
 
-    return { allowed: true };
+  if (currentDiag.status !== 'published') {
+    return { allowed: false, reason: 'Current Diagnostic must be PUBLISHED before discovery notes.' };
+  }
+
+  return { allowed: true };
 }
 
 /**
  * Gate 5: CAN GENERATE SOP TICKETS?
- * Requirement: Diagnostics PUBLISHED + Discovery Notes INGESTED.
+ * Requirement: Current Diagnostic is PUBLISHED + at least one Discovery Note is INGESTED.
+ *
+ * Fail-closed posture:
+ * - If discovery note ingestion cannot be verified deterministically, deny.
  */
 export async function canGenerateSopTickets(tenantId: string): Promise<GateCheckResult> {
-    // 1. Check Diagnostics
-    const diagCheck = await canIngestDiscoveryNotes(tenantId); // Re-use check
-    if (!diagCheck.allowed) return diagCheck;
+  // Gate 4 enforces: tenant.lastDiagnosticId exists AND that diagnostic.status === 'published'
+  const diagCheck = await canIngestDiscoveryNotes(tenantId);
+  if (!diagCheck.allowed) return diagCheck;
 
-    // 2. Check Discovery Notes
-    // We need at least one "ingested" note row? Or just any note row with status 'ingested'?
-    // There is no explicit "Discovery Object" in schema, just `discovery_call_notes` rows.
-    // We'll check if ANY note exists with status 'ingested' for this tenant.
-    // Actually, wait, `discoveryCallNotes` table has a `tenantId`, right?
-    // Checking schema... yes: `discovery_call_notes` has `tenant_id`.
+  // Require: at least one ingested discovery note for this tenant.
+  try {
+    const ingested = await db
+      .select({ id: discoveryCallNotes.id })
+      .from(discoveryCallNotes)
+      .where(and(
+        eq(discoveryCallNotes.tenantId, tenantId),
+        eq(discoveryCallNotes.status, 'ingested')
+      ))
+      .limit(1);
 
-    const [note] = await db
-        .select()
-        .from(discoveryCallNotes)
-        .where(eq(discoveryCallNotes.tenantId, tenantId)) // and status='ingested'
-    // wait, schema update added `status` to discovery_call_notes?
-    // Checking schema view... I see `discoveryCallNotes` in `backend/src/db/schema.ts` lines 864? 
-    // Wait, I did verify schema updates. Let's assume `status` exists as per META-TICKET v2 A1.
-    // "Added a status column (varchar, default 'draft') with enum values: draft | ingested"
-    // So we filter by status='ingested'.
-    // If column doesn't exist in runtime types yet, this might fail compile if types aren't regenerated.
-    // I need to be careful. I saw the *changes* in Step 122's previous context, but did I actually *load* that schema file content?
-    // Ah, Step 132 output shows `discoveryCallNotes` around line ???. 
-    // Actually Step 132 output was truncated at line 800. `discoveryCallNotes` might be further down or I missed it.
-    // Let me RE-VERIFY the schema content for `discoveryCallNotes` to be 100% sure of the field name.
-
-    // For now, I will assume it is correct based on my previous actions, but I will add a TODO to verify.
-    // If I cannot verify, safe fallback is just existence of notes implies ingestion if that was the old way,
-    // BUT the new way requires 'ingested'.
-
-    // Proceeding with 'ingested' check.
-    const notes = await db
-        .select()
-        .from(discoveryCallNotes)
-        .where(eq(discoveryCallNotes.tenantId, tenantId));
-
-    const hasIngested = notes.some((n: any) => n.status === 'ingested');
-
-    if (!hasIngested) {
-        return { allowed: false, reason: 'Must have at least one INGESTED discovery note.' };
+    if (ingested.length === 0) {
+      return { allowed: false, reason: 'Must have at least one INGESTED discovery note.' };
     }
 
     return { allowed: true };
+  } catch (err: any) {
+    console.error('[Gate] canGenerateSopTickets failed to verify ingested discovery notes:', err);
+    return {
+      allowed: false,
+      reason: 'Cannot verify discovery note ingestion state (query failure).',
+    };
+  }
 }
 
 /**
