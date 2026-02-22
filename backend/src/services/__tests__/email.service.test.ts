@@ -16,11 +16,12 @@ describe('Email Service Configuration', () => {
     });
 
     it('should throw if FROM_EMAIL is missing', async () => {
-        vi.stubEnv('FROM_EMAIL', '');
-        // Need to reset modules to re-import
+  delete process.env.FROM_EMAIL;        // Need to reset modules to re-import
         vi.resetModules();
 
-        await expect(import('../email.service')).rejects.toThrow("FROM_EMAIL environment variable is not defined");
+        
+  delete process.env.FROM_EMAIL;
+await expect(import('../email.service')).rejects.toThrow("FROM_EMAIL environment variable is not defined");
 
         vi.unstubAllEnvs();
     });

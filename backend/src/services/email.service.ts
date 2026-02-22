@@ -11,8 +11,12 @@
 import { Resend } from 'resend';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
+// keep DEFAULT_FROM if you want it for docs/reference, but DO NOT use it as fallback.
 const DEFAULT_FROM = "hello@mail.strategicai.app";
-const FROM_EMAIL = (process.env.FROM_EMAIL ?? process.env.EMAIL_FROM ?? DEFAULT_FROM).trim();
+const FROM_EMAIL = (process.env.FROM_EMAIL ?? "").trim();
+if (!FROM_EMAIL) {
+  throw new Error("FROM_EMAIL environment variable is not defined");
+}
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const REPLY_TO = process.env.RESEND_REPLY_TO;
 

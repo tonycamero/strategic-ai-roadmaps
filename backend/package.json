@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "dotenv -e .env -- tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "build:functions": "node ./scripts/build-functions.mjs",
+    "build:functions": "pnpm -C ../shared build && node ./scripts/build-functions.mjs",
     "start": "node dist/index.js",
     "db:generate": "drizzle-kit generate:pg",
     "db:push": "drizzle-kit push:pg",
