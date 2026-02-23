@@ -4,10 +4,19 @@ import { invites, users, tenants, intakeVectors } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { generateInviteToken, hashPassword, generateToken } from '../utils/auth';
 import { sendInviteEmail } from '../utils/email';
-import { AuthRequest } from '../middleware/auth';
+import { type AuthRequest } from '../middleware/auth';
 import { CreateInviteRequest, AcceptInviteRequest } from '@roadmap/shared';
 import { ZodError } from 'zod';
 import { onboardingProgressService } from '../services/onboardingProgress.service';
+
+/**
+ * Invite Controller
+ *
+ * SECURITY HARDENING NOTES
+ * - Tenant scope for authenticated endpoints derived from req.tenantId (set by requireTenantAccess()).
+ * - All invite reads/writes are scoped by tenantId (prevents IDOR / cross-tenant access).
+ * - Accept invite is unauthenticated by design; it binds tenantId to invite.tenantId and issues token.
+ */
 
 export async function createInvite(req: AuthRequest, res: Response) {
   try {
@@ -18,22 +27,16 @@ export async function createInvite(req: AuthRequest, res: Response) {
     const { email: rawEmail, role } = CreateInviteRequest.parse(req.body);
     const email = rawEmail.toLowerCase().trim();
 
-    // Check if user already exists
-    const [existingUser] = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, email))
-      .limit(1);
+    const tenantId = req.tenantId;
+    if (!tenantId) return res.status(403).json({ error: 'Tenant not resolved' });
 
+    // Check if user already exists globally (email is unique in most systems)
+    const [existingUser] = await db.select().from(users).where(eq(users.email, email)).limit(1);
     if (existingUser) {
       return res.status(400).json({ error: 'User already exists' });
     }
 
-    // Check if invite already exists and is pending
-    const tenantId = (req as any).tenantId;
-    if (!tenantId) {
-      return res.status(403).json({ error: 'Tenant not resolved' });
-    }
+    // Check if invite already exists for this tenant and is pending
     const [existingInvite] = await db
       .select()
       .from(invites)
@@ -57,14 +60,9 @@ export async function createInvite(req: AuthRequest, res: Response) {
       })
       .returning();
 
-    // Get owner name for email
-    const [owner] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, req.user.userId))
-      .limit(1);
+    // Best-effort: owner name for email (do not block if missing)
+    const [owner] = await db.select().from(users).where(eq(users.id, req.user.userId)).limit(1);
 
-    // Send invite email
     const inviteLink = `${process.env.FRONTEND_URL}/accept-invite/${token}`;
 
     try {
@@ -76,22 +74,17 @@ export async function createInvite(req: AuthRequest, res: Response) {
       });
     } catch (emailError) {
       console.error('Failed to send invite email:', emailError);
-      // Don't fail the whole request if email fails
-      // In production, you might want to queue this for retry
+      // do not fail request
     }
 
-    // 🎯 Onboarding Hook: Mark INVITE_TEAM complete
+    // 🎯 Onboarding Hook: Mark INVITE_TEAM complete (best-effort)
     try {
-      const tenant = tenantId ? await db.query.tenants.findFirst({
+      const tenant = await db.query.tenants.findFirst({
         where: eq(tenants.id, tenantId),
-      }) : null;
+      });
 
       if (tenant) {
-        await onboardingProgressService.markStep(
-          tenant.id,
-          'INVITE_TEAM',
-          'completed'
-        );
+        await onboardingProgressService.markStep(tenant.id, 'INVITE_TEAM', 'completed');
       }
     } catch (error) {
       console.error('Failed to update onboarding progress:', error);
@@ -117,65 +110,40 @@ export async function acceptInvite(req: Request, res: Response) {
   try {
     const { token, name, password } = AcceptInviteRequest.parse(req.body);
 
-    // Find invite
-    const [invite] = await db
-      .select()
-      .from(invites)
-      .where(eq(invites.token, token))
-      .limit(1);
+    const [invite] = await db.select().from(invites).where(eq(invites.token, token)).limit(1);
 
-    if (!invite) {
-      return res.status(404).json({ error: 'Invite not found' });
-    }
+    if (!invite) return res.status(404).json({ error: 'Invite not found' });
+    if (invite.accepted) return res.status(400).json({ error: 'Invite already accepted' });
 
-    if (invite.accepted) {
-      return res.status(400).json({ error: 'Invite already accepted' });
-    }
-
-    // Check if user already exists (edge case - someone registered in the meantime)
-    const [existingUser] = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, invite.email))
-      .limit(1);
-
+    // Edge-case: someone registered in the meantime
+    const [existingUser] = await db.select().from(users).where(eq(users.email, invite.email)).limit(1);
     if (existingUser) {
       return res.status(400).json({ error: 'User already exists' });
     }
 
-    // Create user account
     const passwordHash = await hashPassword(password);
+
     const [newUser] = await db
       .insert(users)
       .values({
         email: invite.email,
         passwordHash,
         name,
-        role: invite.role as any, // Drizzle type inference limitation with $type<UserRole>()
-        tenantId: invite.tenantId, // 🔥 Tenant scoping: inherit from invite
+        role: invite.role as any, // Drizzle typing limitation
+        tenantId: invite.tenantId, // bind from invite (critical)
       })
       .returning();
 
-    // Mark invite as accepted
-    await db
-      .update(invites)
-      .set({ accepted: true })
-      .where(eq(invites.id, invite.id));
+    await db.update(invites).set({ accepted: true }).where(eq(invites.id, invite.id));
 
-    // 🎯 Sync status back to Intake Vector (for Invite Team dashboard)
+    // 🎯 Sync Intake Vector status (best-effort)
     try {
       await db
         .update(intakeVectors)
-        .set({
-          inviteStatus: 'ACCEPTED',
-          updatedAt: new Date()
-        })
-        .where(and(
-          eq(intakeVectors.tenantId, invite.tenantId),
-          eq(intakeVectors.recipientEmail, invite.email)
-        ));
-    } catch (error) {
-      console.error('Failed to sync intake vector status on acceptance:', error);
+        .set({ inviteStatus: 'ACCEPTED', updatedAt: new Date() })
+        .where(and(eq(intakeVectors.tenantId, invite.tenantId), eq(intakeVectors.recipientEmail, invite.email)));
+    } catch (err) {
+      console.error('Failed to sync intake vector status on acceptance:', err);
     }
 
     const authToken = generateToken({
@@ -212,17 +180,11 @@ export async function getInvites(req: AuthRequest, res: Response) {
       return res.status(403).json({ error: 'Only owners can view invites' });
     }
 
-    // Both superadmin and owner see only their own tenant's invites when viewing dashboard
-    const tenantId = (req as any).tenantId;
-    if (!tenantId) {
-      return res.status(403).json({ error: 'Tenant not resolved' });
-    }
-    const ownerInvites = await db
-      .select()
-      .from(invites)
-      .where(eq(invites.tenantId, tenantId));
+    const tenantId = req.tenantId;
+    if (!tenantId) return res.status(403).json({ error: 'Tenant not resolved' });
 
-    return res.json({ invites: ownerInvites });
+    const tenantInvites = await db.select().from(invites).where(eq(invites.tenantId, tenantId));
+    return res.json({ invites: tenantInvites });
   } catch (error) {
     console.error('Get invites error:', error);
     return res.status(500).json({ error: 'Failed to fetch invites' });
@@ -238,33 +200,21 @@ export async function resendInvite(req: AuthRequest, res: Response) {
 
     const { inviteId } = req.params;
 
-    // Find invite and verify ownership
-    const tenantId = (req as any).tenantId;
-    if (!tenantId) {
-      return res.status(403).json({ error: 'Tenant not resolved' });
-    }
+    const tenantId = req.tenantId;
+    if (!tenantId) return res.status(403).json({ error: 'Tenant not resolved' });
+
+    // Scoped fetch prevents IDOR
     const [invite] = await db
       .select()
       .from(invites)
       .where(and(eq(invites.id, inviteId), eq(invites.tenantId, tenantId)))
       .limit(1);
 
-    if (!invite) {
-      return res.status(404).json({ error: 'Invite not found' });
-    }
+    if (!invite) return res.status(404).json({ error: 'Invite not found' });
+    if (invite.accepted) return res.status(400).json({ error: 'Invite already accepted' });
 
-    if (invite.accepted) {
-      return res.status(400).json({ error: 'Invite already accepted' });
-    }
+    const [owner] = await db.select().from(users).where(eq(users.id, req.user.userId)).limit(1);
 
-    // Get owner name for email
-    const [owner] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, req.user.userId))
-      .limit(1);
-
-    // Resend invite email
     const inviteLink = `${process.env.FRONTEND_URL}/accept-invite/${invite.token}`;
 
     try {
@@ -295,33 +245,26 @@ export async function revokeInvite(req: AuthRequest, res: Response) {
 
     const { inviteId } = req.params;
 
-    // Find invite and verify ownership
-    const tenantId = (req as any).tenantId;
-    if (!tenantId) {
-      return res.status(403).json({ error: 'Tenant not resolved' });
-    }
+    const tenantId = req.tenantId;
+    if (!tenantId) return res.status(403).json({ error: 'Tenant not resolved' });
+
+    // Scoped fetch prevents IDOR
     const [invite] = await db
       .select()
       .from(invites)
       .where(and(eq(invites.id, inviteId), eq(invites.tenantId, tenantId)))
       .limit(1);
 
-    if (!invite) {
-      return res.status(404).json({ error: 'Invite not found' });
-    }
+    if (!invite) return res.status(404).json({ error: 'Invite not found' });
+    if (invite.accepted) return res.status(400).json({ error: 'Cannot revoke accepted invite' });
 
-    if (invite.accepted) {
-      return res.status(400).json({ error: 'Cannot revoke accepted invite' });
-    }
-
-    // Delete the invite
-    await db
-      .delete(invites)
-      .where(eq(invites.id, inviteId));
+    // Scoped delete prevents IDOR
+    await db.delete(invites).where(and(eq(invites.id, inviteId), eq(invites.tenantId, tenantId)));
 
     return res.json({ message: 'Invitation revoked successfully' });
   } catch (error) {
     console.error('Revoke invite error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
+
 }

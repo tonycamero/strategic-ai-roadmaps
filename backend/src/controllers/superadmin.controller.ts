@@ -40,6 +40,7 @@ import { generateSop01Outputs } from '../services/sop01Engine';
 import { persistSop01OutputsForTenant } from '../services/sop01Persistence';
 import { buildNormalizedIntakeContext } from '../services/intakeNormalizer';
 import { validateBriefModeSchema } from '../services/schemaGuard.service';
+import { generateFinalRoadmapForTenant } from '../services/finalRoadmap.service';
 
 const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 
@@ -298,7 +299,7 @@ export async function updateIntakeCoaching(req: AuthRequest<{ intakeId: string }
         const requests = [...(prev.requests || [])];
         requests.push({
           id: `fb_req_${nanoid()}`,
-          requestedBy: req.user?.id || 'system',
+          requestedBy: req.user?.userId || 'system',
           requestedFrom: intake.role,
           requestedAt: new Date().toISOString(),
           prompt: curr.comment,
@@ -367,7 +368,7 @@ export async function requestIntakeClarification(req: AuthRequest, res: Response
         clarificationPrompt,
         blocking: !!blocking,
         token,
-        requestedByUserId: req.user?.id,
+        requestedByUserId: req.user?.userId,
         status: 'requested'
       })
       .returning();
@@ -399,7 +400,7 @@ export async function requestIntakeClarification(req: AuthRequest, res: Response
         // Log successful attempt
         await db.insert(auditEvents).values({
           tenantId,
-          actorUserId: req.user?.id,
+          actorUserId: req.user?.userId,
           actorRole: req.user?.role,
           eventType: 'CLARIFICATION_EMAIL_ATTEMPTED',
           entityType: 'intake_clarification',
@@ -414,7 +415,7 @@ export async function requestIntakeClarification(req: AuthRequest, res: Response
         // Log failed attempt
         await db.insert(auditEvents).values({
           tenantId,
-          actorUserId: req.user?.id,
+          actorUserId: req.user?.userId,
           actorRole: req.user?.role,
           eventType: 'CLARIFICATION_EMAIL_ATTEMPTED',
           entityType: 'intake_clarification',
@@ -438,7 +439,7 @@ export async function requestIntakeClarification(req: AuthRequest, res: Response
     // Audit Event
     await db.insert(auditEvents).values({
       tenantId,
-      actorUserId: req.user?.id,
+      actorUserId: req.user?.userId,
       actorRole: req.user?.role,
       eventType: 'INTAKE_CLARIFICATION_REQUESTED',
       entityType: 'intake_clarification',
@@ -1318,6 +1319,7 @@ export async function getFirmDetailV2(req: AuthRequest<{ tenantId: string }>, re
         version: roadmaps.version,
         createdAt: roadmaps.createdAt,
         updatedAt: roadmaps.updatedAt,
+            deliveredAt: roadmaps.deliveredAt,
         modelJson: roadmaps.modelJson
       })
       .from(roadmaps)
@@ -1481,7 +1483,7 @@ export async function getFirmDetailV2(req: AuthRequest<{ tenantId: string }>, re
           ? {
             id: lastRoadmap.id,
             status: lastRoadmap.status,
-            deliveredAt: lastRoadmap.status === 'delivered' ? lastRoadmap.updatedAt : null,
+            deliveredAt: lastRoadmap.deliveredAt ?? null,            
             createdAt: lastRoadmap.createdAt,
           }
           : null,
@@ -2194,6 +2196,23 @@ export async function getFirmWorkflowStatus(req: AuthRequest, res: Response) {
 
 // ============================================================================
 // POST /api/superadmin/firms/:tenantId/generate-roadmap - Generate Roadmap (SOP-03)
+
+export async function assembleRoadmapForFirm(req: AuthRequest<{ tenantId: string }>, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+
+    const { tenantId } = req.params;
+
+    // Final roadmap generation: requires tickets generated + moderation complete.
+    // Service will fail-closed if prerequisites are not satisfied.
+    const result = await generateFinalRoadmapForTenant(tenantId);
+
+    return res.json({ ok: true, result });
+  } catch (error: any) {
+    console.error('Assemble roadmap error:', error);
+    return res.status(500).json({ error: error?.message || 'Failed to assemble roadmap' });
+  }
+}
 // ============================================================================
 
 // ============================================================================
@@ -3465,7 +3484,7 @@ export async function lockIntake(req: AuthRequest, res: Response) {
 
     await db.insert(auditEvents).values({
       tenantId,
-      actorUserId: req.user!.id || null,
+      actorUserId: req.user!.userId || null,
       actorRole: req.user?.role,
       eventType: 'INTAKE_LOCKED',
       entityType: 'tenant',
@@ -3490,7 +3509,7 @@ export async function confirmSufficiency(req: AuthRequest, res: Response) {
 
     await db.insert(auditEvents).values({
       tenantId,
-      actorUserId: req.user?.id || null,
+      actorUserId: req.user?.userId || null,
       actorRole: req.user?.role,
       eventType: 'OPERATOR_CONFIRMED_DIAGNOSTIC_SUFFICIENCY',
       entityType: 'tenant',
@@ -3546,7 +3565,7 @@ export async function generateDiagnostics(req: AuthRequest, res: Response) {
           .map(q => q.trim())
           .filter(Boolean)
       },
-      generatedByUserId: req.user!.id || null,
+      generatedByUserId: req.user!.userId || null,
       updatedAt: new Date()
     };
 
@@ -3570,7 +3589,7 @@ export async function generateDiagnostics(req: AuthRequest, res: Response) {
     if (isNewDiagnostic) {
       await db.insert(auditEvents).values({
         tenantId,
-        actorUserId: req.user!.id || null,
+        actorUserId: req.user!.userId || null,
         actorRole: req.user?.role,
         eventType: 'DIAGNOSTIC_GENERATED',
         entityType: 'diagnostic',
@@ -3615,7 +3634,7 @@ export async function lockDiagnostic(req: AuthRequest, res: Response) {
     // Audit
     await db.insert(auditEvents).values({
       tenantId: null,
-      actorUserId: req.user!.id || null,
+      actorUserId: req.user!.userId || null,
       actorRole: req.user?.role,
       eventType: 'DIAGNOSTIC_LOCKED',
       entityType: 'diagnostic',
@@ -3675,7 +3694,7 @@ export async function publishDiagnostic(req: AuthRequest, res: Response) {
     // Audit
     await db.insert(auditEvents).values({
       tenantId: diag.tenantId, // Use the fetched tenantId
-      actorUserId: req.user!.id || null,
+      actorUserId: req.user!.userId || null,
       actorRole: req.user?.role,
       eventType: 'DIAGNOSTIC_PUBLISHED',
       entityType: 'diagnostic',
@@ -3806,7 +3825,7 @@ export async function ingestDiscoveryNotes(req: AuthRequest, res: Response) {
       tenantId,
       notes: canonicalPayload,
       status: 'ingested',
-      createdByUserId: req.user!.id || null,
+      createdByUserId: req.user!.userId || null,
       createdAt: new Date(),
       updatedAt: new Date()
     }).returning({ id: discoveryCallNotes.id });
@@ -3833,7 +3852,7 @@ export async function ingestDiscoveryNotes(req: AuthRequest, res: Response) {
       content: JSON.stringify(findingsObject),
       fileSize: Buffer.byteLength(JSON.stringify(findingsObject)),
       filePath: 'virtual://findings', // Virtual path
-      uploadedBy: req.user!.id || null,
+      uploadedBy: req.user!.userId || null,
       createdAt: new Date(),
       updatedAt: new Date()
     });
@@ -3841,7 +3860,7 @@ export async function ingestDiscoveryNotes(req: AuthRequest, res: Response) {
     // Audit
     await db.insert(auditEvents).values({
       tenantId,
-      actorUserId: req.user!.id || null,
+      actorUserId: req.user!.userId || null,
       actorRole: req.user?.role,
       eventType: 'DISCOVERY_NOTES_INGESTED_AND_COMPILED',
       entityType: 'tenant',
@@ -3964,7 +3983,7 @@ export async function generateAssistedProposals(req: AuthRequest, res: Response)
         filePath: `/virtual/findings-proposed-${Date.now()}.json`,
         fileSize: JSON.stringify(draft).length,
         content: JSON.stringify(draft),
-        uploadedBy: req.user!.id || null,
+        uploadedBy: req.user!.userId || null,
         createdAt: new Date(),
         updatedAt: new Date()
       });
@@ -4096,7 +4115,7 @@ export async function declareCanonicalFindings(req: AuthRequest, res: Response) 
       content: JSON.stringify(findingsObject),
       fileSize: Buffer.byteLength(JSON.stringify(findingsObject)),
       filePath: 'virtual://findings',
-      uploadedBy: req.user!.id || null,
+      uploadedBy: req.user!.userId || null,
       createdAt: new Date(),
       updatedAt: new Date()
     });
@@ -4104,7 +4123,7 @@ export async function declareCanonicalFindings(req: AuthRequest, res: Response) 
     // Audit
     await db.insert(auditEvents).values({
       tenantId,
-      actorUserId: req.user!.id || null,
+      actorUserId: req.user!.userId || null,
       actorRole: req.user?.role,
       eventType: 'FINDINGS_DECLARED_CANONICAL',
       entityType: 'tenant',
@@ -4130,7 +4149,7 @@ export async function activateTicketModeration(req: AuthRequest, res: Response) 
   console.log(`[Stage 6] activateTicketModeration triggered for tenant: ${tenantId}`);
   try {
     if (!requireSuperAdmin(req, res)) {
-      console.warn(`[Stage 6] Unauthorized attempt by user: ${req.user?.id}`);
+      console.warn(`[Stage 6] Unauthorized attempt by user: ${req.user?.userId}`);
       return;
     }
 
@@ -4246,7 +4265,7 @@ export async function activateTicketModeration(req: AuthRequest, res: Response) 
         sourceDocId: canonicalDoc.id,
         sourceDocVersion: 'v1.0',
         status: 'active',
-        startedBy: req.user!.id,
+        startedBy: req.user!.userId,
       }).returning();
 
       const ticketsToCreate = rawTickets.map((t, idx) => ({
@@ -4282,7 +4301,7 @@ export async function activateTicketModeration(req: AuthRequest, res: Response) 
     // 4. Audit
     await db.insert(auditEvents).values({
       tenantId,
-      actorUserId: req.user!.id,
+      actorUserId: req.user!.userId,
       actorRole: req.user?.role,
       eventType: AUDIT_EVENT_TYPES.TICKET_MODERATION_ACTIVATED,
       entityType: 'ticket_moderation_session',
@@ -4355,7 +4374,7 @@ export async function getSuperAdminMe(req: AuthRequest, res: Response) {
 
     return res.json({
       user: {
-        id: req.user!.id,
+        id: req.user!.userId,
         email: req.user!.email,
         role: req.user!.role,
         isInternal: req.user!.isInternal || false
@@ -4593,7 +4612,7 @@ export async function impersonateTenantOwner(req: AuthRequest, res: Response) {
     if (!requireExecutiveAuthority(req, res)) return;
 
     const { tenantId } = req.params;
-    const superAdminId = req.user?.userId || req.user?.id;
+    const superAdminId = req.user?.userId;
 
     if (!superAdminId) return res.status(401).json({ error: 'Unauthorized - Missing User ID' });
 

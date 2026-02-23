@@ -1,55 +1,67 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import type { AuthRequest } from '../middleware/auth';
 import { db } from '../db/index';
-import { agentThreads, agentMessages, tenants, agentLogs, agentConfigs } from '../db/schema';
+import { agentThreads, agentMessages, agentLogs, agentConfigs } from '../db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 
-interface AuthRequest extends Request {
-  user?: {
-    userId: string;
-    role: string;
-    ownerUserId: string;
-    tenantId?: string;
-  };
+function isUuid(val: string): boolean {
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(val);
+}
+
+/**
+ * Agent Thread Controller
+ *
+ * SECURITY HARDENING:
+ * - Tenant scope normally derived from req.tenantId (set by requireTenantAccess / deriveAuthority)
+ * - Superadmin may explicitly pivot via query.tenantId (UUID required)
+ * - All object access validated against thread.tenantId (IDOR protection)
+ */
+
+function resolveEffectiveTenantId(req: AuthRequest): { tenantId: string | null; error?: string } {
+  const user = req.user;
+  if (!user) return { tenantId: null, error: 'Unauthorized' };
+
+  // Default: token-derived scope
+  let tenantId = req.tenantId || null;
+
+  // Superadmin explicit pivot only (must be UUID)
+  const pivot = (user.role === 'superadmin' && req.query?.tenantId)
+    ? String(req.query.tenantId)
+    : null;
+
+  if (pivot) {
+    if (!isUuid(pivot)) return { tenantId: null, error: 'Invalid tenantId (UUID expected)' };
+    tenantId = pivot;
+  }
+
+  if (!tenantId) return { tenantId: null, error: 'Tenant scope not resolved' };
+  return { tenantId };
 }
 
 /**
  * List agent threads for a tenant
- * GET /api/agents/threads?roleType=owner (optional filter)
+ * GET /api/agents/threads?roleType=owner[&tenantId=UUID (superadmin only)]
  */
 export async function listThreads(req: AuthRequest, res: Response) {
   try {
-    const { user } = req;
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    const user = req.user;
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { tenantId, error } = resolveEffectiveTenantId(req);
+    if (!tenantId) {
+      const status = error === 'Unauthorized' ? 401 : 403;
+      return res.status(status).json({ error });
     }
 
-    const { roleType } = req.query;
-    let tenantId: string;
-
-    // SuperAdmin can specify tenantId
-    if (user.role === 'superadmin' && req.query.tenantId) {
-      tenantId = req.query.tenantId as string;
-    } else {
-      // Owner/team - resolve tenant from ownerId
-      const tenant = await db.query.tenants.findFirst({
-        where: eq(tenants.ownerUserId, user.ownerUserId),
-      });
-
-      if (!tenant) {
-        return res.status(404).json({ error: 'Tenant not found' });
-      }
-
-      tenantId = tenant.id;
-    }
-
-    // Build query conditions
+    const roleType = req.query?.roleType;
     const conditions = [eq(agentThreads.tenantId, tenantId)];
 
     if (roleType && typeof roleType === 'string') {
       conditions.push(eq(agentThreads.roleType, roleType));
     }
 
-    // Fetch threads
     const threads = await db
       .select({
         id: agentThreads.id,
@@ -65,14 +77,14 @@ export async function listThreads(req: AuthRequest, res: Response) {
       .where(and(...conditions))
       .orderBy(desc(agentThreads.lastActivityAt));
 
-    // Log access
     await db.insert(agentLogs).values({
       agentConfigId: null,
       eventType: 'threads_list',
       metadata: {
         tenantId,
-        roleType: roleType || 'all',
+        roleType: typeof roleType === 'string' ? roleType : 'all',
         actorUserId: user.userId,
+        actorRole: user.role,
         threadsCount: threads.length,
       },
     });
@@ -86,38 +98,33 @@ export async function listThreads(req: AuthRequest, res: Response) {
 
 /**
  * Get messages for a specific thread
- * GET /api/agents/threads/:id/messages
+ * GET /api/agents/threads/:id/messages[?tenantId=UUID (superadmin pivot only)]
  */
 export async function getThreadMessages(req: AuthRequest, res: Response) {
   try {
-    const { user } = req;
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    const user = req.user;
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
     const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'Missing thread id' });
 
-    // Fetch thread
+    const { tenantId: effectiveTenantId, error } = resolveEffectiveTenantId(req);
+    if (!effectiveTenantId) {
+      const status = error === 'Unauthorized' ? 401 : 403;
+      return res.status(status).json({ error });
+    }
+
     const thread = await db.query.agentThreads.findFirst({
       where: eq(agentThreads.id, id),
     });
 
-    if (!thread) {
-      return res.status(404).json({ error: 'Thread not found' });
+    if (!thread) return res.status(404).json({ error: 'Thread not found' });
+
+    // 🔒 IDOR protection: enforce tenant match (including superadmin unless pivot matches)
+    if (thread.tenantId !== effectiveTenantId) {
+      return res.status(403).json({ error: 'Access denied' });
     }
 
-    // Verify access (non-superadmin must own the tenant)
-    if (user.role !== 'superadmin') {
-      const tenant = await db.query.tenants.findFirst({
-        where: eq(tenants.ownerUserId, user.ownerUserId),
-      });
-
-      if (!tenant || tenant.id !== thread.tenantId) {
-        return res.status(403).json({ error: 'Access denied' });
-      }
-    }
-
-    // Fetch messages
     const messages = await db
       .select({
         id: agentMessages.id,
@@ -129,7 +136,6 @@ export async function getThreadMessages(req: AuthRequest, res: Response) {
       .where(eq(agentMessages.agentThreadId, id))
       .orderBy(agentMessages.createdAt);
 
-    // Log access
     await db.insert(agentLogs).values({
       agentConfigId: thread.agentConfigId,
       eventType: 'messages_list',
@@ -138,6 +144,7 @@ export async function getThreadMessages(req: AuthRequest, res: Response) {
         tenantId: thread.tenantId,
         roleType: thread.roleType,
         actorUserId: user.userId,
+        actorRole: user.role,
         messagesCount: messages.length,
       },
     });
@@ -159,48 +166,31 @@ export async function getThreadMessages(req: AuthRequest, res: Response) {
 
 /**
  * Get agent sync status for current tenant
- * GET /api/agents/sync-status?tenantId=xxx (optional for superadmin)
+ * GET /api/agents/sync-status[?tenantId=UUID (superadmin pivot only)]
  */
 export async function getAgentSyncStatus(req: AuthRequest, res: Response) {
   try {
-    const { user } = req;
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    const user = req.user;
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { tenantId, error } = resolveEffectiveTenantId(req);
+    if (!tenantId) {
+      const status = error === 'Unauthorized' ? 401 : 403;
+      return res.status(status).json({ error });
     }
 
-    let tenantId: string;
-
-    // SuperAdmin can specify tenantId
-    if (user.role === 'superadmin' && req.query.tenantId) {
-      tenantId = req.query.tenantId as string;
-    } else {
-      // Owner/team - resolve tenant from ownerId
-      const tenant = await db.query.tenants.findFirst({
-        where: eq(tenants.ownerUserId, user.ownerUserId),
-      });
-
-      if (!tenant) {
-        return res.status(404).json({ error: 'Tenant not found' });
-      }
-
-      tenantId = tenant.id;
-    }
-
-    // Get all agent configs for this tenant
     const configs = await db.query.agentConfigs.findMany({
       where: eq(agentConfigs.tenantId, tenantId),
       orderBy: [desc(agentConfigs.lastProvisionedAt)],
     });
 
     if (configs.length === 0) {
-      return res.json({ agents: [], lastSyncedAt: null });
+      return res.json({ tenantId, agents: [], lastSyncedAt: null });
     }
 
-    // Get most recent provision timestamp
     const lastSyncedAt = configs[0].lastProvisionedAt;
 
-    // Build agent status list
-    const agents = configs.map(config => ({
+    const agents = configs.map((config) => ({
       agentType: config.agentType,
       lastProvisionedAt: config.lastProvisionedAt,
       vectorStoreId: config.openaiVectorStoreId,
@@ -218,4 +208,5 @@ export async function getAgentSyncStatus(req: AuthRequest, res: Response) {
     console.error('[AgentThread] Error fetching sync status:', error);
     return res.status(500).json({ error: 'Failed to fetch sync status' });
   }
+
 }

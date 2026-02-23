@@ -201,12 +201,9 @@ export async function generateFinalRoadmapForTenant(tenantId: string) {
 
   // 8. Update roadmap status
   await db
-    .update(roadmaps)
-    .set({
-      status: 'delivered',
-      deliveredAt: new Date()
-    })
-    .where(eq(roadmaps.id, roadmap.id));
+  .update(roadmaps)
+  .set({ status: 'delivered', deliveredAt: new Date(), updatedAt: new Date() })
+  .where(eq(roadmaps.id, roadmap.id));
 
   console.log(
     `[FinalRoadmap] 🎉 Final roadmap generated successfully for tenant ${tenantId}`
