@@ -33,7 +33,7 @@ importers:
         specifier: ^2.3.0
         version: 2.3.0
       '@roadmap/shared':
-        specifier: file:../shared
+        specifier: workspace:*
         version: link:../shared
       '@sparticuz/chromium':
         specifier: ^143.0.0
