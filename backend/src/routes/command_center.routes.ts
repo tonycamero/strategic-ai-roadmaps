@@ -8,6 +8,17 @@ const router = Router();
 // All command center routes require internal consultant access
 router.use(authenticate);
 router.use(deriveAuthority);
+router.use(requireDelegateOrHigher());
+
+router.post('/batch/readiness/execute',
+  requireExecutive(),
+  controller.executeReadinessBatch
+);
+
+router.post('/batch/roadmap/finalize/execute',
+  requireExecutive(),
+  controller.executeFinalizeBatch
+);
 
 // GET /api/superadmin/command-center/tenants
 router.get('/tenants', controller.getTenants);

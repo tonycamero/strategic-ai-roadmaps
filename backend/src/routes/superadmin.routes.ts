@@ -10,6 +10,7 @@ import * as executiveBriefController from '../controllers/executiveBrief.control
 import * as stakeholderRepairController from '../controllers/stakeholderRepair.controller';
 import * as stakeholderMetadataUpdateController from '../controllers/stakeholderMetadataUpdate.controller';
 import * as ticketModerationController from '../controllers/ticketModeration.controller';
+import { rerunSop01ForFirm } from '../controllers/diagnosticRerun.controller';
 
 import * as snapshotController from '../controllers/snapshot.controller';
 import * as executionStateController from '../controllers/executionState.controller';
@@ -83,9 +84,6 @@ router.get('/firms/:tenantId/detail', superadminController.getFirmDetailV2);
 // GET /api/superadmin/execution/:tenantId/:diagnosticId - Execution state aggregator
 router.get('/execution/:tenantId/:diagnosticId', executionStateController.getExecutionStateController);
 
-// PARKED: Impersonation feature
-// router.post('/firms/:tenantId/impersonate', requireExecutive(), superadminController.impersonateTenantOwner);
-
 // GET /api/superadmin/firms/:tenantId/client-context - Get client preview context
 router.get('/firms/:tenantId/client-context', superadminController.getClientContextForFirm);
 
@@ -117,12 +115,8 @@ router.post('/firms/:tenantId/generate-sop01', async (req, res, next) => {
   return generateSop01ForFirm(req, res, next);
 });
 
-// DECOMMISSIONED: legacy rerun endpoint (must remain unreachable).
-// All diagnostic generation must route through the canonical superadmin controller flow.
-// router.post('/diagnostic/rerun-sop01/:tenantId', async (req, res, next) => {
-//   const { rerunSop01ForFirm } = require('../controllers/diagnosticRerun.controller');
-//   return rerunSop01ForFirm(req, res, next);
-// });
+// POST /api/superadmin/diagnostic/rerun-sop01/:tenantId - Re-run SOP-01 (zero-ticket recovery)
+router.post('/diagnostic/rerun-sop01/:tenantId', rerunSop01ForFirm);
 
 // GET/POST discovery notes - REMOVED
 
@@ -134,11 +128,7 @@ router.get('/firms/:tenantId/roadmap-os', superadminController.getRoadmapOsForFi
 // POST /api/superadmin/tenants/:tenantId/refresh-vector-store - Refresh vector store (V2)
 router.post('/tenants/:tenantId/refresh-vector-store', superadminController.refreshVectorStoreForTenant);
 
-// POST /api/superadmin/firms/:tenantId/assemble-roadmap - Stage 5: Assembly
-router.post('/firms/:tenantId/assemble-roadmap', async (req, res, next) => {
-  const { assembleRoadmapForFirm } = require('../controllers/superadmin.controller')
-  return assembleRoadmapForFirm(req, res, next);
-});
+router.post('/firms/:tenantId/assemble-roadmap', superadminController.assembleRoadmapForFirm);
 
 // GET /api/superadmin/firms/:tenantId/tickets - Get tickets grouped by section
 router.get('/firms/:tenantId/tickets', superadminController.getTicketsForFirm);

@@ -34,7 +34,7 @@
     "@aws-sdk/s3-request-presigner": "^3.675.0",
     "@netlify/functions": "^5.1.2",
     "@netlify/types": "^2.3.0",
-    "@roadmap/shared": "file:../shared",
+    "@roadmap/shared": "workspace:*",
     "@sparticuz/chromium": "^143.0.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
