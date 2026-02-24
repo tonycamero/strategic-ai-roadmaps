@@ -991,16 +991,6 @@ function selectTopAssertions(
 // MAIN PIPELINE
 // ============================================================================
 
-/**
- * Execute the full five-layer synthesis pipeline
- * 
- * PIPELINE ORDER (MANDATORY):
- * 1. Fact Extractor
- * 2. Pattern Synthesizer (Agent A)
- * 3. Executive Asserter (Agent B)
- * 4. Assembly Validator (implicit in assembleSections)
- * 5. Final Assembly
- */
 export async function executeSynthesisPipeline(
   vectors: IntakeVector[],
   options?: { tenantId?: string; briefId?: string; action?: string }
