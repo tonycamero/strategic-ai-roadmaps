@@ -61,52 +61,72 @@ export class AuthorityService {
     }
 
     /**
-     * CANONICAL RESOLVER
-     * The single source of truth for authority state.
-     */
-    static async resolveCanonicalAuthority(tenantId: string): Promise<CanonicalAuthorityResolution> {
-        // 1. Fetch Stakeholder Vectors
-        const [vectorCount] = await db
-            .select({ count: sql<number>`count(*)` })
-            .from(intakeVectors)
-            .where(eq(intakeVectors.tenantId, tenantId));
-        const totalVectors = Number(vectorCount?.count || 0);
+ * CANONICAL RESOLVER
+ * The single source of truth for authority state.
+ */
+static async resolveCanonicalAuthority(
+  tenantId: string
+): Promise<CanonicalAuthorityResolution> {
 
-        // 2. Check Owner Intake
-        const [ownerIntake] = await db
-            .select()
-            .from(intakes)
-            .where(and(
-                eq(intakes.tenantId, tenantId),
-                eq(intakes.role, 'owner'),
-                eq(intakes.status, 'completed')
-            ))
-            .limit(1);
-        const hasOwnerIntake = !!ownerIntake;
+  // 1️⃣ Stakeholder Vectors
+  const [vectorCount] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(intakeVectors)
+    .where(eq(intakeVectors.tenantId, tenantId));
 
-        // 3. Check Executive Brief
-        const [brief] = await db
-            .select()
-            .from(executiveBriefs)
-            .where(eq(executiveBriefs.tenantId, tenantId))
-            .limit(1);
-        const isBriefApproved = brief?.status === 'APPROVED' || brief?.status === 'DELIVERED';
+  const totalVectors = Number(vectorCount?.count || 0);
 
-        // 4. Check Tenant Status (Intake Window)
-        const [tenant] = await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1);
-        if (!tenant) {
-            throw new Error('Tenant not found');
-        }
+  // 2️⃣ Owner Intake (must be completed)
+  const [ownerIntake] = await db
+    .select()
+    .from(intakes)
+    .where(and(
+      eq(intakes.tenantId, tenantId),
+      eq(intakes.role, 'owner'),
+      eq(intakes.status, 'completed')
+    ))
+    .limit(1);
 
-        const isAuthorityBlocked = totalVectors === 0 || !hasOwnerIntake;
-        const blockedReason = isAuthorityBlocked
-            ? 'Strategic Authority Block is incomplete. Required: At least one stakeholder vector AND completed owner intake.'
-            : undefined;
+  const hasOwnerIntake = Boolean(ownerIntake);
+
+  // 3️⃣ Intake Completeness (Gate 3)
+  const isIntakeComplete =
+    totalVectors >= 1 &&
+    hasOwnerIntake;
+
+  // 4️⃣ Executive Brief Status
+  const [brief] = await db
+    .select()
+    .from(executiveBriefs)
+    .where(eq(executiveBriefs.tenantId, tenantId))
+    .limit(1);
+
+  const isBriefApproved =
+    brief?.status === 'APPROVED' ||
+    brief?.status === 'DELIVERED';
+
+  // 5️⃣ Tenant
+  const [tenant] = await db
+    .select()
+    .from(tenants)
+    .where(eq(tenants.id, tenantId))
+    .limit(1);
+
+  if (!tenant) {
+    throw new Error('Tenant not found');
+  }
+
+  // 6️⃣ Authority Block (Structural Incomplete State)
+  const isAuthorityBlocked = !isIntakeComplete;
+
+  const blockedReason = isAuthorityBlocked
+    ? 'Strategic Authority Block incomplete. Required: ≥1 stakeholder vector AND completed owner intake.'
+    : undefined;
 
         // 5. Stage Maturity logic
         const allowedStages = {
             intake: true, // Always allowed to enter intake
-            executiveBrief: !isAuthorityBlocked && tenant.intakeWindowState === 'OPEN',
+            executiveBrief: !isAuthorityBlocked && isIntakeComplete, // allow OPEN or CLOSED
             diagnostic: !isAuthorityBlocked && tenant.intakeWindowState === 'CLOSED' && isBriefApproved,
             discoveryNotes: false,
             assistedSynthesis: false,

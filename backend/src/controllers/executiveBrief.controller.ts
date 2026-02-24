@@ -6,6 +6,7 @@ import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
 import { validateBriefModeSchema } from '../services/schemaGuard.service';
 import { generateRequestId, getRequestId } from '../utils/requestId';
 import { sendBriefError } from '../utils/briefErrorResponse';
+import { AuthorityService } from '../services/authority.service';
 
 /**
  * Helper: Resolve the logical approval status of an Executive Brief.
@@ -208,17 +209,16 @@ export const generateExecutiveBrief = async (req: AuthRequest, res: Response) =>
             return res.status(404).json({ error: 'Tenant not found' });
         }
 
-        // Check intake window state
-        if (tenant.intakeWindowState !== 'OPEN' && !isForced) {
-            return res.status(404).json({
-                error: 'EXECUTIVE_BRIEF_NOT_READY',
-                message: 'Intake window must be OPEN to generate executive brief.',
-                prerequisites: {
-                    intakeWindowState: tenant.intakeWindowState,
-                    required: 'OPEN'
-                }
-            });
-        }
+    // Use canonical authority instead of raw window state
+    const authority = await AuthorityService.resolveCanonicalAuthority(tenantId);
+
+    if (!authority.allowedStages.executiveBrief && !isForced) {
+        return res.status(404).json({
+             error: 'EXECUTIVE_BRIEF_NOT_READY',
+             message: 'Executive Brief prerequisites not met.',
+             prerequisites: authority
+        });
+    }
 
         // Count intake vectors
         const [vectorCount] = await db
