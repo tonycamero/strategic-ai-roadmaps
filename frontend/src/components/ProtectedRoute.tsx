@@ -5,10 +5,11 @@ import { ReactNode } from 'react';
 interface ProtectedRouteProps extends RouteProps {
   component?: React.ComponentType<any>;
   children?: ReactNode;
+  requireRole?: string; // NEW
 }
 
-export default function ProtectedRoute({ component: Component, children, ...rest }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading } = useAuth();
+export default function ProtectedRoute({ component: Component, children, requireRole, ...rest }: ProtectedRouteProps) {
+    const { isAuthenticated, isLoading, user } = useAuth();
 
   return (
     <Route {...rest}>
@@ -27,7 +28,11 @@ export default function ProtectedRoute({ component: Component, children, ...rest
   );
   return <Redirect to={`/login?reason=unauthorized&next=${next}`} />;
 }
-        
+        if (requireRole && user?.role !== requireRole) {
+  // fail-closed: bounce them to their correct home
+  return <Redirect to="/dashboard" />;
+}
+
         // Support either component prop or children
         if (Component) {
           return <Component {...params} />;
