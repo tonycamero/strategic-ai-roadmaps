@@ -4,18 +4,28 @@ import { useAuth } from '../context/AuthContext';
 import { api, ApiError } from '../lib/api';
 
 function resolvePostAuthRedirect(role: string, nextParam?: string | null): string {
-  // 1) If api.ts sent us here with ?next=..., honor it (but only if it’s internal)
+  // 1) honor ?next= only if it is internal AND allowed for this role
   if (nextParam) {
     const decoded = decodeURIComponent(nextParam);
-    if (decoded.startsWith('/')) return decoded;
+    const isInternal = decoded.startsWith('/');
+    const isSuperadminRoute = decoded.startsWith('/superadmin');
+
+    if (isInternal) {
+      if (isSuperadminRoute) {
+        if (role === 'superadmin') return decoded;
+      } else {
+        // non-superadmin routes are allowed for everyone authenticated
+        return decoded;
+      }
+    }
   }
 
-  // 2) Otherwise role-based default
+  // 2) role-based default
   if (role === 'superadmin') return '/superadmin/firms';
   if (role === 'ops' || role === 'sales' || role === 'delivery') return `/intake/${role}`;
   if (role === 'exec_sponsor') return '/intake/exec_sponsor';
 
-  // 3) Default
+  // 3) default
   return '/dashboard';
 }
 
@@ -83,7 +93,7 @@ export default function Auth() {
       if (!isAuthenticated || !user) return;
  
       const next = new URLSearchParams(window.location.search).get('next');
-      setLocation(resolvePostAuthRedirect(user.role, next));
+      setLocation(resolvePostAuthRedirect(user.role, getNextParam()));
     }, [isAuthenticated, user, setLocation]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -99,7 +109,7 @@ export default function Auth() {
       const next = new URLSearchParams(window.location.search).get('next');
       
       setTimeout(() => {
-        setLocation(resolvePostAuthRedirect(response.user.role, next));
+        setLocation(resolvePostAuthRedirect(response.user.role, getNextParam()));
       }, 100); 
 
     } catch (err) {

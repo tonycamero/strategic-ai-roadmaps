@@ -197,19 +197,18 @@ function App() {
                 <ProtectedRoute path="/case-study/:docId" component={CaseStudyViewer} />
 
                 {/* Superadmin */}
-                <ProtectedRoute path="/superadmin" component={SuperAdminLayout} />
-                <ProtectedRoute path="/superadmin/roadmaps" component={SuperAdminLayout} />
-                <ProtectedRoute path="/superadmin/firms" component={SuperAdminLayout} />
-                <ProtectedRoute path="/superadmin/firms/:tenantId" component={SuperAdminLayout} />
-                <ProtectedRoute path="/superadmin/execute" component={SuperAdminLayout} />
-                <ProtectedRoute path="/superadmin/execute/firms/:tenantId" component={SuperAdminLayout} />
-
-                <ProtectedRoute path="/superadmin/leads" component={SuperAdminLayout} />
-                <ProtectedRoute path="/superadmin/agent" component={SuperAdminLayout} />
-                <ProtectedRoute path="/superadmin/tenant/:tenantId/roadmap" component={SuperAdminLayout} />
-                <ProtectedRoute path="/superadmin/pipeline" component={SuperAdminLayout} />
-                <ProtectedRoute path="/superadmin/firms/:tenantId/case-study/:docId" component={CaseStudyViewer} />
-                <ProtectedRoute path="/superadmin/tickets/:tenantId/:diagnosticId" component={TicketModeration} />
+                <ProtectedRoute path="/superadmin" component={SuperAdminLayout} requireRole="superadmin" />
+                <ProtectedRoute path="/superadmin/roadmaps" component={SuperAdminLayout} requireRole="superadmin" />
+                <ProtectedRoute path="/superadmin/firms" component={SuperAdminLayout} requireRole="superadmin" />
+                <ProtectedRoute path="/superadmin/firms/:tenantId" component={SuperAdminLayout} requireRole="superadmin" />
+                <ProtectedRoute path="/superadmin/execute" component={SuperAdminLayout} requireRole="superadmin" />
+                <ProtectedRoute path="/superadmin/execute/firms/:tenantId" component={SuperAdminLayout} requireRole="superadmin" />
+                <ProtectedRoute path="/superadmin/leads" component={SuperAdminLayout} requireRole="superadmin" />
+                <ProtectedRoute path="/superadmin/agent" component={SuperAdminLayout} requireRole="superadmin" />
+                <ProtectedRoute path="/superadmin/tenant/:tenantId/roadmap" component={SuperAdminLayout} requireRole="superadmin" />
+                <ProtectedRoute path="/superadmin/pipeline" component={SuperAdminLayout} requireRole="superadmin" />
+                <ProtectedRoute path="/superadmin/firms/:tenantId/case-study/:docId" component={CaseStudyViewer} requireRole="superadmin" />
+                <ProtectedRoute path="/superadmin/tickets/:tenantId/:diagnosticId" component={TicketModeration} requireRole="superadmin" />
 
                 {/* 404 */}
                 <Route>
