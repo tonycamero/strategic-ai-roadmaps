@@ -46,14 +46,25 @@ function ScrollToTop() {
 
 function RootRedirect() {
   const [location, setLocation] = useLocation();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   useEffect(() => {
-
-
     if (location !== '/') return;
-    setLocation(isAuthenticated ? '/dashboard' : '/login', { replace: true });
-  }, [location, isAuthenticated, setLocation]);
+
+    if (!isAuthenticated) {
+      setLocation('/login', { replace: true });
+      return;
+    }
+
+    if (user?.role === 'superadmin') {
+      setLocation('/superadmin/firms', { replace: true });
+      return;
+    }
+
+    // Default for everyone else
+    setLocation('/dashboard', { replace: true });
+
+  }, [location, isAuthenticated, user, setLocation]);
 
   return null;
 }
@@ -80,6 +91,7 @@ function App() {
               <Switch>
                 {/* Auth */}
                 <Route path="/login" component={Auth} />
+                <Route path="/auth" component={Auth} />
                 <Route path="/signup" component={Signup} />
 
                 {/* Canonical password reset routes */}

@@ -3,35 +3,88 @@ import { useLocation } from 'wouter';
 import { useAuth } from '../context/AuthContext';
 import { api, ApiError } from '../lib/api';
 
-function getRoleBasedRoute(role: string): string {
-  if (role === 'ops' || role === 'sales' || role === 'delivery') {
-return `/intake/${role}`;
+function resolvePostAuthRedirect(role: string, nextParam?: string | null): string {
+  // 1) If api.ts sent us here with ?next=..., honor it (but only if it’s internal)
+  if (nextParam) {
+    const decoded = decodeURIComponent(nextParam);
+    if (decoded.startsWith('/')) return decoded;
   }
-  if (role === 'exec_sponsor') {
-    return '/intake/exec_sponsor';
-  }
-  if (role === 'superadmin') {
-    return '/superadmin/firms';
-  }
+
+  // 2) Otherwise role-based default
+  if (role === 'superadmin') return '/superadmin/firms';
+  if (role === 'ops' || role === 'sales' || role === 'delivery') return `/intake/${role}`;
+  if (role === 'exec_sponsor') return '/intake/exec_sponsor';
+
+  // 3) Default
   return '/dashboard';
+}
+
+// near top of Auth.tsx (above component)
+function getNextParam(): string | null {
+  const next = new URLSearchParams(window.location.search).get('next');
+  if (!next) return null;
+  // must be internal path
+  if (!next.startsWith('/')) return null;
+  // avoid protocol-relative + weirdness
+  if (next.startsWith('//')) return null;
+  return next;
+}
+
+function isNextAllowedForRole(role: string, next: string): boolean {
+  if (role === 'superadmin') return next.startsWith('/superadmin');
+  if (role === 'exec_sponsor') return next.startsWith('/intake/exec_sponsor') || next.startsWith('/dashboard');
+  if (role === 'ops' || role === 'sales' || role === 'delivery') return next.startsWith(`/intake/${role}`) || next.startsWith('/dashboard');
+  // default user roles
+  return next.startsWith('/dashboard') || next.startsWith('/intake');
+}
+
+
+function getSafeNextFromQuery(): string | null {
+  const sp = new URLSearchParams(window.location.search);
+  const nextParam = sp.get('next');
+  if (!nextParam) return null;
+
+  try {
+    const decoded = decodeURIComponent(nextParam);
+    // allow only internal paths
+    if (decoded.startsWith('/') && !decoded.startsWith('//')) return decoded;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function getReasonFromQuery(): string | null {
+  const sp = new URLSearchParams(window.location.search);
+  return sp.get('reason');
 }
 
 export default function Auth() {
   const [, setLocation] = useLocation();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Redirect if already authenticated
-  const { user } = useAuth();
+  const safeNext = getSafeNextFromQuery();
+  const reason = getReasonFromQuery();
+
+  // If user was redirected here due to expiry, show a clean banner.
   useEffect(() => {
-    if (isAuthenticated && user) {
-      setLocation(getRoleBasedRoute(user.role));
+    if (reason === 'expired') {
+      setError('Session expired — please log in again.');
     }
-  }, [isAuthenticated, user, setLocation]);
+  }, [reason]);
+
+  // Redirect if already authenticated
+    useEffect(() => {
+      if (!isAuthenticated || !user) return;
+ 
+      const next = new URLSearchParams(window.location.search).get('next');
+      setLocation(resolvePostAuthRedirect(user.role, next));
+    }, [isAuthenticated, user, setLocation]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,10 +94,14 @@ export default function Auth() {
     try {
       const response = await api.login({ email, password });
       login(response.token, response.user);
+
       // Small delay to ensure auth state is set before redirect
+      const next = new URLSearchParams(window.location.search).get('next');
+      
       setTimeout(() => {
-        setLocation(getRoleBasedRoute(response.user.role));
-      }, 100);
+        setLocation(resolvePostAuthRedirect(response.user.role, next));
+      }, 100); 
+
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -64,14 +121,15 @@ export default function Auth() {
             <h1 className="text-3xl font-bold text-slate-100 mb-2">
               <span className="text-blue-500">Strategic</span> AI Roadmap Portal
             </h1>
-            <p className="text-slate-400">
-              Welcome back
-            </p>
+            <p className="text-slate-400">Welcome back</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-slate-300 mb-2"
+              >
                 Email
               </label>
               <input
@@ -86,7 +144,10 @@ export default function Auth() {
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label htmlFor="password" className="block text-sm font-medium text-slate-300">
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-slate-300"
+                >
                   Password
                 </label>
                 <button
@@ -128,7 +189,7 @@ export default function Auth() {
               onClick={() => setLocation('/signup')}
               className="text-blue-500 hover:text-blue-400 text-sm font-bold transition-colors uppercase tracking-wide"
             >
-              Don't have an account? Sign up
+              Don&apos;t have an account? Sign up
             </button>
           </div>
         </div>

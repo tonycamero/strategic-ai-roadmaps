@@ -22,8 +22,11 @@ export default function ProtectedRoute({ component: Component, children, ...rest
         }
         
         if (!isAuthenticated) {
-          return <Redirect to="/" />;
-        }
+  const next = encodeURIComponent(
+    window.location.pathname + window.location.search + window.location.hash
+  );
+  return <Redirect to={`/login?reason=unauthorized&next=${next}`} />;
+}
         
         // Support either component prop or children
         if (Component) {
