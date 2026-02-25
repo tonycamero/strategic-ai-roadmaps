@@ -31,6 +31,7 @@ import agentConfigRoutes from './routes/agentConfig.routes';
 import clarificationRoutes from './routes/clarification.routes';
 
 const app = express();
+app.set('etag', false);
 
 // Trust proxy - required for Vercel and proper rate limiting
 app.set('trust proxy', 1);
