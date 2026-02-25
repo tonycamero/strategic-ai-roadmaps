@@ -33,6 +33,8 @@ export async function getOrCreateRoadmapForTenant(tenantId: string): Promise<Roa
         tenantId: tenantId,
         createdByUserId: tenant.ownerUserId,
         status: 'draft',
+        modelJson: {},      // REQUIRED
+        sourceRefs: [],     // REQUIRED
         pilotStage: null,
       })
       .returning();
