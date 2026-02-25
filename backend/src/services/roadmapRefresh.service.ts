@@ -139,6 +139,8 @@ export class RoadmapRefreshService {
         tenantId,
         createdByUserId: oldRoadmap.createdByUserId,
         status: 'in_progress',
+        modelJson: {},      // REQUIRED
+        sourceRefs: [],     // REQUIRED
         pilotStage: oldRoadmap.pilotStage,
       })
       .returning({ id: roadmaps.id });

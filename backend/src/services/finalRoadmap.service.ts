@@ -158,6 +158,8 @@ export async function generateFinalRoadmapForTenant(tenantId: string) {
         tenantId: tenantId,
         createdByUserId: tenant.ownerUserId,
         status: 'draft',
+        modelJson: {},      // REQUIRED
+        sourceRefs: [],     // REQUIRED
         createdAt: new Date()
       })
       .returning();

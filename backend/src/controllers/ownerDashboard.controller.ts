@@ -344,6 +344,8 @@ async function getOrCreateRoadmapForTenant(tenantId: string, createdByUserId: st
         tenantId,
         createdByUserId,
         status: 'draft',
+        modelJson: {},      // REQUIRED
+        sourceRefs: [],     // REQUIRED
       })
       .returning();
     roadmap = newRoadmap;
