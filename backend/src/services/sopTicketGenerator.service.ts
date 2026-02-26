@@ -10,6 +10,7 @@ import { DiagnosticMap, TicketGenerationResult } from '../types/diagnostic';
 import { buildDiagnosticToTicketsPrompt } from '../trustagent/prompts/diagnosticToTickets';
 import { buildSelectionContext, selectInventoryTickets } from '../trustagent/services/inventorySelection.service';
 import { loadInventory } from '../trustagent/services/inventory.service';
+import { getTenantLifecycleView } from "./tenantStateAggregation.service";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -30,6 +31,17 @@ export async function generateSopTickets(
   diagnosticDate: Date,
   tenantVertical?: string | null
 ): Promise<TicketGenerationResult> {
+  // 1. Projection Authority Check
+  const view = await getTenantLifecycleView(tenantId);
+
+  if (!view.derived.lifecycleValid) {
+    throw new Error("INVALID_LIFECYCLE_STATE");
+  }
+
+  if (!view.derived.canGenerateTickets) {
+    throw new Error("AGENT_EXECUTION_NOT_ALLOWED");
+  }
+
   console.log(`[SOP Ticket Generator] Generating tickets for ${tenantName} (${firmSizeTier}, ${teamHeadcount} people)`);
 
   const diagnosticId = `diag_${tenantName.toLowerCase().replace(/\s+/g, '_')}_${diagnosticDate.toISOString().split('T')[0].replace(/-/g, '')}`;
@@ -88,27 +100,27 @@ export async function generateSopTickets(
   }
 
   console.log(`[SOP Ticket Generator] Parsed response keys:`, Object.keys(parsed));
-  
+
   // Expect wrapped format: { "tickets": [...] }
   if (!parsed || !parsed.tickets) {
     throw new Error(
       `[SOP Ticket Generator] Expected { "tickets": [...] } but got keys: ${JSON.stringify(Object.keys(parsed || {}))}`
     );
   }
-  
+
   if (!Array.isArray(parsed.tickets)) {
     throw new Error(
       `[SOP Ticket Generator] Expected "tickets" to be an array but got: ${typeof parsed.tickets}`
     );
   }
-  
+
   const tickets = parsed.tickets;
   console.log(`[SOP Ticket Generator] Parsed ${tickets.length} tickets from model response`);
 
   // Validate ticket count (scaled to firm size - increased for moderation)
   const minTickets = firmSizeTier === 'micro' ? 12 : 15;
   const maxTickets = firmSizeTier === 'large' ? 30 : firmSizeTier === 'mid' ? 25 : 20;
-  
+
   if (tickets.length < minTickets) {
     throw new Error(`[SOP Ticket Generator] Insufficient tickets: ${tickets.length} (minimum ${minTickets} required for ${firmSizeTier} firm)`);
   }
@@ -138,7 +150,7 @@ export async function generateSopTickets(
   }
 
   // Validate time estimates (5-15 hours)
-  const invalidTimeEstimates = tickets.filter((t: any) => 
+  const invalidTimeEstimates = tickets.filter((t: any) =>
     t.time_estimate_hours < 5 || t.time_estimate_hours > 15
   );
 

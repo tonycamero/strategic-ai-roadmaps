@@ -1,9 +1,10 @@
 // src/trustagent/services/roadmapQnAAgent.service.ts
 import OpenAI from 'openai';
 import type { RoadmapQnAContext } from '../types/roadmapQnA';
+import { getTenantLifecycleView } from "../../services/tenantStateAggregation.service";
 
-const client = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY! 
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY!
 });
 
 interface RoadmapQnAAgentParams {
@@ -16,6 +17,19 @@ export async function callRoadmapQnAAgent(
   params: RoadmapQnAAgentParams,
 ): Promise<string> {
   const { question, sectionKey, roadmapQnAContext } = params;
+  const { tenantId } = roadmapQnAContext;
+
+  // 1. Projection Authority Check
+  const view = await getTenantLifecycleView(tenantId);
+
+  if (!view.derived.lifecycleValid) {
+    throw new Error("INVALID_LIFECYCLE_STATE");
+  }
+
+  // Fail closed if authority denies both ticket and roadmap visibility
+  if (!view.derived.canGenerateTickets && !view.derived.canAssembleRoadmap) {
+    throw new Error("AGENT_EXECUTION_NOT_ALLOWED");
+  }
 
   const systemPrompt = `
 You are the Strategic AI Roadmap Q&A Agent.

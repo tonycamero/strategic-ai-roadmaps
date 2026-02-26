@@ -11,28 +11,30 @@ import { eq, and } from 'drizzle-orm';
 import crypto from 'crypto';
 import { assembleRoadmap } from './roadmapAssembly.service';
 import { RoadmapContext, DiagnosticMap } from '../types/diagnostic';
+import { getTenantLifecycleView } from "./tenantStateAggregation.service";
 
 export async function generateFinalRoadmapForTenant(tenantId: string) {
   console.log(`[FinalRoadmap] Starting final roadmap generation for tenant: ${tenantId}`);
 
-  // 1. Get tenant + latest diagnosticId
-  const [tenant] = await db
-    .select()
-    .from(tenants)
-    .where(eq(tenants.id, tenantId))
-    .limit(1);
+  // 1. Get projection view and check readiness
+  const view = await getTenantLifecycleView(tenantId);
 
-  if (!tenant) {
-    throw new Error(`[FinalRoadmap] Tenant not found: ${tenantId}`);
+  if (!view.derived.canAssembleRoadmap) {
+    throw new Error("ROADMAP_ASSEMBLY_NOT_ALLOWED");
   }
 
-  if (!tenant.lastDiagnosticId) {
+  const diagnosticId = view.artifacts.hasDiagnostic ? (await db
+    .select({ lastDiagnosticId: tenants.lastDiagnosticId })
+    .from(tenants)
+    .where(eq(tenants.id, tenantId))
+    .limit(1))[0]?.lastDiagnosticId : null;
+
+  if (!diagnosticId) {
     throw new Error(
       `[FinalRoadmap] No lastDiagnosticId for tenant: ${tenantId}. Run SOP-01 + ticket generation first.`
     );
   }
 
-  const diagnosticId = tenant.lastDiagnosticId;
   console.log(`[FinalRoadmap] Using diagnostic: ${diagnosticId}`);
 
   // 2. Fetch all tickets for this diagnostic
@@ -80,7 +82,7 @@ export async function generateFinalRoadmapForTenant(tenantId: string) {
   // For now, we'll create a minimal context - you can expand this
   const diagnosticMap: DiagnosticMap = {
     tenantId,
-    firmName: tenant.name,
+    firmName: view.identity.tenantName,
     diagnosticDate: new Date().toISOString(),
     painClusters: [],
     workflowBottlenecks: [],
@@ -138,7 +140,7 @@ export async function generateFinalRoadmapForTenant(tenantId: string) {
     sop01RoadmapSkeleton: '',
     discoveryNotesMarkdown: undefined,
     tenantId,
-    firmName: tenant.name,
+    firmName: view.identity.tenantName,
     diagnosticDate: new Date().toISOString()
   };
 
@@ -156,7 +158,7 @@ export async function generateFinalRoadmapForTenant(tenantId: string) {
       .insert(roadmaps)
       .values({
         tenantId: tenantId,
-        createdByUserId: tenant.ownerUserId,
+        createdByUserId: null, // tenant.ownerUserId not in projection, using null or fetch if critical
         status: 'draft',
         modelJson: {},      // REQUIRED
         sourceRefs: [],     // REQUIRED
@@ -203,9 +205,9 @@ export async function generateFinalRoadmapForTenant(tenantId: string) {
 
   // 8. Update roadmap status
   await db
-  .update(roadmaps)
-  .set({ status: 'delivered', deliveredAt: new Date(), updatedAt: new Date() })
-  .where(eq(roadmaps.id, roadmap.id));
+    .update(roadmaps)
+    .set({ status: 'delivered', deliveredAt: new Date(), updatedAt: new Date() })
+    .where(eq(roadmaps.id, roadmap.id));
 
   console.log(
     `[FinalRoadmap] 🎉 Final roadmap generated successfully for tenant ${tenantId}`

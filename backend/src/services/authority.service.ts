@@ -1,7 +1,4 @@
-
-import { db } from '../db/index';
-import { eq, and, sql } from 'drizzle-orm';
-import { tenants, intakes, intakeVectors, executiveBriefs, diagnostics, sopTickets, discoveryCallNotes } from '../db/schema';
+import { getTenantLifecycleView } from "./tenantStateAggregation.service";
 
 export enum ExecutionStage {
     EXECUTIVE_BRIEF_GEN = 'EXECUTIVE_BRIEF_GEN',
@@ -38,14 +35,13 @@ export interface AuthorityGateResult {
 /**
  * AUTHORITY GATE CENTRAL SERVICE
  * 
- * Canonical source of truth for execution readiness.
- * "Artifacts ≠ Authority" - Presence of a record does not imply permission to proceed.
+ * Rebound to PROJECTION SPINE (EXEC-11A).
+ * This service is now a thin adapter to getTenantLifecycleView.
  */
 export class AuthorityService {
 
     /**
      * DESIGNATED CANONICAL AUTHORITY SOURCE: The "Snapshot Readiness" logic.
-     * All execution stages (Brief, Diagnostic, Roadmap) depend on this baseline authority.
      */
     static async getSnapshotAuthority(tenantId: string): Promise<AuthorityGateResult> {
         const resolution = await this.resolveCanonicalAuthority(tenantId);
@@ -61,113 +57,40 @@ export class AuthorityService {
     }
 
     /**
- * CANONICAL RESOLVER
- * The single source of truth for authority state.
- */
-static async resolveCanonicalAuthority(
-  tenantId: string
-): Promise<CanonicalAuthorityResolution> {
+     * CANONICAL RESOLVER
+     * Rebound to Projection Spine (TenantLifecycleView).
+     */
+    static async resolveCanonicalAuthority(
+        tenantId: string
+    ): Promise<CanonicalAuthorityResolution> {
+        const view = await getTenantLifecycleView(tenantId);
 
-  // 1️⃣ Stakeholder Vectors
-  const [vectorCount] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(intakeVectors)
-    .where(eq(intakeVectors.tenantId, tenantId));
+        const isIntakeComplete = view.workflow.intakesComplete;
+        const isBriefApproved =
+            view.governance.executiveBriefStatus === 'APPROVED' ||
+            view.governance.executiveBriefStatus === 'DELIVERED';
 
-  const totalVectors = Number(vectorCount?.count || 0);
+        const isAuthorityBlocked = !isIntakeComplete;
+        const blockedReason = isAuthorityBlocked
+            ? 'Strategic Authority Block incomplete. Required: stakeholder vectors and completed owner intake.'
+            : undefined;
 
-  // 2️⃣ Owner Intake (must be completed)
-  const [ownerIntake] = await db
-    .select()
-    .from(intakes)
-    .where(and(
-      eq(intakes.tenantId, tenantId),
-      eq(intakes.role, 'owner'),
-      eq(intakes.status, 'completed')
-    ))
-    .limit(1);
-
-  const hasOwnerIntake = Boolean(ownerIntake);
-
-  // 3️⃣ Intake Completeness (Gate 3)
-  const isIntakeComplete =
-    totalVectors >= 1 &&
-    hasOwnerIntake;
-
-  // 4️⃣ Executive Brief Status
-  const [brief] = await db
-    .select()
-    .from(executiveBriefs)
-    .where(eq(executiveBriefs.tenantId, tenantId))
-    .limit(1);
-
-  const isBriefApproved =
-    brief?.status === 'APPROVED' ||
-    brief?.status === 'DELIVERED';
-
-  // 5️⃣ Tenant
-  const [tenant] = await db
-    .select()
-    .from(tenants)
-    .where(eq(tenants.id, tenantId))
-    .limit(1);
-
-  if (!tenant) {
-    throw new Error('Tenant not found');
-  }
-
-  // 6️⃣ Authority Block (Structural Incomplete State)
-  const isAuthorityBlocked = !isIntakeComplete;
-
-  const blockedReason = isAuthorityBlocked
-    ? 'Strategic Authority Block incomplete. Required: ≥1 stakeholder vector AND completed owner intake.'
-    : undefined;
-
-        // 5. Stage Maturity logic
         const allowedStages = {
-            intake: true, // Always allowed to enter intake
-            executiveBrief: !isAuthorityBlocked && isIntakeComplete, // allow OPEN or CLOSED
-            diagnostic: !isAuthorityBlocked && tenant.intakeWindowState === 'CLOSED' && isBriefApproved,
-            discoveryNotes: false,
-            assistedSynthesis: false,
-            ticketModeration: false,
-            roadmapGeneration: false,
+            intake: true,
+            executiveBrief: isIntakeComplete,
+            diagnostic: view.derived.canGenerateDiagnostic,
+            discoveryNotes: view.artifacts.hasDiagnostic,
+            assistedSynthesis: view.workflow.discoveryComplete,
+            ticketModeration: view.workflow.sop01Complete, // Authority previously checked tickets.length > 0
+            roadmapGeneration: view.derived.canAssembleRoadmap,
         };
-
-        // 6. Refine stages based on artifacts
-        // Diagnostic publishing status
-        const [diagnostic] = await db
-            .select()
-            .from(diagnostics)
-            .where(eq(diagnostics.tenantId, tenantId))
-            .limit(1);
-        const isDiagnosticPublished = diagnostic?.status === 'published';
-
-        // Stage 4: Discovery Notes starts after Diagnostic is Published
-        allowedStages.discoveryNotes = isDiagnosticPublished;
-
-        // Stage 5: Assisted Synthesis starts after Discovery Notes exist
-        const [discovery] = await db
-            .select()
-            .from(discoveryCallNotes)
-            .where(eq(discoveryCallNotes.tenantId, tenantId))
-            .limit(1);
-        allowedStages.assistedSynthesis = !!discovery;
-
-        // Stage 6: Ticket Moderation starts after tickets exist
-        const tickets = await db.select().from(sopTickets).where(eq(sopTickets.tenantId, tenantId));
-        allowedStages.ticketModeration = tickets.length > 0;
-
-        // Stage 7: Roadmap Generation starts after all tickets are moderated
-        const pending = tickets.filter(t => t.moderationStatus === 'pending' || t.moderationStatus === 'generated');
-        allowedStages.roadmapGeneration = tickets.length > 0 && pending.length === 0;
 
         return {
             authorityBlocked: isAuthorityBlocked,
             blockedReason,
             satisfiedRequirements: {
-                ownerIntake: hasOwnerIntake,
-                stakeholderVectors: totalVectors,
+                ownerIntake: view.workflow.rolesCompleted.includes('owner'),
+                stakeholderVectors: view.workflow.rolesCompleted.length,
                 executiveBriefApproved: isBriefApproved,
             },
             allowedStages

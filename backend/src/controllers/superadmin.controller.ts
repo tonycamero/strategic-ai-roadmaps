@@ -1319,7 +1319,7 @@ export async function getFirmDetailV2(req: AuthRequest<{ tenantId: string }>, re
         version: roadmaps.version,
         createdAt: roadmaps.createdAt,
         updatedAt: roadmaps.updatedAt,
-            deliveredAt: roadmaps.deliveredAt,
+        deliveredAt: roadmaps.deliveredAt,
         modelJson: roadmaps.modelJson
       })
       .from(roadmaps)
@@ -1483,7 +1483,7 @@ export async function getFirmDetailV2(req: AuthRequest<{ tenantId: string }>, re
           ? {
             id: lastRoadmap.id,
             status: lastRoadmap.status,
-            deliveredAt: lastRoadmap.deliveredAt ?? null,            
+            deliveredAt: lastRoadmap.deliveredAt ?? null,
             createdAt: lastRoadmap.createdAt,
           }
           : null,
@@ -2080,6 +2080,8 @@ export async function listTenantDocuments(req: AuthRequest, res: Response) {
   }
 }
 
+import { getTenantLifecycleView } from '../services/tenantStateAggregation.service';
+
 // ============================================================================
 // GET /api/superadmin/firms/:tenantId/workflow-status - Firm Workflow Status
 // ============================================================================
@@ -2090,30 +2092,16 @@ export async function getFirmWorkflowStatus(req: AuthRequest, res: Response) {
 
     const { tenantId } = req.params;
 
-    // Check if tenant exists
-    const [tenant] = await db
-      .select()
-      .from(tenants)
-      .where(eq(tenants.id, tenantId))
-      .limit(1);
+    // Call authoritative projection
+    const view = await getTenantLifecycleView(tenantId);
 
-    if (!tenant) {
-      return res.status(404).json({ error: 'Tenant not found' });
-    }
-
-    // 1. Query intakes for this tenant
+    // 1. Query intakes for details (total count)
     const allIntakes = await db
       .select()
       .from(intakes)
       .where(eq(intakes.tenantId, tenantId));
 
-    const rolesCompleted = new Set(
-      allIntakes.filter(i => i.completedAt).map(i => i.role)
-    );
-    const requiredRoles = ['owner', 'ops', 'sales', 'delivery'];
-    const intakesComplete = requiredRoles.every(role => rolesCompleted.has(role));
-
-    // 2. Query SOP-01 documents
+    // 2. Query SOP-01 documents for details
     const sop01Docs = await db
       .select()
       .from(tenantDocuments)
@@ -2122,12 +2110,7 @@ export async function getFirmWorkflowStatus(req: AuthRequest, res: Response) {
         eq(tenantDocuments.sopNumber, 'SOP-01')
       ));
 
-    const requiredOutputs = ['Output-1', 'Output-2', 'Output-3', 'Output-4'];
-    const sop01Complete = requiredOutputs.every(out =>
-      sop01Docs.some(d => d.outputNumber === out)
-    );
-
-    // 3. Query discovery call notes
+    // 3. Query discovery call notes for details
     const [discoveryNote] = await db
       .select()
       .from(discoveryCallNotes)
@@ -2135,9 +2118,7 @@ export async function getFirmWorkflowStatus(req: AuthRequest, res: Response) {
       .orderBy(desc(discoveryCallNotes.createdAt))
       .limit(1);
 
-    const discoveryComplete = !!discoveryNote && !!tenant.discoveryComplete;
-
-    // 4. Query roadmap documents
+    // 4. Query roadmap documents for details
     const roadmapDocs = await db
       .select()
       .from(tenantDocuments)
@@ -2146,41 +2127,26 @@ export async function getFirmWorkflowStatus(req: AuthRequest, res: Response) {
         eq(tenantDocuments.category, 'roadmap')
       ));
 
-    const requiredSections = [
-      'summary',
-      '01-executive-summary',
-      '02-diagnostic-analysis',
-      '03-system-architecture',
-      '04-high-leverage-systems',
-      '05-implementation-plan',
-      '06-sop-pack',
-      '07-metrics-dashboard',
-      '08-appendix',
-    ];
-    const roadmapComplete = requiredSections.every(section =>
-      roadmapDocs.some(d => d.section === section)
-    );
-
     return res.json({
       intakes: {
-        complete: intakesComplete,
-        rolesCompleted: Array.from(rolesCompleted),
+        complete: view.workflow.intakesComplete,
+        rolesCompleted: view.workflow.rolesCompleted,
         totalIntakes: allIntakes.length,
       },
       sop01: {
-        complete: sop01Complete,
+        complete: view.workflow.sop01Complete,
         documents: sop01Docs.map(d => ({
           id: d.id,
           outputNumber: d.outputNumber,
         })),
       },
       discovery: {
-        complete: discoveryComplete,
+        complete: view.workflow.discoveryComplete,
         hasNotes: !!discoveryNote,
         lastUpdatedAt: discoveryNote?.updatedAt?.toISOString() || null,
       },
       roadmap: {
-        complete: roadmapComplete,
+        complete: view.workflow.roadmapComplete,
         sectionsCount: roadmapDocs.length,
       },
     });
@@ -2189,6 +2155,7 @@ export async function getFirmWorkflowStatus(req: AuthRequest, res: Response) {
     return res.status(500).json({ error: 'Failed to get workflow status' });
   }
 }
+
 
 
 
@@ -3021,6 +2988,8 @@ export async function signalReadiness(req: AuthRequest, res: Response) {
 // TRUTH PROBE (Lifecycle State)
 // ============================================================================
 
+import { getTenantLifecycleView } from '../services/tenantStateAggregation.service';
+
 export async function getTruthProbe(req: AuthRequest, res: Response) {
   try {
     if (!requireSuperAdmin(req, res)) return;
@@ -3030,6 +2999,9 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
     if (!tenantId || typeof tenantId !== 'string') {
       return res.status(400).json({ error: 'BAD_REQUEST', message: 'Missing or invalid tenantId' });
     }
+
+    // Call Projection Spine
+    const view = await getTenantLifecycleView(tenantId);
 
     // 0. Strict Schema Guard
     const schemaMap: Record<string, any> = {
@@ -3111,64 +3083,12 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
       .orderBy(desc(executiveBriefs.createdAt))
       .limit(1);
 
-    // META-TICKET v2: TruthProbe must expose raw APPROVED/DELIVERED states
-    // Authority Resolution per EXEC-BRIEF-GOVERNANCE-REALIGN-004
-    let canonicalBriefStatus = brief?.status;
+    // 3. Executive Brief (Logic Moved to Projection Spine)
+    console.log('[TruthProbe] Step 3: Executive Brief (Delegated)');
+    const canonicalBriefStatus = view.governance.executiveBriefStatus;
 
-    // 1. Check for Approval Event (Canonical Authority)
-    const [lastApprovalEvent] = await db
-      .select({ createdAt: auditEvents.createdAt })
-      .from(auditEvents)
-      .where(and(
-        eq(auditEvents.tenantId, tenant.id),
-        eq(auditEvents.eventType, AUDIT_EVENT_TYPES.EXECUTIVE_BRIEF_APPROVED)
-      ))
-      .orderBy(desc(auditEvents.createdAt))
-      .limit(1);
-
-    // 2. Resolve Status: If delivered audit exists, it's DELIVERED. 
-    // Otherwise if approved event or legacy field exists, it's APPROVED.
-    const [lastDeliveryEvent] = await db
-      .select()
-      .from(auditEvents)
-      .where(and(
-        eq(auditEvents.tenantId, tenant.id),
-        eq(auditEvents.eventType, AUDIT_EVENT_TYPES.EXECUTIVE_BRIEF_DELIVERED)
-      ))
-      .orderBy(desc(auditEvents.createdAt))
-      .limit(1);
-
-    if (lastDeliveryEvent) {
-      canonicalBriefStatus = 'DELIVERED';
-    } else if (lastApprovalEvent || brief?.status === 'APPROVED' || brief?.approvedAt) {
-      canonicalBriefStatus = 'APPROVED';
-    }
-
-    // 3b. Delivery Audit (If Delivered)
+    // 3b. Delivery Audit (Metadata Only - Purged auditEvents query per EXEC-11B)
     let deliveryAudit = null;
-    if (canonicalBriefStatus === 'DELIVERED') {
-      const [audit] = await db
-        .select({
-          actorRole: auditEvents.actorRole,
-          metadata: auditEvents.metadata,
-          createdAt: auditEvents.createdAt
-        })
-        .from(auditEvents)
-        .where(and(
-          eq(auditEvents.tenantId, tenant.id),
-          eq(auditEvents.eventType, 'EXECUTIVE_BRIEF_DELIVERED')
-        ))
-        .orderBy(desc(auditEvents.createdAt))
-        .limit(1);
-
-      if (audit) {
-        deliveryAudit = {
-          deliveredAt: audit.createdAt.toISOString(),
-          deliveredByRole: audit.actorRole,
-          meta: audit.metadata
-        };
-      }
-    }
 
     // 4. Diagnostic
     console.log('[TruthProbe] Step 4: Diagnostic');
@@ -3217,7 +3137,7 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
       .orderBy(desc(tenantDocuments.createdAt))
       .limit(1);
 
-    // 6. Tickets (Drafts & SOPs)
+    // 6. Tickets (Drafts & SOPs) - Metadata Only
     console.log('[TruthProbe] Step 6: Tickets (Stats)');
 
     // Check for draft tickets first (Stage 6 Canonical)
@@ -3286,39 +3206,21 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
       .orderBy(desc(roadmaps.createdAt))
       .limit(1);
 
-    // 8. Readiness Computation (Consistent with Gates)
-    console.log('[TruthProbe] Step 8: Readiness');
+    // 8. Readiness Computation (DELEGATED TO PROJECTION SPINE)
+    console.log('[TruthProbe] Step 8: Readiness (Delegated)');
 
-    // Phase 3: Consultant Feedback Visibility & Authority
+    // Non-readiness Metadata (Consultant Feedback & Clarifications)
+    // Metadata queries allowed per STEP 2, but interpretation/readiness logic deleted.
     const tenantIntakes = await db
       .select({ id: intakes.id, coachingFeedback: intakes.coachingFeedback })
       .from(intakes)
       .where(eq(intakes.tenantId, tenant.id));
 
-    let pendingFeedbackCount = 0;
-    let lastRequestedAt: string | null = null;
-    let lastRespondedAt: string | null = null;
+    // INTAKE ROLE LOOP DELETED per STEP 4. Metadata values initialized to 0/null.
+    const pendingFeedbackCount = 0;
+    const lastRequestedAt: string | null = null;
+    const lastRespondedAt: string | null = null;
 
-    tenantIntakes.forEach(i => {
-      const fb = (i.coachingFeedback as any) || {};
-      Object.keys(fb).forEach(key => {
-        const item = fb[key];
-        // Count as pending if flagged (Legacy) or if has pending requests (New)
-        const isPending = item.isFlagged || (item.requests && item.requests.some((r: any) => r.status === 'PENDING'));
-        if (isPending) {
-          pendingFeedbackCount++;
-        }
-        if (item.requests) {
-          item.requests.forEach((r: any) => {
-            if (!lastRequestedAt || r.requestedAt > lastRequestedAt) lastRequestedAt = r.requestedAt;
-            if (r.respondedAt && (!lastRespondedAt || r.respondedAt > lastRespondedAt)) lastRespondedAt = r.respondedAt;
-          });
-        }
-      });
-    });
-
-    // Structured Clarification Pipeline (Stage 1.5)
-    console.log('[TruthProbe] Step 8.5: Clarifications');
     const clarifications = await db
       .select({ status: intakeClarifications.status, blocking: intakeClarifications.blocking })
       .from(intakeClarifications)
@@ -3328,45 +3230,16 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
     const blockingClarificationCount = clarifications.filter(c => c.status === 'requested' && c.blocking).length;
     const respondedClarificationCount = clarifications.filter(c => c.status === 'responded').length;
 
-    // Phase 1 (D3): Operator Sufficiency Detection
-    const [sufficiencyConfirmation] = await db
-      .select({
-        createdAt: auditEvents.createdAt,
-        actorUserId: auditEvents.actorUserId,
-        metadata: auditEvents.metadata
-      })
-      .from(auditEvents)
-      .where(and(
-        eq(auditEvents.tenantId, tenant.id),
-        eq(auditEvents.eventType, 'OPERATOR_CONFIRMED_DIAGNOSTIC_SUFFICIENCY')
-      ))
-      .orderBy(desc(auditEvents.createdAt))
-      .limit(1);
+    // READINESS FLAGS (Sourced EXCLUSIVELY from View)
+    const canRunDiscovery = view.derived.canGenerateTickets;
+    const canModerateTickets = false; // Projection Heart does not yet support moderation readiness
+    const canFinalizeRoadmap = view.derived.canAssembleRoadmap;
 
-    const hasConfirmedSufficiency = !!sufficiencyConfirmation;
-
+    // BLOCKING REASONS (Delegated - Manual boolean assembly DELETED)
     const blockingReasons: string[] = [];
-    if (pendingFeedbackCount > 0) blockingReasons.push('PENDING_CONSULTANT_FEEDBACK');
-    if (blockingClarificationCount > 0) blockingReasons.push('BLOCKING_INTAKE_CLARIFICATION');
-    if (!hasConfirmedSufficiency) blockingReasons.push('OPERATOR_SUFFICIENCY_NOT_CONFIRMED');
-    // Allow APPROVED/DELIVERED/REVIEWED as passing states
-    const validBriefStates = ['APPROVED', 'DELIVERED', 'REVIEWED'];
-    if (!validBriefStates.includes(canonicalBriefStatus || '')) blockingReasons.push('NO_REVIEWED_BRIEF');
-    if (!diagnostic) blockingReasons.push('NO_DIAGNOSTIC');
-    if (!discovery) blockingReasons.push('NO_DISCOVERY_NOTES');
-    if (!proposedFindingsArtifact) blockingReasons.push('NO_PROPOSED_FINDINGS');
-    if (!findingsArtifact) blockingReasons.push('NO_CANONICAL_FINDINGS');
-    if (approvedTickets === 0) blockingReasons.push('NO_APPROVED_TICKETS');
-
-    // Strict sequential gates:
-    // Discovery (Execution) requires Synthesis + Diagnostic + Brief (Verified)
-    const canRunDiscovery = !!(validBriefStates.includes(canonicalBriefStatus || '') && diagnostic && discovery);
-
-    // Moderation requires active tickets
-    const canModerateTickets = totalTickets > 0 && pendingTickets > 0;
-
-    // Finalization requires roadmap + approved tickets
-    const canFinalizeRoadmap = !!(roadmap && approvedTickets > 0);
+    if (!view.workflow.intakesComplete) blockingReasons.push('INTAKE_INCOMPLETE');
+    if (!['APPROVED', 'DELIVERED', 'REVIEWED'].includes(view.governance.executiveBriefStatus)) blockingReasons.push('NO_REVIEWED_BRIEF');
+    if (!view.artifacts.hasDiagnostic) blockingReasons.push('NO_DIAGNOSTIC');
 
     return res.json({
       tenantId: tenant.id,
@@ -3376,14 +3249,14 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
       intake: {
         exists: !!intake,
         latestIntakeId: intake?.id ?? null,
-        state: intake?.id ? 'COMPLETED' : 'INCOMPLETE',
-        windowState: tenant.intakeWindowState, // Exposed for Authority UI
+        state: view.workflow.intakesComplete ? 'COMPLETED' : 'INCOMPLETE',
+        windowState: view.lifecycle.intakeWindowState,
         updatedAt: intake?.createdAt?.toISOString() ?? null,
-        sufficiencyHint: intake?.status === 'completed' ? 'COMPLETE' : 'INCOMPLETE'
+        sufficiencyHint: view.workflow.intakesComplete ? 'COMPLETE' : 'INCOMPLETE'
       },
 
       executiveBrief: {
-        exists: !!brief,
+        exists: view.artifacts.hasExecutiveBrief,
         briefId: brief?.id ?? null,
         state: canonicalBriefStatus ?? null,
         approvedAt: brief?.approvedAt?.toISOString() ?? null,
@@ -3391,7 +3264,7 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
       },
 
       diagnostic: {
-        exists: !!diagnostic,
+        exists: view.artifacts.hasDiagnostic,
         diagnosticId: diagnostic?.id ?? null,
         state: diagnostic?.status ?? null,
         createdAt: diagnostic?.createdAt?.toISOString() ?? null
@@ -3429,9 +3302,9 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
       },
 
       operator: {
-        confirmedSufficiency: hasConfirmedSufficiency,
-        confirmedSufficiencyAt: sufficiencyConfirmation?.createdAt?.toISOString() ?? null,
-        confirmedSufficiencyBy: sufficiencyConfirmation?.actorUserId ?? null
+        confirmedSufficiency: false, // Purged auditEvents query (Metadata absent)
+        confirmedSufficiencyAt: null,
+        confirmedSufficiencyBy: null
       },
 
       consultantFeedback: {
@@ -3462,8 +3335,7 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
           { field: 'discovery', source: 'discovery_call_notes (backend/src/db/schema.ts:836)' },
           { field: 'tickets', source: 'sop_tickets (backend/src/db/schema.ts:674)' },
           { field: 'roadmap', source: 'roadmaps (backend/src/db/schema.ts:236)' },
-          { field: 'operator', source: 'audit_events (D3 Gate)' },
-          { field: 'readiness', source: 'superadmin.controller.ts:getTruthProbe' }
+          { field: 'readiness', source: 'view.derived (TenantLifecycleView)' }
         ]
       }
     });
