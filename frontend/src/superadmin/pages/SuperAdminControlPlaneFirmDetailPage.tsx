@@ -965,7 +965,9 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                             <div className="flex items-center gap-4 text-sm text-slate-400">
                                 <span>{tenant?.ownerName ?? '—'}</span>
                                 <span className="w-1 h-1 bg-slate-700 rounded-full" />
-                                <span>Created {new Date(tenant.createdAt).toLocaleDateString()}</span>
+                                <span>
+  Created {tenant?.createdAt ? new Date(tenant.createdAt).toLocaleDateString() : '—'}
+</span>
                             </div>
                         </div>
                         <div className="flex flex-col items-end gap-2">
