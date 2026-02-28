@@ -1032,9 +1032,13 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                     if (snapshotData) {
                                         return intakeWindowState === 'CLOSED' ? 'CLOSED' : 'OPEN';
                                     }
-                                    return (tenant.intakeWindowState === 'CLOSED' || (intakeRoles.length > 0 && intakeRoles.every(r => r.intakeStatus === 'COMPLETED')))
+
+                                    const typedRoles: IntakeRoleDefinition[] = intakeRoles ?? [];
+                                    const typedIntakes: { status: string }[] = intakes ?? [];
+
+                                    return (tenant.intakeWindowState === 'CLOSED' || (typedRoles.length > 0 && typedRoles.every((r: IntakeRoleDefinition) => r.intakeStatus === 'COMPLETED')))
                                         ? 'CLOSED'
-                                        : `${intakes.filter(i => i.status === 'completed').length}/${intakes.length} COMPLETE`;
+                                        : `${typedIntakes.filter((i: { status: string }) => i.status === 'completed').length}/${typedIntakes.length} COMPLETE`;
                                 })()}
                             </span>
                         </div>
