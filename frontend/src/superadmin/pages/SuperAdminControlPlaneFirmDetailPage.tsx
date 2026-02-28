@@ -961,9 +961,9 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                 <section id="panel-identity-status">
                     <header className="border-b border-slate-800 pb-6 flex items-start justify-between">
                         <div>
-                            <h1 className="text-4xl font-bold tracking-tight text-white mb-2">{tenant.name}</h1>
+                            <h1 className="text-4xl font-bold tracking-tight text-white mb-2">{tenant?.name ?? 'Loading…'}</h1>
                             <div className="flex items-center gap-4 text-sm text-slate-400">
-                                <span>{tenant.ownerName}</span>
+                                <span>{tenant?.ownerName ?? '—'}</span>
                                 <span className="w-1 h-1 bg-slate-700 rounded-full" />
                                 <span>Created {new Date(tenant.createdAt).toLocaleDateString()}</span>
                             </div>
@@ -1563,7 +1563,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                             deliveredByRole: (execBriefData as any).deliveredTo
                         } : undefined;
                     })()}
-                    onDownload={() => superadminApi.downloadExecutiveBrief(tenant.id, tenant.name)}
+                    onDownload={() => superadminApi.downloadExecutiveBrief(tenant?.id ?? '', tenant?.name ?? 'ExecutiveBrief')
                     onRegenerate={handleRegenerateExecutiveBrief}
                     isRegenerating={isGenerating}
                 />
