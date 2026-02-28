@@ -5,6 +5,7 @@ import { eq, and } from 'drizzle-orm';
 import { AuthRequest } from '../middleware/auth';
 import { generateInviteToken } from '../utils/auth';
 import * as emailService from '../services/email.service';
+import { getTenantLifecycleView } from '../services/tenantStateAggregation.service';
 
 /**
  * Create a new intake vector (stakeholder role definition)
@@ -25,13 +26,9 @@ export async function createIntakeVector(req: AuthRequest, res: Response) {
 
         const { tenantId } = req.params;
 
-        // 🛑 CR-UX-5: Intake Freeze Gate
-        const tenant = await db.query.tenants.findFirst({
-            where: eq(tenants.id, tenantId),
-            columns: { intakeWindowState: true }
-        });
-
-        if (tenant?.intakeWindowState === 'CLOSED') {
+        // CONSUME PROJECTION SPINE (Ticket EXEC-11C)
+        const view = await getTenantLifecycleView(tenantId);
+        if (view.lifecycle.intakeWindowState === 'CLOSED') {
             return res.status(403).json({
                 error: 'Intake window is closed',
                 message: 'This intake cycle has been finalized. No new stakeholders can be defined.'
@@ -162,13 +159,9 @@ export async function updateIntakeVector(req: AuthRequest, res: Response) {
             return res.status(404).json({ error: 'Intake vector not found' });
         }
 
-        // 🛑 CR-UX-5: Intake Freeze Gate
-        const tenant = await db.query.tenants.findFirst({
-            where: eq(tenants.id, existing.tenantId),
-            columns: { intakeWindowState: true }
-        });
-
-        if (tenant?.intakeWindowState === 'CLOSED') {
+        // CONSUME PROJECTION SPINE (Ticket EXEC-11C)
+        const view = await getTenantLifecycleView(existing.tenantId);
+        if (view.lifecycle.intakeWindowState === 'CLOSED') {
             return res.status(403).json({
                 error: 'Intake window is closed',
                 message: 'Stakeholder definitions are frozen.'
@@ -240,18 +233,9 @@ export async function sendIntakeVectorInvite(req: AuthRequest, res: Response) {
             return res.status(404).json({ error: 'Intake vector not found' });
         }
 
-        const [tenant] = await db
-            .select()
-            .from(tenants)
-            .where(eq(tenants.id, vector.tenantId))
-            .limit(1);
-
-        if (!tenant) {
-            return res.status(404).json({ error: 'Tenant context lost' });
-        }
-
-        // 🛑 CR-UX-5: Intake Freeze Gate
-        if (tenant.intakeWindowState === 'CLOSED') {
+        // CONSUME PROJECTION SPINE (Ticket EXEC-11C)
+        const view = await getTenantLifecycleView(vector.tenantId);
+        if (view.lifecycle.intakeWindowState === 'CLOSED') {
             return res.status(403).json({
                 error: 'Intake window is closed',
                 message: 'Invites are frozen for this cycle.'
@@ -271,7 +255,7 @@ export async function sendIntakeVectorInvite(req: AuthRequest, res: Response) {
             .from(invites)
             .where(and(
                 eq(invites.email, vector.recipientEmail),
-                eq(invites.tenantId, tenant.id)
+                eq(invites.tenantId, view.identity.tenantId)
             ))
             .limit(1);
 
@@ -285,7 +269,7 @@ export async function sendIntakeVectorInvite(req: AuthRequest, res: Response) {
                     .from(users)
                     .where(and(
                         eq(users.email, vector.recipientEmail),
-                        eq(users.tenantId, tenant.id)
+                        eq(users.tenantId, view.identity.tenantId)
                     ))
                     .limit(1);
 
@@ -339,7 +323,7 @@ export async function sendIntakeVectorInvite(req: AuthRequest, res: Response) {
                     email: vector.recipientEmail,
                     role,
                     token: inviteToken,
-                    tenantId: tenant.id,
+                    tenantId: view.identity.tenantId,
                     accepted: false,
                 })
                 .returning();
@@ -347,13 +331,7 @@ export async function sendIntakeVectorInvite(req: AuthRequest, res: Response) {
         }
 
         // 3. Dispatch via Resend
-        const [ownerUser] = await db
-            .select()
-            .from(users)
-            .where(eq(users.id, tenant.ownerUserId || ''))
-            .limit(1);
-
-        const inviterName = ownerUser?.name || 'Your Team Lead';
+        const inviterName = view.identity.ownerUserId ? (await db.select().from(users).where(eq(users.id, view.identity.ownerUserId)).limit(1))[0]?.name || 'Your Team Lead' : 'Your Team Lead';
         const emailDomain = vector.recipientEmail.split('@')[1];
         const redactedTo = `${vector.recipientEmail.slice(0, 2)}***@${emailDomain}`;
 
@@ -362,7 +340,7 @@ export async function sendIntakeVectorInvite(req: AuthRequest, res: Response) {
                 vector.recipientEmail,
                 inviteToken,
                 inviterName,
-                tenant.name,
+                view.identity.tenantName,
                 vector.roleLabel
             );
 
@@ -376,7 +354,7 @@ export async function sendIntakeVectorInvite(req: AuthRequest, res: Response) {
                 .where(eq(intakeVectors.id, id))
                 .returning();
 
-            console.log(`[Email] Dispatch successful: tenant=${tenant.id} vector=${vector.id} domain=${emailDomain} msgId=${result?.id}`);
+            console.log(`[Email] Dispatch successful: tenant=${view.identity.tenantId} vector=${vector.id} domain=${emailDomain} msgId=${result?.id}`);
 
             // Determine intake status (same derivation as getIntakeVectors)
             // Since we just sent the invite, it's either COMPLETED (if linked) or NOT_STARTED
@@ -392,7 +370,7 @@ export async function sendIntakeVectorInvite(req: AuthRequest, res: Response) {
                 }
             });
         } catch (dispatchError: any) {
-            console.error(`[Email] Dispatch FAILED: tenant=${tenant.id} vector=${vector.id} domain=${emailDomain} error=${dispatchError.message}`);
+            console.error(`[Email] Dispatch FAILED: tenant=${view.identity.tenantId} vector=${vector.id} domain=${emailDomain} error=${dispatchError.message}`);
             return res.status(502).json({
                 error: "EMAIL_DISPATCH_FAILED",
                 provider: "resend",

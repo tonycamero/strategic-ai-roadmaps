@@ -6,6 +6,7 @@ import { AuthRequest } from '../middleware/auth';
 import { SubmitIntakeRequest } from '@roadmap/shared';
 import { ZodError } from 'zod';
 import { onboardingProgressService } from '../services/onboardingProgress.service';
+import { getTenantLifecycleView } from '../services/tenantStateAggregation.service';
 
 export async function submitIntake(req: AuthRequest, res: Response) {
   try {
@@ -20,15 +21,11 @@ export async function submitIntake(req: AuthRequest, res: Response) {
       return res.status(403).json({ error: 'Role mismatch' });
     }
 
-    // 🛑 CR-UX-5: Intake Freeze Gate
+    // CONSUME PROJECTION SPINE (Ticket EXEC-11C)
     const tenantId = (req as any).tenantId;
     if (tenantId) {
-      const tenant = await db.query.tenants.findFirst({
-        where: eq(tenants.id, tenantId),
-        columns: { intakeWindowState: true }
-      });
-
-      if (tenant?.intakeWindowState === 'CLOSED') {
+      const view = await getTenantLifecycleView(tenantId);
+      if (view.lifecycle.intakeWindowState === 'CLOSED') {
         return res.status(403).json({
           error: 'Intake window is closed',
           message: 'This intake cycle has been finalized by Executive Authority. No further submissions are accepted.'
@@ -37,7 +34,7 @@ export async function submitIntake(req: AuthRequest, res: Response) {
     }
 
     // Check if intake already exists (scoped to tenant + role to avoid cross-tenant collisions)
-    const requestTenantId = (req as any).tenantId as string;
+    const requestTenantId = tenantId as string;
     if (!requestTenantId) {
       return res.status(400).json({ error: 'Missing tenant context' });
     }

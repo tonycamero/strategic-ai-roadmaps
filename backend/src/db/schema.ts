@@ -920,6 +920,23 @@ export type DiscoveryCallNote = typeof discoveryCallNotes.$inferSelect;
 export type NewDiscoveryCallNote = typeof discoveryCallNotes.$inferInsert;
 
 // ============================================================================
+// DISCOVERY NOTES LOG (EXEC-17: Operator append-only clarification layer)
+// ============================================================================
+
+export const discoveryNotesLog = pgTable('discovery_notes_log', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  source: varchar('source', { length: 50 }).notNull(), // 'owner' | 'operator' | 'clarification'
+  delta: text('delta').notNull(),
+  createdByUserId: uuid('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type DiscoveryNoteLog = typeof discoveryNotesLog.$inferSelect;
+export type NewDiscoveryNoteLog = typeof discoveryNotesLog.$inferInsert;
+
+
+// ============================================================================
 // PUBLIC AGENT SESSIONS (Anonymous homepage PulseAgent sessions)
 // ============================================================================
 

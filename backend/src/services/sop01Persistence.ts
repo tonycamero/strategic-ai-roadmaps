@@ -54,7 +54,7 @@ function normalizeContent(content: any): string {
  * SOP Number: 'SOP-01'
  * Stable Output Numbers for identification.
  */
-export async function persistSop01OutputsForTenant(tenantId: string, outputs: Sop01Outputs): Promise<void> {
+export async function persistSop01OutputsForTenant(tenantId: string, outputs: Sop01Outputs, tx?: any): Promise<void> {
     console.log('[SOP-01 Persistence] Persisting outputs for tenant:', tenantId);
 
     // 1. Strict Validation: All 4 must exist
@@ -107,43 +107,51 @@ export async function persistSop01OutputsForTenant(tenantId: string, outputs: So
         }
     ];
 
+    const performPersistence = async (transaction: any) => {
+        console.log(`[Persistence] Starting persistence for tenantId=${tenantId}`);
+        for (const artifact of artifacts) {
+            console.log(`[Persistence] Preparing artifact: ${artifact.type}, content length=${artifact.content.length}`);
+            const docData = {
+                tenantId,
+                ownerUserId,
+                filename: artifact.filename,
+                originalFilename: artifact.filename,
+                title: artifact.title,
+                description: `AI-generated ${artifact.title} (SOP-01)`,
+                category: 'sop_output',
+                sopNumber: 'SOP-01',
+                outputNumber: artifact.type,
+                content: artifact.content,
+                filePath: `db://sop01/${artifact.type.toLowerCase()}.md`,
+                fileSize: Buffer.byteLength(artifact.content, 'utf-8'),
+                mimeType: 'text/markdown',
+                isPublic: false,
+                updatedAt: new Date()
+            };
+
+            // Use upsert logic via onConflictDoUpdate
+            await transaction.insert(tenantDocuments)
+                .values({
+                    ...docData,
+                    createdAt: new Date()
+                })
+                .onConflictDoUpdate({
+                    target: [tenantDocuments.tenantId, tenantDocuments.category, tenantDocuments.sopNumber, tenantDocuments.outputNumber],
+                    set: docData
+                });
+
+            console.log(`[Persistence] Upserted artifact: ${artifact.type}`);
+        }
+    };
+
     try {
-        await db.transaction(async (tx) => {
-            console.log(`[Persistence] Starting transaction for tenantId=${tenantId}`);
-            for (const artifact of artifacts) {
-                console.log(`[Persistence] Preparing artifact: ${artifact.type}, content length=${artifact.content.length}`);
-                const docData = {
-                    tenantId,
-                    ownerUserId,
-                    filename: artifact.filename,
-                    originalFilename: artifact.filename,
-                    title: artifact.title,
-                    description: `AI-generated ${artifact.title} (SOP-01)`,
-                    category: 'sop_output',
-                    sopNumber: 'SOP-01',
-                    outputNumber: artifact.type,
-                    content: artifact.content,
-                    filePath: `db://sop01/${artifact.type.toLowerCase()}.md`,
-                    fileSize: Buffer.byteLength(artifact.content, 'utf-8'),
-                    mimeType: 'text/markdown',
-                    isPublic: false,
-                    updatedAt: new Date()
-                };
-
-                // Use upsert logic via onConflictDoUpdate
-                const result = await tx.insert(tenantDocuments)
-                    .values({
-                        ...docData,
-                        createdAt: new Date()
-                    })
-                    .onConflictDoUpdate({
-                        target: [tenantDocuments.tenantId, tenantDocuments.category, tenantDocuments.sopNumber, tenantDocuments.outputNumber],
-                        set: docData
-                    });
-
-                console.log(`[Persistence] Upserted artifact: ${artifact.type}, result=${JSON.stringify(result)}`);
-            }
-        });
+        if (tx) {
+            await performPersistence(tx);
+        } else {
+            await db.transaction(async (newTx) => {
+                await performPersistence(newTx);
+            });
+        }
         console.log(`[Persistence] persistSop01OutputsForTenant completed for tenantId=${tenantId}. Processed ${artifacts.length} artifacts.`);
     } catch (error) {
         console.error('[Persistence] CRITICAL_ERROR: persistence failed for tenantId:', tenantId, error);

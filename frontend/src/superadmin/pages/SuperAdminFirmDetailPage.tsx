@@ -63,6 +63,10 @@ export default function SuperAdminFirmDetailPage() {
   const [discoveryModalOpen, setDiscoveryModalOpen] = useState(false);
   const [discoveryDraft, setDiscoveryDraft] = useState('');
   const [savingDiscovery, setSavingDiscovery] = useState(false);
+  // EXEC-17: Moderation freeze state — fetched from /ticket-moderation/active
+  const [isModerationActive, setIsModerationActive] = useState(false);
+  // EXEC-18: Discovery layer existence — derived from workflowStatus, no extra fetch
+  const [discoveryError, setDiscoveryError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!params?.tenantId) return;
@@ -71,41 +75,42 @@ export default function SuperAdminFirmDetailPage() {
       .then((response) => {
         const firmDetail = response as unknown as FirmDetailResponse;
         // Map FirmDetailResponse to SuperAdminTenantDetail format
-       setData({
-  tenant: {
-    id: firmDetail.tenantSummary.id,
-    name: firmDetail.tenantSummary.name,
-    cohortLabel: firmDetail.tenantSummary.cohortLabel,
-    segment: firmDetail.tenantSummary.segment,
-    region: firmDetail.tenantSummary.region,
-    status: firmDetail.tenantSummary.status,
-    notes: firmDetail.tenantSummary.notes,
-    createdAt: firmDetail.tenantSummary.createdAt,
-    ownerEmail: firmDetail.owner?.email || '',
-    ownerName: firmDetail.owner?.name || '',
-    lastDiagnosticId: firmDetail.tenantSummary.lastDiagnosticId,
+        setData({
+          tenant: {
+            id: firmDetail.tenantSummary.id,
+            name: firmDetail.tenantSummary.name,
+            cohortLabel: firmDetail.tenantSummary.cohortLabel,
+            segment: firmDetail.tenantSummary.segment,
+            region: firmDetail.tenantSummary.region,
+            status: firmDetail.tenantSummary.status,
+            notes: firmDetail.tenantSummary.notes,
+            createdAt: firmDetail.tenantSummary.createdAt,
+            ownerEmail: firmDetail.owner?.email || '',
+            ownerName: firmDetail.owner?.name || '',
+            lastDiagnosticId: firmDetail.tenantSummary.lastDiagnosticId,
 
-    // required by SuperAdminTenantDetail
-    intakeWindowState: (firmDetail.tenantSummary as any).intakeWindowState ?? 'OPEN',
-    discoveryComplete: (firmDetail.tenantSummary as any).discoveryComplete ?? false,
-  diagnosticStatus: (firmDetail as any).diagnosticStatus ?? null,
-executiveBriefStatus: (firmDetail as any).executiveBriefStatus ?? null,
+            // required by SuperAdminTenantDetail
+            intakeWindowState: (firmDetail.tenantSummary as any).intakeWindowState ?? 'OPEN',
+            discoveryComplete: (firmDetail.tenantSummary as any).discoveryComplete ?? false,
+            diagnosticStatus: (firmDetail as any).diagnosticStatus ?? null,
+            executiveBriefStatus: (firmDetail as any).executiveBriefStatus ?? null,
 
-  },
+          },
 
-  owner: firmDetail.owner,
-  teamMembers: firmDetail.teamMembers,
-  intakes: firmDetail.intakes,
-  roadmaps: firmDetail.roadmaps,
-  recentActivity: firmDetail.recentActivity,
-} as any);
+          owner: firmDetail.owner,
+          teamMembers: firmDetail.teamMembers,
+          intakes: firmDetail.intakes,
+          roadmaps: firmDetail.roadmaps,
+          recentActivity: firmDetail.recentActivity,
+        } as any);
 
       })
       .catch((err) => setError(err.message));
 
-    // Fetch documents and workflow status
+    // Fetch documents, workflow status, and moderation state
     fetchDocuments();
     fetchWorkflowStatus();
+    fetchModerationStatus();
   }, [params?.tenantId]);
 
   async function fetchDocuments() {
@@ -140,6 +145,29 @@ executiveBriefStatus: (firmDetail as any).executiveBriefStatus ?? null,
     }
   }
 
+  // EXEC-17: Fetch active moderation session state using existing route
+  // No new API routes — /ticket-moderation/active already exists
+  async function fetchModerationStatus() {
+    if (!params?.tenantId) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/superadmin/firms/${params.tenantId}/ticket-moderation/active`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const body = await res.json();
+        // Active session = moderation is live, discovery is frozen
+        setIsModerationActive(!!body?.session?.status && body.session.status === 'active');
+      } else {
+        // Non-2xx (404 = no session) = not active
+        setIsModerationActive(false);
+      }
+    } catch {
+      // Fail open for UI — backend gate is the canonical freeze authority
+      setIsModerationActive(false);
+    }
+  }
+
   // Phase 2: Redirect to Control Plane
   function goControlPlane(hash: string) {
     if (!params?.tenantId) return;
@@ -162,15 +190,30 @@ executiveBriefStatus: (firmDetail as any).executiveBriefStatus ?? null,
     }
   }
 
+  // EXEC-18: Smart routing — first capture is canonical ingest, subsequent are append-only deltas
   async function handleSaveDiscovery() {
     if (!params?.tenantId) return;
     setSavingDiscovery(true);
+    setDiscoveryError(null);
+    const discoveryExists = workflowStatus?.discovery?.hasNotes ?? false;
     try {
-      await superadminApi.saveDiscoveryNotes(params.tenantId, discoveryDraft);
+      if (!discoveryExists) {
+        // Layer 1: Canonical base snapshot
+        await superadminApi.saveDiscoveryNotes(params.tenantId, discoveryDraft);
+      } else {
+        // Layer 2: Append-only immutable delta — fail closed, never falls back to ingest
+        const timestamp = new Date().toISOString();
+        const formattedDelta = `### Operator Clarification — ${timestamp}\n\n${discoveryDraft.trim()}`;
+        await superadminApi.appendDiscoveryNote(params.tenantId, {
+          source: 'operator',
+          delta: formattedDelta,
+        });
+      }
       setDiscoveryModalOpen(false);
       await fetchWorkflowStatus();
     } catch (err: any) {
-      setError(err.message);
+      // Fail closed: surface error, do NOT fall back or retry as ingest
+      setDiscoveryError(err.message);
     } finally {
       setSavingDiscovery(false);
     }
@@ -546,12 +589,20 @@ executiveBriefStatus: (firmDetail as any).executiveBriefStatus ?? null,
                     </div>
                   </div>
 
-                  <button
-                    onClick={openDiscoveryModal}
-                    className="w-full px-3 py-2 text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg transition-colors"
-                  >
-                    Edit Discovery Call Questions
-                  </button>
+                  {/* EXEC-17: Conditional Discovery Notes UI — frozen when moderation is active */}
+                  {isModerationActive ? (
+                    <div className="w-full px-3 py-2 text-xs text-amber-400 bg-amber-950/30 border border-amber-900/50 rounded-lg flex items-center gap-2">
+                      <span>🔒</span>
+                      <span>Discovery Notes frozen — Ticket Moderation is active</span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={openDiscoveryModal}
+                      className="w-full px-3 py-2 text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg transition-colors"
+                    >
+                      Edit Discovery Call Questions
+                    </button>
+                  )}
 
                   {/* Roadmap generation - redirect to Control Plane */}
                   {!data?.tenant?.lastDiagnosticId && (
@@ -643,16 +694,35 @@ executiveBriefStatus: (firmDetail as any).executiveBriefStatus ?? null,
               </button>
             </div>
 
+            {/* EXEC-18: Append-only banner — shown when base snapshot already exists */}
+            {(workflowStatus?.discovery?.hasNotes ?? false) && (
+              <div className="mb-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-[12px] text-amber-300">
+                <span className="font-semibold">APPEND ONLY</span> — Existing discovery captured.
+                New entries will be timestamped and cumulative.
+              </div>
+            )}
+
             <textarea
               value={discoveryDraft}
               onChange={(e) => setDiscoveryDraft(e.target.value)}
               className="w-full h-96 px-4 py-3 bg-slate-900 border border-slate-800 rounded-lg text-slate-100 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              placeholder="Enter discovery call notes in markdown format..."
+              placeholder={
+                (workflowStatus?.discovery?.hasNotes ?? false)
+                  ? 'Enter additional clarification or context...'
+                  : 'Enter discovery call notes in markdown format...'
+              }
             />
+
+            {/* EXEC-18: Fail-closed error surface */}
+            {discoveryError && (
+              <div className="mt-2 rounded-md border border-red-500/40 bg-red-500/10 p-2 text-[12px] text-red-300">
+                {discoveryError}
+              </div>
+            )}
 
             <div className="flex gap-3 mt-4">
               <button
-                onClick={() => setDiscoveryModalOpen(false)}
+                onClick={() => { setDiscoveryModalOpen(false); setDiscoveryError(null); }}
                 className="flex-1 px-4 py-2 border border-slate-700 rounded-lg font-medium text-slate-300 hover:bg-slate-900 transition-colors"
               >
                 Cancel
@@ -662,7 +732,12 @@ executiveBriefStatus: (firmDetail as any).executiveBriefStatus ?? null,
                 disabled={savingDiscovery}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
               >
-                {savingDiscovery ? 'Saving...' : 'Save Notes'}
+                {savingDiscovery
+                  ? 'Saving...'
+                  : (workflowStatus?.discovery?.hasNotes ?? false)
+                    ? 'APPEND RAW NOTES'
+                    : 'INGEST RAW NOTES'
+                }
               </button>
             </div>
           </div>

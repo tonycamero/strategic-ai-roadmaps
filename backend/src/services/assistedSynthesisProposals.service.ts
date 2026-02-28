@@ -1,12 +1,20 @@
 import { createOpenAIClient } from '../ai/openaiClient';
-import { db } from '../db/index';
-import { discoveryCallNotes, diagnostics, executiveBriefs } from '../db/schema';
-import { eq, desc } from 'drizzle-orm';
 
-/**
- * ProposedFinding Draft Schema
- * These are pre-canonical agent proposals that must be reviewed/edited/accepted by human
- */
+export interface AssistedSynthesisArtifactContract {
+    discoveryNotes: any;
+    diagnostic?: {
+        id: string;
+        overview: any;
+        aiOpportunities: any;
+        roadmapSkeleton: any;
+        discoveryQuestions: any;
+    };
+    executiveBrief?: {
+        id: string;
+        synthesis: any;
+    };
+    proposedFindings?: any[];
+}
 export interface ProposedFindingItem {
     id: string;
     type: 'CurrentFact' | 'FrictionPoint' | 'Goal' | 'Constraint';
@@ -45,52 +53,34 @@ export class AssistedSynthesisProposalsService {
     /**
      * Generate proposal findings using LLM synthesis of all available artifacts
      */
-    static async generateProposals(tenantId: string, requestId?: string): Promise<ProposedFindingsDraft> {
+    static async generateProposals(
+        tenantId: string,
+        artifacts: AssistedSynthesisArtifactContract,
+        requestId?: string
+    ): Promise<ProposedFindingsDraft> {
         const openai = createOpenAIClient();
 
-        // 1. Load all source artifacts
-        const [discoveryRaw] = await db
-            .select()
-            .from(discoveryCallNotes)
-            .where(eq(discoveryCallNotes.tenantId, tenantId))
-            .orderBy(desc(discoveryCallNotes.createdAt))
-            .limit(1);
-
-        const [diagnostic] = await db
-            .select()
-            .from(diagnostics)
-            .where(eq(diagnostics.tenantId, tenantId))
-            .orderBy(desc(diagnostics.createdAt))
-            .limit(1);
-
-        const [execBrief] = await db
-            .select()
-            .from(executiveBriefs)
-            .where(eq(executiveBriefs.tenantId, tenantId))
-            .orderBy(desc(executiveBriefs.createdAt))
-            .limit(1);
-
-        if (!discoveryRaw) {
+        if (!artifacts.discoveryNotes) {
             throw new Error('NO_DISCOVERY_NOTES: Cannot generate proposals without discovery notes');
         }
 
         // 2. Parse discovery notes
         let parsedNotes: any;
         try {
-            parsedNotes = typeof discoveryRaw.notes === 'string'
-                ? JSON.parse(discoveryRaw.notes)
-                : discoveryRaw.notes;
+            parsedNotes = typeof artifacts.discoveryNotes === 'string'
+                ? JSON.parse(artifacts.discoveryNotes)
+                : artifacts.discoveryNotes;
         } catch (e) {
             throw new Error('INVALID_DISCOVERY_NOTES: Cannot parse discovery notes JSON');
         }
 
         // 3. Assemble context for LLM
         const rawNotes = parsedNotes.currentBusinessReality || '';
-        const diagnosticOverview = diagnostic?.overview ? JSON.stringify(diagnostic.overview) : '';
-        const diagnosticOpportunities = diagnostic?.aiOpportunities ? JSON.stringify(diagnostic.aiOpportunities) : '';
-        const execSummary = execBrief?.synthesis?.content?.executiveSummary || (execBrief?.synthesis as any)?.executiveSummary || '';
-        const operatingReality = execBrief?.synthesis?.content?.operatingReality || (execBrief?.synthesis as any)?.operatingReality || '';
-        const constraints = execBrief?.synthesis?.content?.constraintLandscape || (execBrief?.synthesis as any)?.constraintLandscape || '';
+        const diagnosticOverview = artifacts.diagnostic?.overview ? JSON.stringify(artifacts.diagnostic.overview) : '';
+        const diagnosticOpportunities = artifacts.diagnostic?.aiOpportunities ? JSON.stringify(artifacts.diagnostic.aiOpportunities) : '';
+        const execSummary = artifacts.executiveBrief?.synthesis?.content?.executiveSummary || (artifacts.executiveBrief?.synthesis as any)?.executiveSummary || '';
+        const operatingReality = artifacts.executiveBrief?.synthesis?.content?.operatingReality || (artifacts.executiveBrief?.synthesis as any)?.operatingReality || '';
+        const constraints = artifacts.executiveBrief?.synthesis?.content?.constraintLandscape || (artifacts.executiveBrief?.synthesis as any)?.constraintLandscape || '';
 
         // 4. Build strict LLM prompt
         const systemPrompt = `You are a findings extraction agent. Your job is to analyze discovery artifacts and propose ATOMIC, EVIDENCE-ANCHORED findings.
@@ -182,9 +172,8 @@ Extract and propose atomic findings. Return ONLY valid JSON.`;
 
         // 7. Build provenance
         const sourceArtifactIds: string[] = [];
-        if (discoveryRaw.id) sourceArtifactIds.push(discoveryRaw.id);
-        if (diagnostic?.id) sourceArtifactIds.push(diagnostic.id);
-        if (execBrief?.id) sourceArtifactIds.push(execBrief.id);
+        if (artifacts.diagnostic?.id) sourceArtifactIds.push(artifacts.diagnostic.id);
+        if (artifacts.executiveBrief?.id) sourceArtifactIds.push(artifacts.executiveBrief.id);
 
         const draft: ProposedFindingsDraft = {
             version: 'v2.0-proposal-1',

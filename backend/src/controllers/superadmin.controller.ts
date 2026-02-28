@@ -7,7 +7,8 @@ import {
   tenantMetricsDaily, webinarRegistrations, implementationSnapshots,
   roadmapOutcomes, agentConfigs, agentThreads, webinarSettings,
   diagnostics, executiveBriefs, sopTickets, ticketModerationSessions,
-  ticketsDraft, intakeClarifications, impersonationSessions
+  ticketsDraft, intakeClarifications, impersonationSessions,
+  discoveryNotesLog, assistedSynthesisAgentSessions
 } from '../db/schema';
 import { eq, and, sql, count, desc, asc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
@@ -27,20 +28,14 @@ import { Sop01Outputs } from '../services/sop01Engine';
 import { sendClarificationRequestEmail } from '../services/email.service';
 
 // META-TICKET v2: Gate & SOP Architecture Imports
-import {
-  canLockIntake,
-  canGenerateDiagnostics,
-  canLockDiagnostic,
-  canPublishDiagnostics,
-  canIngestDiscoveryNotes,
-  canGenerateSopTickets,
-  canAssembleRoadmap
-} from '../services/gate.service';
 import { generateSop01Outputs } from '../services/sop01Engine';
 import { persistSop01OutputsForTenant } from '../services/sop01Persistence';
 import { buildNormalizedIntakeContext } from '../services/intakeNormalizer';
 import { validateBriefModeSchema } from '../services/schemaGuard.service';
 import { generateFinalRoadmapForTenant } from '../services/finalRoadmap.service';
+import { getTenantLifecycleView } from '../services/tenantStateAggregation.service';
+import { lockDiagnosticAndSyncSop01Outputs, publishDiagnostic as publishDiagnosticService } from '../services/diagnosticsGeneration.service';
+import { FindingsService } from '../services/findings.service';
 
 const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 
@@ -1089,17 +1084,34 @@ export async function getFirmDetail(req: AuthRequest<{ tenantId: string }>, res:
       .orderBy(desc(diagnostics.createdAt))
       .limit(1);
 
-    // CHECK DISCOVERY STATUS
-    const [discoveryDoc] = await db
-      .select({ id: tenantDocuments.id })
-      .from(tenantDocuments)
-      .where(and(
-        eq(tenantDocuments.tenantId, tenantId),
-        eq(tenantDocuments.category, 'DISCOVERY_SYNTHESIS_V1')
-      ))
+    // EXEC-20: CANONICAL DISCOVERY STATE — query discovery_call_notes directly
+    // Do NOT infer from tenantDocuments, activity logs, or ladder stage.
+    const [discoveryCallNoteRow] = await db
+      .select({
+        id: discoveryCallNotes.id,
+        status: discoveryCallNotes.status,
+        createdAt: discoveryCallNotes.createdAt,
+        updatedAt: discoveryCallNotes.updatedAt,
+      })
+      .from(discoveryCallNotes)
+      .where(eq(discoveryCallNotes.tenantId, tenantId))
+      .orderBy(desc(discoveryCallNotes.createdAt))
       .limit(1);
 
-    const discoveryComplete = !!discoveryDoc;
+    // EXEC-20: Build canonical discovery object
+    const canonicalDiscovery = discoveryCallNoteRow
+      ? {
+        exists: true,
+        status: discoveryCallNoteRow.status,
+        createdAt: discoveryCallNoteRow.createdAt,
+        updatedAt: discoveryCallNoteRow.updatedAt,
+      }
+      : {
+        exists: false,
+        status: null,
+        createdAt: null,
+        updatedAt: null,
+      };
 
     return res.json({
       tenantSummary: {
@@ -1123,8 +1135,11 @@ export async function getFirmDetail(req: AuthRequest<{ tenantId: string }>, res:
       },
       diagnosticStatus, // Added for Ticket 5 gating
       latestDiagnostic: latestDiagnostic || null, // CANONICAL: diagnostics table source of truth
+      // EXEC-20: Canonical discovery projection
+      discovery: canonicalDiscovery,
+      // EXEC-20: Backward compat — computed from canonical truth
       discoveryStatus: {
-        complete: discoveryComplete
+        complete: canonicalDiscovery.exists
       },
       owner: owner ? {
         id: owner.id,
@@ -1469,7 +1484,23 @@ export async function getFirmDetailV2(req: AuthRequest<{ tenantId: string }>, re
       intakes: {
         byRole: intakesByRole,
       },
-      discovery: {
+      // EXEC-20: Canonical discovery projection from discovery_call_notes
+      discovery: discoveryNote
+        ? {
+          exists: true,
+          status: discoveryNote.status,
+          createdAt: discoveryNote.createdAt,
+          updatedAt: discoveryNote.updatedAt,
+        }
+        : {
+          exists: false,
+          status: null,
+          createdAt: null,
+          updatedAt: null,
+        },
+      // EXEC-20: Backward compat shim
+      discoveryStatus: {
+        complete: !!discoveryNote,
         hasDiscoveryNotes: !!discoveryNote,
         summarySnippet,
         lastUpdatedAt: discoveryNote?.updatedAt || null,
@@ -2080,8 +2111,6 @@ export async function listTenantDocuments(req: AuthRequest, res: Response) {
   }
 }
 
-import { getTenantLifecycleView } from '../services/tenantStateAggregation.service';
-
 // ============================================================================
 // GET /api/superadmin/firms/:tenantId/workflow-status - Firm Workflow Status
 // ============================================================================
@@ -2170,12 +2199,14 @@ export async function assembleRoadmapForFirm(req: AuthRequest<{ tenantId: string
 
     const { tenantId } = req.params;
 
-    // Final roadmap generation: requires tickets generated + moderation complete.
-    // Service will fail-closed if prerequisites are not satisfied.
+    // Service will fail-closed if prerequisites are not satisfied via mutation firewall.
     const result = await generateFinalRoadmapForTenant(tenantId);
 
     return res.json({ ok: true, result });
   } catch (error: any) {
+    if (error.message === 'AUTHORITY_VIOLATION') {
+      return res.status(403).json({ error: 'AUTHORITY_VIOLATION', message: 'Roadmap assembly blocked by mutation firewall.' });
+    }
     console.error('Assemble roadmap error:', error);
     return res.status(500).json({ error: error?.message || 'Failed to assemble roadmap' });
   }
@@ -2984,11 +3015,10 @@ export async function signalReadiness(req: AuthRequest, res: Response) {
 
 
 
+
 // ============================================================================
 // TRUTH PROBE (Lifecycle State)
 // ============================================================================
-
-import { getTenantLifecycleView } from '../services/tenantStateAggregation.service';
 
 export async function getTruthProbe(req: AuthRequest, res: Response) {
   try {
@@ -3231,21 +3261,14 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
     const respondedClarificationCount = clarifications.filter(c => c.status === 'responded').length;
 
     // READINESS FLAGS (Sourced EXCLUSIVELY from View)
-    const canRunDiscovery = view.derived.canGenerateTickets;
-    const canModerateTickets = false; // Projection Heart does not yet support moderation readiness
-    const canFinalizeRoadmap = view.derived.canAssembleRoadmap;
 
     // BLOCKING REASONS (Delegated - Manual boolean assembly DELETED)
-    const blockingReasons: string[] = [];
-    if (!view.workflow.intakesComplete) blockingReasons.push('INTAKE_INCOMPLETE');
-    if (!['APPROVED', 'DELIVERED', 'REVIEWED'].includes(view.governance.executiveBriefStatus)) blockingReasons.push('NO_REVIEWED_BRIEF');
-    if (!view.artifacts.hasDiagnostic) blockingReasons.push('NO_DIAGNOSTIC');
+
 
     return res.json({
       tenantId: tenant.id,
       tenantName: tenant.name,
       tenantStatus: tenant.status,
-
       intake: {
         exists: !!intake,
         latestIntakeId: intake?.id ?? null,
@@ -3254,57 +3277,39 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
         updatedAt: intake?.createdAt?.toISOString() ?? null,
         sufficiencyHint: view.workflow.intakesComplete ? 'COMPLETE' : 'INCOMPLETE'
       },
-
       executiveBrief: {
-        exists: view.artifacts.hasExecutiveBrief,
-        briefId: brief?.id ?? null,
-        state: canonicalBriefStatus ?? null,
-        approvedAt: brief?.approvedAt?.toISOString() ?? null,
-        deliveryAudit // Added for Traceability
+        exists: view.governance.executiveBriefStatus !== 'NONE',
+        briefId: null, // Legacy
+        state: view.governance.executiveBriefStatus,
+        approvedAt: view.governance.approvedAt ?? null,
+        deliveryAudit: null
       },
-
       diagnostic: {
-        exists: view.artifacts.hasDiagnostic,
-        diagnosticId: diagnostic?.id ?? null,
-        state: diagnostic?.status ?? null,
-        createdAt: diagnostic?.createdAt?.toISOString() ?? null
+        exists: view.artifacts.diagnostic.exists,
+        diagnosticId: null, // Legacy
+        state: view.artifacts.diagnostic.exists ? 'COMPLETE' : 'PENDING',
+        createdAt: null
       },
-
       discovery: {
-        exists: !!discovery,
-        id: discovery?.id || null,
-        createdAt: discovery?.createdAt || null
+        exists: view.workflow.discoveryComplete,
+        updatedAt: null
       },
       findings: {
-        exists: !!findingsArtifact,
-        hasProposed: !!proposedFindingsArtifact,
-        proposedId: proposedFindingsArtifact?.id || null,
-        id: findingsArtifact?.id || null,
-        createdAt: findingsArtifact?.createdAt || null
+        exists: view.workflow.findingsComplete
       },
-
       tickets: {
-        total: totalTickets,
-        pending: pendingTickets,
-        approved: approvedTickets,
-        rejected: rejectedTickets,
-        isDraft: hasDrafts,
-        lastGeneratedAt: lastTicket?.generatedAt?.toISOString() ?? null,
-        lastModeratedAt: lastTicket?.moderatedAt?.toISOString() ?? null
+        total: view.tickets.total,
+        pending: view.tickets.pending,
+        approved: view.tickets.approved
       },
-
       roadmap: {
-        exists: !!roadmap,
-        roadmapId: roadmap?.id ?? null,
-        state: roadmap?.status ?? null,
-        lastUpdatedAt: roadmap?.updatedAt?.toISOString() ?? null,
-        isUnlocked: !!roadmap && roadmap.status === 'published'
+        exists: view.artifacts.hasRoadmap,
+        delivered: view.lifecycle.currentPhase === 'FINAL_ROADMAP_DELIVERED'
       },
 
       operator: {
-        confirmedSufficiency: false, // Purged auditEvents query (Metadata absent)
-        confirmedSufficiencyAt: null,
-        confirmedSufficiencyBy: null
+        confirmedSufficiency: view.operator.confirmedSufficiency,
+        confirmedSufficiencyAt: view.operator.confirmedSufficiencyAt ?? null
       },
 
       consultantFeedback: {
@@ -3318,12 +3323,8 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
         respondedCount: respondedClarificationCount
       },
 
-      readiness: {
-        canRunDiscovery,
-        canModerateTickets,
-        canFinalizeRoadmap,
-        blockingReasons
-      },
+      capabilities: view.capabilities,
+      blockingReasons: view.derived.blockingReasons,
 
       provenance: {
         computedAt: new Date().toISOString(),
@@ -3367,9 +3368,9 @@ export async function lockIntake(req: AuthRequest, res: Response) {
     if (!requireSuperAdmin(req, res)) return;
     const { tenantId } = req.params;
 
-    const check = await canLockIntake(tenantId);
-    if (!check.allowed) {
-      return res.status(403).json({ error: 'GATE_LOCKED', message: check.reason });
+    const projection = await getTenantLifecycleView(tenantId);
+    if (!projection.capabilities.lockIntake.allowed) {
+      return res.status(403).json({ error: 'GATE_LOCKED', message: "Authority denied by lifecycle gate.", reasons: projection.capabilities.lockIntake.reasons });
     }
 
     await db.update(tenants)
@@ -3426,9 +3427,9 @@ export async function generateDiagnostics(req: AuthRequest, res: Response) {
     if (!requireSuperAdmin(req, res)) return;
     const { tenantId } = req.params;
 
-    const check = await canGenerateDiagnostics(tenantId);
-    if (!check.allowed) {
-      return res.status(403).json({ error: 'GATE_LOCKED', message: check.reason });
+    const projection = await getTenantLifecycleView(tenantId);
+    if (!projection.capabilities.generateDiagnostic.allowed) {
+      return res.status(403).json({ error: 'GATE_LOCKED', message: "Authority denied by lifecycle gate.", reasons: projection.capabilities.generateDiagnostic.reasons });
     }
 
     // 1. Build Context
@@ -3448,8 +3449,8 @@ export async function generateDiagnostics(req: AuthRequest, res: Response) {
     let diagnosticId = existing?.id;
     let isNewDiagnostic = false;
 
-    const diagnosticValues = {
-      id: nanoid(),
+    // Shared output fields (never include `id` — that is insert-only)
+    const diagnosticOutputs = {
       tenantId,
       sopVersion: 'SOP-01',
       status: 'generated' as const,
@@ -3467,20 +3468,30 @@ export async function generateDiagnostics(req: AuthRequest, res: Response) {
     };
 
     if (!diagnosticId) {
-      const [newDiag] = await db.insert(diagnostics).values(diagnosticValues).returning();
+      // INSERT — generate a fresh UUID for the new record
+      const [newDiag] = await db.insert(diagnostics).values({
+        id: randomUUID(),
+        ...diagnosticOutputs
+      }).returning();
       diagnosticId = newDiag.id;
       isNewDiagnostic = true;
 
-      // Update tenant lastDiagnosticId
+      // Update tenant lastDiagnosticId to point to the new record
       await db.update(tenants)
         .set({ lastDiagnosticId: diagnosticId })
         .where(eq(tenants.id, tenantId));
     } else {
-      // Update existing record with fresh outputs
+      // UPDATE — never mutate the PK; update outputs only
       await db.update(diagnostics)
-        .set(diagnosticValues)
+        .set(diagnosticOutputs)
         .where(eq(diagnostics.id, diagnosticId));
+
+      // Keep lastDiagnosticId in sync (guards against DB drift)
+      await db.update(tenants)
+        .set({ lastDiagnosticId: diagnosticId })
+        .where(eq(tenants.id, tenantId));
     }
+
 
     // ✅ Only insert audit event for new diagnostics (prevents duplicates)
     if (isNewDiagnostic) {
@@ -3507,39 +3518,17 @@ export async function lockDiagnostic(req: AuthRequest, res: Response) {
     if (!requireSuperAdmin(req, res)) return;
     const { diagnosticId } = req.params;
 
-    const check = await canLockDiagnostic(diagnosticId);
-    if (!check.allowed) {
-      return res.status(403).json({ error: 'GATE_LOCKED', message: check.reason });
-    }
-
-    await db.update(diagnostics)
-      .set({ status: 'locked' })
-      .where(eq(diagnostics.id, diagnosticId));
-
-    // ✅ Sync to tenant_documents once LOCKED (Requirement: Tenant sees locked artifacts)
-    const [diag] = await db.select().from(diagnostics).where(eq(diagnostics.id, diagnosticId)).limit(1);
-    if (diag) {
-      const outputs = {
-        sop01DiagnosticMarkdown: diag.overview,
-        sop01AiLeverageMarkdown: diag.aiOpportunities,
-        sop01RoadmapSkeletonMarkdown: diag.roadmapSkeleton,
-        sop01DiscoveryQuestionsMarkdown: diag.discoveryQuestions
-      };
-      await persistSop01OutputsForTenant(diag.tenantId, outputs as any);
-    }
-
-    // Audit
-    await db.insert(auditEvents).values({
-      tenantId: null,
-      actorUserId: req.user!.userId || null,
-      actorRole: req.user?.role,
-      eventType: 'DIAGNOSTIC_LOCKED',
-      entityType: 'diagnostic',
-      entityId: diagnosticId
+    const result = await lockDiagnosticAndSyncSop01Outputs({
+      diagnosticId,
+      actorUserId: req.user!.userId,
+      actorRole: req.user?.role
     });
 
-    return res.json({ success: true });
+    return res.json(result);
   } catch (error: any) {
+    if (error.message === 'AUTHORITY_VIOLATION') {
+      return res.status(403).json({ error: 'AUTHORITY_VIOLATION', message: 'Lock diagnostic blocked by mutation firewall.' });
+    }
     console.error('Lock Diagnostic Error:', error);
     return res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
@@ -3550,56 +3539,20 @@ export async function lockDiagnostic(req: AuthRequest, res: Response) {
 export async function publishDiagnostic(req: AuthRequest, res: Response) {
   try {
     if (!requireSuperAdmin(req, res)) return;
-    const { diagnosticId } = req.params;
+    const { diagnosticId, tenantId } = req.params;
 
-    const check = await canPublishDiagnostics(diagnosticId);
-    if (!check.allowed) {
-      return res.status(403).json({ error: 'GATE_LOCKED', message: check.reason });
-    }
-
-    // Fetch diagnostic to get tenantId
-    const [diag] = await db.select().from(diagnostics).where(eq(diagnostics.id, diagnosticId)).limit(1);
-    if (!diag) return res.status(404).json({ error: 'Diagnostic not found' });
-
-    // Demote any currently published diagnostics to 'archived'
-    // Note: We need 'and' from drizzle-orm. If not available, we can filter differently or assume it's imported.
-    // Assuming 'and' is available or blindly adding it might break if not imported.
-    // I will try to use a pragmatic approach: Find published ones and update them by ID.
-    const publishedDiags = await db.select().from(diagnostics).where(eq(diagnostics.tenantId, diag.tenantId));
-    const toArchive = publishedDiags.filter(d => d.status === 'published' && d.id !== diagnosticId);
-
-    for (const d of toArchive) {
-      await db.update(diagnostics).set({ status: 'archived' }).where(eq(diagnostics.id, d.id));
-    }
-
-    // Publish the target diagnostic
-    await db.update(diagnostics)
-      .set({ status: 'published' })
-      .where(eq(diagnostics.id, diagnosticId));
-
-    // ✅ RELEASE documents to tenant
-    const updateResult = await db.update(tenantDocuments)
-      .set({ isPublic: true })
-      .where(and(
-        eq(tenantDocuments.tenantId, diag.tenantId),
-        eq(tenantDocuments.sopNumber, 'SOP-01'),
-        eq(tenantDocuments.category, 'sop_output')
-      ));
-
-    console.log(`[SuperAdmin Controller] publishDiagnostic: tenantId=${diag.tenantId}, rowsUpdated=${(updateResult as any).rowCount || 'unknown'}`);
-
-    // Audit
-    await db.insert(auditEvents).values({
-      tenantId: diag.tenantId, // Use the fetched tenantId
+    const result = await publishDiagnosticService({
+      tenantId,
+      diagnosticId,
       actorUserId: req.user!.userId || null,
-      actorRole: req.user?.role,
-      eventType: 'DIAGNOSTIC_PUBLISHED',
-      entityType: 'diagnostic',
-      entityId: diagnosticId
+      actorRole: req.user?.role
     });
 
-    return res.json({ success: true });
+    return res.json(result);
   } catch (error: any) {
+    if (error.message === 'AUTHORITY_VIOLATION') {
+      return res.status(403).json({ error: 'AUTHORITY_VIOLATION', message: 'Publish diagnostic blocked by mutation firewall.' });
+    }
     console.error('Publish Diagnostic Error:', error);
     return res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
@@ -3637,9 +3590,26 @@ export async function ingestDiscoveryNotes(req: AuthRequest, res: Response) {
     const { tenantId } = req.params;
     const { notes } = req.body; // Expects JSON stringified CanonicalDiscoveryNotes
 
-    const check = await canIngestDiscoveryNotes(tenantId);
-    if (!check.allowed) {
-      return res.status(403).json({ error: 'GATE_LOCKED', message: check.reason });
+    const projection = await getTenantLifecycleView(tenantId);
+    if (!projection.capabilities.ingestDiscoveryNotes.allowed) {
+      return res.status(403).json({ error: 'GATE_LOCKED', message: "Authority denied by lifecycle gate.", reasons: projection.capabilities.ingestDiscoveryNotes.reasons });
+    }
+
+    // EXEC-17: Freeze guard — discovery notes locked once ticket moderation is active
+    const [activeModSession] = await db
+      .select({ id: ticketModerationSessions.id })
+      .from(ticketModerationSessions)
+      .where(and(
+        eq(ticketModerationSessions.tenantId, tenantId),
+        eq(ticketModerationSessions.status, 'active')
+      ))
+      .limit(1);
+
+    if (activeModSession) {
+      return res.status(423).json({
+        error: 'DISCOVERY_FROZEN',
+        message: 'Discovery Notes are frozen — Ticket Moderation is active. No further mutation is permitted.'
+      });
     }
 
     if (!notes) {
@@ -3776,6 +3746,130 @@ export async function ingestDiscoveryNotes(req: AuthRequest, res: Response) {
   }
 }
 
+// EXEC-17: Append-only operator clarification layer.
+// Inserts an immutable delta into discovery_notes_log.
+// Invalidates assistedSynthesisAgentSessions snapshot for rebuild on next trigger.
+// Freeze guard matches ingestDiscoveryNotes — same moderation session check.
+export async function appendDiscoveryNote(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { tenantId } = req.params;
+    const { source, delta } = req.body;
+
+    // Validate inputs
+    if (!source || !['owner', 'operator', 'clarification'].includes(source)) {
+      return res.status(400).json({ error: 'INVALID_SOURCE', message: "source must be 'owner' | 'operator' | 'clarification'" });
+    }
+    if (!delta || typeof delta !== 'string' || delta.trim().length === 0) {
+      return res.status(400).json({ error: 'MISSING_DELTA', message: 'delta is required and must be a non-empty string' });
+    }
+
+    // EXEC-17: Freeze guard — same condition as ingestDiscoveryNotes
+    const [activeModSession] = await db
+      .select({ id: ticketModerationSessions.id })
+      .from(ticketModerationSessions)
+      .where(and(
+        eq(ticketModerationSessions.tenantId, tenantId),
+        eq(ticketModerationSessions.status, 'active')
+      ))
+      .limit(1);
+
+    if (activeModSession) {
+      return res.status(423).json({
+        error: 'DISCOVERY_FROZEN',
+        message: 'Discovery Notes are frozen — Ticket Moderation is active.'
+      });
+    }
+
+    // 1. Insert immutable log row — fail closed (do not invalidate if this fails)
+    const [logEntry] = await db
+      .insert(discoveryNotesLog)
+      .values({
+        tenantId,
+        source,
+        delta: delta.trim(),
+        createdByUserId: req.user?.userId || null,
+      })
+      .returning();
+
+    // 2. Rebuild synthesized context: base notes (latest ingested) + ordered log deltas
+    //    Context is built here for audit/logging but synthesis is NOT triggered synchronously.
+    //    Synthesis session is invalidated — next synthesis trigger will re-read fresh context.
+    const [baseNote] = await db
+      .select({ notes: discoveryCallNotes.notes })
+      .from(discoveryCallNotes)
+      .where(eq(discoveryCallNotes.tenantId, tenantId))
+      .orderBy(desc(discoveryCallNotes.createdAt))
+      .limit(1);
+
+    const logEntries = await db
+      .select({ delta: discoveryNotesLog.delta })
+      .from(discoveryNotesLog)
+      .where(eq(discoveryNotesLog.tenantId, tenantId))
+      .orderBy(asc(discoveryNotesLog.createdAt));
+
+    const synthesizedContext = [
+      baseNote?.notes || '',
+      ...logEntries.map((e) => e.delta),
+    ].filter(Boolean).join('\n\n---\n\n');
+
+    // 3. Invalidate Assisted Synthesis session — forces fresh rebuild on next trigger
+    await db
+      .delete(assistedSynthesisAgentSessions)
+      .where(eq(assistedSynthesisAgentSessions.tenantId, tenantId));
+
+    // 4. Audit event
+    await db.insert(auditEvents).values({
+      tenantId,
+      actorUserId: req.user?.userId || null,
+      actorRole: req.user?.role,
+      eventType: 'DISCOVERY_NOTE_APPENDED',
+      entityType: 'discovery_notes_log',
+      entityId: logEntry.id,
+    });
+
+    return res.json({
+      ok: true,
+      logEntryId: logEntry.id,
+      synthesizedLength: synthesizedContext.length,
+      message: 'Discovery note appended. Assisted Synthesis snapshot invalidated for rebuild.'
+    });
+  } catch (error: any) {
+    console.error('[appendDiscoveryNote] Error:', error);
+    return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+  }
+}
+
+/**
+ * GET /api/superadmin/firms/:tenantId/discovery-notes/log
+ * EXEC-27: Read-only history of append-only discovery log entries.
+ * Returns entries ordered by createdAt DESC for the history panel.
+ */
+export async function getDiscoveryNotesLog(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { tenantId } = req.params;
+
+    const entries = await db
+      .select({
+        id: discoveryNotesLog.id,
+        source: discoveryNotesLog.source,
+        delta: discoveryNotesLog.delta,
+        createdAt: discoveryNotesLog.createdAt,
+        createdByUserId: discoveryNotesLog.createdByUserId,
+      })
+      .from(discoveryNotesLog)
+      .where(eq(discoveryNotesLog.tenantId, tenantId))
+      .orderBy(desc(discoveryNotesLog.createdAt));
+
+    return res.json({ entries });
+  } catch (error: any) {
+    console.error('[getDiscoveryNotesLog] Error:', error);
+    return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+  }
+}
+
+
 /**
  * GET /api/superadmin/diagnostics/:diagnosticId/artifacts
  * Returns diagnostic with all artifacts for modal display
@@ -3844,11 +3938,45 @@ export async function generateAssistedProposals(req: AuthRequest, res: Response)
 
     console.log(`[generateAssistedProposals:${requestId}] Request for tenant ${tenantId}`);
 
+    // ENFORCE PROJECTION GATE (META-TICKET: SAS AUTHORITY REALIGNMENT)
+    const { getTenantLifecycleView } = await import('../services/tenantStateAggregation.service');
+    const projection = await getTenantLifecycleView(tenantId);
+
+    if (!projection.capabilities.generateSynthesis.allowed) {
+      return res.status(403).json({
+        code: "AUTHORITY_VIOLATION",
+        blockingReasons: projection.capabilities.generateSynthesis.reasons
+      });
+    }
+
     // Dynamic import to avoid circular dependencies
     const { AssistedSynthesisProposalsService, ProposalGenerationError } = await import('../services/assistedSynthesisProposals.service');
 
+    // Fetch dependencies directly per Phase 4
+    const [discoveryRaw] = await db.select().from(discoveryCallNotes)
+      .where(eq(discoveryCallNotes.tenantId, tenantId)).orderBy(desc(discoveryCallNotes.createdAt)).limit(1);
+    const [diagnostic] = await db.select().from(diagnostics)
+      .where(eq(diagnostics.tenantId, tenantId)).orderBy(desc(diagnostics.createdAt)).limit(1);
+    const [execBrief] = await db.select().from(executiveBriefs)
+      .where(eq(executiveBriefs.tenantId, tenantId)).orderBy(desc(executiveBriefs.createdAt)).limit(1);
+
+    const artifactContract = {
+      discoveryNotes: discoveryRaw?.notes || null,
+      diagnostic: diagnostic ? {
+        id: diagnostic.id,
+        overview: diagnostic.overview,
+        aiOpportunities: diagnostic.aiOpportunities,
+        roadmapSkeleton: diagnostic.roadmapSkeleton,
+        discoveryQuestions: diagnostic.discoveryQuestions
+      } : undefined,
+      executiveBrief: execBrief ? {
+        id: execBrief.id,
+        synthesis: execBrief.synthesis
+      } : undefined
+    };
+
     // Generate proposals using LLM (with requestId for tracing)
-    const draft = await AssistedSynthesisProposalsService.generateProposals(tenantId);
+    const draft = await AssistedSynthesisProposalsService.generateProposals(tenantId, artifactContract, requestId);
 
     // Persist to tenant_documents (PHASE 2.5)
     try {
@@ -3938,6 +4066,18 @@ export async function getProposedFindings(req: AuthRequest, res: Response) {
     if (!requireSuperAdmin(req, res)) return;
     const { tenantId } = req.params;
 
+    // ENFORCE PROJECTION GATE (META-TICKET: PROJECTION-SPINE-001)
+    const { getTenantLifecycleView } = await import('../services/tenantStateAggregation.service');
+    const projection = await getTenantLifecycleView(tenantId);
+
+    if (!projection.capabilities.generateSynthesis.allowed) {
+      return res.status(403).json({
+        code: "AUTHORITY_VIOLATION",
+        message: "Synthesis is not ready or gate is locked",
+        blockingReasons: projection.derived.blockingReasons
+      });
+    }
+
     const [proposed] = await db
       .select()
       .from(tenantDocuments)
@@ -3982,58 +4122,20 @@ export async function declareCanonicalFindings(req: AuthRequest, res: Response) 
       return res.status(400).json({ error: 'Missing findings data' });
     }
 
-    const [discoveryRecord] = await db
-      .select()
-      .from(discoveryCallNotes)
-      .where(eq(discoveryCallNotes.tenantId, tenantId))
-      .orderBy(desc(discoveryCallNotes.createdAt))
-      .limit(1);
-
-    if (!discoveryRecord) {
-      return res.status(404).json({ error: 'No discovery context found' });
-    }
-
-    const findingsObject = {
-      id: randomUUID(),
+    const result = await FindingsService.declareCanonicalFindings({
       tenantId,
-      generatedAt: new Date(),
-      discoveryRef: discoveryRecord.id,
-      findings
-    };
-
-    // Persist Canonical Findings
-    await db.insert(tenantDocuments).values({
-      tenantId,
-      category: 'findings_canonical',
-      title: 'Canonical Findings (Operator Reviewed)',
-      filename: `findings-canonical-${discoveryRecord.id}.json`,
-      originalFilename: `findings-canonical-${discoveryRecord.id}.json`,
-      description: 'Promoted from Stage 5 Assisted Synthesis',
-      content: JSON.stringify(findingsObject),
-      fileSize: Buffer.byteLength(JSON.stringify(findingsObject)),
-      filePath: 'virtual://findings',
-      uploadedBy: req.user!.userId || null,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      findings,
+      actorUserId: req.user!.userId,
+      actorRole: req.user?.role
     });
 
-    // Audit
-    await db.insert(auditEvents).values({
-      tenantId,
-      actorUserId: req.user!.userId || null,
-      actorRole: req.user?.role,
-      eventType: 'FINDINGS_DECLARED_CANONICAL',
-      entityType: 'tenant',
-      entityId: tenantId,
-      metadata: {
-        findingsCount: findings.length
-      }
-    });
-
-    return res.json({ success: true });
+    return res.json(result);
   } catch (error: any) {
+    if (error.message === 'AUTHORITY_VIOLATION') {
+      return res.status(403).json({ error: 'AUTHORITY_VIOLATION', message: 'Declare findings blocked by mutation firewall.' });
+    }
     console.error('Declare Canonical Findings Error:', error);
-    return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+    return res.status(500).json({ error: error?.message || 'Failed to declare canonical findings' });
   }
 }
 
@@ -4352,12 +4454,48 @@ export async function sendAgentMessage(req: AuthRequest, res: Response) {
 
     console.log(`[sendAgentMessage:${requestId}] Request for tenant ${tenantId}, session ${sessionId}`);
 
+    // ENFORCE SOFT PROJECTION GATE (META-TICKET: SAS AUTHORITY REALIGNMENT)
+    const { getTenantLifecycleView } = await import('../services/tenantStateAggregation.service');
+    const projection = await getTenantLifecycleView(tenantId);
+
+    if (!projection.capabilities.generateSynthesis.allowed) {
+      return res.status(403).json({
+        code: "AUTHORITY_VIOLATION",
+        blockingReasons: projection.capabilities.generateSynthesis.reasons,
+        requestId
+      });
+    }
+
     const { AssistedSynthesisAgentService, AgentOperationError } = await import('../services/assistedSynthesisAgent.service');
+
+    // Fetch dependencies directly per Phase 4
+    const [discoveryRaw] = await db.select().from(discoveryCallNotes)
+      .where(eq(discoveryCallNotes.tenantId, tenantId)).orderBy(desc(discoveryCallNotes.createdAt)).limit(1);
+    const [diagnostic] = await db.select().from(diagnostics)
+      .where(eq(diagnostics.tenantId, tenantId)).orderBy(desc(diagnostics.createdAt)).limit(1);
+    const [execBrief] = await db.select().from(executiveBriefs)
+      .where(eq(executiveBriefs.tenantId, tenantId)).orderBy(desc(executiveBriefs.createdAt)).limit(1);
+
+    const artifactContract = {
+      discoveryNotes: discoveryRaw?.notes || null,
+      diagnostic: diagnostic ? {
+        id: diagnostic.id,
+        overview: diagnostic.overview,
+        aiOpportunities: diagnostic.aiOpportunities,
+        roadmapSkeleton: diagnostic.roadmapSkeleton,
+        discoveryQuestions: diagnostic.discoveryQuestions
+      } : undefined,
+      executiveBrief: execBrief ? {
+        id: execBrief.id,
+        synthesis: execBrief.synthesis
+      } : undefined
+    };
 
     const result = await AssistedSynthesisAgentService.sendMessage(
       tenantId,
       sessionId,
       message,
+      artifactContract,
       requestId
     );
 
@@ -4410,6 +4548,18 @@ export async function resetAgentSession(req: AuthRequest, res: Response) {
     }
 
     console.log(`[resetAgentSession:${requestId}] Request for tenant ${tenantId}, session ${sessionId}`);
+
+    // ENFORCE SOFT PROJECTION GATE (META-TICKET: SAS AUTHORITY REALIGNMENT)
+    const { getTenantLifecycleView } = await import('../services/tenantStateAggregation.service');
+    const projection = await getTenantLifecycleView(tenantId);
+
+    if (!projection.capabilities.generateSynthesis.allowed) {
+      return res.status(403).json({
+        code: "AUTHORITY_VIOLATION",
+        blockingReasons: projection.capabilities.generateSynthesis.reasons,
+        requestId
+      });
+    }
 
     const { AssistedSynthesisAgentService } = await import('../services/assistedSynthesisAgent.service');
 

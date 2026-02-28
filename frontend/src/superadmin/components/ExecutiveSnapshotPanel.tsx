@@ -18,6 +18,18 @@ export interface SnapshotData {
         speedToValue: 'HIGH' | 'MEDIUM' | 'LOW';
     };
     distribution: Record<string, number>;
+    // EXEC-22: Canonical discovery projection from snapshot authority
+    discovery?: {
+        exists: boolean;
+        status: string | null;
+        createdAt: string | null;
+        updatedAt: string | null;
+    };
+    // EXEC-22: Backward compat shim (from EXEC-21)
+    discoveryStatus?: {
+        complete: boolean;
+        hasDiscoveryNotes: boolean;
+    };
 }
 
 interface ExecutiveSnapshotPanelProps {

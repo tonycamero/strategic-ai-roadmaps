@@ -18,7 +18,8 @@ const openai = new OpenAI({
 });
 
 export async function assembleRoadmap(
-  context: RoadmapContext
+  context: RoadmapContext,
+  trx?: any
 ): Promise<RoadmapGenerationResult> {
   console.log('[Roadmap Assembly] Generating 8-section roadmap for tenant:', context.tenantId);
   console.log('[Roadmap Assembly] Input: DiagnosticMap + ', context.tickets.length, 'tickets');
@@ -72,7 +73,8 @@ export async function assembleRoadmap(
   console.log('[Roadmap Assembly] Discovery Notes: ', context.discoveryNotesMarkdown?.length || 0, 'chars');
 
   // TASK 5: Inject Tenant Baseline Economics
-  const baseline = await db.select().from(firmBaselineIntake).where(eq(firmBaselineIntake.tenantId, context.tenantId)).limit(1).then(res => res[0]);
+  const executor = trx || db;
+  const baseline = await executor.select().from(firmBaselineIntake).where(eq(firmBaselineIntake.tenantId, context.tenantId)).limit(1).then((res: any) => res[0]);
 
   const economicContext = {
     weekly_revenue: baseline?.weeklyRevenue ?? null,

@@ -7,48 +7,8 @@ import { validateBriefModeSchema } from '../services/schemaGuard.service';
 import { generateRequestId, getRequestId } from '../utils/requestId';
 import { sendBriefError } from '../utils/briefErrorResponse';
 import { AuthorityService } from '../services/authority.service';
+import { getTenantLifecycleView } from '../services/tenantStateAggregation.service';
 
-/**
- * Helper: Resolve the logical approval status of an Executive Brief.
- * Implements governance refocus per EXEC-BRIEF-GOVERNANCE-REALIGN-004.
- */
-export async function resolveBriefApprovalStatus(tenantId: string): Promise<{ approved: boolean; approvedAt?: Date; approvedBy?: string }> {
-    // 1. Check for latest Approval Audit Event (Canonical Authority)
-    const [lastApprovalEvent] = await db
-        .select()
-        .from(auditEvents)
-        .where(and(
-            eq(auditEvents.tenantId, tenantId),
-            eq(auditEvents.eventType, AUDIT_EVENT_TYPES.EXECUTIVE_BRIEF_APPROVED)
-        ))
-        .orderBy(desc(auditEvents.createdAt))
-        .limit(1);
-
-    if (lastApprovalEvent) {
-        return {
-            approved: true,
-            approvedAt: lastApprovalEvent.createdAt as Date,
-            approvedBy: lastApprovalEvent.actorUserId || undefined
-        };
-    }
-
-    // 2. Fallback: Check brief record columns (Legacy support)
-    const [brief] = await db
-        .select()
-        .from(executiveBriefs)
-        .where(eq(executiveBriefs.tenantId, tenantId))
-        .limit(1);
-
-    if (brief?.status === 'APPROVED' || brief?.status === 'DELIVERED' || brief?.approvedAt) {
-        return {
-            approved: true,
-            approvedAt: (brief?.approvedAt || brief?.updatedAt) as Date,
-            approvedBy: brief?.approvedBy || undefined
-        };
-    }
-
-    return { approved: false };
-}
 
 // Helper for type safety
 interface AuthRequest extends Request {
@@ -104,35 +64,26 @@ export const getExecutiveBrief = async (req: AuthRequest, res: Response) => {
             briefId: brief.id
         }, 'get_brief_hasPdf');
 
-        // AUTHORITY RESOLUTION (Ticket EXEC-BRIEF-GOVERNANCE-REALIGN-004)
-        const approval = await resolveBriefApprovalStatus(tenantId);
-
-        // Resolve Delivery Status from Audit Event
-        const [lastDeliveryEvent] = await db
-            .select()
-            .from(auditEvents)
-            .where(and(
-                eq(auditEvents.tenantId, tenantId),
-                eq(auditEvents.eventType, AUDIT_EVENT_TYPES.EXECUTIVE_BRIEF_DELIVERED)
-            ))
-            .orderBy(desc(auditEvents.createdAt))
-            .limit(1);
-
-        const isDelivered = !!lastDeliveryEvent || brief.status === 'DELIVERED';
+        // CONSUME PROJECTION SPINE (Ticket EXEC-11C)
+        const view = await getTenantLifecycleView(tenantId);
 
         return res.status(200).json({
             brief: {
                 ...brief,
                 // Override status with governance truth for UI
-                status: isDelivered ? 'DELIVERED' : (approval.approved ? 'APPROVED' : brief.status),
-                approvedAt: approval.approvedAt || brief.approvedAt,
-                approvedBy: approval.approvedBy || brief.approvedBy
+                status: view.governance.executiveBriefStatus,
+                approvedAt: view.governance.approvedAt,
+                approvedBy: view.governance.approvedBy
             },
             hasPdf: !!artifact,
-            approval,
-            delivery: lastDeliveryEvent ? {
-                deliveredAt: lastDeliveryEvent.createdAt,
-                deliveredTo: (lastDeliveryEvent.metadata as any)?.deliveredTo
+            approval: {
+                approved: view.governance.executiveBriefStatus === 'APPROVED' || view.governance.executiveBriefStatus === 'DELIVERED',
+                approvedAt: view.governance.approvedAt,
+                approvedBy: view.governance.approvedBy
+            },
+            delivery: view.governance.deliveredAt ? {
+                deliveredAt: view.governance.deliveredAt,
+                deliveredTo: view.governance.deliveredTo
             } : null
         });
     } catch (error) {
@@ -181,8 +132,11 @@ export const generateExecutiveBrief = async (req: AuthRequest, res: Response) =>
             .where(eq(executiveBriefs.tenantId, tenantId))
             .limit(1);
 
+        // CONSUME PROJECTION SPINE (Ticket EXEC-11C)
+        const view = await getTenantLifecycleView(tenantId);
+
         if (existingBrief && !isForced) {
-            if (existingBrief.status === 'APPROVED') {
+            if (view.governance.executiveBriefStatus === 'APPROVED' || view.governance.executiveBriefStatus === 'DELIVERED') {
                 return res.status(409).json({
                     error: 'EXECUTIVE_BRIEF_ALREADY_APPROVED',
                     message: 'Executive brief has already been approved and cannot be regenerated.'
@@ -195,64 +149,17 @@ export const generateExecutiveBrief = async (req: AuthRequest, res: Response) =>
             });
         }
 
-        // 2. Check prerequisites
-        const [tenant] = await db
-            .select({
-                id: tenants.id,
-                intakeWindowState: tenants.intakeWindowState
-            })
-            .from(tenants)
-            .where(eq(tenants.id, tenantId))
-            .limit(1);
-
-        if (!tenant) {
-            return res.status(404).json({ error: 'Tenant not found' });
-        }
-
-    // Use canonical authority instead of raw window state
-    const authority = await AuthorityService.resolveCanonicalAuthority(tenantId);
-
-    if (!authority.allowedStages.executiveBrief && !isForced) {
-        return res.status(404).json({
-             error: 'EXECUTIVE_BRIEF_NOT_READY',
-             message: 'Executive Brief prerequisites not met.',
-             prerequisites: authority
-        });
-    }
-
-        // Count intake vectors
-        const [vectorCount] = await db
-            .select({ count: sql<number>`count(*)` })
-            .from(intakeVectors)
-            .where(eq(intakeVectors.tenantId, tenantId));
-
-        const totalVectors = Number(vectorCount?.count || 0);
-
-        // Check owner intake
-        const [ownerIntake] = await db
-            .select()
-            .from(intakes)
-            .where(and(
-                eq(intakes.tenantId, tenantId),
-                eq(intakes.role, 'owner'),
-                eq(intakes.status, 'completed')
-            ))
-            .limit(1);
-
-        const hasOwnerIntake = !!ownerIntake;
-
-        console.log(`[ExecutiveBrief] Prerequisites: vectors=${totalVectors}, ownerIntake=${hasOwnerIntake}, intakeWindow=${tenant.intakeWindowState}`);
-
-        // Hard gates
-        if (totalVectors < 1 || !hasOwnerIntake) {
+        // 2. Check prerequisites via canonical workflow fields (canGenerateExecutiveBrief removed — TCK-SSOT-001)
+        const canGenerateExecutiveBrief = view.workflow.vectorCount >= 1 && view.workflow.hasOwnerIntake;
+        if (!canGenerateExecutiveBrief && !isForced) {
             return res.status(404).json({
                 error: 'EXECUTIVE_BRIEF_NOT_READY',
-                message: 'Prerequisites not met for executive brief generation.',
+                message: 'Executive Brief prerequisites not met.',
                 prerequisites: {
-                    hasVectors: totalVectors >= 1,
-                    vectorCount: totalVectors,
-                    hasOwnerIntake,
-                    intakeWindowState: tenant.intakeWindowState
+                    hasVectors: view.workflow.vectorCount >= 1,
+                    vectorCount: view.workflow.vectorCount,
+                    hasOwnerIntake: view.workflow.rolesCompleted.includes('owner'),
+                    intakeWindowState: view.lifecycle.intakeWindowState
                 }
             });
         }
@@ -402,7 +309,7 @@ export const generateExecutiveBrief = async (req: AuthRequest, res: Response) =>
         let finalBrief;
         const gatesBypassed = [];
         if (isForced) {
-            if (tenant.intakeWindowState !== 'OPEN') gatesBypassed.push('intake_window');
+            if (view.lifecycle.intakeWindowState !== 'OPEN') gatesBypassed.push('intake_window');
             if (existingBrief) gatesBypassed.push('existing_brief');
 
             console.log(`[ExecutiveBriefRegen]
@@ -519,54 +426,35 @@ export const preflightRegenerateExecutiveBrief = async (req: AuthRequest, res: R
             return res.status(400).json({ error: 'Tenant ID is required' });
         }
 
-        // Check prerequisites
-        const [tenant] = await db
-            .select({
-                id: tenants.id,
-                intakeWindowState: tenants.intakeWindowState
-            })
-            .from(tenants)
-            .where(eq(tenants.id, tenantId))
-            .limit(1);
+        // CONSUME PROJECTION SPINE (Ticket EXEC-11C)
+        const view = await getTenantLifecycleView(tenantId);
 
-        if (!tenant) {
-            return res.status(404).json({ error: 'Tenant not found' });
+        // canGenerateExecutiveBrief removed — TCK-SSOT-001. Check via canonical workflow fields.
+        const canGenerateExecutiveBrief = view.workflow.vectorCount >= 1 && view.workflow.hasOwnerIntake;
+        if (!canGenerateExecutiveBrief) {
+            return res.status(200).json({
+                canRegenerate: false,
+                reasons: [
+                    !view.workflow.rolesCompleted.includes('owner') ? 'Missing Owner Intake (must be COMPLETED)' : null,
+                    view.workflow.vectorCount < 1 ? 'Missing Vectors (at least 1 required)' : null
+                ].filter(Boolean),
+                prerequisites: {
+                    hasVectors: view.workflow.vectorCount >= 1,
+                    vectorCount: view.workflow.vectorCount,
+                    hasOwnerIntake: view.workflow.rolesCompleted.includes('owner'),
+                    intakeWindowState: view.lifecycle.intakeWindowState
+                }
+            });
         }
 
-        // Count intake vectors
-        const [vectorCount] = await db
-            .select({ count: sql<number>`count(*)` })
-            .from(intakeVectors)
-            .where(eq(intakeVectors.tenantId, tenantId));
-
-        const totalVectors = Number(vectorCount?.count || 0);
-
-        // Check owner intake
-        const [ownerIntake] = await db
-            .select()
-            .from(intakes)
-            .where(and(
-                eq(intakes.tenantId, tenantId),
-                eq(intakes.role, 'owner'),
-                eq(intakes.status, 'completed')
-            ))
-            .limit(1);
-
-        const hasOwnerIntake = !!ownerIntake;
-
-        const gate3Met = totalVectors >= 1 && hasOwnerIntake;
-
         return res.status(200).json({
-            canRegenerate: gate3Met,
-            reasons: !gate3Met ? [
-                !hasOwnerIntake ? 'Missing Owner Intake (must be COMPLETED)' : null,
-                totalVectors < 1 ? 'Missing Vectors (at least 1 required)' : null
-            ].filter(Boolean) : [],
+            canRegenerate: true,
+            reasons: [],
             prerequisites: {
-                hasVectors: totalVectors >= 1,
-                vectorCount: totalVectors,
-                hasOwnerIntake,
-                intakeWindowState: tenant.intakeWindowState
+                hasVectors: view.workflow.vectorCount >= 1,
+                vectorCount: view.workflow.vectorCount,
+                hasOwnerIntake: view.workflow.rolesCompleted.includes('owner'),
+                intakeWindowState: view.lifecycle.intakeWindowState
             }
         });
     } catch (error) {
@@ -897,9 +785,9 @@ export const deliverExecutiveBrief = async (req: AuthRequest, res: Response) => 
             });
         }
 
-        // AUTHORITY RESOLUTION (Ticket EXEC-BRIEF-GOVERNANCE-REALIGN-004)
-        const approval = await resolveBriefApprovalStatus(tenantId);
-        if (!approval.approved) {
+        // CONSUME PROJECTION SPINE (Ticket EXEC-11C)
+        const view = await getTenantLifecycleView(tenantId);
+        if (view.governance.executiveBriefStatus !== 'APPROVED' && view.governance.executiveBriefStatus !== 'DELIVERED') {
             return res.status(409).json({
                 error: 'EXECUTIVE_BRIEF_NOT_APPROVED',
                 message: 'Brief must be APPROVED before delivery.'
@@ -987,9 +875,9 @@ export const generateExecutiveBriefPDF = async (req: AuthRequest, res: Response)
             return res.status(404).json({ error: 'BRIEF_NOT_FOUND' });
         }
 
-        // AUTHORITY RESOLUTION (Ticket EXEC-BRIEF-GOVERNANCE-REALIGN-004)
-        const approval = await resolveBriefApprovalStatus(tenantId);
-        if (!approval.approved) {
+        // CONSUME PROJECTION SPINE (Ticket EXEC-11C)
+        const view = await getTenantLifecycleView(tenantId);
+        if (view.governance.executiveBriefStatus !== 'APPROVED' && view.governance.executiveBriefStatus !== 'DELIVERED') {
             return res.status(409).json({ error: 'Brief must be APPROVED before delivery artifact can be generated.' });
         }
 

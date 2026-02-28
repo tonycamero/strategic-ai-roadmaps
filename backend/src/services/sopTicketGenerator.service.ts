@@ -34,11 +34,7 @@ export async function generateSopTickets(
   // 1. Projection Authority Check
   const view = await getTenantLifecycleView(tenantId);
 
-  if (!view.derived.lifecycleValid) {
-    throw new Error("INVALID_LIFECYCLE_STATE");
-  }
-
-  if (!view.derived.canGenerateTickets) {
+  if (!view.capabilities.generateTickets.allowed) {
     throw new Error("AGENT_EXECUTION_NOT_ALLOWED");
   }
 

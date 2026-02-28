@@ -10,6 +10,7 @@ import {
 } from '../db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+import { AssistedSynthesisArtifactContract } from './assistedSynthesisProposals.service';
 
 /**
  * Structured error for agent operations
@@ -118,6 +119,7 @@ export class AssistedSynthesisAgentService {
         tenantId: string,
         sessionId: string,
         userMessage: string,
+        context: AssistedSynthesisArtifactContract,
         requestId: string
     ): Promise<{ reply: string; messageId: string }> {
         console.log(`[AssistedSynthesisAgent:${requestId}] Sending message to session ${sessionId}`);
@@ -132,9 +134,6 @@ export class AssistedSynthesisAgentService {
         }
 
         const openai = createOpenAIClient();
-
-        // Load context for this tenant
-        const context = await this.loadTenantContext(tenantId, requestId);
 
         // Load existing conversation
         const existingMessages = await db
@@ -234,87 +233,22 @@ export class AssistedSynthesisAgentService {
         console.log(`[AssistedSynthesisAgent:${requestId}] Session reset complete`);
     }
 
-    /**
-     * Load tenant context for agent
-     */
-    private static async loadTenantContext(tenantId: string, requestId: string) {
-        console.log(`[AssistedSynthesisAgent:${requestId}] Loading context for tenant ${tenantId}`);
 
-        // Load discovery notes
-        const [discoveryRaw] = await db
-            .select()
-            .from(discoveryCallNotes)
-            .where(eq(discoveryCallNotes.tenantId, tenantId))
-            .orderBy(desc(discoveryCallNotes.createdAt))
-            .limit(1);
-
-        // Load diagnostic
-        const [diagnostic] = await db
-            .select()
-            .from(diagnostics)
-            .where(eq(diagnostics.tenantId, tenantId))
-            .orderBy(desc(diagnostics.createdAt))
-            .limit(1);
-
-        // Load executive brief
-        const [execBrief] = await db
-            .select()
-            .from(executiveBriefs)
-            .where(eq(executiveBriefs.tenantId, tenantId))
-            .orderBy(desc(executiveBriefs.createdAt))
-            .limit(1);
-
-        // Load proposed findings
-        const [proposedDoc] = await db
-            .select()
-            .from(tenantDocuments)
-            .where(and(
-                eq(tenantDocuments.tenantId, tenantId),
-                eq(tenantDocuments.category, 'findings_proposed')
-            ))
-            .orderBy(desc(tenantDocuments.createdAt))
-            .limit(1);
-
-        const proposedFindings = proposedDoc ? JSON.parse(proposedDoc.content) : null;
-
-        return {
-            discoveryNotes: discoveryRaw?.notes || null,
-            diagnostic: diagnostic ? {
-                overview: diagnostic.overview,
-                aiOpportunities: diagnostic.aiOpportunities,
-                roadmapSkeleton: diagnostic.roadmapSkeleton,
-                discoveryQuestions: diagnostic.discoveryQuestions
-            } : null,
-            executiveBrief: execBrief?.synthesis || null,
-            proposedFindings: proposedFindings?.items || []
-        };
-    }
 
     /**
      * Build system prompt with context
      */
-    private static buildSystemPrompt(context: {
-        discoveryNotes: string | null;
-        diagnostic: any;
-        executiveBrief: any;
-        proposedFindings: Array<{
-            id: string;
-            text: string;
-            type: 'CurrentFact' | 'FrictionPoint' | 'Goal' | 'Constraint';
-            sources?: string[];
-            status: 'pending' | 'accepted' | 'rejected';
-        }>;
-    }): string {
+    private static buildSystemPrompt(context: AssistedSynthesisArtifactContract): string {
         const snapshot = {
             snapshotId: randomUUID(),
             generatedAt: new Date().toISOString(),
-            items: context.proposedFindings.map(f => ({
+            items: context.proposedFindings ? context.proposedFindings.map(f => ({
                 id: f.id,
                 text: f.text,
                 type: f.type,
                 sources: f.sources || [],
                 status: f.status
-            })),
+            })) : [],
             invariants: [
                 "read-only",
                 "pre-canonical",

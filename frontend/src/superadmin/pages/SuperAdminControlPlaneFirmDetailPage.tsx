@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { AuthorityCategory } from '@roadmap/shared';
+import React, { useEffect, useState, useRef } from 'react';
+import { AuthorityCategory, CanonicalDiscoveryNotes } from '@roadmap/shared';
 import { useRoute } from 'wouter';
 import { useAuth } from '../../context/AuthContext';
 import { useSuperAdminAuthority } from '../../hooks/useSuperAdminAuthority';
@@ -19,6 +19,7 @@ import { BriefCompleteCard } from '../components/BriefCompleteCard';
 import { DiscoveryNotesModal } from '../components/DiscoveryNotesModal';
 import { AssistedSynthesisModal } from '../components/AssistedSynthesisModal';
 import { BaselineSummaryPanel } from '../components/BaselineSummaryPanel';
+import { useCanonicalStageState } from '../hooks/useCanonicalStageState';
 // @ANCHOR:SA_FIRM_DETAIL_IMPORTS_END
 
 import { superadminApi } from '../api';
@@ -81,193 +82,127 @@ type FirmDetailResponse = {
 
 export default function SuperAdminControlPlaneFirmDetailPage() {
     const [, params] = useRoute<{ tenantId: string }>('/superadmin/execute/firms/:tenantId');
+    const hasFetchedRef = useRef<string | null>(null);
 
 
     const [loading, setLoading] = useState(true);
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [data, setData] = useState<SuperAdminTenantDetail | null>(null);
+    const [data, setData] = useState<any | null>(null);
     const [error, setError] = useState<string | null>(null);
-
-    // Phase 4: Intake Role State
-    const [intakeRoles, setIntakeRoles] = useState<IntakeRoleDefinition[]>([]);
-
-    // Phase 6: Ticket Moderation State
-    const [moderationStatus, setModerationStatus] = useState<{ readyForRoadmap: boolean; pending: number; approved: number } | null>(null);
-
-    // Phase 7: Snapshot State
-    const [snapshotData, setSnapshotData] = useState<SnapshotData | null>(null);
-    const [snapshotLoading, setSnapshotLoading] = useState(false);
-    const { category } = useSuperAdminAuthority();
-
-    // Truth Probe State
-    const [truthProbe, setTruthProbe] = useState<TruthProbeData | null>(null);
-    const [truthProbeLoading, setTruthProbeLoading] = useState(false);
-    const [truthProbeError, setTruthProbeError] = useState<string | null>(null);
-
-
-    // Phase 8: Intake Modal
-    const [selectedIntake, setSelectedIntake] = useState<any>(null);
-    const [intakeModalOpen, setIntakeModalOpen] = useState(false);
-
-    // Phase 6C: Truth Probe Collapse
-    const [showTruthProbe, setShowTruthProbe] = useState(false);
-
-    // Phase 6D: ROI Baseline Collapse
-    const [showBaselinePanel, setShowBaselinePanel] = useState(false);
-
-    // Phase 6E: Strategic Context & Capacity ROI Collapse
-    const [showROIPanel, setShowROIPanel] = useState(false);
-
-    // EXEC-BRIEF-UI-ACCEPTANCE-005: Brief-specific error state (non-blocking)
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [gateLockedMessage, setGateLockedMessage] = useState<string | null>(null);
     const [briefActionError, setBriefActionError] = useState<any | null>(null);
     const [lastBriefAction, setLastBriefAction] = useState<'generate' | 'regen' | 'download' | 'deliver' | null>(null);
 
-    // EXEC-BRIEF-SIGNAL-GATE-009A: Threshold metadata (quality pass warning)
-    const [briefSignalMetadata, setBriefSignalMetadata] = useState<{
-        signalQuality: 'SUFFICIENT' | 'LOW_SIGNAL';
-        assertionCount: number;
-        targetCount: number;
-    } | null>(null);
-
-    // Phase 6E: Modal-based Review (ONLY paradigm)
+    // Modal Visibility States
     const [isExecBriefOpen, setExecBriefOpen] = useState(false);
     const [isDiagOpen, setDiagOpen] = useState(false);
-
-    // Modal data states
-    const [execBriefData, setExecBriefData] = useState<any>(null);
+    const [isDiscoveryOpen, setDiscoveryOpen] = useState(false);
+    const [isSynthesisOpen, setSynthesisOpen] = useState(false);
+    const [intakeModalOpen, setIntakeModalOpen] = useState(false);
+    const [selectedIntake, setSelectedIntake] = useState<any>(null);
     const [execBriefLoading, setExecBriefLoading] = useState(false);
     const [execBriefError, setExecBriefError] = useState<string | null>(null);
-
-    const [diagData, setDiagData] = useState<any>(null);
     const [diagLoading, setDiagLoading] = useState(false);
     const [diagError, setDiagError] = useState<string | null>(null);
+    const [snapshotLoading, setSnapshotLoading] = useState(false);
+    const [briefSignalMetadata, setBriefSignalMetadata] = useState<any>(null);
 
-    const [isDiscoveryOpen, setDiscoveryOpen] = useState(false);
+    // Panel Collapse States
+    const [showTruthProbe, setShowTruthProbe] = useState(false);
+    const [showBaselinePanel, setShowBaselinePanel] = useState(false);
+    const [showROIPanel, setShowROIPanel] = useState(false);
+
     const [discoverySaving, setDiscoverySaving] = useState(false);
-    const [isSynthesisOpen, setSynthesisOpen] = useState(false);
-    const [synthesisNotes, setSynthesisNotes] = useState<string | null>(null);
-    const [gateLockedMessage, setGateLockedMessage] = useState<string | null>(null);
-
-    // Impersonation State
     const [impersonating, setImpersonating] = useState(false);
+    const { category } = useSuperAdminAuthority();
+
+    // DERIVED CONSTANTS (Consolidation Mapping) - EXEC-03 Normalized Access
+    const {
+        tenant = null,
+        owner = null,
+        teamMembers = [],
+        intakes = [],
+        intakeRoles = [],
+        roadmaps = [],
+        latestRoadmap = null,
+        recentActivity = [],
+        diagnosticStatus: moderationStatus = null,
+        latestDiagnostic = null,
+        snapshot: snapshotData = null,
+        execBrief: execBriefData = null,
+        discoveryNotes = null,
+        tickets = []
+    } = data || {};
+
+    const synthesisNotes = discoveryNotes?.notes || null;
+    const intakeWindowState = snapshotData?.intakeWindowState ?? tenant?.intakeWindowState ?? 'OPEN';
+    const executionPhase = snapshotData?.executionPhase ?? 'INTAKE_OPEN';
+
+
+    // EXEC-03 Normalized Access - Compatibility Layer Removed
+
     // @ANCHOR:SA_FIRM_DETAIL_STATE_END
 
     const refreshData = async () => {
         if (!params?.tenantId) return;
 
         setLoading(true);
-        setTruthProbeLoading(true);
 
-        // Fetch both detail and vectors for a complete truth picture
         try {
-            const [firmResponse, vectorsResponse] = await Promise.all([
-                superadminApi.getFirmDetail(params.tenantId),
-                superadminApi.getIntakeVectors(params.tenantId)
-            ]);
-
-            const firmDetail = firmResponse as unknown as FirmDetailResponse;
-            const { vectors } = vectorsResponse;
-
-            const detailData: SuperAdminTenantDetail = {
-                tenant: {
-                    id: firmDetail.tenantSummary.id,
-                    name: firmDetail.tenantSummary.name,
-                    cohortLabel: firmDetail.tenantSummary.cohortLabel,
-                    segment: firmDetail.tenantSummary.segment,
-                    region: firmDetail.tenantSummary.region,
-                    status: firmDetail.tenantSummary.status,
-                    executiveBriefStatus: firmDetail.tenantSummary.executiveBriefStatus,
-                    executionPhase: firmDetail.tenantSummary.executionPhase,
-                    intakeWindowState: firmDetail.tenantSummary.intakeWindowState || 'OPEN',
-                    intakeSnapshotId: firmDetail.tenantSummary.intakeSnapshotId,
-                    intakeClosedAt: firmDetail.tenantSummary.intakeClosedAt,
-                    notes: firmDetail.tenantSummary.notes,
-                    createdAt: firmDetail.tenantSummary.createdAt,
-                    ownerEmail: firmDetail.owner?.email || '',
-                    ownerName: firmDetail.owner?.name || '',
-                    lastDiagnosticId: firmDetail.tenantSummary.lastDiagnosticId,
-                },
-                owner: firmDetail.owner,
-                teamMembers: firmDetail.teamMembers,
-                intakes: firmDetail.intakes,
-                intakeVectors: vectors,
-                roadmaps: firmDetail.roadmaps,
-                latestRoadmap: firmDetail.latestRoadmap,
-                recentActivity: firmDetail.recentActivity,
-                diagnosticStatus: firmDetail.diagnosticStatus,
-                latestDiagnostic: firmDetail.latestDiagnostic,  // ✅ Wire diagnostic state
-            };
-
-            setData(detailData);
-
-            // Map Stakeholder roles from vectors (Per-Person Truth)
-            const mappedRoles: IntakeRoleDefinition[] = vectors.map((v: any) => ({
-                id: v.id,
-                vectorId: v.id,
-                intakeId: v.intakeId,
-                roleLabel: v.roleLabel,
-                roleType: v.roleType,
-                perceivedConstraints: v.perceivedConstraints,
-                anticipatedBlindSpots: v.anticipatedBlindSpots,
-                recipientName: v.recipientName,
-                recipientEmail: v.recipientEmail,
-                inviteStatus: v.inviteStatus,
-                intakeStatus: v.intakeStatus,
-                // Definition: accepted = email exists in teamMembers
-                isAccepted: firmDetail.teamMembers.some((m: any) => m.email === v.recipientEmail)
-            }));
-
-            // Synthesis: If Owner exists but isn't in vectors, add them as a virtual EXECUTIVE stakeholder
-            if (firmDetail.owner && !mappedRoles.some(r => r.recipientEmail === firmDetail.owner?.email)) {
-                const ownerIntake = firmDetail.intakes.find(i => i.role === 'owner' || i.userEmail === firmDetail.owner?.email);
-                mappedRoles.unshift({
-                    id: `owner-${firmDetail.owner.id}`,
-                    intakeId: ownerIntake?.id,
-                    roleLabel: (ownerIntake?.answers as any)?.role_label || 'Strategic Owner',
-                    roleType: 'EXECUTIVE',
-                    recipientName: firmDetail.owner.name,
-                    recipientEmail: firmDetail.owner.email,
-                    inviteStatus: 'SENT',
-                    intakeStatus: ownerIntake?.status === 'completed' ? 'COMPLETED' :
-                        ownerIntake?.status === 'in_progress' ? 'IN_PROGRESS' : 'NOT_STARTED',
-                    perceivedConstraints: 'Business Continuity & Strategic Roadmap',
-                    anticipatedBlindSpots: 'Internal execution bottlenecks',
-                    isAccepted: true
-                });
-            }
-
-            setIntakeRoles(mappedRoles);
+            // PHASE 1: Collapse to Single Orchestrator Call
+            const res = await superadminApi.getSnapshot(params.tenantId);
+            console.log("SNAPSHOT_RESPONSE_FULL", res);
+            setData(res.data);
+            setError(null);
+            setGateLockedMessage(null);
         } catch (err: any) {
-            console.error('Error fetching firm detail:', err);
-            // If the failure is a business logic gate, show the lock panel instead of crashing the surface
-            if (err.errorCode === 'GATE_LOCKED' || err.status === 403) {
+            console.error('Snapshot error:', err);
+            // Non-ready snapshot is treated as a valid state, not an error
+            if (err.errorCode === 'SNAPSHOT_NOT_READY' || err.status === 404) {
+                setData(null);
+                setGateLockedMessage('Strategic snapshot is not yet ready. Prerequisites not met.');
+            } else if (err.errorCode === 'GATE_LOCKED' || err.status === 403) {
                 setGateLockedMessage(err.message || 'Next step is currently locked by business logic.');
-                setError(null);
             } else {
-                setError(err.message);
-                setGateLockedMessage(null);
+                setError(err.message || 'Failed to load consolidated snapshot');
             }
         } finally {
             setLoading(false);
         }
-
-        // Fetch Truth Probe
-        superadminApi.getTruthProbe(params.tenantId)
-            .then((data: any) => {
-                console.log(`[TruthProbe UI] Loaded for tenant ${params.tenantId}`);
-                setTruthProbe(data);
-                setTruthProbeError(null);
-            })
-            .catch(err => {
-                console.error('[TruthProbe UI] Failed:', err);
-                setTruthProbeError(err.message || 'Data temporarily unavailable');
-            })
-            .finally(() => setTruthProbeLoading(false));
     };
 
     useEffect(() => {
+        const tenantId = params?.tenantId;
+        if (!tenantId) return;
+
+        // Idempotency guard for React 18 StrictMode double-mount in development
+        if (hasFetchedRef.current === tenantId) return;
+        hasFetchedRef.current = tenantId;
+
         refreshData();
     }, [params?.tenantId]);
+
+    // EXEC-01: Hard Render Gate (Prevent catch-before-data crash)
+    if (!data && loading) {
+        return (
+            <div className="flex items-center justify-center h-screen bg-slate-950 text-slate-400 font-mono text-xs uppercase tracking-widest">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-8 h-8 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+                    Synchronizing Snapshot...
+                </div>
+            </div>
+        );
+    }
+
+    if (!data && error) {
+        return (
+            <div className="flex items-center justify-center h-screen bg-slate-950 text-red-400 font-mono text-xs uppercase tracking-widest p-10 text-center">
+                <div className="max-w-md">
+                    Snapshot Error: {error}
+                </div>
+            </div>
+        );
+    }
 
     // STUBBED/PARKED: Impersonation feature rollback requested by user (v0.2)
     // const handleImpersonate = async () => {
@@ -293,119 +228,85 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     // CANONICAL STATUS SYSTEM (LOCKED, READY, COMPLETE)
     // ============================================================================
 
+    /**
+     * PURE PROJECTION MAPPER (EXEC-13A)
+     * Frontend stays as a pure RENDERER of the projection spine.
+     * No local heuristics. No local counts.
+     */
+    const mapSnapshotToExecutionStages = (): Record<number, 'LOCKED' | 'READY' | 'COMPLETE'> => {
+        const stages: Record<number, 'LOCKED' | 'READY' | 'COMPLETE'> = {
+            1: 'LOCKED',
+            2: 'LOCKED',
+            3: 'LOCKED',
+            4: 'LOCKED',
+            5: 'LOCKED',
+            6: 'LOCKED',
+            7: 'LOCKED'
+        };
+
+        if (!data) return stages;
+
+        const intakeState = (snapshotData?.intakeWindowState || tenant?.intakeWindowState) as 'OPEN' | 'CLOSED';
+        const briefState = snapshotData?.executiveBriefStatus || tenant?.executiveBriefStatus;
+        const diagnosticExists = !!latestDiagnostic || !!tenant?.lastDiagnosticId;
+        const discoveryExists = !!snapshotData?.discovery?.exists;
+        const ticketCounts = moderationStatus || { total: 0, pending: 0, approved: 0, rejected: 0 };
+        const roadmapExists = !!latestRoadmap;
+
+        // Stage 1 - Intake
+        stages[1] = intakeState === 'CLOSED' ? 'COMPLETE' : 'READY';
+
+        // Stage 2 - Exec Brief
+        const briefApproved = briefState && ['APPROVED', 'DELIVERED', 'REVIEWED', 'ACKNOWLEDGED', 'WAIVED'].includes(briefState);
+        if (briefApproved) {
+            stages[2] = 'COMPLETE';
+        } else if (intakeState === 'CLOSED') {
+            stages[2] = 'READY';
+        }
+
+        // Stage 3 - Diagnostic
+        if (diagnosticExists) {
+            stages[3] = 'COMPLETE';
+        } else if (briefApproved) {
+            stages[3] = 'READY';
+        }
+
+        // Stage 4 - Discovery
+        if (discoveryExists) {
+            stages[4] = 'COMPLETE';
+        } else if (diagnosticExists) {
+            stages[4] = 'READY';
+        }
+
+        // Stage 5 - Synthesis
+        // Synthesis ready means findings exist (inferred from canonical findings logic)
+        // For now, if Stage 4 is complete, Stage 5 is ready.
+        if (discoveryExists) {
+            stages[5] = 'READY';
+        }
+
+        // Stage 6 - Tickets
+        const ticketsModerated = ticketCounts.total > 0 && ticketCounts.pending === 0;
+        if (ticketsModerated) {
+            stages[6] = 'COMPLETE';
+        } else if (diagnosticExists) {
+            // Simplified readiness for moderation
+            stages[6] = 'READY';
+        }
+
+        // Stage 7 - Roadmap
+        if (roadmapExists) {
+            stages[7] = 'COMPLETE';
+        } else if (moderationStatus?.readyForRoadmap) {
+            stages[7] = 'READY';
+        }
+
+        return stages;
+    };
+
     const getCanonicalStatus = (stage: number): 'LOCKED' | 'READY' | 'COMPLETE' => {
-        // TRUTH PROBE AUTHORITY (Phase 1)
-        if (truthProbe) {
-            // s1: Intake
-            if (stage === 1) {
-                const isClosed = truthProbe.intake.windowState === 'CLOSED';
-                const isSufficient = truthProbe.intake.sufficiencyHint === 'COMPLETE';
-                return (isClosed || isSufficient) ? 'COMPLETE' : 'READY';
-            }
-
-            // s2: Executive Brief
-            if (stage === 2) {
-                const state = truthProbe.executiveBrief.state;
-                const isApproved = ['APPROVED', 'DELIVERED', 'REVIEWED'].includes(state || '');
-                if (isApproved) return 'COMPLETE';
-                // If intake is complete/sufficient, Brief is READY
-                const s1Complete = truthProbe.intake.windowState === 'CLOSED' || truthProbe.intake.sufficiencyHint === 'COMPLETE';
-                return s1Complete ? 'READY' : 'LOCKED';
-            }
-
-            // s3: Diagnostic
-            if (stage === 3) {
-                const exists = truthProbe.diagnostic.exists;
-                const briefState = truthProbe.executiveBrief.state || '';
-                const briefValid = ['APPROVED', 'DELIVERED', 'REVIEWED'].includes(briefState);
-
-                if (exists && briefValid) return 'COMPLETE'; // Weak complete (exists)
-                return briefValid ? 'READY' : 'LOCKED';
-            }
-
-            // s4: Discovery
-            if (stage === 4) {
-                if (truthProbe.discovery.exists) return 'COMPLETE';
-                return truthProbe.readiness.canRunDiscovery ? 'READY' : 'LOCKED';
-            }
-
-            // s5: Findings (Assisted Synthesis)
-            if (stage === 5) {
-                if (truthProbe.findings.exists) return 'COMPLETE';
-                // Ready if Discovery exists
-                return truthProbe.discovery.exists ? 'READY' : 'LOCKED';
-            }
-
-            // s6: Tickets
-            if (stage === 6) {
-                // moderated = no pending tickets AND total > 0
-                const { total, pending } = truthProbe.tickets;
-                const isModerated = total > 0 && pending === 0;
-                if (isModerated) return 'COMPLETE';
-                return truthProbe.readiness.canModerateTickets ? 'READY' : 'LOCKED';
-            }
-
-            // s7: Roadmap
-            if (stage === 7) {
-                if (truthProbe.roadmap.exists) return 'COMPLETE';
-                return truthProbe.readiness.canFinalizeRoadmap ? 'READY' : 'LOCKED';
-            }
-        }
-
-        // LEGACY FALLBACK (If TruthProbe fails to load side-car)
-        if (!data) return 'LOCKED';
-        const { tenant, latestRoadmap } = data;
-
-        // s1: Intake (Source: intakeWindowState OR All Roles Complete)
-        const allRolesComplete = intakeRoles.length > 0 && intakeRoles.every(r => r.intakeStatus === 'COMPLETED');
-        const s1 = (tenant.intakeWindowState === 'CLOSED' || allRolesComplete) ? 'COMPLETE' : 'READY';
-        if (stage === 1) return s1;
-
-        // s2: Executive Brief (Consultation Anchor)
-        const s2Fact = ['APPROVED', 'ACKNOWLEDGED', 'WAIVED'].includes(tenant.executiveBriefStatus || '');
-        const hasOwnerIntake = data.intakes.some((i: any) =>
-            (i.role === 'owner' || i.userRole === 'owner' || i.userEmail === data.owner?.email) &&
-            i.completedAt
-        );
-        const hasStakeholders = intakeRoles.length > 0;
-
-        let s2: 'LOCKED' | 'READY' | 'COMPLETE' = 'LOCKED';
-        if (s2Fact) {
-            s2 = 'COMPLETE';
-        } else if (hasOwnerIntake && hasStakeholders) {
-            s2 = 'READY';
-        }
-
-        if (stage === 2) return s2;
-
-        // s3: Diagnostic (Source: latestDiagnostic from diagnostics table)
-        const diagExists = !!data.latestDiagnostic;
-        const diagPublished = data.latestDiagnostic?.status === 'published';
-
-        const isExecBriefApproved = tenant.executiveBriefStatus === 'APPROVED';
-
-        const s3 = (diagExists && s1 === 'COMPLETE' && isExecBriefApproved)
-            ? 'COMPLETE'
-            : (s1 === 'COMPLETE' && isExecBriefApproved ? 'READY' : 'LOCKED');
-        if (stage === 3) return s3;
-
-        // s4: Discovery NOTES (Step 4) - Simplified Fallback
-        // (We don't have deep truth in legacy object, so be conservative)
-        if (stage === 4) return diagPublished ? 'READY' : 'LOCKED';
-
-        // s5..s7 Fallbacks
-        if (stage === 5) return 'LOCKED';
-
-        // s6: Ticket Moderation (Step 6)
-        if (stage === 6) return 'LOCKED';
-
-        // s7: Roadmap Generation (Step 7)
-        const s7Fact = !!latestRoadmap;
-        if (stage === 7) {
-            return s7Fact ? 'COMPLETE' : 'LOCKED';
-        }
-
-        return 'LOCKED';
+        const stageMap = mapSnapshotToExecutionStages();
+        return stageMap[stage] || 'LOCKED';
     };
 
     const getStatusStyles = (status: 'LOCKED' | 'READY' | 'COMPLETE') => {
@@ -430,31 +331,25 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     };
 
     const getStakeholderDotColor = (role: IntakeRoleDefinition) => {
-        if (role.intakeStatus === 'COMPLETED') return 'bg-emerald-500'; // COMPLETE -> GREEN
-        if (role.isAccepted) return 'bg-yellow-500'; // READY -> YELLOW
-        return 'bg-red-500'; // LOCKED -> RED
+        // Fix stakeholder status calculation (EXEC-33)
+        // 1. Match by explicit intakeId link if present
+        const intakeById = (intakes || []).find((i: any) => role.intakeId && i.id === role.intakeId);
+        if (intakeById) {
+            return intakeById.status === 'completed' ? 'bg-emerald-500' : 'bg-red-500';
+        }
+
+        // 2. Fallback: Match by roleLabel (handles owner intake or vector-less intakes)
+        // Note: intakes.role field is limited to 20 chars in DB, so we check truncated match too.
+        const truncatedLabel = role.roleLabel.substring(0, 20);
+        const intakeByRole = (intakes || []).find((i: any) =>
+            i.role === role.roleLabel || i.role === truncatedLabel
+        );
+
+        return intakeByRole?.status === 'completed' ? 'bg-emerald-500' : 'bg-red-500';
     };
 
-    // Snapshot fetch
-    useEffect(() => {
-        if (params?.tenantId && category === AuthorityCategory.EXECUTIVE) {
-            setSnapshotLoading(true);
-            superadminApi.getSnapshot(params.tenantId)
-                .then(res => setSnapshotData(res.data))
-                .catch(err => {
-                    console.warn('[Snapshot] Fetch error:', err);
-                    // Handle 404 SNAPSHOT_NOT_READY gracefully
-                    if (err?.status === 404 || err?.error === 'SNAPSHOT_NOT_READY') {
-                        console.log('[Snapshot] Not ready yet - prerequisites not met');
-                        setSnapshotData(null); // Set to null to render "not ready" state
-                    } else {
-                        console.error('[Snapshot] Unexpected error:', err);
-                        setSnapshotData(null);
-                    }
-                })
-                .finally(() => setSnapshotLoading(false));
-        }
-    }, [params?.tenantId, category]);
+    // Snapshot fetch removed as it is now redundant with refreshData() hook
+    // and handled by unified snapshot fetch in refreshData.
 
     const handleExecuteDiagnostic = async () => {
         if (!params?.tenantId) return;
@@ -519,14 +414,8 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         if (!params?.tenantId) return;
 
         try {
-            const { vector } = await superadminApi.createIntakeVector(params.tenantId, role);
-
-            // Optimistic update
-            setIntakeRoles([...intakeRoles, {
-                ...vector,
-                inviteStatus: vector.inviteStatus || 'NOT_SENT',
-                intakeStatus: vector.intakeStatus || 'NOT_STARTED'
-            }]);
+            await superadminApi.createIntakeVector(params.tenantId, role);
+            await refreshData();
         } catch (err: any) {
             console.error('Failed to create intake vector:', err);
             setError(`Failed to create stakeholder: ${err.message}`);
@@ -538,11 +427,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
             const { vector } = await superadminApi.sendIntakeVectorInvite(roleId);
 
             // Update status
-            setIntakeRoles((roles: IntakeRoleDefinition[]) =>
-                roles.map((r: IntakeRoleDefinition) =>
-                    r.id === roleId ? { ...r, inviteStatus: vector.inviteStatus || 'SENT' } : r
-                )
-            );
+            await refreshData();
         } catch (err: any) {
             console.error('Failed to send invite:', err);
             setError(`Failed to send invite: ${err.message}`);
@@ -555,6 +440,8 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
 
     const handleLockIntake = async () => {
         if (!params?.tenantId) return;
+        // PROJECTION GUARD: Never fire if intake is not OPEN
+        if (intakeWindowState !== 'OPEN') return;
         if (!window.confirm('Confirm Intake Lock? This freezes the intake window.')) return;
         setIsGenerating(true);
         setGateLockedMessage(null);
@@ -687,12 +574,39 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         }
     };
 
-    const handleIngestDiscovery = async (notes: import('@roadmap/shared').CanonicalDiscoveryNotes) => {
+    const handleIngestDiscovery = async (notes: CanonicalDiscoveryNotes) => {
         if (!params?.tenantId) return;
 
         setDiscoverySaving(true);
         try {
-            await superadminApi.ingestDiscoveryNotes(params.tenantId, notes);
+            // EXEC-19: Smart routing via canonical state
+            // Layer 1: first capture → canonical ingest (snapshot)
+            // Layer 2: subsequent captures → append-only delta log
+            if (!discoveryExists) {
+                await superadminApi.ingestDiscoveryNotes(params.tenantId, notes);
+            } else {
+                // Fail closed: never fall back to ingest if append fails
+                // EXEC-26: Modal sends rawNotes (with hint block already injected by frontend).
+                // Use rawNotes directly as the delta — canonical bucket fields are always empty in RAW capture mode.
+                const rawPayload = notes as any;
+                const delta = rawPayload.rawNotes?.trim() || (() => {
+                    // Fallback: synthesize from canonical fields if for any reason rawNotes is absent
+                    const timestamp = new Date().toISOString();
+                    return [
+                        `### Operator Clarification — ${timestamp}`,
+                        '',
+                        notes.currentBusinessReality ? `**Business Reality:** ${notes.currentBusinessReality}` : '',
+                        notes.primaryFrictionPoints ? `**Friction Points:** ${notes.primaryFrictionPoints}` : '',
+                        notes.desiredFutureState ? `**Future State:** ${notes.desiredFutureState}` : '',
+                        notes.technicalOperationalEnvironment ? `**Tech/Ops:** ${notes.technicalOperationalEnvironment}` : '',
+                        notes.explicitClientConstraints ? `**Constraints:** ${notes.explicitClientConstraints}` : '',
+                    ].filter(Boolean).join('\n');
+                })();
+                await superadminApi.appendDiscoveryNote(params.tenantId, {
+                    source: 'operator',
+                    delta,
+                });
+            }
             setDiscoveryOpen(false);
             await refreshData();
         } catch (err: any) {
@@ -771,7 +685,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
 
             const response = await superadminApi.generateExecutiveBrief(params.tenantId, true);
             await refreshData();
-            await loadExecBriefData(); // Refresh modal content
+            await refreshData(); // Refresh modal content
             // Success - clear any previous errors
             setBriefActionError(null);
 
@@ -811,7 +725,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         try {
             await superadminApi.approveExecutiveBrief(params.tenantId);
             await refreshData();
-            await loadExecBriefData(); // Refresh to show APPROVED state in modal
+            await refreshData(); // Refresh to show APPROVED state in modal
         } catch (err: any) {
             console.error('Executive Brief Approval Error:', err);
             if (err.errorCode === 'GATE_LOCKED' || err.status === 403) {
@@ -830,7 +744,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         setIsGenerating(true);
         try {
             await superadminApi.deliverExecutiveBrief(params.tenantId);
-            await loadExecBriefData();
+            await refreshData();
             // Don't close modal, just refresh state to show "Delivered" if applicable
             await refreshData();
         } catch (err: any) {
@@ -847,8 +761,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         setIsGenerating(true);
         try {
             await superadminApi.generateExecutiveBriefPDF(params.tenantId);
-            await loadExecBriefData();
-            // window.alert('PDF Generated Successfully'); // Optional feedback
+            await refreshData();
         } catch (err: any) {
             console.error('Failed to generate PDF:', err);
             window.alert(`Generation Error: ${err.message}`);
@@ -857,132 +770,53 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         }
     };
 
-    // Modal Data Fetch Functions
-    const loadExecBriefData = async () => {
-        if (!params?.tenantId) return;
-        setExecBriefLoading(true);
-        setExecBriefError(null);
-        try {
-            const response = await superadminApi.getExecutiveBrief(params.tenantId);
-            const { brief, hasPdf } = response;
-
-            if (!brief) {
-                setExecBriefError('No executive brief found');
-                setExecBriefData(null);
-                return;
-            }
-
-            // Map backend structure to modal-expected format
-            // The brief has a 'synthesis' JSONB field with sections
-            setExecBriefData({
-                status: brief.status,
-                synthesis: brief.synthesis, // Pass the whole synthesis object for tabs
-                createdAt: brief.generatedAt || brief.createdAt,
-                approvedAt: brief.approvedAt,
-                hasPdf: !!hasPdf,
-            });
-
-            // EXEC-BRIEF-SIGNAL-GATE-009A: Extract quality metadata from synthesis if present
-            const synthesisContent = brief.synthesis as any;
-            if (synthesisContent?.signalQuality) {
-                setBriefSignalMetadata({
-                    signalQuality: synthesisContent.signalQuality,
-                    assertionCount: synthesisContent.assertionCount || 0,
-                    targetCount: synthesisContent.targetCount || 4
-                });
-            }
-        } catch (err: any) {
-            console.error('Failed to load executive brief:', err);
-            setExecBriefError(err.message || 'Failed to load executive brief');
-            setExecBriefData(null);
-        } finally {
-            setExecBriefLoading(false);
-        }
-    };
-
-    const loadDiagnosticData = async () => {
-        if (!data?.latestDiagnostic?.id) {
-            setDiagError('No diagnostic available');
-            return;
-        }
-        setDiagLoading(true);
-        setDiagError(null);
-        try {
-            const response = await superadminApi.getDiagnosticArtifacts(data.latestDiagnostic.id);
-
-            // Map backend response to modal format
-            setDiagData({
-                status: response.diagnostic.status,
-                createdAt: response.diagnostic.createdAt,
-                outputs: {
-                    overview: response.outputs.overview,
-                    aiOpportunities: response.outputs.aiOpportunities,
-                    roadmapSkeleton: response.outputs.roadmapSkeleton,
-                    discoveryQuestions: response.outputs.discoveryQuestions,
-                },
-            });
-        } catch (err: any) {
-            console.error('Failed to load diagnostic:', err);
-            setDiagError(err.message || 'Failed to load diagnostic');
-            setDiagData(null);
-        } finally {
-            setDiagLoading(false);
-        }
-    };
+    // Unified data refresh mechanism ensures all components stay in sync
 
     // Modal Open Handlers
-    const openExecBriefModal = async () => {
+    const openExecBriefModal = () => {
         setExecBriefOpen(true);
-        await loadExecBriefData();
     };
 
-    const openDiagnosticModal = async () => {
+    const openDiagnosticModal = () => {
         setDiagOpen(true);
-        await loadDiagnosticData();
     };
 
     // Modal Close Handlers
     const closeExecBriefModal = async () => {
         setExecBriefOpen(false);
-        setExecBriefData(null);
         setExecBriefError(null);
-        await refreshData(); // Refresh in case any actions were taken
+        await refreshData();
     };
 
-    const openDiscoveryModal = async () => {
+    const openDiscoveryModal = () => {
         setDiscoveryOpen(true);
-        if (!diagData && data?.latestDiagnostic?.id) {
-            await loadDiagnosticData();
-        }
     };
 
-    const openSynthesisModal = async () => {
-        const tenantId = params?.tenantId;
-        if (!tenantId) return;
-
+    const openSynthesisModal = () => {
         setSynthesisOpen(true);
-
-        // Load discovery notes
-        try {
-            const res = await superadminApi.getDiscoveryNotes(tenantId);
-            setSynthesisNotes(res.notes);
-        } catch (err) {
-            console.error('Failed to load discovery notes for synthesis:', err);
-        }
-
-        // Ensure other artifacts are loaded
-        if (!diagData) await loadDiagnosticData();
-        if (!execBriefData) await loadExecBriefData();
     };
 
 
     const closeDiagnosticModal = async () => {
         setDiagOpen(false);
-        setDiagData(null);
         setDiagError(null);
-        await refreshData(); // Refresh in case any actions were taken
+        await refreshData();
     };
 
+
+    // EXEC-19: Canonical Stage State — derived from DB-backed fields only
+    // Must be after loading guard; data and tenant are safe to access here.
+    const canonical = useCanonicalStageState(
+        data?.tenant ?? null,
+        data?.latestDiagnostic ?? null,
+        // workflowStatus not available at this level; moderationActive derived from Control Plane moderation state
+        { moderationActive: false } // TODO: wire moderationActive from ticketModerationSessions if needed
+    );
+
+    // EXEC-22: Canonical discovery existence — snapshot is the authority
+    // Derived strictly from snapshotData.discovery.exists (backend EXEC-21 projection)
+    // NOT from tenant.discoveryComplete, workflowStatus, intakeSnapshotId, or ladder state
+    const discoveryExists = snapshotData?.discovery?.exists === true;
 
     if (loading) return <div className="flex items-center justify-center min-h-screen text-slate-400">Loading firm details...</div>;
     if (error) return (
@@ -996,10 +830,11 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     );
     if (!params?.tenantId || !data) return <div className="p-6 text-slate-400">Missing tenant data.</div>;
 
-    const { tenant, owner, teamMembers, intakes, recentActivity, diagnosticStatus, latestRoadmap } = data;
+    // Unified data provided by snapshot
+    const { diagnosticStatus } = data;
 
     // Filter exec-only actions from activity log (Defense-in-depth)
-    const filteredActivity = recentActivity.filter((event) => {
+    const filteredActivity = recentActivity.filter((event: any) => {
         const execOnlyEvents = ['exec_brief_acknowledged', 'exec_brief_waived', 'strategic_framing_changed'];
         return !execOnlyEvents.includes(event.eventType);
     });
@@ -1148,28 +983,25 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                     Authority Control Plane
                                 </div>
                             </div>
-                            {/* Phase Badge - SA-EXEC-BRIEF-FREEZE-TAG-1 */}
                             {(() => {
                                 // EXEC-RESTORE-REVIEW-PANELS-AND-KILL-DIVERGENCE-022: Override with TruthProbe
-                                let phase = tenant.executionPhase;
-                                if (truthProbe) {
-                                    if (truthProbe.intake.windowState === 'CLOSED' && phase === 'INTAKE_OPEN') {
-                                        phase = 'INTAKE_CLOSED';
-                                    }
+                                let displayPhase = executionPhase;
+                                if (intakeWindowState === 'CLOSED' && displayPhase === 'INTAKE_OPEN') {
+                                    displayPhase = 'INTAKE_CLOSED';
                                 }
 
-                                if (!phase) return null;
+                                if (!displayPhase) return null;
 
                                 return (
                                     <div className={`
                                         px-3 py-1 border rounded-full text-[10px] font-bold uppercase tracking-widest
-                                        ${phase === 'EXEC_BRIEF_APPROVED'
+                                        ${displayPhase === 'EXEC_BRIEF_APPROVED'
                                             ? 'bg-emerald-900/30 border-emerald-500/50 text-emerald-400'
-                                            : phase === 'EXEC_BRIEF_DRAFT'
+                                            : displayPhase === 'EXEC_BRIEF_DRAFT'
                                                 ? 'bg-amber-900/30 border-amber-500/50 text-amber-400'
                                                 : 'bg-slate-800/50 border-slate-700 text-slate-400'}
                                     `}>
-                                        {phase.replace(/_/g, ' ')}
+                                        {displayPhase.replace(/_/g, ' ')}
                                     </div>
                                 );
                             })()}
@@ -1197,8 +1029,8 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                             <span className="text-slate-500 font-medium">Intake:</span>
                             <span className="text-slate-300">
                                 {(() => {
-                                    if (truthProbe) {
-                                        return truthProbe.intake.windowState === 'CLOSED' ? 'CLOSED' : 'OPEN';
+                                    if (snapshotData) {
+                                        return intakeWindowState === 'CLOSED' ? 'CLOSED' : 'OPEN';
                                     }
                                     return (tenant.intakeWindowState === 'CLOSED' || (intakeRoles.length > 0 && intakeRoles.every(r => r.intakeStatus === 'COMPLETED')))
                                         ? 'CLOSED'
@@ -1236,110 +1068,9 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                     {/* LEFT: Dynamic Authority Spine */}
                     <aside className="space-y-4">
                         {/* TRUTH PROBE - Collapsed by default */}
-                        {truthProbe && (
-                            showTruthProbe ? (
-                                <div className="animate-in fade-in slide-in-from-top-2 duration-200">
-                                    <div className="flex justify-end mb-1">
-                                        <button
-                                            onClick={() => setShowTruthProbe(false)}
-                                            className="text-[9px] text-slate-500 hover:text-slate-300 flex items-center gap-1 uppercase tracking-wider font-bold"
-                                        >
-                                            Hide <span className="text-base leading-none">×</span>
-                                        </button>
-                                    </div>
-                                    {(() => {
-                                        const checkDivergence = () => {
-                                            if (!truthProbe || !data?.tenant) return false;
-                                            // 1. Intake
-                                            if (truthProbe.intake.windowState && truthProbe.intake.windowState !== data.tenant.intakeWindowState) return true;
-
-                                            // 2. Brief
-                                            const truthState = truthProbe.executiveBrief.state || '';
-                                            const legacyStatus = data.tenant.executiveBriefStatus || '';
-                                            const truthApproved = ['APPROVED', 'DELIVERED', 'REVIEWED'].includes(truthState);
-                                            const legacyApproved = ['APPROVED', 'ACKNOWLEDGED', 'WAIVED'].includes(legacyStatus);
-                                            if (truthApproved !== legacyApproved) return true;
-
-                                            // 3. Diagnostic
-                                            if (truthProbe.diagnostic.exists !== !!data.latestDiagnostic) return true;
-
-                                            return false;
-                                        };
-
-                                        // EXEC-RESTORE-REVIEW-PANELS-AND-KILL-DIVERGENCE-022: Suppress Divergence Alert when Probe is present
-                                        const hasDivergence = false; // checkDivergence(); // DISABLED
-
-                                        return hasDivergence && (
-                                            <div className="mb-3 bg-amber-950/40 border border-amber-900/50 p-3 rounded-lg flex items-start gap-3">
-                                                <div className="text-amber-500 font-bold uppercase text-[10px] tracking-wider mt-0.5">Divergence Alert</div>
-                                                <div className="text-amber-200/80 text-[10px]">
-                                                    Legacy control plane state differs from TruthProbe authority.<br />
-                                                    Trust <strong>Lifecycle Truth</strong> below.
-                                                </div>
-                                            </div>
-                                        );
-                                    })()}
-                                    <TruthProbeCard data={truthProbe} />
-                                </div>
-                            ) : (
-                                <button
-                                    onClick={() => setShowTruthProbe(true)}
-                                    className="w-full text-left py-2 px-3 bg-slate-900/30 border border-slate-800 hover:border-slate-700 rounded-lg transition-colors group"
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <div className="text-[10px] text-slate-400 space-y-0.5">
-                                            <div className="font-bold uppercase tracking-widest text-slate-500 mb-1">Truth</div>
-                                            <div className="flex items-center gap-2 flex-wrap">
-
-                                                <div className="flex items-center justify-between">
-                                                    <div className="text-[10px] text-slate-400 space-y-0.5">
-                                                        <div className="font-bold uppercase tracking-widest text-slate-500 mb-1">
-                                                            Truth
-                                                        </div>
-
-                                                        <div className="flex items-center gap-2 flex-wrap">
-                                                            <span>
-                                                                Brief:{' '}
-                                                                <span className="text-slate-300">
-                                                                    {(truthProbe as any)?.executiveBrief?.status ?? (truthProbe as any)?.brief?.status ?? 'N/A'}
-                                                                </span>
-                                                            </span>
-
-                                                            <span className="text-slate-700">•</span>
-
-                                                            <span>
-                                                                Diag:{' '}
-                                                                <span className="text-slate-300">
-                                                                    {(truthProbe as any)?.diagnostic?.status ?? 'N/A'}
-                                                                </span>
-                                                            </span>
-
-                                                            <span className="text-slate-700">•</span>
-
-                                                            <span>
-                                                                Tickets:{' '}
-                                                                <span className="text-slate-300">
-                                                                    {((truthProbe as any)?.tickets?.approved ?? 0)}/{((truthProbe as any)?.tickets?.total ?? 0)}
-
-                                                                </span>
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-
-
-                                            </div>
-                                        </div>
-                                        <svg className="w-3 h-3 text-slate-600 group-hover:text-slate-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </div>
-                                </button>
-                            )
-                        )}
-                        {truthProbeLoading && <div className="text-xs text-slate-500 text-center animate-pulse py-2">Checking lifecycle...</div>}
-                        {truthProbeError && <div className="text-[10px] text-red-500 bg-red-900/10 p-2 rounded border border-red-900/20">{truthProbeError}</div>}
+                        {/* TRUTH PROBE REMOVED - EXEC-CLEANUP */}
+                        {loading && <div className="text-xs text-slate-500 text-center animate-pulse py-2">Checking lifecycle...</div>}
+                        {error && <div className="text-[10px] text-red-500 bg-red-900/10 p-2 rounded border border-red-900/20">{error}</div>}
 
                         <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-4">
                             Execution Authority
@@ -1417,7 +1148,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
 
                                             // V2 Canon: Intake Locked -> Generate.
                                             if (status === 'READY') {
-                                                const hasConfirmed = truthProbe?.operator?.confirmedSufficiency;
+                                                const hasConfirmed = moderationStatus && !moderationStatus.pending; // approximation from snapshot
                                                 if (!hasConfirmed) {
                                                     return (
                                                         <div className="mt-2 space-y-2">
@@ -1539,7 +1270,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                         status: getCanonicalStatus(6),
                                         action: (() => {
                                             const status = getCanonicalStatus(6);
-                                            const ticketsExist = (truthProbe?.tickets?.total || 0) > 0;
+                                            const ticketsExist = (moderationStatus?.total || 0) > 0;
 
                                             if (status === 'READY' && !ticketsExist) {
                                                 return (
@@ -1680,8 +1411,8 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                             {(() => {
                                 // EXEC-RESTORE-REVIEW-PANELS-AND-KILL-DIVERGENCE-022: TruthProbe-driven
                                 let status = tenant.executiveBriefStatus;
-                                if (truthProbe?.executiveBrief?.state) {
-                                    status = truthProbe.executiveBrief.state as any;
+                                if (snapshotData?.executiveBriefStatus) {
+                                    status = snapshotData.executiveBriefStatus as any;
                                 }
 
                                 const isComplete = status && ['APPROVED', 'DELIVERED', 'REVIEWED', 'ACKNOWLEDGED', 'WAIVED'].includes(status);
@@ -1706,18 +1437,16 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                         {/* 3.5 Diagnostic Review (modal-only) */}
                         {/* Phase 1 Invariant: Hide Diagnostic if Brief is not APPROVED (or DELIVERED/REVIEWED) */}
                         {(() => {
-                            // EXEC-RESTORE-REVIEW-PANELS-AND-KILL-DIVERGENCE-022: TruthProbe-driven check
-                            const hasDiagnostic = truthProbe ? truthProbe.diagnostic.exists : !!tenant.lastDiagnosticId;
+                            // EXEC-RESTORE-REVIEW-PANELS-AND-KILL-DIVERGENCE-022: Snapshot-driven check
+                            const hasDiagnostic = !!latestDiagnostic || !!tenant.lastDiagnosticId;
 
-                            const briefState = truthProbe ? truthProbe.executiveBrief.state : tenant.executiveBriefStatus;
+                            const briefState = snapshotData?.executiveBriefStatus || tenant.executiveBriefStatus;
                             const isBriefReady = briefState && ['APPROVED', 'DELIVERED', 'REVIEWED', 'ACKNOWLEDGED', 'WAIVED'].includes(briefState);
 
                             if (hasDiagnostic && isBriefReady) {
                                 return (
                                     <DiagnosticCompleteCard
-
-                                        status={truthProbe?.diagnostic?.state || data?.latestDiagnostic?.status || 'GENERATED'}
-
+                                        status={(latestDiagnostic?.status as any) || 'GENERATED'}
                                         onReview={openDiagnosticModal}
                                     />
                                 );
@@ -1733,7 +1462,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                     {tenant.lastDiagnosticId ? (
                                         <div className="space-y-4">
                                             {/* Stage 6 Activation Trigger */}
-                                            {getCanonicalStatus(5) === 'COMPLETE' && !truthProbe?.tickets?.isDraft && (
+                                            {getCanonicalStatus(5) === 'COMPLETE' && !moderationStatus?.isDraft && (
                                                 <div className="p-6 bg-indigo-900/10 border border-indigo-500/30 rounded-xl mb-4">
                                                     <div className="flex items-center justify-between gap-6">
                                                         <div className="flex-1">
@@ -1754,7 +1483,9 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                             <DiagnosticModerationSurface
                                                 tenantId={tenant.id}
                                                 diagnosticId={tenant.lastDiagnosticId}
-                                                onStatusChange={setModerationStatus}
+                                                tickets={tickets}
+                                                status={moderationStatus}
+                                                onStatusChange={refreshData}
                                             />
                                         </div>
                                     ) : (
@@ -1820,7 +1551,14 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                     isDelivering={isGenerating}
                     hasPdf={execBriefData?.hasPdf}
                     onGeneratePdf={handleGenerateExecutiveBriefPdf}
-                    audit={truthProbe?.executiveBrief?.deliveryAudit}
+                    audit={(() => {
+                        if (!snapshotData?.executiveBriefStatus || snapshotData.executiveBriefStatus !== 'DELIVERED') return undefined;
+                        // Audit info should be persisted in execBriefData if available
+                        return (execBriefData as any)?.deliveredAt ? {
+                            deliveredAt: (execBriefData as any).deliveredAt,
+                            deliveredByRole: (execBriefData as any).deliveredTo
+                        } : undefined;
+                    })()}
                     onDownload={() => superadminApi.downloadExecutiveBrief(tenant.id, tenant.name)}
                     onRegenerate={handleRegenerateExecutiveBrief}
                     isRegenerating={isGenerating}
@@ -1829,8 +1567,8 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                 <DiagnosticReviewModal
                     open={isDiagOpen}
                     onClose={closeDiagnosticModal}
-                    data={diagData}
-                    status={diagData?.status || data?.latestDiagnostic?.status || 'GENERATED'}
+                    data={latestDiagnostic}
+                    status={latestDiagnostic?.status || 'GENERATED'}
                 />
 
                 <DiscoveryNotesModal
@@ -1838,7 +1576,13 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                     onClose={() => setDiscoveryOpen(false)}
                     onSave={handleIngestDiscovery}
                     isSaving={discoverySaving}
-                    referenceQuestions={diagData?.outputs?.discoveryQuestions}
+                    referenceQuestions={
+                        // Questions are NOT in the snapshot yet — modal should handle loading them or they should be added to snapshot.
+                        // For now we pass undefined to avoid crash.
+                        undefined
+                    }
+                    appendMode={discoveryExists}
+                    tenantId={params?.tenantId ?? undefined}
                 />
 
                 <AssistedSynthesisModal
@@ -1847,7 +1591,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                     tenantId={params.tenantId}
                     artifacts={{
                         discoveryNotes: synthesisNotes,
-                        diagnostic: diagData,
+                        diagnostic: latestDiagnostic,
                         executiveBrief: execBriefData
                     }}
                     onRefresh={refreshData}
@@ -1920,7 +1664,7 @@ function StrategicStakeholdersPanel({
                 <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">Strategic Stakeholders</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                     {roles.map(role => {
-                        const intakeComplete = role.intakeStatus === 'COMPLETED';
+                        const intakeComplete = stakeholderDotColorHelper(role) === 'bg-emerald-500';
 
                         return (
                             <div

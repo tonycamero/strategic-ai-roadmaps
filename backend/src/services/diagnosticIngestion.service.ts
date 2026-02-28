@@ -1,6 +1,6 @@
 import { db } from '../db/index';
 import { sopTickets } from '../db/schema';
-import { nanoid } from 'nanoid';
+import { randomUUID } from 'crypto';
 import { OpenAI } from 'openai';
 import { buildDiagnosticToTicketsPrompt, SelectedInventoryTicket } from '../trustagent/prompts/diagnosticToTickets';
 import { eq, and } from 'drizzle-orm';
@@ -89,7 +89,7 @@ export async function ingestDiagnostic(diagnosticMap: any, sop01Content: Sop01Ou
     console.warn('[DEPRECATED] ingestDiagnostic() called - this generates non-canonical tickets. Use generateTicketsFromDiscovery() instead.');
     const start = Date.now();
     const tenantId = diagnosticMap.tenantId; // Expected to be present
-    const diagnosticId = `diag_${nanoid()}`;
+    const diagnosticId = randomUUID();
 
     // 3. Delegate to shared logic
     try {
@@ -115,7 +115,7 @@ export async function ingestDiagnostic(diagnosticMap: any, sop01Content: Sop01Ou
 
         if (tickets.length > 0) {
             const ticketInserts = tickets.map((t, idx) => ({
-                id: nanoid(),
+                id: randomUUID(),
                 tenantId,
                 diagnosticId,
                 ticketId: `T-${idx + 1}`,

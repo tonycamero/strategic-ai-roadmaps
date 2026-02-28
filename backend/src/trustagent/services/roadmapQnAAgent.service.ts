@@ -22,12 +22,7 @@ export async function callRoadmapQnAAgent(
   // 1. Projection Authority Check
   const view = await getTenantLifecycleView(tenantId);
 
-  if (!view.derived.lifecycleValid) {
-    throw new Error("INVALID_LIFECYCLE_STATE");
-  }
-
-  // Fail closed if authority denies both ticket and roadmap visibility
-  if (!view.derived.canGenerateTickets && !view.derived.canAssembleRoadmap) {
+  if (!view.capabilities.generateSynthesis.allowed) {
     throw new Error("AGENT_EXECUTION_NOT_ALLOWED");
   }
 

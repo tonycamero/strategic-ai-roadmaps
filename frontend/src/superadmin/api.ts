@@ -349,6 +349,19 @@ export const superadminApi = {
   saveDiscoveryNotes: (tenantId: string, notes: string) =>
     apiPost<{ ok: boolean }>(`/firms/${tenantId}/discovery-notes`, { notes }),
 
+  // EXEC-18: Append-only delta log (after first canonical ingest)
+  appendDiscoveryNote: (tenantId: string, payload: { source: string; delta: string }) =>
+    apiPost<{ ok: boolean; logEntryId: string; synthesizedLength: number; message: string }>(
+      `/firms/${tenantId}/discovery-notes/append`,
+      payload
+    ),
+
+  // EXEC-27: Read-only history of prior discovery log entries
+  getDiscoveryNotesLog: (tenantId: string) =>
+    apiGet<{ entries: Array<{ id: string; source: string; delta: string; createdAt: string; createdByUserId?: string | null }> }>(
+      `/firms/${tenantId}/discovery-notes/log`
+    ),
+
   // TM-2: Ticket Moderation APIs
   getDiagnosticTickets: (tenantId: string, diagnosticId: string) =>
     apiGet<{ tickets: any[]; status: any }>(`/tickets/${tenantId}/${diagnosticId}`),

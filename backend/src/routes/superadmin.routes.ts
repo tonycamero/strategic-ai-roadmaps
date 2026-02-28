@@ -152,11 +152,11 @@ router.post('/tickets/generate/:tenantId/:diagnosticId', async (req, res, next) 
 // GET /api/superadmin/firms/:tenantId/metrics - Get performance metrics
 router.get('/firms/:tenantId/metrics', superadminController.getMetricsForFirm);
 router.get('/firms/:tenantId/roi-baseline', superadminController.getRoiBaselineForFirm);
-  // POST /api/superadmin/firms/:tenantId/roi-baseline - Create/Update baseline (Canonical Alias)
-  router.post('/firms/:tenantId/roi-baseline', superadminController.createRoiBaselineForFirm);
+// POST /api/superadmin/firms/:tenantId/roi-baseline - Create/Update baseline (Canonical Alias)
+router.post('/firms/:tenantId/roi-baseline', superadminController.createRoiBaselineForFirm);
 
-  // POST /api/superadmin/firms/:tenantId/metrics/baseline - Create baseline snapshot (Legacy/Existing)
-  router.post('/firms/:tenantId/metrics/baseline', superadminController.createBaselineForFirm);
+// POST /api/superadmin/firms/:tenantId/metrics/baseline - Create baseline snapshot (Legacy/Existing)
+router.post('/firms/:tenantId/metrics/baseline', superadminController.createBaselineForFirm);
 router.post('/firms/:tenantId/metrics/baseline', superadminController.createBaselineForFirm);
 
 // POST /api/superadmin/firms/:tenantId/metrics/snapshot - Create 30/60/90 snapshot
@@ -328,6 +328,10 @@ router.get('/diagnostics/:diagnosticId/artifacts', superadminController.getDiagn
 // 5. Discovery Notes (Ingestion & Retrieval)
 router.get('/firms/:tenantId/discovery-notes', superadminController.getDiscoveryNotes);
 router.post('/firms/:tenantId/ingest-discovery', superadminController.ingestDiscoveryNotes);
+// EXEC-17: Append-only operator clarification append endpoint
+router.post('/firms/:tenantId/discovery-notes/append', superadminController.appendDiscoveryNote);
+// EXEC-27: Read-only discovery notes log (history panel)
+router.get('/firms/:tenantId/discovery-notes/log', superadminController.getDiscoveryNotesLog);
 
 // 5.5. Assisted Synthesis (Findings Review)
 router.post('/firms/:tenantId/assisted-synthesis/generate-proposals', superadminController.generateAssistedProposals);

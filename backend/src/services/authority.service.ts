@@ -79,7 +79,7 @@ export class AuthorityService {
             intake: true,
             executiveBrief: isIntakeComplete,
             diagnostic: view.derived.canGenerateDiagnostic,
-            discoveryNotes: view.artifacts.hasDiagnostic,
+            discoveryNotes: view.artifacts.diagnostic.exists,
             assistedSynthesis: view.workflow.discoveryComplete,
             ticketModeration: view.workflow.sop01Complete, // Authority previously checked tickets.length > 0
             roadmapGeneration: view.derived.canAssembleRoadmap,
