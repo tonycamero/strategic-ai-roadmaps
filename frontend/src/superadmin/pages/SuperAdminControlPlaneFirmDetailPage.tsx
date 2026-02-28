@@ -116,33 +116,6 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     const [impersonating, setImpersonating] = useState(false);
     const { category } = useSuperAdminAuthority();
 
-    // DERIVED CONSTANTS (Consolidation Mapping) - EXEC-03 Normalized Access
-    const {
-        tenant = null,
-        owner = null,
-        teamMembers = [],
-        intakes = [],
-        intakeRoles = [],
-        roadmaps = [],
-        latestRoadmap = null,
-        recentActivity = [],
-        diagnosticStatus: moderationStatus = null,
-        latestDiagnostic = null,
-        snapshot: snapshotData = null,
-        execBrief: execBriefData = null,
-        discoveryNotes = null,
-        tickets = []
-    } = data || {};
-
-    const synthesisNotes = discoveryNotes?.notes || null;
-    const intakeWindowState = snapshotData?.intakeWindowState ?? tenant?.intakeWindowState ?? 'OPEN';
-    const executionPhase = snapshotData?.executionPhase ?? 'INTAKE_OPEN';
-
-
-    // EXEC-03 Normalized Access - Compatibility Layer Removed
-
-    // @ANCHOR:SA_FIRM_DETAIL_STATE_END
-
     const refreshData = async () => {
         if (!params?.tenantId) return;
 
@@ -386,18 +359,18 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                 const status = err?.status || err?.response?.status;
 
                 if (status === 428) {
-                    const data = err.response?.data;
-                    const details = data?.prerequisites
+                    const errData = err.response?.data;
+                    const details = errData?.prerequisites
                         ? [
-                            !data.prerequisites.hasApprovedBrief ? 'Executive Brief not valid' : null,
-                            !data.prerequisites.hasDiagnostic ? 'No Active Diagnostic found' : null,
-                            data.prerequisites.approvedTicketCount === 0 ? 'No Approved Tickets' : null
+                            !errData.prerequisites.hasApprovedBrief ? 'Executive Brief not valid' : null,
+                            !errData.prerequisites.hasDiagnostic ? 'No Active Diagnostic found' : null,
+                            errData.prerequisites.approvedTicketCount === 0 ? 'No Approved Tickets' : null
                         ].filter(Boolean)
                         : [];
 
                     const msg = details.length > 0
                         ? `Roadmap Not Ready. Missing prerequisites:\n- ${details.join('\n- ')}`
-                        : (data?.message || 'Roadmap Not Ready: Prerequisites not met.');
+                        : (errData?.message || 'Roadmap Not Ready: Prerequisites not met.');
 
                     window.alert(msg);
                 } else {
@@ -487,7 +460,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         if (isGenerating) return;
         setIsGenerating(true);
         try {
-            await superadminApi.generateTickets(params.tenantId, data.tenant.lastDiagnosticId);
+            await superadminApi.generateTickets(params.tenantId, tenant.lastDiagnosticId!);
             await refreshData();
         } catch (err: any) {
             console.error('Ticket Generation Error:', err);
@@ -540,7 +513,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         setIsGenerating(true);
         setGateLockedMessage(null);
         try {
-            await superadminApi.lockDiagnostic(params.tenantId, data.latestDiagnostic.id);
+            await superadminApi.lockDiagnostic(params.tenantId, latestDiagnostic?.id!);
             await refreshData();
         } catch (err: any) {
             console.error('Lock Diagnostic Error:', err);
@@ -560,7 +533,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         setIsGenerating(true);
         setGateLockedMessage(null);
         try {
-            await superadminApi.publishDiagnostic(params.tenantId, data.latestDiagnostic.id);
+            await superadminApi.publishDiagnostic(params.tenantId, latestDiagnostic?.id!);
             await refreshData();
         } catch (err: any) {
             console.error('Publish Diagnostic Error:', err);
@@ -804,20 +777,6 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     };
 
 
-    // EXEC-19: Canonical Stage State — derived from DB-backed fields only
-    // Must be after loading guard; data and tenant are safe to access here.
-    const canonical = useCanonicalStageState(
-        data?.tenant ?? null,
-        data?.latestDiagnostic ?? null,
-        // workflowStatus not available at this level; moderationActive derived from Control Plane moderation state
-        { moderationActive: false } // TODO: wire moderationActive from ticketModerationSessions if needed
-    );
-
-    // EXEC-22: Canonical discovery existence — snapshot is the authority
-    // Derived strictly from snapshotData.discovery.exists (backend EXEC-21 projection)
-    // NOT from tenant.discoveryComplete, workflowStatus, intakeSnapshotId, or ladder state
-    const discoveryExists = snapshotData?.discovery?.exists === true;
-
     if (loading) return <div className="flex items-center justify-center min-h-screen text-slate-400">Loading firm details...</div>;
     if (error) return (
         <div className="flex items-center justify-center min-h-screen">
@@ -828,10 +787,55 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
             </div>
         </div>
     );
-    if (!params?.tenantId || !data) return <div className="p-6 text-slate-400">Missing tenant data.</div>;
 
-    // Unified data provided by snapshot
-    const { diagnosticStatus } = data;
+    if (!params?.tenantId || !data?.tenant) {
+        return (
+            <div className="p-6 text-slate-400">
+                Snapshot not ready.
+            </div>
+        );
+    }
+
+    const snapshot = data;
+    const tenant = snapshot.tenant;
+
+    const owner = snapshot.owner ?? null;
+    const teamMembers = snapshot.teamMembers ?? [];
+    const intakes = snapshot.intakes ?? [];
+    const intakeRoles = snapshot.intakeRoles ?? [];
+    const roadmaps = snapshot.roadmaps ?? [];
+    const latestRoadmap = snapshot.latestRoadmap ?? null;
+    const recentActivity = snapshot.recentActivity ?? [];
+    const moderationStatus = snapshot.diagnosticStatus ?? null;
+    const latestDiagnostic = snapshot.latestDiagnostic ?? null;
+    const snapshotData = snapshot.snapshot ?? null;
+    const execBriefData = snapshot.execBrief ?? null;
+    const discoveryNotes = snapshot.discoveryNotes ?? null;
+    const tickets = snapshot.tickets ?? [];
+
+    const intakeWindowState =
+        snapshotData?.intakeWindowState ??
+        tenant.intakeWindowState ??
+        'OPEN';
+
+    const executionPhase =
+        snapshotData?.executionPhase ??
+        'INTAKE_OPEN';
+
+    const discoveryExists =
+        snapshotData?.discovery?.exists === true;
+
+    const synthesisNotes = discoveryNotes?.notes || null;
+
+
+    // EXEC-19: Canonical Stage State — derived from DB-backed fields only
+    // Must be after loading guard; data and tenant are safe to access here.
+    const canonical = useCanonicalStageState(
+        tenant,
+        latestDiagnostic,
+        // workflowStatus not available at this level; moderationActive derived from Control Plane moderation state
+        { moderationActive: false } // TODO: wire moderationActive from ticketModerationSessions if needed
+    );
 
     // Filter exec-only actions from activity log (Defense-in-depth)
     const filteredActivity = recentActivity.filter((event: any) => {
@@ -966,8 +970,8 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                 <span>{tenant?.ownerName ?? '—'}</span>
                                 <span className="w-1 h-1 bg-slate-700 rounded-full" />
                                 <span>
-  Created {tenant?.createdAt ? new Date(tenant.createdAt).toLocaleDateString() : '—'}
-</span>
+                                    Created {tenant?.createdAt ? new Date(tenant.createdAt).toLocaleDateString() : '—'}
+                                </span>
                             </div>
                         </div>
                         <div className="flex flex-col items-end gap-2">
@@ -1150,7 +1154,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                         // Complex Action Logic for Diagnostic
                                         action: (() => {
                                             const status = getCanonicalStatus(3);
-                                            const granularStatus = data.latestDiagnostic?.status || 'generated';
+                                            const granularStatus = latestDiagnostic?.status || 'generated';
 
                                             // V2 Canon: Intake Locked -> Generate.
                                             if (status === 'READY') {
@@ -1524,7 +1528,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                         pending: moderationStatus.pending,
                                         approved: moderationStatus.approved
                                     } : null}
-                                    roadmapStatus={data.latestRoadmap?.status || data.roadmaps?.[0]?.status || null}
+                                    roadmapStatus={latestRoadmap?.status || roadmaps?.[0]?.status || null}
                                     onFinalize={handleFinalizeRoadmap}
                                     isGenerating={isGenerating}
                                     readinessFlags={{
