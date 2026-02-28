@@ -1563,7 +1563,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                             deliveredByRole: (execBriefData as any).deliveredTo
                         } : undefined;
                     })()}
-                    onDownload={() => superadminApi.downloadExecutiveBrief(tenant?.id ?? '', tenant?.name ?? 'ExecutiveBrief')
+                    onDownload={() => superadminApi.downloadExecutiveBrief(tenant?.id ?? '', tenant?.name ?? 'ExecutiveBrief')}
                     onRegenerate={handleRegenerateExecutiveBrief}
                     isRegenerating={isGenerating}
                 />
