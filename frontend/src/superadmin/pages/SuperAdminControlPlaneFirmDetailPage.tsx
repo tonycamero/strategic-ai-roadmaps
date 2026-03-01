@@ -8,7 +8,7 @@ import { DiagnosticModerationSurface } from '../components/DiagnosticModerationS
 import { DiagnosticCompleteCard } from '../components/DiagnosticCompleteCard';
 
 import { RoadmapReadinessPanel } from '../components/RoadmapReadinessPanel';
-import { ExecutiveSnapshotPanel, SnapshotData } from '../components/ExecutiveSnapshotPanel';
+import { ExecutiveSnapshotPanel } from '../components/ExecutiveSnapshotPanel';
 import { ExecutiveBriefPanel } from '../components/ExecutiveBriefPanel';
 import { ExecutiveBriefModal } from '../components/ExecutiveBriefModal';
 import { DiagnosticReviewModal } from '../components/DiagnosticReviewModal';
@@ -201,86 +201,6 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     // CANONICAL STATUS SYSTEM (LOCKED, READY, COMPLETE)
     // ============================================================================
 
-    /**
-     * PURE PROJECTION MAPPER (EXEC-13A)
-     * Frontend stays as a pure RENDERER of the projection spine.
-     * No local heuristics. No local counts.
-     */
-    const mapSnapshotToExecutionStages = (): Record<number, 'LOCKED' | 'READY' | 'COMPLETE'> => {
-        const stages: Record<number, 'LOCKED' | 'READY' | 'COMPLETE'> = {
-            1: 'LOCKED',
-            2: 'LOCKED',
-            3: 'LOCKED',
-            4: 'LOCKED',
-            5: 'LOCKED',
-            6: 'LOCKED',
-            7: 'LOCKED'
-        };
-
-        if (!data) return stages;
-
-        const intakeState = (snapshotData?.intakeWindowState || tenant?.intakeWindowState) as 'OPEN' | 'CLOSED';
-        const briefState = snapshotData?.executiveBriefStatus || tenant?.executiveBriefStatus;
-        const diagnosticExists = !!latestDiagnostic || !!tenant?.lastDiagnosticId;
-        const discoveryExists = !!snapshotData?.discovery?.exists;
-        const ticketCounts = moderationStatus || { total: 0, pending: 0, approved: 0, rejected: 0 };
-        const roadmapExists = !!latestRoadmap;
-
-        // Stage 1 - Intake
-        stages[1] = intakeState === 'CLOSED' ? 'COMPLETE' : 'READY';
-
-        // Stage 2 - Exec Brief
-        const briefApproved = briefState && ['APPROVED', 'DELIVERED', 'REVIEWED', 'ACKNOWLEDGED', 'WAIVED'].includes(briefState);
-        if (briefApproved) {
-            stages[2] = 'COMPLETE';
-        } else if (intakeState === 'CLOSED') {
-            stages[2] = 'READY';
-        }
-
-        // Stage 3 - Diagnostic
-        if (diagnosticExists) {
-            stages[3] = 'COMPLETE';
-        } else if (briefApproved) {
-            stages[3] = 'READY';
-        }
-
-        // Stage 4 - Discovery
-        if (discoveryExists) {
-            stages[4] = 'COMPLETE';
-        } else if (diagnosticExists) {
-            stages[4] = 'READY';
-        }
-
-        // Stage 5 - Synthesis
-        // Synthesis ready means findings exist (inferred from canonical findings logic)
-        // For now, if Stage 4 is complete, Stage 5 is ready.
-        if (discoveryExists) {
-            stages[5] = 'READY';
-        }
-
-        // Stage 6 - Tickets
-        const ticketsModerated = ticketCounts.total > 0 && ticketCounts.pending === 0;
-        if (ticketsModerated) {
-            stages[6] = 'COMPLETE';
-        } else if (diagnosticExists) {
-            // Simplified readiness for moderation
-            stages[6] = 'READY';
-        }
-
-        // Stage 7 - Roadmap
-        if (roadmapExists) {
-            stages[7] = 'COMPLETE';
-        } else if (moderationStatus?.readyForRoadmap) {
-            stages[7] = 'READY';
-        }
-
-        return stages;
-    };
-
-    const getCanonicalStatus = (stage: number): 'LOCKED' | 'READY' | 'COMPLETE' => {
-        const stageMap = mapSnapshotToExecutionStages();
-        return stageMap[stage] || 'LOCKED';
-    };
 
     const getStatusStyles = (status: 'LOCKED' | 'READY' | 'COMPLETE') => {
         switch (status) {
@@ -416,7 +336,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     const handleLockIntake = async () => {
         if (!params?.tenantId) return;
         // PROJECTION GUARD: Never fire if intake is not OPEN
-        if (intakeWindowState !== 'OPEN') return;
+        if (projection.lifecycle.intakeWindowState !== 'OPEN') return;
         if (!window.confirm('Confirm Intake Lock? This freezes the intake window.')) return;
         setIsGenerating(true);
         setGateLockedMessage(null);
@@ -557,7 +477,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
             // EXEC-19: Smart routing via canonical state
             // Layer 1: first capture → canonical ingest (snapshot)
             // Layer 2: subsequent captures → append-only delta log
-            if (!discoveryExists) {
+            if (!data?.projection?.workflow?.discoveryComplete) {
                 await superadminApi.ingestDiscoveryNotes(params.tenantId, notes);
             } else {
                 // Fail closed: never fall back to ingest if append fails
@@ -799,8 +719,18 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     }
 
     const snapshot = data;
-    const tenant = snapshot.tenant;
 
+    const projection = snapshot?.projection;
+
+    if (!projection || !snapshot?.tenant) {
+        return (
+            <div className="p-6 text-slate-400">
+                Snapshot not ready.
+            </div>
+        );
+    }
+
+    const tenant = snapshot.tenant;
     const owner = snapshot.owner ?? null;
     const teamMembers = snapshot.teamMembers ?? [];
     const intakes = snapshot.intakes ?? [];
@@ -810,34 +740,39 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     const recentActivity = snapshot.recentActivity ?? [];
     const moderationStatus = snapshot.diagnosticStatus ?? null;
     const latestDiagnostic = snapshot.latestDiagnostic ?? null;
-    const snapshotData = snapshot.snapshot ?? null;
     const execBriefData = snapshot.execBrief ?? null;
     const discoveryNotes = snapshot.discoveryNotes ?? null;
     const tickets = snapshot.tickets ?? [];
 
-    const intakeWindowState =
-        snapshotData?.intakeWindowState ??
-        tenant.intakeWindowState ??
-        'OPEN';
-
-    const executionPhase =
-        snapshotData?.executionPhase ??
-        'INTAKE_OPEN';
-
-    const discoveryExists =
-        snapshotData?.discovery?.exists === true;
-
     const synthesisNotes = discoveryNotes?.notes || null;
 
+    // Canonical Status Helper using strictly projection bindings
+    const getCanonicalStatus = (stage: number): 'LOCKED' | 'READY' | 'COMPLETE' => {
+        // Stage 1: Intake
+        if (stage === 1) return projection.lifecycle.intakeWindowState === "CLOSED" ? 'COMPLETE' : 'READY';
 
-    // EXEC-19: Canonical Stage State — derived from DB-backed fields only
-    // Must be after loading guard; data and tenant are safe to access here.
-    const canonical = useCanonicalStageState(
-        tenant,
-        latestDiagnostic,
-        // workflowStatus not available at this level; moderationActive derived from Control Plane moderation state
-        { moderationActive: false } // TODO: wire moderationActive from ticketModerationSessions if needed
-    );
+        // Stage 2: Executive Brief
+        const isBriefComplete = ['APPROVED', 'DELIVERED', 'REVIEWED', 'ACKNOWLEDGED', 'WAIVED'].includes(projection.governance.executiveBriefStatus);
+        if (stage === 2) return isBriefComplete ? 'COMPLETE' : (projection.lifecycle.intakeWindowState === 'CLOSED' ? 'READY' : 'LOCKED');
+
+        // Stage 3: Diagnostic
+        if (stage === 3) return projection.artifacts.diagnostic.exists ? 'COMPLETE' : (projection.derived.canGenerateDiagnostic ? 'READY' : 'LOCKED');
+
+        // Stage 4: Discovery Notes
+        if (stage === 4) return projection.workflow.discoveryComplete ? 'COMPLETE' : (projection.derived.canIngestDiscoveryNotes ? 'READY' : 'LOCKED');
+
+        // Stage 5: Assisted Synthesis
+        if (stage === 5) return projection.derived.synthesis.ready ? 'READY' : 'LOCKED';
+
+        // Stage 6: Ticket Moderation
+        const ticketsModerated = projection.tickets.total > 0 && projection.tickets.pending === 0;
+        if (stage === 6) return ticketsModerated ? 'COMPLETE' : (projection.derived.canGenerateTickets ? 'READY' : 'LOCKED');
+
+        // Stage 7: Roadmap
+        if (stage === 7) return projection.artifacts.hasRoadmap ? 'COMPLETE' : (projection.derived.canAssembleRoadmap ? 'READY' : 'LOCKED');
+
+        return 'LOCKED';
+    };
 
     // Filter exec-only actions from activity log (Defense-in-depth)
     const filteredActivity = recentActivity.filter((event: any) => {
@@ -993,8 +928,8 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                             </div>
                             {(() => {
                                 // EXEC-RESTORE-REVIEW-PANELS-AND-KILL-DIVERGENCE-022: Override with TruthProbe
-                                let displayPhase = executionPhase;
-                                if (intakeWindowState === 'CLOSED' && displayPhase === 'INTAKE_OPEN') {
+                                let displayPhase = projection.executionPhase;
+                                if (projection.lifecycle.intakeWindowState === 'CLOSED' && displayPhase === 'INTAKE_OPEN') {
                                     displayPhase = 'INTAKE_CLOSED';
                                 }
 
@@ -1037,16 +972,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                             <span className="text-slate-500 font-medium">Intake:</span>
                             <span className="text-slate-300">
                                 {(() => {
-                                    if (snapshotData) {
-                                        return intakeWindowState === 'CLOSED' ? 'CLOSED' : 'OPEN';
-                                    }
-
-                                    const typedRoles: IntakeRoleDefinition[] = intakeRoles ?? [];
-                                    const typedIntakes: { status: string }[] = intakes ?? [];
-
-                                    return (tenant.intakeWindowState === 'CLOSED' || (typedRoles.length > 0 && typedRoles.every((r: IntakeRoleDefinition) => r.intakeStatus === 'COMPLETED')))
-                                        ? 'CLOSED'
-                                        : `${typedIntakes.filter((i: { status: string }) => i.status === 'completed').length}/${typedIntakes.length} COMPLETE`;
+                                    return projection.lifecycle.intakeWindowState === 'CLOSED' ? 'CLOSED' : `${projection.workflow.completedIntakeCount}/${projection.workflow.vectorCount} COMPLETE`;
                                 })()}
                             </span>
                         </div>
@@ -1069,7 +995,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                             setIntakeModalOpen(true);
                         }}
                         stakeholderDotColorHelper={getStakeholderDotColor}
-                        readOnly={tenant.intakeWindowState === 'CLOSED'}
+                        readOnly={projection.lifecycle.intakeWindowState === 'CLOSED'}
                     />
                 </AuthorityGuard>
 
@@ -1097,7 +1023,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                         id: 1,
                                         label: 'Intake',
                                         status: getCanonicalStatus(1),
-                                        action: getCanonicalStatus(1) === 'READY' ? (
+                                        action: projection.derived.canLockIntake ? (
                                             <button
                                                 onClick={handleLockIntake}
                                                 className="mt-2 text-[10px] uppercase font-bold text-indigo-400 hover:text-indigo-300 border border-indigo-900/50 bg-indigo-950/30 px-3 py-1.5 rounded transition-colors"
@@ -1112,8 +1038,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                         status: getCanonicalStatus(2),
                                         action: (() => {
                                             const status = getCanonicalStatus(2);
-                                            const briefStatus = tenant.executiveBriefStatus;
-                                            const hasBrief = !!briefStatus;
+                                            const hasBrief = projection.artifacts.hasExecutiveBrief;
 
                                             if (status === 'READY' || status === 'COMPLETE') {
                                                 return (
@@ -1156,11 +1081,10 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                         // Complex Action Logic for Diagnostic
                                         action: (() => {
                                             const status = getCanonicalStatus(3);
-                                            const granularStatus = latestDiagnostic?.status || 'generated';
+                                            const granularStatus = projection.artifacts.diagnostic.status;
 
-                                            // V2 Canon: Intake Locked -> Generate.
                                             if (status === 'READY') {
-                                                const hasConfirmed = moderationStatus && !moderationStatus.pending; // approximation from snapshot
+                                                const hasConfirmed = projection.operator.confirmedSufficiency;
                                                 if (!hasConfirmed) {
                                                     return (
                                                         <div className="mt-2 space-y-2">
@@ -1178,19 +1102,20 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                                     );
                                                 }
 
-                                                return (
-                                                    <button
-                                                        onClick={handleGenerateDiagnostic}
-                                                        className="mt-2 text-[10px] uppercase font-bold text-indigo-400 hover:text-indigo-300 border border-indigo-900/50 bg-indigo-950/30 px-3 py-1.5 rounded transition-colors"
-                                                    >
-                                                        Generate
-                                                    </button>
-                                                );
+                                                if (projection.derived.canGenerateDiagnostic) {
+                                                    return (
+                                                        <button
+                                                            onClick={handleGenerateDiagnostic}
+                                                            className="mt-2 text-[10px] uppercase font-bold text-indigo-400 hover:text-indigo-300 border border-indigo-900/50 bg-indigo-950/30 px-3 py-1.5 rounded transition-colors"
+                                                        >
+                                                            Generate
+                                                        </button>
+                                                    );
+                                                }
                                             }
 
-                                            // If COMPLETE (Generated), rely on TruthProbe state
                                             if (status === 'COMPLETE') {
-                                                if (granularStatus === 'generated') {
+                                                if (projection.derived.canLockDiagnostic && granularStatus === 'generated') {
                                                     return (
                                                         <div className="flex gap-2 mt-2">
                                                             <button
@@ -1210,7 +1135,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                                         </div>
                                                     );
                                                 }
-                                                if (granularStatus === 'locked') {
+                                                if (projection.derived.canPublishDiagnostic && granularStatus === 'locked') {
                                                     return (
                                                         <button
                                                             onClick={handlePublishDiagnostic}
@@ -1221,7 +1146,6 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                                     );
                                                 }
                                                 if (granularStatus === 'published') {
-                                                    // Allow re-generation?
                                                     return (
                                                         <div className="flex gap-2 mt-2">
                                                             <span className="text-[10px] font-bold text-emerald-500 py-1.5">PUBLISHED</span>
@@ -1243,14 +1167,13 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                         label: 'Discovery Notes (Raw)',
                                         status: getCanonicalStatus(4),
                                         action: (() => {
-                                            const status = getCanonicalStatus(4);
-                                            if (status === 'READY' || status === 'COMPLETE') {
+                                            if (projection.derived.canIngestDiscoveryNotes || projection.workflow.discoveryComplete) {
                                                 return (
                                                     <button
                                                         onClick={openDiscoveryModal}
                                                         className="mt-2 text-[10px] uppercase font-bold text-indigo-400 hover:text-indigo-300 border border-indigo-900/50 bg-indigo-950/30 px-3 py-1.5 rounded transition-colors"
                                                     >
-                                                        {status === 'COMPLETE' ? 'Edit Raw Notes' : 'Ingest Notes (Raw)'}
+                                                        {projection.workflow.discoveryComplete ? 'Edit Raw Notes' : 'Ingest Notes (Raw)'}
                                                     </button>
                                                 );
                                             }
@@ -1262,8 +1185,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                         label: 'Assisted Synthesis',
                                         status: getCanonicalStatus(5),
                                         action: (() => {
-                                            const status = getCanonicalStatus(5);
-                                            if (status === 'READY' || status === 'COMPLETE') {
+                                            if (projection.derived.synthesis.ready || projection.artifacts.hasCanonicalFindings) {
                                                 return (
                                                     <button
                                                         onClick={openSynthesisModal}
@@ -1281,10 +1203,9 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                         label: 'Ticket Moderation',
                                         status: getCanonicalStatus(6),
                                         action: (() => {
-                                            const status = getCanonicalStatus(6);
-                                            const ticketsExist = (moderationStatus?.total || 0) > 0;
+                                            const ticketsExist = projection.tickets.total > 0;
 
-                                            if (status === 'READY' && !ticketsExist) {
+                                            if (projection.derived.canGenerateTickets && !ticketsExist) {
                                                 return (
                                                     <button
                                                         onClick={handleActivateModeration}
@@ -1338,7 +1259,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
 
 
                         {/* Execute Final Roadmap Button */}
-                        {moderationStatus?.readyForRoadmap && (
+                        {projection.derived.canAssembleRoadmap && (
                             <button
                                 onClick={handleFinalizeRoadmap}
                                 disabled={isGenerating}
@@ -1386,7 +1307,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                         )}
 
                         {/* 1. Strategic Context & Capacity ROI - Collapsed by default */}
-                        {tenant.intakeWindowState === 'CLOSED' && (
+                        {projection.lifecycle.intakeWindowState === 'CLOSED' && (
                             showROIPanel ? (
                                 <div className="animate-in fade-in slide-in-from-top-2 duration-200">
                                     <div className="flex justify-end mb-1">
@@ -1398,7 +1319,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                         </button>
                                     </div>
                                     <ExecutiveSnapshotPanel
-                                        data={snapshotData}
+                                        projection={projection}
                                         loading={snapshotLoading}
                                     />
                                 </div>
@@ -1422,10 +1343,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                         <AuthorityGuard requiredCategory={AuthorityCategory.EXECUTIVE}>
                             {(() => {
                                 // EXEC-RESTORE-REVIEW-PANELS-AND-KILL-DIVERGENCE-022: TruthProbe-driven
-                                let status = tenant.executiveBriefStatus;
-                                if (snapshotData?.executiveBriefStatus) {
-                                    status = snapshotData.executiveBriefStatus as any;
-                                }
+                                let status = projection.governance.executiveBriefStatus;
 
                                 const isComplete = status && ['APPROVED', 'DELIVERED', 'REVIEWED', 'ACKNOWLEDGED', 'WAIVED'].includes(status);
 
@@ -1445,14 +1363,11 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                         {/* @ANCHOR:SA_FIRM_DETAIL_DIAGNOSTIC_REVIEW_SLOT */}
 
                         {/* 3.5 Diagnostic Review (modal-only) */}
-                        {/* Phase 1 Invariant: Hide Diagnostic if Brief is not APPROVED */}
-                        {/* 3.5 Diagnostic Review (modal-only) */}
                         {/* Phase 1 Invariant: Hide Diagnostic if Brief is not APPROVED (or DELIVERED/REVIEWED) */}
                         {(() => {
                             // EXEC-RESTORE-REVIEW-PANELS-AND-KILL-DIVERGENCE-022: Snapshot-driven check
-                            const hasDiagnostic = !!latestDiagnostic || !!tenant.lastDiagnosticId;
-
-                            const briefState = snapshotData?.executiveBriefStatus || tenant.executiveBriefStatus;
+                            const hasDiagnostic = projection.artifacts.diagnostic.exists;
+                            const briefState = projection.governance.executiveBriefStatus;
                             const isBriefReady = briefState && ['APPROVED', 'DELIVERED', 'REVIEWED', 'ACKNOWLEDGED', 'WAIVED'].includes(briefState);
 
                             if (hasDiagnostic && isBriefReady) {
@@ -1466,19 +1381,19 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                             return null;
                         })()}
                         {/* 3. Ticket Moderation (Waterfall Step 4) */}
-                        {tenant.intakeWindowState === 'CLOSED' && (
+                        {projection.lifecycle.intakeWindowState === 'CLOSED' && (
                             <AuthorityGuard requiredCategory={AuthorityCategory.EXECUTIVE}>
                                 <div>
-                                    <div className="text-[10px] text-slate-500 uppercase font-extrabold mb-2">Ticket Moderation {tenant.lastDiagnosticId ? '(Active)' : '(Pending)'}</div>
-
-                                    {tenant.lastDiagnosticId ? (
+                                    <div className="text-[10px] text-slate-500 uppercase font-extrabold mb-2">Ticket Moderation {projection.artifacts.diagnostic.exists ? '(Active)' : '(Pending)'}</div>
+                                    {projection.artifacts.diagnostic.exists ? (
                                         <div className="space-y-4">
                                             {/* Stage 6 Activation Trigger */}
-                                            {getCanonicalStatus(5) === 'COMPLETE' && !moderationStatus?.isDraft && (
+                                            {getCanonicalStatus(5) === 'COMPLETE' && projection.tickets.total > 0 && (
                                                 <div className="p-6 bg-indigo-900/10 border border-indigo-500/30 rounded-xl mb-4">
                                                     <div className="flex items-center justify-between gap-6">
                                                         <div className="flex-1">
                                                             <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-tight">Stage 6: Ticket Moderation Required</h3>
+
                                                             <p className="text-xs text-slate-400 mt-1">Assisted synthesis is complete. Materialize findings into draft tickets to begin moderation.</p>
                                                         </div>
                                                         <button
@@ -1494,7 +1409,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
 
                                             <DiagnosticModerationSurface
                                                 tenantId={tenant.id}
-                                                diagnosticId={tenant.lastDiagnosticId}
+                                                diagnosticId={latestDiagnostic?.id || ''}
                                                 tickets={tickets}
                                                 status={moderationStatus}
                                                 onStatusChange={refreshData}
@@ -1519,12 +1434,12 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
 
 
                         {/* 4. Roadmap Readiness (when available) */}
-                        {tenant.intakeWindowState === 'CLOSED' && moderationStatus?.readyForRoadmap && (
+                        {projection.lifecycle.intakeWindowState === 'CLOSED' && projection.artifacts.hasRoadmap && (
                             <AuthorityGuard requiredCategory={AuthorityCategory.EXECUTIVE}>
                                 <RoadmapReadinessPanel
                                     tenantId={tenant.id}
-                                    intakeWindowState={tenant.intakeWindowState}
-                                    briefStatus={tenant.executiveBriefStatus || null}
+                                    intakeWindowState={projection.lifecycle.intakeWindowState}
+                                    briefStatus={projection.governance.executiveBriefStatus || null}
                                     moderationStatus={moderationStatus ? {
                                         readyForRoadmap: moderationStatus.readyForRoadmap,
                                         pending: moderationStatus.pending,
@@ -1534,9 +1449,9 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                     onFinalize={handleFinalizeRoadmap}
                                     isGenerating={isGenerating}
                                     readinessFlags={{
-                                        knowledgeBaseReady: !!tenant.lastDiagnosticId,
+                                        knowledgeBaseReady: projection.artifacts.diagnostic.exists,
                                         rolesValidated: true,
-                                        execReady: tenant.executiveBriefStatus === 'APPROVED'
+                                        execReady: projection.governance.executiveBriefStatus === 'APPROVED'
                                     }}
                                 />
                             </AuthorityGuard>
@@ -1554,7 +1469,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                     onClose={closeExecBriefModal}
                     loading={execBriefLoading}
                     data={execBriefData}
-                    status={execBriefData?.status || tenant.executiveBriefStatus}
+                    status={projection.governance.executiveBriefStatus}
                     error={execBriefError}
                     onApprove={handleApproveExecutiveBrief}
                     isApproving={isGenerating}
@@ -1564,7 +1479,8 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                     hasPdf={execBriefData?.hasPdf}
                     onGeneratePdf={handleGenerateExecutiveBriefPdf}
                     audit={(() => {
-                        if (!snapshotData?.executiveBriefStatus || snapshotData.executiveBriefStatus !== 'DELIVERED') return undefined;
+                        // EXEC-RESTORE-REVIEW-PANELS-AND-KILL-DIVERGENCE-022: Prevent pre-deliver generation
+                        if (!projection.governance.executiveBriefStatus || projection.governance.executiveBriefStatus !== 'DELIVERED') return undefined;
                         // Audit info should be persisted in execBriefData if available
                         return (execBriefData as any)?.deliveredAt ? {
                             deliveredAt: (execBriefData as any).deliveredAt,
@@ -1593,14 +1509,14 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                         // For now we pass undefined to avoid crash.
                         undefined
                     }
-                    appendMode={discoveryExists}
+                    appendMode={projection.workflow.discoveryComplete}
                     tenantId={params?.tenantId ?? undefined}
                 />
 
                 <AssistedSynthesisModal
                     open={isSynthesisOpen}
                     onClose={() => setSynthesisOpen(false)}
-                    tenantId={params.tenantId}
+                    tenantId={params?.tenantId || ''}
                     artifacts={{
                         discoveryNotes: synthesisNotes,
                         diagnostic: latestDiagnostic,
