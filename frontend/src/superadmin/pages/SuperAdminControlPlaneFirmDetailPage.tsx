@@ -304,6 +304,8 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     };
 
     const getStakeholderDotColor = (role: IntakeRoleDefinition) => {
+        console.log("ROLE", role);
+        console.log("INTAKES", intakes);
         // Fix stakeholder status calculation (EXEC-33)
         // 1. Match by explicit intakeId link if present
         const intakeById = (intakes || []).find((i: any) => role.intakeId && i.id === role.intakeId);
