@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index';
-import { users, tenants } from '../db/schema';
+import { users, tenants, intakeVectors } from '../db/schema';
 import crypto from 'crypto';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { hashPassword, comparePassword, generateToken } from '../utils/auth';
 import { LoginRequest, RegisterRequest } from '@roadmap/shared';
 import { ZodError } from 'zod';
@@ -79,34 +79,56 @@ export async function register(req: Request, res: Response) {
     // Generate UUID for the new user
     const userId = crypto.randomUUID();
 
-    const [newUser] = await db
-      .insert(users)
-      .values({
-        id: userId,
-        email,
-        passwordHash,
-        name,
-        role: 'owner',
-      })
-      .returning();
+    const result = await db.transaction(async (tx) => {
+      const [newUser] = await tx
+        .insert(users)
+        .values({
+          id: userId,
+          email,
+          passwordHash,
+          name,
+          role: 'owner',
+        })
+        .returning();
 
-    // Create tenant record with company info
-    // TODO: Allow SuperAdmin to create cohorts and assign firms to them
-    // For now, all new signups default to Eugene Q1 2026
-    const [tenant] = await db
-      .insert(tenants)
-      .values({
-        ownerUserId: newUser.id,
-        name: company,
-        segment: industry,
-        cohortLabel: 'Eugene Q1 2026', // Default cohort for now
-        status: 'prospect',
-        discoveryComplete: false,
-      })
-      .returning();
+      // Create tenant record with company info
+      // TODO: Allow SuperAdmin to create cohorts and assign firms to them
+      // For now, all new signups default to Eugene Q1 2026
+      const [tenant] = await tx
+        .insert(tenants)
+        .values({
+          ownerUserId: newUser.id,
+          name: company,
+          segment: industry,
+          cohortLabel: 'Eugene Q1 2026', // Default cohort for now
+          status: 'prospect',
+          discoveryComplete: false,
+        })
+        .returning();
 
-    // Update user with tenantId
-    await db.update(users).set({ tenantId: tenant.id }).where(eq(users.id, newUser.id));
+      // Update user with tenantId
+      await tx.update(users).set({ tenantId: tenant.id }).where(eq(users.id, newUser.id));
+
+      // 🎯 Create Owner Vector (Invariant)
+      const existingOwnerVector = await tx.query.intakeVectors.findFirst({
+        where: and(eq(intakeVectors.tenantId, tenant.id), eq(intakeVectors.roleLabel, 'Tenant Owner')),
+      });
+
+      if (!existingOwnerVector) {
+        await tx.insert(intakeVectors).values({
+          id: crypto.randomUUID(),
+          tenantId: tenant.id,
+          roleLabel: 'Tenant Owner',
+          roleType: 'EXECUTIVE',
+          perceivedConstraints: 'Tenant Owner intake profile (generated).',
+          recipientEmail: email,
+        });
+      }
+
+      return { newUser, tenant };
+    });
+
+    const { newUser, tenant } = result;
 
     const token = generateToken({
       userId: newUser.id,

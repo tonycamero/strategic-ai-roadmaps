@@ -1,8 +1,8 @@
 
 import { Request, Response } from 'express';
 import { db } from '../db/index';
-import { diagnosticSnapshots, users, tenants } from '../db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { diagnosticSnapshots, users, tenants, intakeVectors } from '../db/schema';
+import { eq, desc, and } from 'drizzle-orm';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { generateToken, hashPassword } from '../utils/auth';
@@ -57,6 +57,22 @@ export async function saveSnapshot(req: Request, res: Response) {
         }).returning();
 
         await tx.update(users).set({ tenantId: newTenant.id }).where(eq(users.id, newUser.id));
+
+        // 🎯 Create Owner Vector (Invariant)
+        const existingOwnerVector = await tx.query.intakeVectors.findFirst({
+          where: and(eq(intakeVectors.tenantId, newTenant.id), eq(intakeVectors.roleLabel, 'Tenant Owner')),
+        });
+
+        if (!existingOwnerVector) {
+          await tx.insert(intakeVectors).values({
+            id: crypto.randomUUID(),
+            tenantId: newTenant.id,
+            roleLabel: 'Tenant Owner',
+            roleType: 'EXECUTIVE',
+            perceivedConstraints: 'Tenant Owner intake profile (generated).',
+            recipientEmail: email,
+          });
+        }
       });
 
       // Re-fetch to confirm or just use ID

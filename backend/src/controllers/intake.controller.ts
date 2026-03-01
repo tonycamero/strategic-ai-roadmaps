@@ -179,17 +179,52 @@ export async function submitIntake(req: AuthRequest, res: Response) {
     try {
       const userEmail = req.user.email;
       const tId = (req as any).tenantId;
-      if (tId && userEmail && resultIntake) {
-        await db
+
+      if (role === 'owner') {
+        if (!tId) {
+          return res.status(500).json({ error: 'Missing tenantId' });
+        }
+
+        const ownerVectors = await db
+          .select()
+          .from(intakeVectors)
+          .where(and(eq(intakeVectors.tenantId, tId), eq(intakeVectors.roleLabel, 'Tenant Owner')));
+
+        if (ownerVectors.length === 0) {
+          return res.status(500).json({ error: 'OWNER_VECTOR_MISSING' });
+        }
+        if (ownerVectors.length > 1) {
+          return res.status(500).json({ error: 'OWNER_VECTOR_DUPLICATE' });
+        }
+
+        const updateResult = await db
           .update(intakeVectors)
-          .set({ intakeId: resultIntake.id })
-          .where(and(
-            eq(intakeVectors.tenantId, tId),
-            eq(intakeVectors.recipientEmail, userEmail)
-          ));
+          .set({ intakeId: resultIntake?.id })
+          .where(and(eq(intakeVectors.tenantId, tId), eq(intakeVectors.roleLabel, 'Tenant Owner')))
+          .returning();
+
+        if (updateResult.length === 0) {
+          return res.status(500).json({ error: 'OWNER_VECTOR_MISSING' });
+        }
+        if (updateResult.length > 1) {
+          return res.status(500).json({ error: 'OWNER_VECTOR_DUPLICATE' });
+        }
+      } else {
+        if (tId && userEmail && resultIntake) {
+          await db
+            .update(intakeVectors)
+            .set({ intakeId: resultIntake.id })
+            .where(and(
+              eq(intakeVectors.tenantId, tId),
+              eq(intakeVectors.recipientEmail, userEmail)
+            ));
+        }
       }
     } catch (error) {
       console.error('Failed to link intake to vector:', error);
+      if (role === 'owner') {
+        return res.status(500).json({ error: 'FAILED_TO_LINK_OWNER_VECTOR' });
+      }
     }
 
     return res.json({ intake: resultIntake });
