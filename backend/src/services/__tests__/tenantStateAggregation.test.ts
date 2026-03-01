@@ -32,7 +32,7 @@ describe('TenantStateAggregationService (EXEC-12)', () => {
                 limit: vi.fn().mockReturnThis(),
                 then: (onFulfilled: any) => {
                     const res = results[callIdx++];
-                    return Promise.resolve(Array.isArray(res) ? res : (res === null ? [] : [res])).then(onFulfilled);
+                    return Promise.resolve(Array.isArray(res) ? res : (res == null ? [] : [res])).then(onFulfilled);
                 }
             };
             return query;

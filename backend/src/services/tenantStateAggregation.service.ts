@@ -94,6 +94,20 @@ export interface TenantLifecycleView {
         confirmedSufficiencyAt?: string | null
     }
 
+    analytics: {
+        frictionMap: {
+            totalTickets: number;
+            rejectedTickets: number;
+            manualWorkflowsIdentified: number;
+            strategicMisalignmentScore: number;
+            highPriorityBottlenecks: number;
+        };
+        capacityROI: {
+            projectedHoursSavedWeekly: number;
+            speedToValue: 'LOW' | 'MEDIUM' | 'HIGH';
+        };
+    }
+
     derived: {
         canLockIntake: boolean
         canGenerateDiagnostic: boolean
@@ -177,6 +191,20 @@ export async function getTenantLifecycleView(
     const tickets = await resolveTickets(tenantId, trx);
     const operator = await resolveOperator(tenantId, trx);
 
+    // 5.b Analytics (pure resolver)
+    const allTickets = await (trx || db)
+        .select()
+        .from(sopTickets)
+        .where(eq(sopTickets.tenantId, tenantId));
+
+    const analytics = resolveExecutiveAnalytics({
+        tickets: allTickets,
+        diagnostic: {
+            status: artifacts.diagnostic.status || 'generated',
+            exists: artifacts.diagnostic.exists
+        }
+    });
+
     // 6. Derived Flags
     const derived = computeDerivedFlags(lifecycle, governance, workflow, artifacts, tickets, operator);
 
@@ -196,6 +224,7 @@ export async function getTenantLifecycleView(
         artifacts,
         tickets,
         operator,
+        analytics,
         derived: publicDerived,
         capabilities: buildCapabilityMatrix({ derived, artifacts }),
         meta: {
@@ -721,6 +750,52 @@ function buildCapabilityMatrix(opts: { derived: InternalDerivedFlags, artifacts:
         declareCanonicalFindings: {
             allowed: opts.derived.synthesis.ready && opts.derived.lifecycleValid,
             reasons: opts.derived.blockingReasons
+        }
+    };
+}
+
+// ============================================================================
+// Executive Analytics Pure Resolver
+// ============================================================================
+function resolveExecutiveAnalytics(input: {
+    tickets: any[];
+    diagnostic: { status: string; exists: boolean };
+}) {
+    const totalTickets = input.tickets.length;
+    const approvedTickets = input.tickets.filter(t => t.status === 'approved');
+    const rejectedTickets = input.tickets.filter(t => t.status === 'rejected').length;
+
+    const manualKeywords = /manual|spreadsheet|hand|copy|paste|email|paper/i;
+    const manualWorkflowsIdentified = input.tickets.filter(t =>
+        manualKeywords.test(t.title || '') || manualKeywords.test(t.description || '')
+    ).length;
+
+    const highPriorityBottlenecks = input.tickets.filter(t => t.priority === 'high').length;
+
+    const strategicMisalignmentScore = totalTickets > 0
+        ? Math.round((rejectedTickets / totalTickets) * 100)
+        : 0;
+
+    const projectedHoursSavedWeekly = approvedTickets.reduce((sum, t) => sum + (t.timeEstimateHours || 0), 0);
+
+    let speedToValue: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW';
+    if (approvedTickets.length > 5) {
+        speedToValue = 'HIGH';
+    } else if (approvedTickets.length > 0) {
+        speedToValue = 'MEDIUM';
+    }
+
+    return {
+        frictionMap: {
+            totalTickets,
+            rejectedTickets,
+            manualWorkflowsIdentified,
+            strategicMisalignmentScore,
+            highPriorityBottlenecks
+        },
+        capacityROI: {
+            projectedHoursSavedWeekly,
+            speedToValue
         }
     };
 }
