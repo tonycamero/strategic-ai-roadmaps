@@ -43,8 +43,14 @@ export function DiagnosticReviewModal({ open, onClose, data, status }: Diagnosti
                         </button>
                     </div>
                     <div className="flex-1 overflow-y-auto px-6 py-12">
-                        <div className="text-center text-slate-500">
-                            No diagnostic payload found
+                        <div className="flex flex-col items-center justify-center space-y-4">
+                            <div className="text-red-500 text-4xl mb-4">⚠️</div>
+                            <div className="text-xl font-bold text-red-400 font-mono">
+                                MISSING_PAYLOAD
+                            </div>
+                            <div className="text-center text-slate-400 max-w-md bg-black/40 p-4 border border-red-900/50 rounded">
+                                The canonical artifact payload (outputs) is missing from the snapshot. Check the backend integration to ensure `artifacts.latestDiagnostic` includes the actual generated outputs in the snapshot data.
+                            </div>
                         </div>
                     </div>
                     <div className="flex items-center justify-end px-6 py-4 border-t border-slate-800 bg-slate-950/50">

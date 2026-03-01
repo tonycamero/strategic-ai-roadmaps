@@ -23,13 +23,13 @@ interface ExecutiveBriefModalProps {
                 alignmentSignals?: string | null;
                 mirrorSummary?: string | null;
                 mirrorSections?: Record<
-                string, 
-                {
-                     livedReality: string; 
-                     costOfStatusQuo: string; 
-                     theCall: string;
-                     }
-                     >;
+                    string,
+                    {
+                        livedReality: string;
+                        costOfStatusQuo: string;
+                        theCall: string;
+                    }
+                >;
             };
             meta?: {
                 expansion?: {
@@ -89,6 +89,43 @@ export function ExecutiveBriefModal({
 
     if (!open) return null;
 
+    if (!data || !data.synthesis) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto pt-16">
+                <div className="bg-slate-900 border border-slate-700 rounded-lg shadow-2xl w-full max-w-4xl max-h-[80vh] flex flex-col">
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+                        <h2 className="text-lg font-bold text-slate-100">Executive Brief</h2>
+                        <button
+                            onClick={onClose}
+                            className="text-slate-500 hover:text-slate-300 transition-colors text-2xl leading-none"
+                        >
+                            ×
+                        </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto px-6 py-12">
+                        <div className="flex flex-col items-center justify-center space-y-4">
+                            <div className="text-red-500 text-4xl mb-4">⚠️</div>
+                            <div className="text-xl font-bold text-red-400 font-mono">
+                                MISSING_PAYLOAD
+                            </div>
+                            <div className="text-center text-slate-400 max-w-md bg-black/40 p-4 border border-red-900/50 rounded">
+                                The canonical artifact payload (narrative synthesis) is missing from the snapshot. Check the backend integration to ensure `artifacts.executiveBrief` includes the actual generated outputs in the snapshot data.
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex items-center justify-end px-6 py-4 border-t border-slate-800 bg-slate-950/50">
+                        <button
+                            onClick={onClose}
+                            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition-colors text-sm font-medium"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     const displayStatus = status || data?.status || 'DRAFT';
     const isDelivered = displayStatus === 'DELIVERED';
 
@@ -119,65 +156,65 @@ No synthesis, prioritization, or reframing has been applied yet. The purpose of 
                 ? (content?.mirrorSections?.EXEC_SUMMARY?.livedReality || content?.mirrorSummary || 'Mirror Summary pending...')
                 : (content?.executiveSummary || synthesis?.executiveSummary || synthesis?.strategicSignalSummary || EXECUTIVE_SUMMARY_TEXT)
         },
-{
-  key: 'operatingReality',
-  label: 'Operating Reality',
-  content:
-    layer === 'mirror'
-      ? (
-          [
-            content?.mirrorSections?.OPERATING_REALITY?.livedReality,
-            content?.mirrorSections?.OPERATING_REALITY?.costOfStatusQuo,
-            content?.mirrorSections?.OPERATING_REALITY?.theCall,
-          ]
-            .filter(Boolean)
-            .join('\n\n') || 'Mirror narrative pending...'
-        )
-      : (content?.operatingReality ?? ''),
-},
+        {
+            key: 'operatingReality',
+            label: 'Operating Reality',
+            content:
+                layer === 'mirror'
+                    ? (
+                        [
+                            content?.mirrorSections?.OPERATING_REALITY?.livedReality,
+                            content?.mirrorSections?.OPERATING_REALITY?.costOfStatusQuo,
+                            content?.mirrorSections?.OPERATING_REALITY?.theCall,
+                        ]
+                            .filter(Boolean)
+                            .join('\n\n') || 'Mirror narrative pending...'
+                    )
+                    : (content?.operatingReality ?? ''),
+        },
 
-{
-  key: 'constraintLandscape',
-  label: 'Constraint Landscape',
-  content:
-    layer === 'mirror'
-      ? (content?.mirrorSections?.CONSTRAINT_LANDSCAPE?.livedReality ?? '')
-      : (content?.constraintLandscape ?? ''),
-},
+        {
+            key: 'constraintLandscape',
+            label: 'Constraint Landscape',
+            content:
+                layer === 'mirror'
+                    ? (content?.mirrorSections?.CONSTRAINT_LANDSCAPE?.livedReality ?? '')
+                    : (content?.constraintLandscape ?? ''),
+        },
 
-{
-  key: 'blindSpotRisks',
-  label: 'Blind Spot Risks',
-  content:
-    layer === 'mirror'
-      ? (
-          [
-            content?.mirrorSections?.BLIND_SPOT_RISKS?.livedReality ?? '',
-            content?.mirrorSections?.BLIND_SPOT_RISKS?.costOfStatusQuo ?? '',
-            content?.mirrorSections?.BLIND_SPOT_RISKS?.theCall ?? '',
-          ]
-            .filter((s) => s.trim().length > 0)
-            .join('\n\n') || 'Mirror narrative pending...'
-        )
-      : (content?.blindSpotRisks ?? ''),
-},
+        {
+            key: 'blindSpotRisks',
+            label: 'Blind Spot Risks',
+            content:
+                layer === 'mirror'
+                    ? (
+                        [
+                            content?.mirrorSections?.BLIND_SPOT_RISKS?.livedReality ?? '',
+                            content?.mirrorSections?.BLIND_SPOT_RISKS?.costOfStatusQuo ?? '',
+                            content?.mirrorSections?.BLIND_SPOT_RISKS?.theCall ?? '',
+                        ]
+                            .filter((s) => s.trim().length > 0)
+                            .join('\n\n') || 'Mirror narrative pending...'
+                    )
+                    : (content?.blindSpotRisks ?? ''),
+        },
 
-{
-  key: 'alignmentSignals',
-  label: 'Alignment Signals',
-  content:
-    layer === 'mirror'
-      ? (
-          [
-            content?.mirrorSections?.ALIGNMENT_SIGNALS?.livedReality ?? '',
-            content?.mirrorSections?.ALIGNMENT_SIGNALS?.costOfStatusQuo ?? '',
-            content?.mirrorSections?.ALIGNMENT_SIGNALS?.theCall ?? '',
-          ]
-            .filter((s) => s.trim().length > 0)
-            .join('\n\n') || 'Mirror narrative pending...'
-        )
-      : (content?.alignmentSignals ?? ''),
-},
+        {
+            key: 'alignmentSignals',
+            label: 'Alignment Signals',
+            content:
+                layer === 'mirror'
+                    ? (
+                        [
+                            content?.mirrorSections?.ALIGNMENT_SIGNALS?.livedReality ?? '',
+                            content?.mirrorSections?.ALIGNMENT_SIGNALS?.costOfStatusQuo ?? '',
+                            content?.mirrorSections?.ALIGNMENT_SIGNALS?.theCall ?? '',
+                        ]
+                            .filter((s) => s.trim().length > 0)
+                            .join('\n\n') || 'Mirror narrative pending...'
+                    )
+                    : (content?.alignmentSignals ?? ''),
+        },
 
         { key: 'delivery', label: 'Delivery & Export', content: 'delivery' },
     ];

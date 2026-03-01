@@ -224,23 +224,37 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     };
 
     const getStakeholderDotColor = (role: IntakeRoleDefinition) => {
-        console.log("ROLE", role);
-        console.log("INTAKES", intakes);
-        // Fix stakeholder status calculation (EXEC-33)
+        // Fix stakeholder status calculation (EXEC-STAKEHOLDER-TRISTATE-ALIGN-002)
         // 1. Match by explicit intakeId link if present
-        const intakeById = (intakes || []).find((i: any) => role.intakeId && i.id === role.intakeId);
-        if (intakeById) {
-            return intakeById.status === 'completed' ? 'bg-emerald-500' : 'bg-red-500';
+        let matchedIntake = (intakes || []).find((i: any) => role.intakeId && i.id === role.intakeId);
+
+        // 2. Fallback: Match by roleLabel
+        if (!matchedIntake) {
+            const truncatedLabel = role.roleLabel.substring(0, 20);
+            matchedIntake = (intakes || []).find((i: any) =>
+                i.role === role.roleLabel || i.role === truncatedLabel
+            );
         }
 
-        // 2. Fallback: Match by roleLabel (handles owner intake or vector-less intakes)
-        // Note: intakes.role field is limited to 20 chars in DB, so we check truncated match too.
-        const truncatedLabel = role.roleLabel.substring(0, 20);
-        const intakeByRole = (intakes || []).find((i: any) =>
-            i.role === role.roleLabel || i.role === truncatedLabel
+        // GREEN: Intake is completed
+        if (matchedIntake?.status === 'completed') {
+            return 'bg-emerald-500';
+        }
+
+        // Check if account exists (YELLOW condition)
+        const emailToMatch = role.recipientEmail?.toLowerCase().trim();
+        const hasAccount = !!emailToMatch && (
+            data?.teamMembers?.some((m: any) => m.email.toLowerCase().trim() === emailToMatch) ||
+            data?.owner?.email.toLowerCase().trim() === emailToMatch
         );
 
-        return intakeByRole?.status === 'completed' ? 'bg-emerald-500' : 'bg-red-500';
+        // YELLOW: Vector exists + account exists + intake NOT completed
+        if (hasAccount) {
+            return 'bg-yellow-500';
+        }
+
+        // RED: No account created (vector exists because we are evaluating `role`)
+        return 'bg-red-500';
     };
 
     // Snapshot fetch removed as it is now redundant with refreshData() hook
@@ -722,6 +736,11 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
 
     const projection = snapshot?.projection;
 
+    if (typeof window !== 'undefined') {
+        (window as any).__SNAPSHOT_DEBUG__ = snapshot;
+        (window as any).__PROJECTION_DEBUG__ = projection;
+    }
+
     if (!projection || !snapshot?.tenant) {
         return (
             <div className="p-6 text-slate-400">
@@ -735,13 +754,13 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     const teamMembers = snapshot.teamMembers ?? [];
     const intakes = snapshot.intakes ?? [];
     const intakeRoles = snapshot.intakeRoles ?? [];
-    const roadmaps = snapshot.roadmaps ?? [];
-    const latestRoadmap = snapshot.latestRoadmap ?? null;
+    const roadmaps = snapshot.roadmaps ?? (snapshot.artifacts?.latestRoadmap ? [snapshot.artifacts.latestRoadmap] : []);
+    const latestRoadmap = snapshot.artifacts?.latestRoadmap ?? null;
     const recentActivity = snapshot.recentActivity ?? [];
     const moderationStatus = snapshot.diagnosticStatus ?? null;
-    const latestDiagnostic = snapshot.latestDiagnostic ?? null;
-    const execBriefData = snapshot.execBrief ?? null;
-    const discoveryNotes = snapshot.discoveryNotes ?? null;
+    const latestDiagnostic = snapshot.artifacts?.latestDiagnostic ?? null;
+    const execBriefData = snapshot.artifacts?.executiveBrief ?? null;
+    const discoveryNotes = snapshot.artifacts?.discoveryNotes ?? null;
     const tickets = snapshot.tickets ?? [];
 
     const synthesisNotes = discoveryNotes?.notes || null;
