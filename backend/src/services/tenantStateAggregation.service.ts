@@ -352,8 +352,8 @@ async function resolveWorkflow(tenantId: string, trx?: any): Promise<TenantLifec
     const completedIntakeCount = allIntakes.filter(i => i.status === 'completed').length;
     const hasOwnerIntake = rolesCompleted.includes('owner');
 
-    const requiredRoles = ['owner', 'ops', 'sales', 'delivery'];
-    const intakesComplete = requiredRoles.every(role => rolesCompleted.includes(role));
+    const functionalRoles = rolesCompleted.filter(r => r !== 'owner');
+    const intakesComplete = hasOwnerIntake && functionalRoles.length >= 2;
 
     // 2. SOP-01
     const sop01Docs = await (trx || db)
@@ -564,7 +564,7 @@ async function resolveTickets(tenantId: string, trx?: any): Promise<TenantLifecy
  * ================================================================
  *
  * Signal Domain:
- * minimumIntakeSatisfied = workflow.intakesComplete (Implicitly required for both)
+ * minimumIntakeSatisfied = workflow.hasOwnerIntake
  * discoverySatisfied = workflow.discoveryComplete
  * briefReviewed = ['APPROVED', 'DELIVERED'].includes(governance.executiveBriefStatus)
  *
@@ -572,26 +572,25 @@ async function resolveTickets(tenantId: string, trx?: any): Promise<TenantLifecy
  *   minimumIntakeSatisfied &&
  *   discoverySatisfied &&
  *   briefReviewed &&
- *   (artifacts.diagnostic.status === 'locked' || artifacts.diagnostic.status === 'published') &&
- *   !terminal.isHardLocked
+ *   (artifacts.diagnostic.status === 'locked' || artifacts.diagnostic.status === 'published')
  *
  * Governance Domain:
- * fullIntakeSatisfied = workflow.intakesComplete
+ * fullIntakeSatisfied = workflow.hasOwnerIntake
  *
  * lifecycleValid =
  *   fullIntakeSatisfied &&
  *   briefReviewed &&
  *   operator.confirmedSufficiency &&
  *   artifacts.diagnostic.exists &&
- *   (valid diagnostic state) &&
- *   !workflow.hasOutstandingClarifications &&
- *   !workflow.hasPendingCoachingFeedback &&
  *   workflow.discoveryIngested &&
- *   (valid ticket state) &&
- *   !terminal.isHardLocked
+ *   !workflow.hasOutstandingClarifications &&
+ *   !workflow.hasPendingCoachingFeedback
  *
  * Terminal Domain:
- * isHardLocked = artifacts.hasCanonicalFindings
+ * isHardLocked = false
+ // Iterative SaaS doctrine.
+ // No artifact implies terminal.
+ // Hard lock reserved for explicit archive state (future).
  *
  * NOTE:
  * These formulas are frozen for Day-1 sprint.
@@ -606,8 +605,8 @@ function computeDerivedFlags(
     operator: TenantLifecycleView['operator']
 ): InternalDerivedFlags {
     // 1. INPUT SATISFACTION (The "Substrate")
-    const fullIntakeSatisfied = workflow.intakesComplete;
-    const minimumIntakeSatisfied = workflow.completedIntakeCount >= 2;
+    const fullIntakeSatisfied = workflow.hasOwnerIntake;
+    const minimumIntakeSatisfied = workflow.hasOwnerIntake;
     const discoverySatisfied = workflow.discoveryComplete;
     const briefReviewed = ['APPROVED', 'DELIVERED'].includes(governance.executiveBriefStatus);
 
@@ -661,7 +660,7 @@ function computeDerivedFlags(
         tickets.pending === 0;
 
     const blockingReasons: string[] = [];
-    if (!workflow.intakesComplete) blockingReasons.push('INTAKE_INCOMPLETE');
+    if (!workflow.hasOwnerIntake) blockingReasons.push('INTAKE_INCOMPLETE');
     if (!['APPROVED', 'DELIVERED'].includes(governance.executiveBriefStatus)) blockingReasons.push('NO_REVIEWED_BRIEF');
     if (!operator.confirmedSufficiency) blockingReasons.push('KNOWLEDGE_NOT_CONFIRMED');
     if (!artifacts.diagnostic.exists) blockingReasons.push('NO_DIAGNOSTIC');
@@ -671,27 +670,33 @@ function computeDerivedFlags(
     if (workflow.hasOutstandingClarifications) blockingReasons.push('OUTSTANDING_CLARIFICATIONS');
     if (workflow.hasPendingCoachingFeedback) blockingReasons.push('PENDING_COACHING_FEEDBACK');
     if (!workflow.discoveryIngested) blockingReasons.push('DISCOVERY_NOT_INGESTED');
-    if (tickets.pending > 0) blockingReasons.push('TICKETS_PENDING');
-    if (artifacts.diagnostic.exists && workflow.intakesComplete && tickets.total === 0) blockingReasons.push('NO_TICKETS');
+    // Ticket generation is enabled even if 0 tickets exist (Phase 6 entry)
 
     // Phase 5 synthesis readiness: STRICT derivation
     const synthesisReady =
         lifecycle.intakeWindowState === "CLOSED" &&
         synthesisInputsSatisfied &&
-        (artifacts.diagnostic.status === 'locked' || artifacts.diagnostic.status === 'published') &&
-        !artifacts.hasCanonicalFindings;
+        (artifacts.diagnostic.status === 'locked' || artifacts.diagnostic.status === 'published');
 
     if (!synthesisReady && !blockingReasons.includes('SYNTHESIS_NOT_READY')) {
         blockingReasons.push('SYNTHESIS_NOT_READY');
     }
 
-    if (artifacts.hasCanonicalFindings) {
+    const isHardLocked = false;
+    if (isHardLocked) {
         if (!blockingReasons.includes('TERMINAL_HARD_LOCK')) {
             blockingReasons.push('TERMINAL_HARD_LOCK');
         }
     }
 
-    const lifecycleValid = blockingReasons.length === 0;
+    const lifecycleValid =
+        fullIntakeSatisfied &&
+        briefReviewed &&
+        operator.confirmedSufficiency &&
+        artifacts.diagnostic.exists &&
+        workflow.discoveryIngested &&
+        !workflow.hasOutstandingClarifications &&
+        !workflow.hasPendingCoachingFeedback;
 
     return {
         canLockIntake,
@@ -728,7 +733,7 @@ function buildCapabilityMatrix(opts: { derived: InternalDerivedFlags, artifacts:
             reasons: opts.derived.blockingReasons
         },
         lockDiagnostic: {
-            allowed: opts.derived.canLockDiagnostic && !opts.artifacts.hasCanonicalFindings && (opts.derived.blockingReasons.filter(r => r !== 'SYNTHESIS_NOT_READY').length === 0),
+            allowed: opts.derived.canLockDiagnostic && (opts.artifacts.diagnostic.status !== 'locked' && opts.artifacts.diagnostic.status !== 'published'),
             reasons: opts.derived.blockingReasons
         },
         publishDiagnostic: {
@@ -748,7 +753,7 @@ function buildCapabilityMatrix(opts: { derived: InternalDerivedFlags, artifacts:
             reasons: opts.derived.blockingReasons
         },
         declareCanonicalFindings: {
-            allowed: opts.derived.synthesis.ready && opts.derived.lifecycleValid,
+            allowed: opts.derived.synthesis.ready && opts.derived.lifecycleValid && !opts.artifacts.hasCanonicalFindings,
             reasons: opts.derived.blockingReasons
         }
     };
