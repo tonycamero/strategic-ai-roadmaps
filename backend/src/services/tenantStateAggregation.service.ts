@@ -672,15 +672,15 @@ function computeDerivedFlags(
     if (!workflow.discoveryIngested) blockingReasons.push('DISCOVERY_NOT_INGESTED');
     // Ticket generation is enabled even if 0 tickets exist (Phase 6 entry)
 
-    // Phase 5 synthesis readiness: STRICT derivation
-    const synthesisReady =
-        lifecycle.intakeWindowState === "CLOSED" &&
-        synthesisInputsSatisfied &&
-        (artifacts.diagnostic.status === 'locked' || artifacts.diagnostic.status === 'published');
+    // Phase 5 synthesis readiness: ITERATIVE doctrine (decoupled from proposal state)
+const synthesisReady =
+    lifecycle.intakeWindowState === "CLOSED" &&
+    artifacts.diagnostic.exists &&
+    workflow.discoveryComplete;
 
-    if (!synthesisReady && !blockingReasons.includes('SYNTHESIS_NOT_READY')) {
-        blockingReasons.push('SYNTHESIS_NOT_READY');
-    }
+if (!synthesisReady && !blockingReasons.includes('SYNTHESIS_NOT_READY')) {
+    blockingReasons.push('SYNTHESIS_NOT_READY');
+}
 
     const isHardLocked = false;
     if (isHardLocked) {

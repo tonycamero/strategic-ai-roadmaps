@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import AssistedSynthesisAgentConsole from './AssistedSynthesisAgentConsole';
+import { superadminApi } from '../api';
 
 interface ProposedFindingItem {
     id: string;
@@ -60,30 +61,28 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
         }
     };
 
-    const handleGenerateProposals = async () => {
-        setIsGenerating(true);
-        setError(null);
-        try {
-            // STRIKE 1: API method does not exist on SuperAdmin API surface
-            // const data = await superadminApi.generateAssistedProposals({ tenantId });
-            throw new Error("Feature currently disabled in SuperAdmin Console (API Surface Compliance)");
+const handleGenerateProposals = async () => {
+    setIsGenerating(true);
+    setError(null);
+    try {
+        const response = await superadminApi.generateAssistedProposals(tenantId);
 
-            // setProposals(data.items);
-            // setRequiresGeneration(false);
-        } catch (err: any) {
-            console.error('Failed to generate proposals:', err);
+        setProposals(response.items || []);
+        setRequiresGeneration(false);
 
-            // PHASE 3: Parse and display structured error
-            const errorData = err.response?.data || {};
-            setError({
-                code: errorData.code || 'FEATURE_DISABLED',
-                message: err.message || 'Failed to generate proposals. See console for details.',
-                requestId: errorData.requestId
-            });
-        } finally {
-            setIsGenerating(false);
-        }
-    };
+    } catch (err: any) {
+        console.error('Failed to generate proposals:', err);
+
+        const errorData = err.response?.data || {};
+        setError({
+            code: errorData.code || 'UNKNOWN_ERROR',
+            message: err.message || 'Failed to generate proposals.',
+            requestId: errorData.requestId
+        });
+    } finally {
+        setIsGenerating(false);
+    }
+};
 
     const handleAccept = (id: string) => {
         setProposals(prev => prev.map(p => p.id === id ? { ...p, status: 'accepted' as const } : p));
@@ -110,21 +109,31 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
     };
 
     const handleDeclareCanon = async () => {
-        setIsSaving(true);
-        try {
-            // STRIKE 1: API method does not exist on SuperAdmin API surface
-            // await superadminApi.declareCanonicalFindings({ tenantId, findings: accepted });
-            throw new Error("Feature currently disabled in SuperAdmin Console (API Surface Compliance)");
-            await onRefresh?.();
+  setIsSaving(true);
 
-            onClose();
-        } catch (err) {
-            console.error('Failed to declare canonical findings:', err);
-            alert('Failed to declare findings. Feature disabled.');
-        } finally {
-            setIsSaving(false);
-        }
-    };
+  try {
+    const accepted = (proposals as any[])
+  .filter(p => p.status === 'accepted');
+
+    if (!accepted.length) {
+      alert('You must accept at least one finding.');
+      return;
+    }
+
+    await superadminApi.declareCanonicalFindings(
+      tenantId,
+      accepted
+    );
+
+    await onRefresh?.();
+    onClose();
+  } catch (err) {
+    console.error('Failed to declare canonical findings:', err);
+    alert('Failed to declare findings.');
+  } finally {
+    setIsSaving(false);
+  }
+};
 
     const scrollToArtifact = (artifact: string) => {
         setActiveSourceTab(artifact as any);
