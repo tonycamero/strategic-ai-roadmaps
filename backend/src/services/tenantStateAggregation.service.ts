@@ -23,10 +23,12 @@ import {
     roadmaps,
     intakeVectors,
     sopTickets,
-    intakeClarifications
+    intakeClarifications,
+    tenantStage6Config
 } from '../db/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
+import { computeCanonicalFindingsHash } from './canonicalFindingsHash.util';
 
 export const PROJECTION_VERSION = "1.0.0";
 /**
@@ -87,6 +89,13 @@ export interface TenantLifecycleView {
         }
         hasRoadmap: boolean
         hasCanonicalFindings: boolean
+        canonicalFindings?: {
+            documentId: string
+            ids: string[]      // sorted finding IDs extracted from content
+            count: number
+            hash: string       // SHA-256 of normalized sorted findings array
+            declaredAt: string // tenantDocuments.createdAt ISO string
+        }
     }
 
     operator: {
@@ -106,6 +115,15 @@ export interface TenantLifecycleView {
             projectedHoursSavedWeekly: number;
             speedToValue: 'LOW' | 'MEDIUM' | 'HIGH';
         };
+    }
+
+    stage6: {
+        constraintConfigExists: boolean
+        vertical: string | null
+        allowedNamespaces: string[]
+        allowedAdapters: string[]
+        maxComplexityTier: 'low' | 'medium' | 'high' | null
+        customDevAllowed: boolean | null
     }
 
     derived: {
@@ -211,6 +229,13 @@ export async function getTenantLifecycleView(
     // Day-4: Omit lifecycleValid from public surface (Clean Separation)
     const { lifecycleValid, ...publicDerived } = derived;
 
+    // 5.c Stage 6 Constraint Config (read-through — no derivation)
+    const [stage6ConfigRow] = await (trx || db)
+        .select()
+        .from(tenantStage6Config)
+        .where(eq(tenantStage6Config.tenantId, tenantId))
+        .limit(1);
+
     return {
         identity: {
             tenantId: tenant.id,
@@ -225,6 +250,14 @@ export async function getTenantLifecycleView(
         tickets,
         operator,
         analytics,
+        stage6: {
+            constraintConfigExists: !!stage6ConfigRow,
+            vertical: stage6ConfigRow?.vertical ?? null,
+            allowedNamespaces: stage6ConfigRow?.allowedNamespaces ?? [],
+            allowedAdapters: stage6ConfigRow?.allowedAdapters ?? [],
+            maxComplexityTier: (stage6ConfigRow?.maxComplexityTier as 'low' | 'medium' | 'high') ?? null,
+            customDevAllowed: stage6ConfigRow?.customDevAllowed ?? null,
+        },
         derived: publicDerived,
         capabilities: buildCapabilityMatrix({ derived, artifacts }),
         meta: {
@@ -521,7 +554,11 @@ async function resolveArtifacts(tenantId: string, trx?: any): Promise<TenantLife
         .limit(1);
 
     const [findings] = await (trx || db)
-        .select({ id: tenantDocuments.id })
+        .select({
+            id: tenantDocuments.id,
+            content: tenantDocuments.content,
+            createdAt: tenantDocuments.createdAt,
+        })
         .from(tenantDocuments)
         .where(and(
             eq(tenantDocuments.tenantId, tenantId),
@@ -530,11 +567,35 @@ async function resolveArtifacts(tenantId: string, trx?: any): Promise<TenantLife
         .orderBy(desc(tenantDocuments.createdAt))
         .limit(1);
 
+    let canonicalFindings: TenantLifecycleView['artifacts']['canonicalFindings'] = undefined;
+    if (findings?.content) {
+        try {
+            const parsed = JSON.parse(findings.content);
+            const rawItems: unknown[] = Array.isArray(parsed.findings) ? parsed.findings : [];
+            // Fail closed: only include items with a valid string id
+            const hashableItems = rawItems.filter(
+                (f): f is { id: string;[key: string]: unknown } => typeof (f as any).id === 'string'
+            );
+            const ids = [...hashableItems.map(f => f.id)].sort();
+            const hash = computeCanonicalFindingsHash(hashableItems);
+            canonicalFindings = {
+                documentId: findings.id,
+                ids,
+                count: ids.length,
+                hash,
+                declaredAt: (findings.createdAt as unknown as Date).toISOString(),
+            };
+        } catch {
+            // Content corrupt — emit undefined; hasCanonicalFindings remains true (existence preserved)
+        }
+    }
+
     return {
         hasExecutiveBrief: !!brief,
         diagnostic: diagnosticResult,
         hasRoadmap: !!roadmap,
-        hasCanonicalFindings: !!findings
+        hasCanonicalFindings: !!findings,
+        canonicalFindings,
     };
 }
 
@@ -673,14 +734,14 @@ function computeDerivedFlags(
     // Ticket generation is enabled even if 0 tickets exist (Phase 6 entry)
 
     // Phase 5 synthesis readiness: ITERATIVE doctrine (decoupled from proposal state)
-const synthesisReady =
-    lifecycle.intakeWindowState === "CLOSED" &&
-    artifacts.diagnostic.exists &&
-    workflow.discoveryComplete;
+    const synthesisReady =
+        lifecycle.intakeWindowState === "CLOSED" &&
+        artifacts.diagnostic.exists &&
+        workflow.discoveryComplete;
 
-if (!synthesisReady && !blockingReasons.includes('SYNTHESIS_NOT_READY')) {
-    blockingReasons.push('SYNTHESIS_NOT_READY');
-}
+    if (!synthesisReady && !blockingReasons.includes('SYNTHESIS_NOT_READY')) {
+        blockingReasons.push('SYNTHESIS_NOT_READY');
+    }
 
     const isHardLocked = false;
     if (isHardLocked) {

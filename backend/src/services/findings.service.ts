@@ -5,6 +5,7 @@ import { eq, and, desc } from 'drizzle-orm';
 import { createHash, randomUUID } from 'crypto';
 import { CanonicalDiscoveryNotes, CanonicalFindingsObject, CanonicalFinding } from '@roadmap/shared/src/canon';
 import { getTenantLifecycleView } from './tenantStateAggregation.service';
+import { computeCanonicalFindingsHash } from './canonicalFindingsHash.util';
 
 export class FindingsService {
     /**
@@ -127,7 +128,21 @@ export class FindingsService {
                 throw new Error('AUTHORITY_VIOLATION');
             }
 
-            // 3. Fetch discovery notes for ref
+            // 3. Application-layer duplicate guard (DB unique index is the hard enforcement)
+            const [existingDoc] = await trx
+                .select({ id: tenantDocuments.id })
+                .from(tenantDocuments)
+                .where(and(
+                    eq(tenantDocuments.tenantId, tenantId),
+                    eq(tenantDocuments.category, 'findings_canonical')
+                ))
+                .limit(1);
+
+            if (existingDoc) {
+                throw new Error('FINDINGS_ALREADY_DECLARED');
+            }
+
+            // 4. Fetch discovery notes for ref
             const [discoveryRecord] = await trx
                 .select()
                 .from(discoveryCallNotes)
@@ -139,6 +154,12 @@ export class FindingsService {
                 throw new Error('NO_DISCOVERY_CONTEXT');
             }
 
+            // 5. Compute stable artifact hash (shared utility — same as projection read path)
+            const hashableFindings = findings.filter(
+                (f): f is { id: string;[key: string]: unknown } => typeof f.id === 'string'
+            );
+            const artifactHash = computeCanonicalFindingsHash(hashableFindings);
+
             const findingsObject = {
                 id: randomUUID(),
                 tenantId,
@@ -147,7 +168,7 @@ export class FindingsService {
                 findings
             };
 
-            // 4. Persist Canonical Findings
+            // 6. Persist Canonical Findings
             await trx.insert(tenantDocuments).values({
                 tenantId,
                 category: 'findings_canonical',
@@ -159,11 +180,13 @@ export class FindingsService {
                 fileSize: Buffer.byteLength(JSON.stringify(findingsObject)),
                 filePath: 'virtual://findings',
                 uploadedBy: actorUserId,
+                artifactHash,
+                isImmutable: true,
                 createdAt: new Date(),
                 updatedAt: new Date()
             });
 
-            // 5. Audit
+            // 7. Audit
             await trx.insert(auditEvents).values({
                 tenantId,
                 actorUserId,
@@ -173,7 +196,7 @@ export class FindingsService {
                 entityId: findingsObject.id
             });
 
-            return { success: true, findingsId: findingsObject.id };
+            return { success: true, findingsId: findingsObject.id, artifactHash };
         });
     }
 }
