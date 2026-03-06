@@ -351,5 +351,20 @@ router.post('/firms/:tenantId/assisted-synthesis/agent/reset', superadminControl
 router.post('/firms/:tenantId/ticket-moderation/activate', validateTicketSchema, superadminController.activateTicketModeration);
 router.get('/firms/:tenantId/ticket-moderation/active', superadminController.getActiveModerationSession);
 
+// POST /api/superadmin/firms/:tenantId/stage6/compile-envelope
+// EXEC-TICKET-STAGE6-COMPILE-ENDPOINT-001 — hard 501 until constraint plane ships
+router.post('/firms/:tenantId/stage6/compile-envelope', superadminController.compileStage6Envelope);
+
+// S6-01: Canonical SAS proposals read path
+router.get('/firms/:tenantId/sas/proposals', superadminController.getSasProposals);
+
+// EXEC-TICKET-SAS-ELECTIONS-AUDIT-001 — Append-only decision log
+router.post('/firms/:tenantId/sas/proposals/:proposalId/election', superadminController.recordProposalElection);
+
+// S6-03: Election state query
+router.get('/firms/:tenantId/sas/elections/summary', superadminController.getElectionSummary);
+
+// S6-12: Run history endpoint
+router.get('/firms/:tenantId/sas/runs', superadminController.getSasRuns);
 
 export default router;

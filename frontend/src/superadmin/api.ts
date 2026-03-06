@@ -625,4 +625,17 @@ export const superadminApi = {
       user: { id: string; email: string; name: string; role: string };
       sessionId: string;
     }>(`/firms/${tenantId}/impersonate`),
+
+  // S6-02: SAS Proposal Election Persistence
+  recordProposalElection: (tenantId: string, proposalId: string, decision: 'keep' | 'trash', note?: string) =>
+    apiPost<{ electionId: string; proposalId: string; decision: string; decidedAt: string }>(
+      `/firms/${tenantId}/sas/proposals/${proposalId}/election`,
+      { decision, note }
+    ),
+
+  // S6-03: SAS Election State Query
+  getElectionSummary: (tenantId: string) =>
+    apiGet<{ elections: Array<{ proposalId: string; decision: string; decidedBy: string; createdAt: string }> }>(
+      `/firms/${tenantId}/sas/elections/summary`
+    ),
 };

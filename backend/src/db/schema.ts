@@ -438,6 +438,10 @@ export const tenantDocuments = pgTable('tenant_documents', {
   uploadedBy: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }),
   isPublic: boolean('is_public').notNull().default(false),
 
+  // Artifact integrity (findings_canonical hardening)
+  artifactHash: varchar('artifact_hash', { length: 64 }), // SHA-256 hex, null for non-hashed docs
+  isImmutable: boolean('is_immutable').notNull().default(false),
+
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (table) => {
@@ -445,6 +449,108 @@ export const tenantDocuments = pgTable('tenant_documents', {
     tenantDocSopIdx: uniqueIndex('tenant_doc_sop_idx').on(table.tenantId, table.category, table.sopNumber, table.outputNumber),
   };
 });
+
+
+// ============================================================================
+// SELECTION ENVELOPES (EXEC-TICKET-SELECTION-ENVELOPE-SCHEMA-001)
+// Deterministic compiler artifact — binds canonical findings to inventory selection.
+// Immutable after creation. Arrays stored sorted. No timestamps in selectionHash input.
+// ============================================================================
+
+export const selectionEnvelopes = pgTable('selection_envelopes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+
+  // Binding anchors — all three form the unique key
+  canonicalFindingsHash: varchar('canonical_findings_hash', { length: 64 }).notNull(),
+  registryVersion: varchar('registry_version', { length: 50 }).notNull(),
+  envelopeVersion: varchar('envelope_version', { length: 50 }).notNull(),
+
+  // Constraint snapshot — persisted for forensic auditability and engine replay
+  executionEnvelope: jsonb('execution_envelope').notNull(),
+
+  // Selection results — arrays must be sorted before insert
+  inventoryIds: jsonb('inventory_ids').notNull(),   // sorted InventoryTicket.inventoryId[]
+  adapterIds: jsonb('adapter_ids').notNull(),        // sorted distinct adapter values
+  findingIds: jsonb('finding_ids').notNull(),         // full canonical input set, sorted
+
+  // Determinism anchor — SHA-256 of normalized payload (excludes createdAt)
+  selectionHash: varchar('selection_hash', { length: 64 }).notNull(),
+
+  // Audit only — excluded from hash input
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+
+// ============================================================================
+// TENANT STAGE 6 CONFIG (EXEC-TICKET-STAGE6-CONSTRAINT-PLANE-001)
+// Explicit constraint authority for Stage 6 compilation.
+// No defaults. Row must exist per-tenant before compilation may proceed.
+// ============================================================================
+
+export const tenantStage6Config = pgTable('tenant_stage6_config', {
+  tenantId: uuid('tenant_id')
+    .primaryKey()
+    .references(() => tenants.id, { onDelete: 'cascade' }),
+
+  vertical: varchar('vertical', { length: 40 }).notNull(),
+
+  allowedNamespaces: text('allowed_namespaces').array().notNull(),
+  allowedAdapters: text('allowed_adapters').array().notNull(),
+
+  maxComplexityTier: varchar('max_complexity_tier', { length: 10 })
+    .notNull(),
+
+  customDevAllowed: boolean('custom_dev_allowed')
+    .notNull()
+    .default(false),
+
+  createdAt: timestamp('created_at')
+    .notNull()
+    .defaultNow(),
+
+  updatedAt: timestamp('updated_at')
+    .notNull()
+    .defaultNow(),
+});
+
+
+// ============================================================================
+// SAS PERSISTENCE (EXEC-TICKET-SAS-PERSISTENCE-PLANE-001)
+// Run-scoped, tenant-bound, immutable proposal persistence.
+// ============================================================================
+
+export const sasRuns = pgTable('sas_runs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  scope: jsonb('scope').notNull(),
+  sourceArtifactRefs: jsonb('source_artifact_refs').notNull(),
+  createdByUserId: uuid('created_by_user_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const sasProposals = pgTable('sas_proposals', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  sasRunId: uuid('sas_run_id').notNull().references(() => sasRuns.id, { onDelete: 'cascade' }),
+  proposalType: varchar('proposal_type', { length: 20 }).notNull(),
+  content: text('content').notNull(),
+  sourceAnchors: jsonb('source_anchors').notNull(),
+  agentModel: varchar('agent_model', { length: 50 }),
+  conceptHash: text('concept_hash'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const sasElections = pgTable('sas_elections', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  proposalId: uuid('proposal_id').notNull().references(() => sasProposals.id, { onDelete: 'cascade' }),
+  decision: varchar('decision', { length: 10 }).notNull(),
+  note: text('note'),
+  decidedByUserId: uuid('decided_by_user_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 
 // ============================================================================
 // AGENT CONFIGS (Multi-field prompt composition per firm + role)
@@ -1103,7 +1209,7 @@ export type NewFirmBaselineIntake = typeof firmBaselineIntake.$inferInsert;
  */
 export const assistedSynthesisAgentSessions = pgTable('assisted_synthesis_agent_sessions', {
   id: uuid('id').primaryKey().defaultRandom(),
-  tenantId: varchar('tenant_id', { length: 255 }).notNull(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   stage: varchar('stage', { length: 50 }).notNull().default('assisted_synthesis'),
   phase: varchar('phase', { length: 50 }).notNull().default('current_facts'),
   contextVersion: varchar('context_version', { length: 255 }).notNull(), // hash or timestamp of proposals
@@ -1144,6 +1250,11 @@ export const ticketModerationSessions = pgTable('ticket_moderation_sessions', {
   completedAt: timestamp('completed_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+
+  // EXEC-TICKET-MODERATION-BINDING-001
+  // Nullable for backward-compat with pre-enforcement sessions.
+  // All new sessions MUST populate this field — activation rejects if no envelope exists.
+  selectionEnvelopeId: uuid('selection_envelope_id').references(() => selectionEnvelopes.id, { onDelete: 'restrict' }),
 });
 
 export const ticketsDraft = pgTable('tickets_draft', {
