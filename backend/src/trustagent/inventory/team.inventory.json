@@ -38,7 +38,9 @@
       "Consulting",
       "Trades",
       "Real Estate"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "TEAM-002",
@@ -76,7 +78,9 @@
       "Healthcare",
       "Trades",
       "Coaching"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "TEAM-003",
@@ -113,7 +117,9 @@
       "Agency",
       "Consulting",
       "Trades"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "TEAM-004",
@@ -150,7 +156,9 @@
       "Coaching",
       "Sales Teams",
       "Trades"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "TEAM-005",
@@ -185,7 +193,9 @@
       "Agency",
       "Customer Support",
       "Sales Ops"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "TEAM-006",
@@ -220,6 +230,8 @@
       "Trades",
       "Real Estate",
       "Consulting"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   }
 ]

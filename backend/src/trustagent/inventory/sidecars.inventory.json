@@ -19,7 +19,9 @@
     "implementationPattern": "Monitors new leads for inactivity over defined windows (24h, 48h, 72h). If untouched, triggers alerts, escalations, or automated reassignment. Reduces lead decay by enforcing predictable response SLAs.",
     "complexity": "medium",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "sidecar",
+    "requiresCustomDev": true
   },
   {
     "inventoryId": "SIDE-002",
@@ -41,7 +43,9 @@
     "implementationPattern": "Flags deals that remain too long in pipeline stages (e.g., 5 days in Qualified) and triggers reminders or escalations. Identifies bottlenecks and improves conversion predictability.",
     "complexity": "medium",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "sidecar",
+    "requiresCustomDev": true
   },
   {
     "inventoryId": "SIDE-003",
@@ -63,7 +67,9 @@
     "implementationPattern": "Sends automated nudges such as 'Follow up with this lead', 'Re-engage overdue task', or 'Prep for your upcoming meeting'. Encourages reps to stay consistent with follow-up and task hygiene.",
     "complexity": "medium",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "sidecar",
+    "requiresCustomDev": true
   },
   {
     "inventoryId": "SIDE-004",
@@ -85,7 +91,9 @@
     "implementationPattern": "Compiles weekly KPIs (lead volume, deal movement, SLAs, task hygiene, campaign performance) and generates a leadership-ready digest via email, Slack, or dashboard.",
     "complexity": "medium",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "sidecar",
+    "requiresCustomDev": true
   },
   {
     "inventoryId": "SIDE-005",
@@ -107,7 +115,9 @@
     "implementationPattern": "Generates a renewal risk score for members or clients by analyzing inactivity, engagement, milestone completion, and pipeline aging. Flags accounts requiring proactive outreach.",
     "complexity": "medium",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "sidecar",
+    "requiresCustomDev": true
   },
   {
     "inventoryId": "SIDE-006",
@@ -130,7 +140,9 @@
     "implementationPattern": "Creates bi-directional sync flows across operational systems. Example: GHL new deal → Asana project; overdue task → Slack alert; closed-won → QuickBooks invoice creation.",
     "complexity": "medium",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "sidecar",
+    "requiresCustomDev": true
   },
   {
     "inventoryId": "SIDE-007",
@@ -152,7 +164,9 @@
     "implementationPattern": "Monitors workflow artifacts such as required forms, approvals, message templates, deliverable checklists, and compliance trigger points. Issues alerts for missing or overdue compliance steps.",
     "complexity": "medium",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "sidecar",
+    "requiresCustomDev": true
   },
   {
     "inventoryId": "SIDE-008",
@@ -173,6 +187,8 @@
     "implementationPattern": "Provides a structured roll-up of organizations with multiple contacts, accounts, or divisions. Allows unified visibility on engagement, renewal status, ticket volume, and historical activity.",
     "complexity": "medium",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "sidecar",
+    "requiresCustomDev": true
   }
 ]

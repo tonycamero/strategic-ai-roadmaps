@@ -29,7 +29,9 @@
     "implementationPattern": "Whenever a new lead or deal is created or advances, create a consistent task bundle for sales, onboarding, and delivery with owners and due dates.",
     "complexity": "medium",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "OPS_HANDOFF_PROTOCOL",
@@ -61,7 +63,9 @@
     "dependencies": [
       "PM_PIPELINE_STANDARDIZATION"
     ],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "OPS_INTERNAL_SLA_ENFORCEMENT",
@@ -92,7 +96,9 @@
     "dependencies": [
       "OPS_INTERNAL_TASK_ENGINE"
     ],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "OPS_DAILY_OPS_DIGEST",
@@ -119,7 +125,9 @@
     "implementationPattern": "Use scheduled workflows and smart lists to send a daily email to ops leads with key open deals and overdue tasks.",
     "complexity": "low",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "OPS_OVERDUE_RECOVERY",
@@ -149,7 +157,9 @@
     "dependencies": [
       "OPS_INTERNAL_TASK_ENGINE"
     ],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "OPS_PROJECT_CHECKLIST_GENERATOR",
@@ -178,7 +188,9 @@
     "implementationPattern": "When a project intake form is submitted, create a task bundle tailored to project type, owner, and timeline fields.",
     "complexity": "medium",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "OPS_PIPELINE_TASK_SYNC",
@@ -208,7 +220,9 @@
     "dependencies": [
       "PM_PIPELINE_STANDARDIZATION"
     ],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "OPS_REVISION_REQUEST_LOOP",
@@ -238,7 +252,9 @@
     "implementationPattern": "Use a standard revision request form that creates tasks for the delivery team and confirms receipt to the client.",
     "complexity": "medium",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "OPS_MULTI_OWNER_ROUTING",
@@ -270,7 +286,9 @@
     "dependencies": [
       "OPS_INTERNAL_TASK_ENGINE"
     ],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "OPS_CLIENT_STATUS_UPDATES",
@@ -301,7 +319,9 @@
     "dependencies": [
       "PM_PIPELINE_STANDARDIZATION"
     ],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "OPS_MISSED_DEADLINE_ESCALATION",
@@ -331,7 +351,9 @@
     "dependencies": [
       "OPS_OVERDUE_RECOVERY"
     ],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "OPS_INTERNAL_JOB_TICKETING",
@@ -361,6 +383,8 @@
     "implementationPattern": "Use an internal request form to create a job ticket in a dedicated internal pipeline with associated tasks.",
     "complexity": "medium",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   }
 ]

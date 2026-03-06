@@ -35,7 +35,9 @@
       "Coaching",
       "Trades",
       "Ecommerce"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "MKT-002",
@@ -69,7 +71,9 @@
       "Agency",
       "Coaching",
       "Education"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "MKT-003",
@@ -103,7 +107,9 @@
       "Agency",
       "Ecommerce",
       "Coaching"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "MKT-004",
@@ -139,7 +145,9 @@
       "Real Estate",
       "Coaching",
       "Trades"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "MKT-005",
@@ -172,7 +180,9 @@
       "Healthcare",
       "Coaching",
       "Trades"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "MKT-006",
@@ -209,7 +219,9 @@
       "Trades",
       "Home Services",
       "Healthcare"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "MKT-007",
@@ -245,7 +257,9 @@
       "Agency",
       "Ecommerce",
       "Coaching"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "MKT-008",
@@ -282,6 +296,8 @@
       "Coaching",
       "Education",
       "Agency"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   }
 ]

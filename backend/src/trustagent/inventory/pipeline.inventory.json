@@ -28,7 +28,9 @@
     "implementationPattern": "Normalize capture forms, map fields to pipeline opportunity fields, and auto-create opportunities across all channels.",
     "complexity": "medium",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "PM_PIPELINE_STANDARDIZATION",
@@ -56,7 +58,9 @@
     "implementationPattern": "Define canonical stage list, required fields, and stage rules, and map all opportunities to it.",
     "complexity": "medium",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "PM_AUTO_ASSIGNMENT",
@@ -88,7 +92,9 @@
     "dependencies": [
       "PM_UNIFY_LEAD_CAPTURE"
     ],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "PM_SOURCE_ENFORCEMENT",
@@ -117,7 +123,9 @@
     "implementationPattern": "UTM capture + source tag standardization workflow.",
     "complexity": "low",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "PM_SLA_TASK_AUTOMATION",
@@ -147,7 +155,9 @@
     "dependencies": [
       "PM_PIPELINE_STANDARDIZATION"
     ],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "PM_DORMANT_REENGAGEMENT",
@@ -178,7 +188,9 @@
     "implementationPattern": "Workflow waits X days → checks stage → sends reactivation message.",
     "complexity": "medium",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "PM_MISSED_OPP_RECOVERY",
@@ -210,7 +222,9 @@
     "dependencies": [
       "PM_PIPELINE_STANDARDIZATION"
     ],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "PM_PIPELINE_HYGIENE",
@@ -240,7 +254,9 @@
     "dependencies": [
       "PM_PIPELINE_STANDARDIZATION"
     ],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "PM_STAGE_AUTOMATION_CHECKLIST",
@@ -270,7 +286,9 @@
     "dependencies": [
       "PM_PIPELINE_STANDARDIZATION"
     ],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "PM_SPEED_TO_CONTACT",
@@ -303,6 +321,8 @@
     "dependencies": [
       "PM_UNIFY_LEAD_CAPTURE"
     ],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   }
 ]

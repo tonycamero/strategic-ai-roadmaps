@@ -38,7 +38,9 @@
       "Chamber",
       "Economic Development",
       "Associations"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "CHAMBER-002",
@@ -75,7 +77,9 @@
     "verticalTags": [
       "Chamber",
       "Associations"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "CHAMBER-003",
@@ -115,7 +119,9 @@
       "Chamber",
       "Events",
       "Associations"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "CHAMBER-004",
@@ -155,7 +161,9 @@
       "Chamber",
       "Economic Development",
       "Associations"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "CHAMBER-005",
@@ -194,6 +202,8 @@
       "Chamber",
       "Economic Development",
       "Associations"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   }
 ]
