@@ -4254,7 +4254,6 @@ export async function declareCanonicalFindings(req: AuthRequest, res: Response) 
       return res.status(400).json({ error: 'EMPTY_DECLARATION', message: 'Cannot declare canonical findings with an empty set. At least one finding must be accepted.' });
     }
 
-
     const result = await FindingsService.declareCanonicalFindings({
       tenantId,
       findings,
@@ -4262,16 +4261,17 @@ export async function declareCanonicalFindings(req: AuthRequest, res: Response) 
       actorRole: req.user?.role
     });
 
-    return res.json(result);
-  } catch (error: any) {
-    if (error.message === 'AUTHORITY_VIOLATION') {
+    return res.json({
+      success: true,
+      alreadyDeclared: (result as any)?.alreadyDeclared ?? false,
+      ...result
+    });
+  } catch (err: any) {
+    console.error("DECLARE_FINDINGS_ERROR:", err);
+    if (err.message === 'AUTHORITY_VIOLATION') {
       return res.status(403).json({ error: 'AUTHORITY_VIOLATION', message: 'Declare findings blocked by mutation firewall.' });
     }
-    if (error.message === 'FINDINGS_ALREADY_DECLARED') {
-      return res.status(409).json({ error: 'FINDINGS_ALREADY_DECLARED', message: 'Canonical findings already declared for this tenant. Declaration is immutable.' });
-    }
-    console.error('Declare Canonical Findings Error:', error);
-    return res.status(500).json({ error: error?.message || 'Failed to declare canonical findings' });
+    return res.status(500).json({ error: err?.message || 'Failed to declare canonical findings' });
   }
 }
 
@@ -5014,14 +5014,25 @@ export async function recordProposalElection(req: AuthRequest, res: Response) {
       return res.status(404).json({ error: 'PROPOSAL_NOT_FOUND' });
     }
 
-    // Insert new election (append-only)
+    // Insert or update election (UPSERT)
     const [election] = await db.insert(sasElections).values({
       tenantId,
       proposalId,
       decision,
       note: note || null,
       decidedByUserId: req.user!.userId,
-    }).returning();
+      createdAt: new Date(), // Force refresh timestamp on update
+    })
+      .onConflictDoUpdate({
+        target: sasElections.proposalId,
+        set: {
+          decision: sql`excluded.decision`,
+          note: sql`excluded.note`,
+          decidedByUserId: sql`excluded.decided_by_user_id`,
+          createdAt: sql`now()`,
+        }
+      })
+      .returning();
 
     return res.json({
       electionId: election.id,
@@ -5073,31 +5084,25 @@ export async function getElectionSummary(req: AuthRequest, res: Response) {
     const elections = await db
       .select()
       .from(sasElections)
-      .where(eq(sasElections.tenantId, tenantId))
-      .orderBy(desc(sasElections.createdAt));
+      .where(and(
+        eq(sasElections.tenantId, tenantId),
+        sql`${sasElections.proposalId} IN ${proposalIds}`
+      ));
 
-    // Filter to only elections for latest-run proposals
-    const scopedElections = elections.filter(e => proposalIds.includes(e.proposalId));
+    // Map elections for response
+    const electionList = elections.map(e => ({
+      proposalId: e.proposalId,
+      decision: e.decision,
+      decidedBy: e.decidedByUserId,
+      createdAt: e.createdAt,
+    }));
 
-    // Compute latest decision per proposal
-    const latestByProposal = new Map<string, string>();
-    for (const e of scopedElections) {
-      if (!latestByProposal.has(e.proposalId)) {
-        latestByProposal.set(e.proposalId, e.decision);
-      }
-    }
-
-    const accepted = [...latestByProposal.values()].filter(d => d === 'keep').length;
-    const rejected = [...latestByProposal.values()].filter(d => d === 'trash').length;
-    const pending = proposalIds.length - latestByProposal.size;
+    const accepted = electionList.filter(e => e.decision === 'keep').length;
+    const rejected = electionList.filter(e => e.decision === 'trash').length;
+    const pending = proposalIds.length - electionList.length;
 
     return res.json({
-      elections: scopedElections.map(e => ({
-        proposalId: e.proposalId,
-        decision: e.decision,
-        decidedBy: e.decidedByUserId,
-        createdAt: e.createdAt,
-      })),
+      elections: electionList,
       total: proposalIds.length,
       accepted,
       rejected,

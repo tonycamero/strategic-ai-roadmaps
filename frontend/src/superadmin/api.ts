@@ -261,6 +261,7 @@ async function apiPatch<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function apiPost<T>(path: string, body?: unknown): Promise<T> {
+  console.log(`[SAS API] POST ${path}`, body);
   const token = getToken();
   const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
@@ -627,11 +628,13 @@ export const superadminApi = {
     }>(`/firms/${tenantId}/impersonate`),
 
   // S6-02: SAS Proposal Election Persistence
-  recordProposalElection: (tenantId: string, proposalId: string, decision: 'keep' | 'trash', note?: string) =>
-    apiPost<{ electionId: string; proposalId: string; decision: string; decidedAt: string }>(
+  recordProposalElection: (tenantId: string, proposalId: string, decision: 'keep' | 'trash', note?: string) => {
+    console.log("SAS API proposalId:", proposalId);
+    return apiPost<{ electionId: string; proposalId: string; decision: string; decidedAt: string }>(
       `/firms/${tenantId}/sas/proposals/${proposalId}/election`,
       { decision, note }
-    ),
+    );
+  },
 
   // S6-03: SAS Election State Query
   getElectionSummary: (tenantId: string) =>

@@ -549,7 +549,9 @@ export const sasElections = pgTable('sas_elections', {
   note: text('note'),
   decidedByUserId: uuid('decided_by_user_id').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => ({
+  proposalIdUnique: uniqueIndex('sas_elections_proposal_id_unique').on(table.proposalId),
+}));
 
 
 // ============================================================================

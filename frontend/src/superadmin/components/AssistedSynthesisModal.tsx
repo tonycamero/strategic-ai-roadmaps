@@ -49,59 +49,50 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
     const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false)
     const [error, setError] = useState<{ code: string; message: string; requestId?: string } | null>(null)
 
-    const [confidence, setConfidence] = useState<Record<string, { keep: number; trash: number }>>({})
 
     useEffect(() => {
         if (open) {
             loadProposedFindings()
-            loadElectionConfidence()
             setError(null)
         }
     }, [open, firmId])
 
     const loadProposedFindings = async () => {
         try {
-            const res = await superadminApi.getProposedFindings(firmId)
+            const [proposalRes, electionRes] = await Promise.all([
+                superadminApi.getProposedFindings(firmId),
+                superadminApi.getElectionSummary(firmId)
+            ])
 
-            if (!res || !res.items || res.items.length === 0) {
+            if (!proposalRes || !proposalRes.items || proposalRes.items.length === 0) {
                 setRequiresGeneration(true)
                 setProposals([])
                 return
             }
 
-            setProposals(res.items)
+            // Map election state to proposals
+            const electionMap: Record<string, 'keep' | 'trash'> = {}
+            if (electionRes?.elections) {
+                for (const e of electionRes.elections) {
+                    electionMap[e.proposalId] = e.decision as 'keep' | 'trash'
+                }
+            }
+
+            const normalized = proposalRes.items.map((p: ProposedFindingItem) => {
+                const decision = electionMap[p.id]
+                let status = p.status || 'pending'
+                if (decision === 'keep') status = 'accepted'
+                if (decision === 'trash') status = 'rejected'
+                return { ...p, status }
+            })
+
+            setProposals(normalized)
             setRequiresGeneration(false)
 
         } catch (err) {
             console.error('[SAS] failed loading proposals', err)
             setRequiresGeneration(true)
             setProposals([])
-        }
-    }
-
-    // S6-02/S6-08: Load persisted election state from backend
-    const loadElectionConfidence = async () => {
-        try {
-            const res = await superadminApi.getElectionSummary(firmId)
-            if (!res?.elections) return
-
-            // Build map: proposalId → latest decision
-            const electionMap: Record<string, 'keep' | 'trash'> = {}
-            for (const e of res.elections) {
-                electionMap[e.proposalId] = e.decision as 'keep' | 'trash'
-            }
-
-            // Apply persisted election state to proposals
-            setProposals(prev =>
-                prev.map(p => {
-                    const decision = electionMap[p.id]
-                    if (decision === 'keep') return { ...p, status: 'accepted' as const }
-                    if (decision === 'trash') return { ...p, status: 'rejected' as const }
-                    return p
-                })
-            )
-        } catch (err) {
-            console.warn('[SAS] Election load failed (non-fatal)', err)
         }
     }
 
@@ -137,28 +128,34 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
 
     }
 
+    const updateProposalStatus = (index: number, status: 'accepted' | 'rejected') => {
+        setProposals(prev => {
+            const next = [...prev];
+            if (next[index]) {
+                next[index] = { ...next[index], status };
+            }
+            return next;
+        });
+    };
+
     // S6-02: Elections persist to backend, local state updates after success
     const handleAccept = async (id: string) => {
+        console.log("SAS handler proposalId (Accept):", id)
         try {
             await superadminApi.recordProposalElection(firmId, id, 'keep')
-            setProposals(prev =>
-                prev.map(p =>
-                    p.id === id ? { ...p, status: 'accepted' as const } : p
-                )
-            )
+            const index = proposals.findIndex(p => p.id === id)
+            updateProposalStatus(index, 'accepted')
         } catch (err) {
             console.error('Election failed', err)
         }
     }
 
     const handleReject = async (id: string) => {
+        console.log("SAS handler proposalId (Reject):", id)
         try {
             await superadminApi.recordProposalElection(firmId, id, 'trash')
-            setProposals(prev =>
-                prev.map(p =>
-                    p.id === id ? { ...p, status: 'rejected' as const } : p
-                )
-            )
+            const index = proposals.findIndex(p => p.id === id)
+            updateProposalStatus(index, 'rejected')
         } catch (err) {
             console.error('Election failed', err)
         }
@@ -432,29 +429,34 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
                                                 .filter(p => p.type === section.type)
                                                 .map(proposal => {
 
-                                                    const conf = confidence[proposal.id]
-                                                    const total = conf ? conf.keep + conf.trash : 0
-                                                    const pct = total ? Math.round((conf.keep / total) * 100) : null
-
                                                     return (
 
                                                         <div
                                                             key={proposal.id}
-                                                            className="bg-slate-950 border border-slate-800 rounded p-3"
+                                                            className={`p-3 rounded border transition-all ${proposal.status === 'accepted' ? 'bg-emerald-900/10 border-emerald-500/50' :
+                                                                proposal.status === 'rejected' ? 'bg-red-900/10 border-red-500/50' :
+                                                                    'bg-slate-950 border-slate-800'
+                                                                }`}
                                                         >
 
                                                             <div className="flex justify-end gap-2 mb-1">
 
                                                                 <button
-                                                                    onClick={() => handleReject(proposal.id)}
-                                                                    className="text-red-400"
+                                                                    onClick={() => {
+                                                                        console.log("SAS click proposal.id (Reject):", proposal.id)
+                                                                        handleReject(proposal.id)
+                                                                    }}
+                                                                    className={`transition-colors ${proposal.status === 'rejected' ? 'text-red-500' : 'text-red-400/40 hover:text-red-400'}`}
                                                                 >
                                                                     ✕
                                                                 </button>
 
                                                                 <button
-                                                                    onClick={() => handleAccept(proposal.id)}
-                                                                    className="text-emerald-400"
+                                                                    onClick={() => {
+                                                                        console.log("SAS click proposal.id (Accept):", proposal.id)
+                                                                        handleAccept(proposal.id)
+                                                                    }}
+                                                                    className={`transition-colors ${proposal.status === 'accepted' ? 'text-emerald-500' : 'text-emerald-400/40 hover:text-emerald-400'}`}
                                                                 >
                                                                     ✓
                                                                 </button>
