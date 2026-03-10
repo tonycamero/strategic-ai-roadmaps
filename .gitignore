@@ -43,6 +43,9 @@ pnpm-store/
 docs/vercel_token.SECRET
 docs/_secrets_local/
 
+# local architecture working library
+docs/00 architecture/
+
 # Windows ADS metadata
 *:Zone.Identifier
 backend/verification_output.txt
