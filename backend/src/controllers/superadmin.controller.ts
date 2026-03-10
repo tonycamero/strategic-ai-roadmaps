@@ -8,8 +8,8 @@ import {
   roadmapOutcomes, agentConfigs, agentThreads, webinarSettings,
   diagnostics, executiveBriefs, sopTickets, ticketModerationSessions,
   ticketsDraft, intakeClarifications, impersonationSessions,
-  discoveryNotesLog, assistedSynthesisAgentSessions, selectionEnvelopes,
-  sasRuns, sasProposals, sasElections
+  discoveryNotesLog, assistedSynthesisAgentSessions, selectionEnvelopes, legacySelectionEnvelopes,
+  sasRuns, sasProposals, sasElections, sasElectionEvents, firmBaselineIntake
 } from '../db/schema';
 import { eq, and, sql, count, desc, asc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
@@ -34,11 +34,13 @@ import { persistSop01OutputsForTenant } from '../services/sop01Persistence';
 import { buildNormalizedIntakeContext } from '../services/intakeNormalizer';
 import { validateBriefModeSchema } from '../services/schemaGuard.service';
 import { generateFinalRoadmapForTenant } from '../services/finalRoadmap.service';
-import { getTenantLifecycleView } from '../services/tenantStateAggregation.service';
+import { getTenantLifecycleView, getStage5Artifacts } from '../services/tenantStateAggregation.service';
 import { lockDiagnosticAndSyncSop01Outputs, publishDiagnostic as publishDiagnosticService } from '../services/diagnosticsGeneration.service';
 import { FindingsService } from '../services/findings.service';
-import { compileSelectionEnvelope } from '../services/stage6Compilation.service';
+import { Stage6CompilationService } from '../services/stage6Compilation.service';
+import { SelectionEnvelopeService } from '../services/selectionEnvelope.service';
 import { SELECTION_ENGINE_VERSION } from '../trustagent/constants/selectionEngine.constants';
+import { AssistedSynthesisArtifactContract } from '../services/assistedSynthesisProposals.service';
 
 const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 
@@ -3853,19 +3855,8 @@ export async function getDiscoveryNotesLog(req: AuthRequest, res: Response) {
     if (!requireSuperAdmin(req, res)) return;
     const { tenantId } = req.params;
 
-    const entries = await db
-      .select({
-        id: discoveryNotesLog.id,
-        source: discoveryNotesLog.source,
-        delta: discoveryNotesLog.delta,
-        createdAt: discoveryNotesLog.createdAt,
-        createdByUserId: discoveryNotesLog.createdByUserId,
-      })
-      .from(discoveryNotesLog)
-      .where(eq(discoveryNotesLog.tenantId, tenantId))
-      .orderBy(desc(discoveryNotesLog.createdAt));
-
-    return res.json({ entries });
+    const artifacts = await getStage5Artifacts(tenantId);
+    return res.json(artifacts);
   } catch (error: any) {
     console.error('[getDiscoveryNotesLog] Error:', error);
     return res.status(500).json({ error: 'Internal Server Error', details: error.message });
@@ -3885,41 +3876,18 @@ export async function getDiagnosticArtifacts(req: AuthRequest, res: Response) {
       return res.status(400).json({ error: 'Diagnostic ID is required' });
     }
 
-    // Fetch diagnostic with all artifacts
-    const [diagnostic] = await db
-      .select()
+    const [diagnosticRecord] = await db
+      .select({ tenantId: diagnostics.tenantId })
       .from(diagnostics)
       .where(eq(diagnostics.id, diagnosticId))
       .limit(1);
 
-    if (!diagnostic) {
-      return res.status(404).json({
-        error: 'DIAGNOSTIC_NOT_FOUND',
-        message: 'No diagnostic found with this ID.'
-      });
+    if (!diagnosticRecord) {
+      return res.status(404).json({ error: 'DIAGNOSTIC_NOT_FOUND' });
     }
 
-    // Return diagnostic with artifacts structured for the modal
-    return res.status(200).json({
-      diagnostic: {
-        id: diagnostic.id,
-        tenantId: diagnostic.tenantId,
-        sopVersion: diagnostic.sopVersion,
-        status: diagnostic.status,
-        createdAt: diagnostic.createdAt,
-        updatedAt: diagnostic.updatedAt,
-        approvedAt: diagnostic.approvedAt,
-        generatedByUserId: diagnostic.generatedByUserId,
-        approvedByUserId: diagnostic.approvedByUserId,
-      },
-      outputs: {
-        overview: diagnostic.overview,
-        aiOpportunities: diagnostic.aiOpportunities,
-        roadmapSkeleton: diagnostic.roadmapSkeleton,
-        discoveryQuestions: diagnostic.discoveryQuestions,
-      }
-    });
-
+    const artifacts = await getStage5Artifacts(diagnosticRecord.tenantId);
+    return res.status(200).json(artifacts);
   } catch (error: any) {
     console.error('[Diagnostic Artifacts] Get error:', error);
     return res.status(500).json({
@@ -3933,13 +3901,14 @@ export async function getDiagnosticArtifacts(req: AuthRequest, res: Response) {
  * Generates proposed findings using LLM synthesis of all artifacts
  */
 export async function generateAssistedProposals(req: AuthRequest, res: Response) {
-  const requestId = randomUUID(); // PHASE 1: Request correlation
+  const requestId = nanoid(); // PHASE 1: Request correlation
 
   try {
     if (!requireSuperAdmin(req, res)) return;
     const { tenantId } = req.params;
+    const forceNewRun = (req as any).query?.force === 'true';
 
-    console.log(`[generateAssistedProposals:${requestId}] Request for tenant ${tenantId}`);
+    console.log(`[generateAssistedProposals:${requestId}] Request for tenant ${tenantId} (force: ${forceNewRun})`);
 
     // ENFORCE PROJECTION GATE (META-TICKET: SAS AUTHORITY REALIGNMENT)
     const { getTenantLifecycleView } = await import('../services/tenantStateAggregation.service');
@@ -3952,19 +3921,28 @@ export async function generateAssistedProposals(req: AuthRequest, res: Response)
       });
     }
 
+    // Phase 6: Run selection and guard logic moved lower after artifact fetching
+
     // Dynamic import to avoid circular dependencies
     const { AssistedSynthesisProposalsService, ProposalGenerationError } = await import('../services/assistedSynthesisProposals.service');
 
     // Fetch dependencies directly per Phase 4
-    const [discoveryRaw] = await db.select().from(discoveryCallNotes)
-      .where(eq(discoveryCallNotes.tenantId, tenantId)).orderBy(desc(discoveryCallNotes.createdAt)).limit(1);
+    const discoveryNotes = await db.select().from(discoveryNotesLog)
+      .where(eq(discoveryNotesLog.tenantId, tenantId)).orderBy(desc(discoveryNotesLog.createdAt));
     const [diagnostic] = await db.select().from(diagnostics)
       .where(eq(diagnostics.tenantId, tenantId)).orderBy(desc(diagnostics.createdAt)).limit(1);
     const [execBrief] = await db.select().from(executiveBriefs)
       .where(eq(executiveBriefs.tenantId, tenantId)).orderBy(desc(executiveBriefs.createdAt)).limit(1);
+    const [roiBaseline] = await db.select().from(firmBaselineIntake)
+      .where(eq(firmBaselineIntake.tenantId, tenantId)).orderBy(desc(firmBaselineIntake.createdAt)).limit(1);
 
-    const artifactContract = {
-      discoveryNotes: discoveryRaw?.notes || null,
+    const artifactContract: AssistedSynthesisArtifactContract = {
+      discoveryNotes: discoveryNotes.map(n => ({
+        id: n.id,
+        text: n.delta,
+        author: n.source,
+        createdAt: n.createdAt.toISOString()
+      })),
       diagnostic: diagnostic ? {
         id: diagnostic.id,
         overview: diagnostic.overview,
@@ -3975,7 +3953,8 @@ export async function generateAssistedProposals(req: AuthRequest, res: Response)
       executiveBrief: execBrief ? {
         id: execBrief.id,
         synthesis: execBrief.synthesis
-      } : undefined
+      } : undefined,
+      roiBaseline: roiBaseline || undefined
     };
 
     // EXEC-TICKET-SAS-SCOPE-CONSTRAINTS-001: Explicit scope enforcement
@@ -4005,6 +3984,62 @@ export async function generateAssistedProposals(req: AuthRequest, res: Response)
       strictGrounding: true,
     };
 
+    // EXEC-TICKET-SAS-PERSISTENCE-PLANE-001: Run-scoped persistence
+    const sourceArtifactRefs: Record<string, string> = {};
+    if (artifactContract.diagnostic?.id) sourceArtifactRefs.diagnostic = artifactContract.diagnostic.id;
+    if (artifactContract.executiveBrief?.id) sourceArtifactRefs.executiveBrief = artifactContract.executiveBrief.id;
+
+    let run: any;
+
+    if (!forceNewRun) {
+      const [recentRun] = await db
+        .select()
+        .from(sasRuns)
+        .where(eq(sasRuns.tenantId, tenantId))
+        .orderBy(desc(sasRuns.createdAt))
+        .limit(1);
+
+      const TEN_MINUTES = 10 * 60 * 1000;
+      if (recentRun && (Date.now() - new Date(recentRun.createdAt).getTime()) < TEN_MINUTES) {
+        run = recentRun;
+        console.log(`[generateAssistedProposals:${requestId}] Reusing recent run ${run.id}`);
+      }
+    }
+
+    if (!run) {
+      [run] = await db.insert(sasRuns).values({
+        tenantId,
+        scope: scope as any,
+        sourceArtifactRefs: sourceArtifactRefs as any,
+        createdByUserId: req.user!.userId,
+      }).returning();
+      console.log(`[generateAssistedProposals:${requestId}] Created new run ${run.id}`);
+    }
+
+    // TARGETED PROPOSAL GUARD: Evaluate reuse against the active run
+    const [existingProposals] = await db
+      .select({ count: count() })
+      .from(sasProposals)
+      .where(eq(sasProposals.sasRunId, run.id));
+
+    const proposalCount = Number(existingProposals.count);
+    const shouldReuseProposals = proposalCount > 0 && !forceNewRun;
+
+    console.log("[SAS] proposalGuard", {
+      requestId,
+      tenantId,
+      runId: run.id,
+      proposalCount,
+      forceNewRun
+    });
+
+    if (shouldReuseProposals) {
+      return res.json({
+        message: "Existing SAS proposals found",
+        runId: run.id
+      });
+    }
+
     // Generate proposals using LLM (with requestId for tracing)
     const draft = await AssistedSynthesisProposalsService.generateProposals(tenantId, artifactContract, requestId);
 
@@ -4015,97 +4050,93 @@ export async function generateAssistedProposals(req: AuthRequest, res: Response)
       draft.items = validItems;
     }
 
-    // EXEC-TICKET-SAS-PERSISTENCE-PLANE-001: Run-scoped persistence
-    // Create sas_run, then insert each proposal as sas_proposal row.
-    // No overwrite. No archiving. Immutable after insert.
-    try {
-      const sourceArtifactRefs: Record<string, string> = {};
-      if (artifactContract.diagnostic?.id) sourceArtifactRefs.diagnostic = artifactContract.diagnostic.id;
-      if (artifactContract.executiveBrief?.id) sourceArtifactRefs.executiveBrief = artifactContract.executiveBrief.id;
+    // S6-13: Concept dedup — compute hash and skip duplicates
+    const { createHash } = await import('crypto');
+    const proposalRows: any[] = [];
+    let dedupSkipped = 0;
 
-      // S6-16: Run explosion guard — reuse run if created < 10 minutes ago
-      const forceNewRun = (req as any).query?.force === 'true';
-      let run: any;
+    for (const item of draft.items) {
+      const conceptHash = createHash('sha256')
+        .update(item.text.trim().toLowerCase())
+        .digest('hex');
 
-      if (!forceNewRun) {
-        const [recentRun] = await db
-          .select()
-          .from(sasRuns)
-          .where(eq(sasRuns.tenantId, tenantId))
-          .orderBy(desc(sasRuns.createdAt))
-          .limit(1);
+      // Check if concept already exists for this tenant
+      const [existing] = await db
+        .select({ id: sasProposals.id })
+        .from(sasProposals)
+        .where(and(
+          eq(sasProposals.tenantId, tenantId),
+          eq(sasProposals.sasRunId, run.id),
+          eq(sasProposals.conceptHash, conceptHash)
+        ))
+        .limit(1);
 
-        const TEN_MINUTES = 10 * 60 * 1000;
-        if (recentRun && (Date.now() - new Date(recentRun.createdAt).getTime()) < TEN_MINUTES) {
-          run = recentRun;
-          console.log(`[generateAssistedProposals:${requestId}] Reusing recent run ${run.id} (< 10 min old)`);
-        }
+      if (existing) {
+        dedupSkipped++;
+        continue;
       }
 
-      if (!run) {
-        [run] = await db.insert(sasRuns).values({
-          tenantId,
-          scope: scope as any,
-          sourceArtifactRefs: sourceArtifactRefs as any,
-          createdByUserId: req.user!.userId,
-        }).returning();
-      }
+      // META-TICKET Stage-6 Part 6: JSONB Capability Mapping
+      // Mapping lives at the top level of sourceAnchors object
+      const sourceAnchors = {
+        capabilityId: item.capabilityId || null,
+        capabilityNamespace: item.capabilityNamespace || null,
+        evidenceRefs: (item.evidenceRefs || []).map((ref: any) => ({
+          ...ref,
+          sourceType: ref.sourceType || ref.artifact || 'evidence',
+        }))
+      };
 
-      // S6-13: Concept dedup — compute hash and skip duplicates
-      const { createHash } = await import('crypto');
-      const proposalRows: any[] = [];
-      let dedupSkipped = 0;
-
-      for (const item of draft.items) {
-        const conceptHash = createHash('sha256')
-          .update(item.text.trim().toLowerCase())
-          .digest('hex');
-
-        // Check if concept already exists for this tenant
-        const [existing] = await db
-          .select({ id: sasProposals.id })
-          .from(sasProposals)
-          .where(and(
-            eq(sasProposals.tenantId, tenantId),
-            eq(sasProposals.conceptHash, conceptHash)
-          ))
-          .limit(1);
-
-        if (existing) {
-          dedupSkipped++;
-          continue;
-        }
-
-        proposalRows.push({
-          tenantId,
-          sasRunId: run.id,
-          proposalType: item.type,
-          content: item.text,
-          sourceAnchors: (item.evidenceRefs || []) as any,
-          agentModel: 'gpt-4o-2024-08-06',
-          conceptHash,
-        });
-      }
-
-      let insertedProposals: any[] = [];
-      if (proposalRows.length > 0) {
-        insertedProposals = await db.insert(sasProposals).values(proposalRows).returning();
-      }
-
-      console.log(`[generateAssistedProposals:${requestId}] Persisted run ${run.id} with ${insertedProposals.length} proposals (${dedupSkipped} deduped)`);
-
-      // S6-06: Legacy tenant_documents write path REMOVED.
-      // All SAS proposals now persist exclusively via sas_runs + sas_proposals.
-    } catch (dbError: any) {
-      console.error(`[generateAssistedProposals:${requestId}] DB persist failed:`, dbError);
-      return res.status(500).json({
-        code: 'PROPOSALS_PERSIST_FAILED',
-        message: 'Generated proposals but failed to save. Retry or contact support.',
-        requestId,
-        details: dbError.message
+      proposalRows.push({
+        tenantId,
+        sasRunId: run.id,
+        proposalType: item.type,
+        content: item.text,
+        sourceAnchors: sourceAnchors as any,
+        agentModel: 'gpt-4o-2024-08-06',
+        conceptHash,
       });
     }
 
+    let insertedProposals: any[] = [];
+    if (proposalRows.length > 0) {
+      insertedProposals = await db.insert(sasProposals).values(proposalRows).returning();
+    }
+
+    // Map draft items back to their persistent counterparts (newly inserted or existing)
+    const finalItems = await Promise.all(draft.items.map(async (item: any) => {
+      const conceptHash = createHash('sha256')
+        .update(item.text.trim().toLowerCase())
+        .digest('hex');
+
+      const [row] = await db
+        .select()
+        .from(sasProposals)
+        .where(and(
+          eq(sasProposals.tenantId, tenantId),
+          eq(sasProposals.sasRunId, run.id),
+          eq(sasProposals.conceptHash, conceptHash)
+        ))
+        .limit(1);
+
+      if (row) {
+        return {
+          id: row.id,
+          findingId: row.id, // for frontend compatibility
+          type: row.proposalType,
+          title: row.content.substring(0, 100),
+          text: row.content,
+          description: row.content,
+          status: 'pending', // Fresh generation always pending
+          sourceAnchors: row.sourceAnchors
+        };
+      }
+      return null;
+    }));
+
+    (draft as any).items = finalItems.filter(Boolean);
+
+    console.log(`[generateAssistedProposals:${requestId}] Persisted run ${run.id} with ${insertedProposals.length} proposals (${dedupSkipped} deduped)`);
     return res.json(draft);
   } catch (error: any) {
     console.error(`[generateAssistedProposals:${requestId}] Error:`, error);
@@ -4140,6 +4171,91 @@ export async function generateAssistedProposals(req: AuthRequest, res: Response)
 }
 
 /**
+ * Stage-6 Activation Endpoint
+ * POST /firms/:tenantId/stage6/activate
+ * 
+ * Compiles an existing Selection Envelope into SOP tickets.
+ */
+export async function activateStage6Controller(req: AuthRequest, res: Response) {
+  const { tenantId } = req.params;
+  const { selectionEnvelopeId } = req.body;
+  const requestId = nanoid();
+
+  console.log(`[activateStage6:${requestId}] Activating envelope ${selectionEnvelopeId} for tenant ${tenantId}`);
+
+  if (!requireConsultant(req, res)) return;
+
+  if (!selectionEnvelopeId) {
+    return res.status(400).json({
+      code: 'MISSING_ENVELOPE_ID',
+      message: 'Selection Envelope ID is required.',
+      requestId
+    });
+  }
+
+  try {
+    // 1. Ownership & Authorization Check
+    const [envelope] = await db
+      .select({ id: selectionEnvelopes.id, tenantId: selectionEnvelopes.tenantId })
+      .from(selectionEnvelopes)
+      .where(and(eq(selectionEnvelopes.id, selectionEnvelopeId), eq(selectionEnvelopes.tenantId, tenantId)))
+      .limit(1);
+
+    if (!envelope) {
+      return res.status(404).json({
+        code: 'ENVELOPE_NOT_FOUND',
+        message: 'The requested Selection Envelope was not found for this firm.',
+        requestId
+      });
+    }
+
+    // 2. Invoke Deterministic Compilation
+    const result = await Stage6CompilationService.activateStage6(selectionEnvelopeId);
+
+    // 3. Log Audit Event
+    await db.insert(auditEvents).values({
+      tenantId,
+      actorUserId: req.user!.userId,
+      eventType: 'STAGE6_ACTIVATED',
+      metadata: {
+        selectionEnvelopeId,
+        ticketsCreated: result.ticketsCreated,
+        capabilitiesActivated: result.capabilitiesActivated,
+        requestId
+      }
+    });
+
+    console.log(`[activateStage6:${requestId}] Successfully activated envelope ${selectionEnvelopeId}. Tickets created: ${result.ticketsCreated}`);
+
+    return res.json({
+      success: true,
+      ...result,
+      requestId
+    });
+  } catch (error: any) {
+    console.error(`[activateStage6:${requestId}] Activation failed:`, error);
+
+    // Handle expected error types
+    const errorMap: Record<string, number> = {
+      'CAPABILITY_NOT_ALLOWED': 409,
+      'INVENTORY_NOT_FOUND': 409,
+      'STAGE6_CONFIG_MISSING': 409,
+      'ENVELOPE_NOT_FOUND': 404
+    };
+
+    const statusCode = errorMap[error.message] || 500;
+
+    return res.status(statusCode).json({
+      code: error.message || 'ACTIVATION_FAILED',
+      message: error.message === 'CAPABILITY_NOT_ALLOWED'
+        ? 'One or more selected capabilities are not authorized for this firm.'
+        : 'Activation failed. Please check firm configuration.',
+      requestId
+    });
+  }
+}
+
+/**
  * GET /api/superadmin/firms/:tenantId/findings/proposed
  * S6-01 + S6-11: Reads from sas_proposals scoped to latest run.
  * Returns proposals in the shape expected by AssistedSynthesisModal.
@@ -4149,18 +4265,24 @@ export async function getProposedFindings(req: AuthRequest, res: Response) {
     if (!requireSuperAdmin(req, res)) return;
     const { tenantId } = req.params;
 
-    // S6-11: Find latest run for this tenant
+    // S6-11: Find latest run for this tenant that actually has proposals
     const [latestRun] = await db
-      .select()
+      .select({ id: sasRuns.id, createdAt: sasRuns.createdAt })
       .from(sasRuns)
+      .innerJoin(sasProposals, and(
+        eq(sasProposals.sasRunId, sasRuns.id),
+        eq(sasProposals.tenantId, sasRuns.tenantId) // Tenant isolation
+      ))
       .where(eq(sasRuns.tenantId, tenantId))
+      .groupBy(sasRuns.id, sasRuns.createdAt)
       .orderBy(desc(sasRuns.createdAt))
       .limit(1);
 
     if (!latestRun) {
       return res.json({
         items: [],
-        requiresGeneration: true
+        requiresGeneration: true,
+        runId: null
       });
     }
 
@@ -4179,13 +4301,21 @@ export async function getProposedFindings(req: AuthRequest, res: Response) {
     }
 
     // Map to the shape expected by the modal (ProposedFindingItem)
-    const items = proposals.map(p => ({
-      id: p.id,
-      type: p.proposalType,
-      text: p.content,
-      evidenceRefs: p.sourceAnchors || [],
-      status: 'pending' as const,
-    }));
+    // META-TICKET SAS-CAPABILITY-ROLLBACK-01: Extract capability from sourceAnchors JSONB
+    const items = proposals.map(p => {
+      const anchors = (p.sourceAnchors as any) || {};
+      return {
+        id: p.id,
+        findingId: p.id,
+        type: p.proposalType,
+        title: p.content.substring(0, 100),
+        text: p.content,
+        description: p.content,
+        evidenceRefs: anchors.evidenceRefs || [],
+        status: (p as any).status || 'pending',
+        sourceAnchors: anchors
+      };
+    });
 
     return res.json({ items, runId: latestRun.id });
   } catch (error: any) {
@@ -4203,16 +4333,21 @@ export async function getSasProposals(req: AuthRequest, res: Response) {
     if (!requireSuperAdmin(req, res)) return;
     const { tenantId } = (req as any).params;
 
-    // S6-11: Find latest run
+    // S6-11: Find latest run with proposals
     const [latestRun] = await db
-      .select()
+      .select({ id: sasRuns.id, createdAt: sasRuns.createdAt })
       .from(sasRuns)
+      .innerJoin(sasProposals, and(
+        eq(sasProposals.sasRunId, sasRuns.id),
+        eq(sasProposals.tenantId, sasRuns.tenantId) // Tenant isolation
+      ))
       .where(eq(sasRuns.tenantId, tenantId))
+      .groupBy(sasRuns.id, sasRuns.createdAt)
       .orderBy(desc(sasRuns.createdAt))
       .limit(1);
 
     if (!latestRun) {
-      return res.json({ proposals: [], runId: null });
+      return res.json({ items: [], runId: null });
     }
 
     const proposals = await db
@@ -4221,16 +4356,24 @@ export async function getSasProposals(req: AuthRequest, res: Response) {
       .where(eq(sasProposals.sasRunId, latestRun.id))
       .orderBy(desc(sasProposals.createdAt));
 
+    // META-TICKET SAS-CAPABILITY-ROLLBACK-01: Unify response shape with generator
     return res.json({
       runId: latestRun.id,
-      proposals: proposals.map(p => ({
-        id: p.id,
-        type: p.proposalType,
-        content: p.content,
-        sourceAnchors: p.sourceAnchors,
-        runId: p.sasRunId,
-        createdAt: p.createdAt,
-      })),
+      items: proposals.map(p => {
+        const anchors = (p.sourceAnchors as any) || {};
+        return {
+          id: p.id,
+          type: p.proposalType,
+          text: p.content, // frontend expects .text
+          status: 'pending', // default if no election
+          sourceAnchors: {
+            capability: anchors.capabilityId || null,
+            namespace: anchors.capabilityNamespace || null
+          },
+          findingId: p.id, // for ref
+          createdAt: p.createdAt,
+        };
+      }),
     });
   } catch (error: any) {
     console.error('[SAS] getSasProposals error:', error);
@@ -4247,16 +4390,21 @@ export async function declareCanonicalFindings(req: AuthRequest, res: Response) 
   try {
     if (!requireSuperAdmin(req, res)) return;
     const { tenantId } = req.params;
-    const { findings } = req.body;
+    const { findings, sasRunId } = req.body;
 
     // S6-18: Guard against empty canonical declaration
     if (!findings || !Array.isArray(findings) || findings.length === 0) {
       return res.status(400).json({ error: 'EMPTY_DECLARATION', message: 'Cannot declare canonical findings with an empty set. At least one finding must be accepted.' });
     }
 
+    if (!sasRunId) {
+      return res.status(400).json({ error: 'MISSING_SAS_RUN_ID', message: 'Selection Envelope requires a valid sasRunId.' });
+    }
+
     const result = await FindingsService.declareCanonicalFindings({
       tenantId,
       findings,
+      sasRunId,
       actorUserId: req.user!.userId,
       actorRole: req.user?.role
     });
@@ -4264,6 +4412,8 @@ export async function declareCanonicalFindings(req: AuthRequest, res: Response) 
     return res.json({
       success: true,
       alreadyDeclared: (result as any)?.alreadyDeclared ?? false,
+      envelopeId: (result as any)?.envelopeId,
+      envelopeHash: (result as any)?.envelopeHash,
       ...result
     });
   } catch (err: any) {
@@ -4420,9 +4570,9 @@ export async function activateTicketModeration(req: AuthRequest, res: Response) 
     console.log(`[Stage 6] Validating SelectionEnvelope for tenant: ${tenantId}`);
     const [boundEnvelope] = await db
       .select()
-      .from(selectionEnvelopes)
-      .where(eq(selectionEnvelopes.tenantId, tenantId))
-      .orderBy(desc(selectionEnvelopes.createdAt))
+      .from(legacySelectionEnvelopes)
+      .where(eq(legacySelectionEnvelopes.tenantId, tenantId))
+      .orderBy(desc(legacySelectionEnvelopes.createdAt))
       .limit(1);
 
     if (!boundEnvelope) {
@@ -4671,15 +4821,17 @@ export async function sendAgentMessage(req: AuthRequest, res: Response) {
     const { AssistedSynthesisAgentService, AgentOperationError } = await import('../services/assistedSynthesisAgent.service');
 
     // Fetch dependencies directly per Phase 4
-    const [discoveryRaw] = await db.select().from(discoveryCallNotes)
-      .where(eq(discoveryCallNotes.tenantId, tenantId)).orderBy(desc(discoveryCallNotes.createdAt)).limit(1);
+    const discoveryNotes = await db.select().from(discoveryNotesLog)
+      .where(eq(discoveryNotesLog.tenantId, tenantId)).orderBy(desc(discoveryNotesLog.createdAt));
     const [diagnostic] = await db.select().from(diagnostics)
       .where(eq(diagnostics.tenantId, tenantId)).orderBy(desc(diagnostics.createdAt)).limit(1);
     const [execBrief] = await db.select().from(executiveBriefs)
       .where(eq(executiveBriefs.tenantId, tenantId)).orderBy(desc(executiveBriefs.createdAt)).limit(1);
+    const [roiBaseline] = await db.select().from(firmBaselineIntake)
+      .where(eq(firmBaselineIntake.tenantId, tenantId)).orderBy(desc(firmBaselineIntake.createdAt)).limit(1);
 
-    const artifactContract = {
-      discoveryNotes: discoveryRaw?.notes || null,
+    const artifactContract: AssistedSynthesisArtifactContract = {
+      discoveryNotes: discoveryNotes.map(n => ({ id: n.id, text: n.delta, author: n.source, createdAt: n.createdAt.toISOString() })),
       diagnostic: diagnostic ? {
         id: diagnostic.id,
         overview: diagnostic.overview,
@@ -4690,7 +4842,8 @@ export async function sendAgentMessage(req: AuthRequest, res: Response) {
       executiveBrief: execBrief ? {
         id: execBrief.id,
         synthesis: execBrief.synthesis
-      } : undefined
+      } : undefined,
+      roiBaseline: roiBaseline || undefined
     };
 
     const result = await AssistedSynthesisAgentService.sendMessage(
@@ -4951,31 +5104,9 @@ export async function impersonateTenantOwner(req: AuthRequest, res: Response) {
 // No moderation. No ticket generation. No projection mutation.
 // ============================================================================
 
+// DEPRECATED: use activateStage6Controller
 export async function compileStage6Envelope(req: AuthRequest, res: Response) {
-  try {
-    const tenantId = (req as any).params?.tenantId;
-    if (!tenantId) {
-      return res.status(400).json({ error: 'Missing tenantId' });
-    }
-
-    const result = await compileSelectionEnvelope(tenantId);
-    return res.json(result);
-  } catch (err: any) {
-    if (err.message === 'STAGE6_CONSTRAINT_CONFIG_MISSING') {
-      return res.status(409).json({
-        error: 'STAGE6_CONSTRAINT_CONFIG_MISSING',
-        message: 'No Stage 6 constraint config exists for this tenant. Admin must configure before compilation.',
-      });
-    }
-    if (err.message === 'CANONICAL_FINDINGS_REQUIRED') {
-      return res.status(409).json({
-        error: 'CANONICAL_FINDINGS_REQUIRED',
-        message: 'Canonical findings must be declared before compilation.',
-      });
-    }
-    console.error('[Stage 6] Compilation failed:', err);
-    return res.status(500).json({ error: 'COMPILATION_FAILED', message: err.message });
-  }
+  return res.status(501).json({ error: 'DEPRECATED', message: 'Use Stage-6 Activation path.' });
 }
 
 
@@ -5014,32 +5145,46 @@ export async function recordProposalElection(req: AuthRequest, res: Response) {
       return res.status(404).json({ error: 'PROPOSAL_NOT_FOUND' });
     }
 
-    // Insert or update election (UPSERT)
-    const [election] = await db.insert(sasElections).values({
-      tenantId,
-      proposalId,
-      decision,
-      note: note || null,
-      decidedByUserId: req.user!.userId,
-      createdAt: new Date(), // Force refresh timestamp on update
-    })
-      .onConflictDoUpdate({
-        target: sasElections.proposalId,
-        set: {
-          decision: sql`excluded.decision`,
-          note: sql`excluded.note`,
-          decidedByUserId: sql`excluded.decided_by_user_id`,
-          createdAt: sql`now()`,
-        }
+    // EXEC-TICKET-SAS-ELECTION-ARCH-01: Dual-write strategy
+    // 1. Upsert current election state (sas_elections)
+    // 2. Append immutable audit event (sas_election_events)
+    await db.transaction(async (tx) => {
+      // 1. Upsert current election state
+      await tx
+        .insert(sasElections)
+        .values({
+          tenantId,
+          proposalId,
+          decision,
+          note: note || null,
+          decidedByUserId: req.user!.userId,
+          updatedAt: new Date()
+        })
+        .onConflictDoUpdate({
+          target: [sasElections.tenantId, sasElections.proposalId],
+          set: {
+            decision,
+            note: note || null,
+            decidedByUserId: req.user!.userId,
+            updatedAt: new Date()
+          }
+        })
+
+      // 2. Append immutable audit event
+      await tx.insert(sasElectionEvents).values({
+        tenantId,
+        proposalId,
+        decision,
+        note: note || null,
+        decidedByUserId: req.user!.userId
       })
-      .returning();
+    })
 
     return res.json({
-      electionId: election.id,
-      proposalId: election.proposalId,
-      decision: election.decision,
-      note: election.note,
-      decidedAt: election.createdAt,
+      success: true,
+      proposalId,
+      decision,
+      note
     });
   } catch (err: any) {
     console.error('[SAS Elections] Error:', err);
@@ -5082,7 +5227,12 @@ export async function getElectionSummary(req: AuthRequest, res: Response) {
 
     // Get elections only for those proposals
     const elections = await db
-      .select()
+      .select({
+        proposalId: sasElections.proposalId,
+        decision: sasElections.decision,
+        decidedByUserId: sasElections.decidedByUserId,
+        createdAt: sasElections.createdAt
+      })
       .from(sasElections)
       .where(and(
         eq(sasElections.tenantId, tenantId),

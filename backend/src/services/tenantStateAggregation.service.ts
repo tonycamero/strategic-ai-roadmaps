@@ -23,8 +23,10 @@ import {
     roadmaps,
     intakeVectors,
     sopTickets,
+    users,
     intakeClarifications,
-    tenantStage6Config
+    tenantStage6Config,
+    discoveryNotesLog
 } from '../db/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
@@ -865,3 +867,264 @@ function resolveExecutiveAnalytics(input: {
         }
     };
 }
+
+/**
+ * Normalizes artifact content to ensure it follows the canonical Stage-5 shape.
+ * [SNAPSHOT_ARTIFACT_BACKFILL]
+ */
+export function normalizeArtifact(artifact: any) {
+    if (!artifact) return null;
+
+    // Helper to parse content if it is stringified JSON
+    const parseIfJSON = (val: any) => {
+        if (typeof val !== 'string') return val;
+        try {
+            const parsed = JSON.parse(val);
+            if (typeof parsed === 'string') return JSON.parse(parsed);
+            return parsed;
+        } catch {
+            return val;
+        }
+    };
+
+    return {
+        id: artifact.id ?? null,
+        type: artifact.type ?? artifact.category ?? null,
+        createdAt: artifact.createdAt ?? artifact.created_at ?? null,
+
+        outputs: parseIfJSON(
+            artifact.outputs ??
+            artifact.content ??
+            artifact.markdown ??
+            artifact.delta ??
+            artifact.synthesis ??
+            artifact.payload ??
+            artifact.overview
+        ),
+
+        raw: artifact
+    };
+}
+
+/**
+ * Aggregates all Stage 5 artifacts for a tenant.
+ * Returns normalized JSON objects for Notes, Diagnostic, Exec Brief, and Q&A.
+ */
+export async function getStage5Artifacts(tenantId: string) {
+    console.log(`[SAS] getStage5Artifacts for tenant: ${tenantId}`);
+
+    // 1. Notes (Discovery Notes Log)
+    // Returns all entries for the history panel, normalized.
+    const rawNotes = await db
+        .select({
+            id: discoveryNotesLog.id,
+            source: discoveryNotesLog.source,
+            delta: discoveryNotesLog.delta,
+            createdAt: discoveryNotesLog.createdAt,
+            createdByUserId: discoveryNotesLog.createdByUserId,
+        })
+        .from(discoveryNotesLog)
+        .where(eq(discoveryNotesLog.tenantId, tenantId))
+        .orderBy(discoveryNotesLog.createdAt); // Order by createdAt ASC for chronological history
+
+    const notes = rawNotes.map(n => normalizeArtifact(n));
+
+    // 2. Diagnostic
+    const [diagRecord] = await db
+        .select()
+        .from(diagnostics)
+        .where(and(
+            eq(diagnostics.tenantId, tenantId),
+            eq(diagnostics.status, 'generated')
+        ))
+        .orderBy(desc(diagnostics.updatedAt))
+        .limit(1);
+
+    // Return flattened normalized overview markdown if record exists
+    const diagnostic = diagRecord ? normalizeArtifact(diagRecord) : null;
+
+    // 3. Exec Brief
+    const [briefRecord] = await db
+        .select()
+        .from(executiveBriefs)
+        .where(eq(executiveBriefs.tenantId, tenantId))
+        .orderBy(desc(executiveBriefs.createdAt))
+        .limit(1);
+
+    const execBrief = briefRecord ? normalizeArtifact(briefRecord) : null;
+
+    // 4. Q&A (Legacy fallback or future qna_canonical)
+    const [qnaRecord] = await db
+        .select()
+        .from(tenantDocuments)
+        .where(and(
+            eq(tenantDocuments.tenantId, tenantId),
+            eq(tenantDocuments.category, 'qna_canonical')
+        ))
+        .orderBy(desc(tenantDocuments.createdAt))
+        .limit(1);
+
+    const qa = qnaRecord ? normalizeArtifact(qnaRecord) : null;
+
+    return {
+        notes,
+        diagnostic,
+        execBrief,
+        qa
+    };
+}
+
+/**
+ * TENANT LIFECYCLE SNAPSHOT (SSOT)
+ * 
+ * Centralized interface for the complete tenant state.
+ * Prevents structural drift between backend and frontend.
+ */
+export interface TenantLifecycleSnapshot {
+    tenantId: string;
+    projection: any;
+    tenant: any | null;
+    owner: any | null;
+    teamMembers: any[];
+    intakes: any[];
+    intakeRoles: any[];
+    artifacts: {
+        notes: any[];
+        diagnostic: any | null;
+        execBrief: any | null;
+        qa: any | null;
+    };
+    roadmap: {
+        latest: any | null;
+        all: any[];
+    };
+    tickets: any[];
+    recentActivity: any[];
+}
+
+/**
+ * Service helper to fetch the latest roadmap.
+ */
+async function getLatestRoadmap(tenantId: string) {
+    const rows = await db
+        .select()
+        .from(roadmaps)
+        .where(eq(roadmaps.tenantId, tenantId))
+        .orderBy(desc(roadmaps.createdAt))
+        .limit(1);
+
+    return rows?.[0] ?? null;
+}
+
+/**
+ * Resolves the complete tenant lifecycle snapshot.
+ * Acts as the SSOT for the /snapshot endpoint.
+ */
+export async function resolveTenantLifecycleSnapshot(
+    tenantId: string
+): Promise<TenantLifecycleSnapshot> {
+    // === CANONICAL PROJECTION SPINE ===
+    const projection = await getTenantLifecycleView(tenantId);
+
+    // === DATA ORCHESTRATION ===
+    const [
+        tenantDetails,
+        ownerDetails,
+        members,
+        intakeList,
+        vectorList,
+        roadmapList,
+        activityList,
+        ticketList,
+        artifactsFromService
+    ] = await Promise.all([
+        db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1),
+
+        projection.identity.ownerUserId
+            ? db
+                .select()
+                .from(users)
+                .where(eq(users.id, projection.identity.ownerUserId))
+                .limit(1)
+            : Promise.resolve([]),
+
+        db.select().from(users).where(eq(users.tenantId, tenantId)).limit(50),
+
+        db.select().from(intakes).where(eq(intakes.tenantId, tenantId)),
+
+        db.select().from(intakeVectors).where(eq(intakeVectors.tenantId, tenantId)),
+
+        db
+            .select()
+            .from(roadmaps)
+            .where(eq(roadmaps.tenantId, tenantId))
+            .orderBy(desc(roadmaps.createdAt)),
+
+        db
+            .select()
+            .from(auditEvents)
+            .where(eq(auditEvents.tenantId, tenantId))
+            .orderBy(desc(auditEvents.createdAt))
+            .limit(30),
+
+        db.select().from(sopTickets).where(eq(sopTickets.tenantId, tenantId)),
+
+        // Stage-5 Artifact SSOT
+        getStage5Artifacts(tenantId)
+    ]);
+
+    const tenantRow = tenantDetails[0] ?? null;
+    const ownerRow = ownerDetails[0] ?? null;
+
+    // === LEGACY BACKFILL LOGIC [SNAPSHOT_ARTIFACT_BACKFILL] ===
+    // 1. Resolve Diagnostic fallback
+    let resolvedDiagnostic = artifactsFromService.diagnostic;
+    if (!resolvedDiagnostic && tenantRow?.lastDiagnosticId) {
+        const [fallbackDiag] = await db.select().from(diagnostics).where(eq(diagnostics.id, tenantRow.lastDiagnosticId)).limit(1);
+        if (fallbackDiag) resolvedDiagnostic = normalizeArtifact(fallbackDiag);
+    }
+    if (!resolvedDiagnostic) {
+        const [latestDiag] = await db.select().from(diagnostics).where(eq(diagnostics.tenantId, tenantId)).orderBy(desc(diagnostics.createdAt)).limit(1);
+        if (latestDiag) resolvedDiagnostic = normalizeArtifact(latestDiag);
+    }
+
+    // 2. Resolve Exec Brief fallback
+    let resolvedExecBrief = artifactsFromService.execBrief;
+    if (!resolvedExecBrief) {
+        const [latestBrief] = await db.select().from(executiveBriefs).where(eq(executiveBriefs.tenantId, tenantId)).orderBy(desc(executiveBriefs.createdAt)).limit(1);
+        if (latestBrief) resolvedExecBrief = normalizeArtifact(latestBrief);
+    }
+
+    console.log("[SNAPSHOT_ARTIFACT_BACKFILL]", {
+        tenantId,
+        notes: Array.isArray(artifactsFromService.notes) ? artifactsFromService.notes.length : 0,
+        diagnostic: !!resolvedDiagnostic,
+        execBrief: !!resolvedExecBrief,
+        qa: Array.isArray(artifactsFromService.qa) ? artifactsFromService.qa.length : 0
+    });
+
+    return {
+        tenantId,
+        projection,
+        tenant: tenantRow,
+        owner: ownerRow,
+        teamMembers: members,
+        intakes: intakeList,
+        intakeRoles: vectorList,
+        artifacts: {
+            notes: artifactsFromService.notes ?? [],
+            diagnostic: resolvedDiagnostic,
+            execBrief: resolvedExecBrief,
+            qa: artifactsFromService.qa ?? null
+        },
+        roadmap: {
+            latest: roadmapList[0] ?? null,
+            all: roadmapList
+        },
+        tickets: ticketList,
+        recentActivity: activityList
+    };
+}
+
+
+

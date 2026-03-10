@@ -753,17 +753,47 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     const owner = snapshot.owner ?? null;
     const teamMembers = snapshot.teamMembers ?? [];
     const intakes = snapshot.intakes ?? [];
-    const intakeRoles = snapshot.intakeRoles ?? [];
-    const roadmaps = snapshot.roadmaps ?? (snapshot.artifacts?.latestRoadmap ? [snapshot.artifacts.latestRoadmap] : []);
-    const latestRoadmap = snapshot.artifacts?.latestRoadmap ?? null;
+    const intakeRoles = (snapshot.intakeRoles ?? [])
+        // 1. Map/Enrich Tenant Owner if missing data (Ensure Owner card has full data)
+        .map(role => {
+            if (role.roleLabel === 'Tenant Owner') {
+                return {
+                    ...role,
+                    recipientName: role.recipientName || owner?.name || tenant?.ownerName || 'Owner',
+                    recipientEmail: role.recipientEmail || owner?.email || tenant?.ownerEmail || '',
+                };
+            }
+            return role;
+        })
+        // 2. Filter out incomplete cards (no name and no email)
+        .filter(r => r.recipientName || r.recipientEmail)
+        // 3. Sort: Owner > Executive > Others
+        .sort((a, b) => {
+            // Position 1: Tenant Owner
+            if (a.roleLabel === 'Tenant Owner') return -1;
+            if (b.roleLabel === 'Tenant Owner') return 1;
+
+            // Position 2+: Executives
+            if (a.roleType === 'EXECUTIVE' && b.roleType !== 'EXECUTIVE') return -1;
+            if (a.roleType !== 'EXECUTIVE' && b.roleType === 'EXECUTIVE') return 1;
+
+            // Others
+            return 0;
+        });
+
+    const roadmaps = snapshot.roadmap?.all ?? [];
+    const latestRoadmap = snapshot.roadmap?.latest ?? null;
     const recentActivity = snapshot.recentActivity ?? [];
     const moderationStatus = snapshot.diagnosticStatus ?? null;
-    const latestDiagnostic = snapshot.artifacts?.latestDiagnostic ?? null;
-    const execBriefData = snapshot.artifacts?.executiveBrief ?? null;
-    const discoveryNotes = snapshot.artifacts?.discoveryNotes ?? null;
+
+    // SSOT Artifacts
+    const artifacts = snapshot.artifacts ?? {};
+    const latestDiagnostic = artifacts.diagnostic ?? null;
+    const execBriefData = artifacts.execBrief ?? null;
+    const discoveryNotesLog = artifacts.notes ?? [];
     const tickets = snapshot.tickets ?? [];
 
-    const synthesisNotes = discoveryNotes?.notes || null;
+    const synthesisNotes = discoveryNotesLog[0]?.delta ?? null;
 
     // Canonical Status Helper using strictly projection bindings
     const getCanonicalStatus = (stage: number): 'LOCKED' | 'READY' | 'COMPLETE' => {
@@ -1545,10 +1575,16 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                     open={isSynthesisOpen}
                     onClose={() => setSynthesisOpen(false)}
                     tenantId={params?.tenantId || ''}
-                    artifacts={{
-                        discoveryNotes: synthesisNotes ? { content: synthesisNotes } : undefined,
-                        diagnostic: latestDiagnostic?.overview ? { content: latestDiagnostic.overview } : undefined,
-                        executiveBrief: execBriefData?.synthesis ? { content: execBriefData.synthesis } : (execBriefData?.brief?.synthesis ? { content: execBriefData.brief.synthesis } : undefined),
+                    snapshot={{
+                        ...snapshot,
+                        data: {
+                            artifacts: {
+                                notes: artifacts.notes || [],
+                                diagnostic: artifacts.diagnostic,
+                                execBrief: artifacts.execBrief,
+                                qa: artifacts.qa
+                            }
+                        }
                     }}
                     onRefresh={refreshData}
                 />

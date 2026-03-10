@@ -4,18 +4,22 @@ import { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import AssistedSynthesisAgentConsole from './AssistedSynthesisAgentConsole'
+import ArtifactViewer from './ArtifactViewer' // Use default export
 import { superadminApi } from '../api'
 
 interface ProposedFindingItem {
     id: string
-    type: 'CurrentFact' | 'FrictionPoint' | 'Goal' | 'Constraint'
+    findingId?: string
+    title?: string
     text: string
-    evidenceRefs: Array<{
-        artifact: 'raw' | 'execBrief' | 'diagnostic' | 'qna'
-        quote: string
-        location?: string
-    }>
+    description?: string
     status: 'pending' | 'accepted' | 'rejected'
+    evidenceRefs?: any[]
+    sourceAnchors?: {
+        capability?: string
+        namespace?: string
+    }
+    type: 'CurrentFact' | 'FrictionPoint' | 'Goal' | 'Constraint'
     editedText?: string
     operatorNote?: string
 }
@@ -24,16 +28,18 @@ interface AssistedSynthesisModalProps {
     open: boolean
     onClose: () => void
     tenantId: string
-    artifacts: {
-        discoveryNotes?: any
-        diagnostic?: any
-        executiveBrief?: any
-    }
+    snapshot: any
     onRefresh?: () => void
 }
 
 // NOTE: defensive normalization because some callers pass the firm object instead of the id
-export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onRefresh }: AssistedSynthesisModalProps) {
+export function AssistedSynthesisModal({ open, onClose, tenantId, snapshot, onRefresh }: AssistedSynthesisModalProps) {
+    const sasData = snapshot?.data || {}
+    const artifacts = sasData.artifacts || {}
+    const notes = artifacts.notes || []
+    const diagnostic = artifacts.diagnostic
+    const execBrief = artifacts.execBrief
+    const qa = artifacts.qa || []
 
     // normalize tenantId in case the parent accidentally passes the firm object
     // stronger normalization to guarantee a string id even if an object leaks through
@@ -50,6 +56,13 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
     const [error, setError] = useState<{ code: string; message: string; requestId?: string } | null>(null)
 
 
+
+    const [pendingProposalId, setPendingProposalId] = useState<string | null>(null)
+    const [electionError, setElectionError] = useState<string | null>(null)
+    const [sasRunId, setSasRunId] = useState<string | null>(null)
+
+
+
     useEffect(() => {
         if (open) {
             loadProposedFindings()
@@ -60,15 +73,17 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
     const loadProposedFindings = async () => {
         try {
             const [proposalRes, electionRes] = await Promise.all([
-                superadminApi.getProposedFindings(firmId),
+                superadminApi.getAssistedProposals(firmId),
                 superadminApi.getElectionSummary(firmId)
             ])
 
             if (!proposalRes || !proposalRes.items || proposalRes.items.length === 0) {
-                setRequiresGeneration(true)
                 setProposals([])
+                setSasRunId(proposalRes?.runId || null)
                 return
             }
+
+            setSasRunId(proposalRes.runId)
 
             // Map election state to proposals
             const electionMap: Record<string, 'keep' | 'trash'> = {}
@@ -96,6 +111,7 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
         }
     }
 
+
     const handleGenerateProposals = async () => {
 
         setIsGenerating(true)
@@ -106,6 +122,7 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
             const response = await superadminApi.generateAssistedProposals(firmId)
 
             setProposals(response.items || [])
+            setSasRunId(response.runId)
             setRequiresGeneration(false)
 
         } catch (err: any) {
@@ -128,8 +145,45 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
 
     }
 
+    const handleRegenerateProposals = async () => {
+
+        setShowRegenerateConfirm(false)
+        setIsGenerating(true)
+        setError(null)
+
+        try {
+
+            const response = await superadminApi.generateAssistedProposals(
+                firmId,
+                { force: true }
+            )
+
+            setProposals(response.items || [])
+            setSasRunId(response.runId)
+            setRequiresGeneration(false)
+
+        } catch (err: any) {
+
+            console.error('[SAS] regenerate failed', err)
+
+            const errorData = err.response?.data || {}
+
+            setError({
+                code: errorData.code || 'UNKNOWN_ERROR',
+                message: err.message || 'Failed to regenerate proposals.',
+                requestId: errorData.requestId
+            })
+
+        } finally {
+
+            setIsGenerating(false)
+
+        }
+
+    }
+
     const updateProposalStatus = (index: number, status: 'accepted' | 'rejected') => {
-        setProposals(prev => {
+        setProposals((prev: ProposedFindingItem[]) => {
             const next = [...prev];
             if (next[index]) {
                 next[index] = { ...next[index], status };
@@ -138,33 +192,45 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
         });
     };
 
-    // S6-02: Elections persist to backend, local state updates after success
+    // META-TICKET SAS-STAGE5-UI-STABILIZATION-01: Elections with lifecycle guard
     const handleAccept = async (id: string) => {
-        console.log("SAS handler proposalId (Accept):", id)
+        if (pendingProposalId) return // guard: one request at a time
+        setPendingProposalId(id)
+        setElectionError(null)
         try {
             await superadminApi.recordProposalElection(firmId, id, 'keep')
             const index = proposals.findIndex(p => p.id === id)
             updateProposalStatus(index, 'accepted')
-        } catch (err) {
-            console.error('Election failed', err)
+        } catch (err: any) {
+            console.error('[SAS] Election failed', err)
+            setElectionError(err?.message || 'Failed to record election. Backend may be unavailable.')
+            // Do NOT update local state on failure
+        } finally {
+            setPendingProposalId(null)
         }
     }
 
     const handleReject = async (id: string) => {
-        console.log("SAS handler proposalId (Reject):", id)
+        if (pendingProposalId) return // guard: one request at a time
+        setPendingProposalId(id)
+        setElectionError(null)
         try {
             await superadminApi.recordProposalElection(firmId, id, 'trash')
             const index = proposals.findIndex(p => p.id === id)
             updateProposalStatus(index, 'rejected')
-        } catch (err) {
-            console.error('Election failed', err)
+        } catch (err: any) {
+            console.error('[SAS] Election failed', err)
+            setElectionError(err?.message || 'Failed to record election. Backend may be unavailable.')
+            // Do NOT update local state on failure
+        } finally {
+            setPendingProposalId(null)
         }
     }
 
     const handleEdit = (id: string, newText: string) => {
 
-        setProposals(prev =>
-            prev.map(p =>
+        setProposals((prev: ProposedFindingItem[]) =>
+            prev.map((p: ProposedFindingItem) =>
                 p.id === id ? { ...p, editedText: newText } : p
             )
         )
@@ -177,9 +243,9 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
             id: `human-${Date.now()}`,
             type,
             text: '',
-            evidenceRefs: [],
             status: 'pending',
-            operatorNote: 'Human Added'
+            operatorNote: 'Human Added',
+            evidenceRefs: []
         }
 
         setProposals(prev => [...prev, newProposal])
@@ -189,22 +255,21 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
     const handleDeclareCanon = async () => {
 
         setIsSaving(true)
+        setError(null) // Clear previous errors
 
         try {
-
             const accepted = proposals.filter(p => p.status === 'accepted')
-
-            if (!accepted.length) {
-
-                alert('You must accept at least one finding.')
+            if (accepted.length === 0) {
+                setError({
+                    code: 'NO_PROPOSALS',
+                    message: 'Please accept at least one proposal to declare canonical findings.'
+                })
                 return
-
             }
 
-            await superadminApi.declareCanonicalFindings(
-                firmId,
-                accepted
-            )
+            await superadminApi.declareCanonicalFindings(firmId, {
+                proposalIds: accepted.map((p: ProposedFindingItem) => p.id)
+            })
 
             await onRefresh?.()
             onClose()
@@ -212,7 +277,10 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
         } catch (err) {
 
             console.error('Failed to declare canonical findings:', err)
-            alert('Failed to declare findings.')
+            setError({
+                code: 'CANON_DECLARATION_FAILED',
+                message: 'Failed to declare findings. Please try again.'
+            })
 
         } finally {
 
@@ -243,6 +311,42 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
     return (
 
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <style>{`
+                .artifact-text {
+                  white-space: pre-wrap;
+                  line-height: 1.6;
+                  font-size: 14px;
+                  color: #e5e7eb;
+                }
+            `}</style>
+
+            {/* Election Error Toast */}
+            {electionError && (
+                <div className="fixed top-6 right-6 z-[100] bg-red-900/90 border border-red-500/50 rounded-lg p-4 max-w-sm shadow-2xl animate-pulse">
+                    <div className="flex items-start gap-3">
+                        <span className="text-red-400 text-lg">⚠</span>
+                        <div className="flex-1">
+                            <p className="text-xs font-bold text-red-300 uppercase tracking-wider">Election Failed</p>
+                            <p className="text-xs text-red-200/80 mt-1">{electionError}</p>
+                        </div>
+                        <button onClick={() => setElectionError(null)} className="text-red-400/60 hover:text-red-300 text-sm">✕</button>
+                    </div>
+                </div>
+            )}
+
+            {/* General Error Toast */}
+            {error && (
+                <div className="fixed top-6 right-6 z-[100] bg-red-900/90 border border-red-500/50 rounded-lg p-4 max-w-sm shadow-2xl animate-pulse">
+                    <div className="flex items-start gap-3">
+                        <span className="text-red-400 text-lg">⚠</span>
+                        <div className="flex-1">
+                            <p className="text-xs font-bold text-red-300 uppercase tracking-wider">Error: {error.code}</p>
+                            <p className="text-xs text-red-200/80 mt-1">{error.message}</p>
+                        </div>
+                        <button onClick={() => setError(null)} className="text-red-400/60 hover:text-red-300 text-sm">✕</button>
+                    </div>
+                </div>
+            )}
 
             <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-[95vw] h-[90vh] flex flex-col overflow-hidden relative">
 
@@ -260,11 +364,16 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
 
                         </h2>
 
-                        <p className="text-xs text-slate-500 uppercase font-bold tracking-widest mt-1">
-
-                            Pre-Canonical Workspace // Authority Mode
-
-                        </p>
+                        <div className="flex items-center gap-4 mt-1">
+                            <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">
+                                Pre-Canonical Workspace // Authority Mode
+                            </p>
+                            {sasRunId && (
+                                <p className="text-[10px] text-indigo-400/60 font-mono tracking-tighter">
+                                    RUN_ID: {sasRunId}
+                                </p>
+                            )}
+                        </div>
 
                     </div>
 
@@ -361,9 +470,19 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
                     <div className="w-2/5 border-r border-slate-800 bg-slate-900 flex flex-col overflow-hidden">
 
                         <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+
                             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                                 Proposed Findings (Draft)
                             </h3>
+
+                            <button
+                                onClick={() => setShowRegenerateConfirm(true)}
+                                disabled={isSaving || isGenerating}
+                                className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider bg-slate-800 border border-slate-700 rounded hover:bg-slate-700"
+                            >
+                                Regenerate
+                            </button>
+
                         </div>
 
                         {requiresGeneration || proposals.length === 0 ? (
@@ -427,7 +546,7 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
 
                                             {proposals
                                                 .filter(p => p.type === section.type)
-                                                .map(proposal => {
+                                                .map((proposal: ProposedFindingItem) => {
 
                                                     return (
 
@@ -441,36 +560,46 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
 
                                                             <div className="flex justify-end gap-2 mb-1">
 
-                                                                <button
-                                                                    onClick={() => {
-                                                                        console.log("SAS click proposal.id (Reject):", proposal.id)
-                                                                        handleReject(proposal.id)
-                                                                    }}
-                                                                    className={`transition-colors ${proposal.status === 'rejected' ? 'text-red-500' : 'text-red-400/40 hover:text-red-400'}`}
-                                                                >
-                                                                    ✕
-                                                                </button>
+                                                                {pendingProposalId === proposal.id ? (
+                                                                    <span className="text-xs text-slate-500 animate-pulse">⏳</span>
+                                                                ) : (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() => handleReject(proposal.id)}
+                                                                            disabled={!!pendingProposalId}
+                                                                            className={`transition-colors ${proposal.status === 'rejected' ? 'text-red-500' : pendingProposalId ? 'text-slate-700 cursor-not-allowed' : 'text-red-400/40 hover:text-red-400'}`}
+                                                                        >
+                                                                            ✕
+                                                                        </button>
 
-                                                                <button
-                                                                    onClick={() => {
-                                                                        console.log("SAS click proposal.id (Accept):", proposal.id)
-                                                                        handleAccept(proposal.id)
-                                                                    }}
-                                                                    className={`transition-colors ${proposal.status === 'accepted' ? 'text-emerald-500' : 'text-emerald-400/40 hover:text-emerald-400'}`}
-                                                                >
-                                                                    ✓
-                                                                </button>
+                                                                        <button
+                                                                            onClick={() => handleAccept(proposal.id)}
+                                                                            disabled={!!pendingProposalId}
+                                                                            className={`transition-colors ${proposal.status === 'accepted' ? 'text-emerald-500' : pendingProposalId ? 'text-slate-700 cursor-not-allowed' : 'text-emerald-400/40 hover:text-emerald-400'}`}
+                                                                        >
+                                                                            ✓
+                                                                        </button>
+                                                                    </>
+                                                                )}
 
                                                             </div>
 
-                                                            <div
-                                                                contentEditable
-                                                                suppressContentEditableWarning
-                                                                onBlur={(e) => handleEdit(proposal.id, e.currentTarget.textContent || '')}
-                                                                className="text-sm text-slate-300 leading-snug"
-                                                            >
-                                                                {proposal.editedText ?? proposal.text}
+                                                            <div className="flex items-start gap-3">
+                                                                {/* Removed checkbox input */}
+                                                                <div
+                                                                    contentEditable
+                                                                    suppressContentEditableWarning
+                                                                    onBlur={(e) => handleEdit(proposal.id, e.currentTarget.textContent || '')}
+                                                                    className="text-sm text-slate-300 leading-snug flex-1"
+                                                                >
+                                                                    {proposal.title || proposal.text}
+                                                                </div>
                                                             </div>
+                                                            {proposal.sourceAnchors?.capability && (
+                                                                <div className="mt-2 text-[10px] font-bold text-indigo-400/60 uppercase tracking-widest">
+                                                                    ⚓ {proposal.sourceAnchors.capability}
+                                                                </div>
+                                                            )}
 
 
 
@@ -536,30 +665,26 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
 
                                 {/* ARTIFACT CONTENT */}
 
-                                <div className="prose prose-invert max-w-none text-xs">
+                                <div className="prose prose-invert max-w-none text-xs space-y-4">
 
                                     {activeSourceTab === 'notes' && (
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                            {artifacts?.discoveryNotes?.content || 'No discovery notes available'}
-                                        </ReactMarkdown>
+                                        notes.map((note: any) => (
+                                            <ArtifactViewer key={note.id} artifact={note} />
+                                        ))
                                     )}
 
                                     {activeSourceTab === 'diagnostic' && (
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                            {artifacts?.diagnostic?.content || 'No diagnostic available'}
-                                        </ReactMarkdown>
+                                        <ArtifactViewer artifact={diagnostic} />
                                     )}
 
                                     {activeSourceTab === 'brief' && (
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                            {artifacts?.executiveBrief?.content || 'No executive brief available'}
-                                        </ReactMarkdown>
+                                        <ArtifactViewer artifact={execBrief} />
                                     )}
 
                                     {activeSourceTab === 'qa' && (
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                            {artifacts?.discoveryNotes?.qa || 'No Q&A captured'}
-                                        </ReactMarkdown>
+                                        qa.map((item: any) => (
+                                            <ArtifactViewer key={item.id || Math.random()} artifact={item} />
+                                        ))
                                     )}
 
                                 </div>
@@ -583,7 +708,37 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onR
                 </div>
 
             </div>
+            {showRegenerateConfirm && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70">
+                    <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-[420px]">
 
+                        <h3 className="text-sm font-bold text-white mb-2">
+                            Regenerate Proposals?
+                        </h3>
+
+                        <p className="text-xs text-slate-400 mb-6">
+                            This will create a new synthesis run and generate fresh findings.
+                        </p>
+
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => setShowRegenerateConfirm(false)}
+                                className="px-4 py-2 text-xs bg-slate-800 rounded"
+                            >
+                                Cancel
+                            </button>
+
+                            <button
+                                onClick={handleRegenerateProposals}
+                                className="px-4 py-2 text-xs bg-indigo-600 rounded"
+                            >
+                                Regenerate
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            )}
         </div>
 
     )

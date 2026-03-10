@@ -565,8 +565,12 @@ export const superadminApi = {
   getProposedFindings: (tenantId: string) =>
     apiGet<{ items: any[]; requiresGeneration?: boolean }>(`/firms/${tenantId}/findings/proposed`),
 
-  generateAssistedProposals: (tenantId: string) =>
-    apiPost<{ items: any[]; version: string }>(`/firms/${tenantId}/assisted-synthesis/generate-proposals`, {}),
+  // Phase 3 & 4: Canonical SAS Fetch
+  getAssistedProposals: (tenantId: string) =>
+    apiGet<{ items: any[]; runId: string }>(`/firms/${tenantId}/assisted-synthesis/proposals`),
+
+  generateAssistedProposals: (tenantId: string, options?: { force?: boolean }) =>
+    apiPost<{ items: any[]; runId: string }>(`/firms/${tenantId}/assisted-synthesis/generate-proposals${options?.force ? '?force=true' : ''}`, {}),
 
   declareCanonicalFindings: (tenantId: string, findings: any[]) =>
     apiPost<{ success: boolean }>(`/firms/${tenantId}/findings/declare`, { findings }),
