@@ -22,6 +22,7 @@ interface ProposedFindingItem {
     type: 'CurrentFact' | 'FrictionPoint' | 'Goal' | 'Constraint'
     editedText?: string
     operatorNote?: string
+    sourceFindingIds?: string[]
 }
 
 interface AssistedSynthesisModalProps {

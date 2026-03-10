@@ -35,7 +35,7 @@ export default function RoadmapViewer({ tenantId }: RoadmapViewerProps) {
   const mainRef = useRef<HTMLDivElement>(null);
 
   // Determine which tenantId to use (Prop > Current User)
-  const effectiveTenantId = tenantId || currentUser?.tenantId;
+  const effectiveTenantId = tenantId || (currentUser as any)?.tenantId;
 
   // Fetch graph data
   useEffect(() => {
