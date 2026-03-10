@@ -3,6 +3,15 @@ import fs from "node:fs";
 import path from "node:path";
 
 const outdir = "netlify/functions-dist";
+
+/**
+ * Ensure clean build directory
+ * Prevents stale Netlify function bundles from previous builds
+ */
+if (fs.existsSync(outdir)) {
+  fs.rmSync(outdir, { recursive: true, force: true });
+}
+
 fs.mkdirSync(outdir, { recursive: true });
 
 await build({
@@ -13,5 +22,6 @@ await build({
   target: "node20",
   format: "cjs",
   sourcemap: true,
+  metafile: true,
   logLevel: "info",
 });
