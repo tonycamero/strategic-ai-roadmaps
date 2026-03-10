@@ -6,6 +6,7 @@ import { createHash, randomUUID } from 'crypto';
 import { CanonicalDiscoveryNotes, CanonicalFindingsObject, CanonicalFinding } from '@roadmap/shared/src/canon';
 import { getTenantLifecycleView } from './tenantStateAggregation.service';
 import { computeCanonicalFindingsHash } from './canonicalFindingsHash.util';
+import { SelectionEnvelopeService } from './selectionEnvelope.service';
 
 export class FindingsService {
     /**
@@ -114,10 +115,11 @@ export class FindingsService {
     static async declareCanonicalFindings(args: {
         tenantId: string;
         findings: any[];
+        sasRunId: string;
         actorUserId: string | null;
         actorRole?: string | null;
     }) {
-        const { tenantId, findings, actorUserId, actorRole } = args;
+        const { tenantId, findings, sasRunId, actorUserId, actorRole } = args;
         console.log(`[FindingsService] declareCanonicalFindings started for tenant: ${tenantId}`);
 
         return await db.transaction(async (trx) => {
@@ -205,8 +207,22 @@ export class FindingsService {
                 entityId: findingsObject.id
             });
 
-            console.log(`[FindingsService] declareCanonicalFindings success!`);
-            return { success: true, findingsId: findingsObject.id, artifactHash };
+            // 8. Create Selection Envelope (Stage-6 Authority)
+            console.log(`[FindingsService] Creating Selection Envelope for run: ${sasRunId}`);
+            const { envelopeId, envelopeHash } = await SelectionEnvelopeService.createSelectionEnvelope(
+                tenantId,
+                sasRunId,
+                actorUserId || 'system'
+            );
+
+            console.log(`[FindingsService] declareCanonicalFindings success! Envelope: ${envelopeHash}`);
+            return {
+                success: true,
+                findingsId: findingsObject.id,
+                artifactHash,
+                envelopeId,
+                envelopeHash
+            };
         });
     }
 }

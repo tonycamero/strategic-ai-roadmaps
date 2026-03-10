@@ -1,7 +1,15 @@
 import { createOpenAIClient } from '../ai/openaiClient';
+import { loadInventory } from '../trustagent/services/inventory.service';
+
+export type DiscoveryNote = {
+    id: string;
+    text: string;
+    author?: string;
+    createdAt?: string;
+};
 
 export interface AssistedSynthesisArtifactContract {
-    discoveryNotes: any;
+    discoveryNotes?: DiscoveryNote[];
     diagnostic?: {
         id: string;
         overview: any;
@@ -14,6 +22,9 @@ export interface AssistedSynthesisArtifactContract {
         synthesis: any;
     };
     proposedFindings?: any[];
+    roiBaseline?: any;
+    // Legacy support for proposal generation extraction
+    extractionSource?: any;
 }
 export interface ProposedFindingItem {
     id: string;
@@ -26,6 +37,8 @@ export interface ProposedFindingItem {
     }>;
     status: 'pending' | 'accepted' | 'rejected';
     editedText?: string;
+    capabilityId?: string;
+    capabilityNamespace?: string;
 }
 
 export interface ProposedFindingsDraft {
@@ -82,6 +95,10 @@ export class AssistedSynthesisProposalsService {
         const operatingReality = artifacts.executiveBrief?.synthesis?.content?.operatingReality || (artifacts.executiveBrief?.synthesis as any)?.operatingReality || '';
         const constraints = artifacts.executiveBrief?.synthesis?.content?.constraintLandscape || (artifacts.executiveBrief?.synthesis as any)?.constraintLandscape || '';
 
+        // 3.5 Load Inventory Catalog for Matching
+        const inventory = loadInventory();
+        const catalogText = inventory.map(item => `- [${item.category}] ${item.inventoryId}: ${item.titleTemplate}`).join('\n');
+
         // 4. Build strict LLM prompt
         const systemPrompt = `You are a findings extraction agent. Your job is to analyze discovery artifacts and propose ATOMIC, EVIDENCE-ANCHORED findings.
 
@@ -93,12 +110,18 @@ RULES (STRICT):
 5. Do NOT include solution language, implementation steps, or recommendations
 6. Do NOT create narrative text - only structured findings
 7. If evidence is insufficient for a claim, OMIT that finding
+8. CAPABILITY MATCHING: For every finding (especially FrictionPoints and Goals), attempt to match it to a capability from the provided INVENTORY CATALOG. 
+   - If a finding strongly aligns with a catalog item, populate "capabilityId" and "capabilityNamespace".
+   - If no strong match, leave them null.
 
 FINDING TYPES:
 - CurrentFact: Verifiable statements about the current state (from raw notes, exec brief)
 - FrictionPoint: Explicit pain points, problems, or gaps (from raw notes, exec brief, diagnostic)
 - Goal: Explicit desired outcomes or future states (from raw notes, diagnostic)
 - Constraint: Explicit limitations, boundaries, or requirements (from raw notes, exec brief)
+
+INVENTORY CATALOG (Allowed Capabilities):
+${catalogText}
 
 OUTPUT SCHEMA:
 {
@@ -107,6 +130,8 @@ OUTPUT SCHEMA:
       "id": "unique-id",
       "type": "CurrentFact" | "FrictionPoint" | "Goal" | "Constraint",
       "text": "Single atomic claim statement",
+      "capabilityId": "INVENTORY_ID" | null,
+      "capabilityNamespace": "CATEGORY" | null,
       "evidenceRefs": [
         {
           "artifact": "raw" | "execBrief" | "diagnostic",
@@ -139,7 +164,7 @@ ${diagnosticOverview.substring(0, 1500)}
 DIAGNOSTIC - AI Opportunities:
 ${diagnosticOpportunities.substring(0, 1500)}
 
-Extract and propose atomic findings. Return ONLY valid JSON.`;
+Extract and propose atomic findings with capability mapping where possible. Return ONLY valid JSON.`;
 
         // 5. Call LLM
         const completion = await openai.chat.completions.create({

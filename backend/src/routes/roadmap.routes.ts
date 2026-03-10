@@ -73,6 +73,14 @@ router.get(
   roadmapController.exportRoadmap
 );
 
+// Get latest persisted roadmap graph (Stage 7)
+router.get(
+  '/graph/:tenantId',
+  authenticate,
+  requireTenantAccess(),
+  roadmapController.getRoadmapGraph
+);
+
 // Ask a question about the roadmap - all tenant members can ask
 router.post(
   '/qna',

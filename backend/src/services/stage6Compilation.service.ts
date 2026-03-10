@@ -1,151 +1,191 @@
-/**
- * Stage 6 Compilation Service
- * EXEC-TICKET-STAGE6-COMPILE-ENDPOINT-001
- *
- * Deterministic, idempotent SelectionEnvelope compilation.
- * Consumes projection → invokes SelectionEngine → persists SelectionEnvelope.
- * Never triggers moderation, never mutates projection.
- *
- * ExecutionEnvelope is derived strictly from projection.stage6
- * (which reads from tenant_stage6_config). No inference. No defaults.
- */
 import { db } from '../db/index';
-import { selectionEnvelopes } from '../db/schema';
-import { and, eq, desc } from 'drizzle-orm';
-import { getTenantLifecycleView } from './tenantStateAggregation.service';
-import { buildSelectionEnvelope } from '../trustagent/selection/selectionEngine';
+import { sopTickets, selectionEnvelopes, sasRuns, selectionEnvelopeItems, sasProposals } from '../db/schema';
+import { eq, inArray, sql } from 'drizzle-orm';
+import { ExecutionEnvelopeService } from './executionEnvelope.service';
+import { CapabilityMatcherService } from './capabilityMatcher.service';
 import { loadInventory } from '../trustagent/services/inventory.service';
-import {
-    INVENTORY_REGISTRY_VERSION,
-    SELECTION_ENGINE_VERSION,
-} from '../trustagent/constants/selectionEngine.constants';
-import type { ExecutionEnvelope } from '../trustagent/types/selectionEnvelope';
+import { randomUUID } from 'crypto';
 
-// ─── Result Shape ─────────────────────────────────────────────────────────────
-
-export interface CompileEnvelopeResult {
+export interface Stage6ActivationResult {
     envelopeId: string;
-    selectionHash: string;
-    registryVersion: string;
-    envelopeVersion: string;
-    idempotent: boolean;
+    totalEnvelopeItems: number;
+    validatedItems: number;
+    skippedItems: number;
+    skippedCapabilityIds: string[];
+    ticketsCreated: number;
+    capabilitiesActivated: string[];
 }
-
-// ─── Unique Violation Check ───────────────────────────────────────────────────
-
-function isUniqueViolation(error: unknown): boolean {
-    const msg = error instanceof Error ? error.message : String(error);
-    return msg.includes('unique') || msg.includes('duplicate') || msg.includes('23505');
-}
-
-// ─── Service: Compile Envelope ────────────────────────────────────────────────
 
 /**
- * Compile a deterministic SelectionEnvelope for the tenant.
- *
- * ExecutionEnvelope is derived strictly from projection.stage6.
- * If constraint config is missing, compilation fails closed.
- *
- * Idempotent: if an envelope already exists for the same
- * (tenant_id, canonical_findings_hash, registry_version, envelope_version)
- * combination, returns the existing record.
- *
- * @throws Error('CANONICAL_FINDINGS_REQUIRED') if projection has no findings
- * @throws Error('STAGE6_CONSTRAINT_CONFIG_MISSING') if tenant_stage6_config row absent
+ * Stage-6 Authority Spine Compiler
+ * 
+ * Orchestrates:
+ * 1. Execution Envelope Enforcement
+ * 2. Envelope Items Loading & Grouping
+ * 3. Capability Validation (No LLM Inference)
+ * 4. Ticket Provenance Extraction & Generation
  */
-export async function compileSelectionEnvelope(
-    tenantId: string,
-): Promise<CompileEnvelopeResult> {
-    // 1. Read projection (single source of truth)
-    const projection = await getTenantLifecycleView(tenantId);
+export class Stage6CompilationService {
+    static async activateStage6(selectionEnvelopeId: string, requestId?: string): Promise<Stage6ActivationResult> {
+        // 1. Load Execution Envelope (with firm constraints)
+        const envelope = await ExecutionEnvelopeService.loadEnvelope(selectionEnvelopeId);
 
-    // 2. Require constraint config — fail closed
-    if (!projection.stage6.constraintConfigExists) {
-        throw new Error('STAGE6_CONSTRAINT_CONFIG_MISSING');
-    }
-
-    // 3. Require canonical findings
-    if (!projection.artifacts.canonicalFindings) {
-        throw new Error('CANONICAL_FINDINGS_REQUIRED');
-    }
-
-    const { hash: canonicalFindingsHash, ids: canonicalFindingIds } =
-        projection.artifacts.canonicalFindings;
-
-    // 4. Derive ExecutionEnvelope strictly from projection.stage6
-    //    No inference. No defaults. No derivation from firmSizeTier.
-    const executionEnvelope: ExecutionEnvelope = {
-        namespaces: projection.stage6.allowedNamespaces,
-        adapters: projection.stage6.allowedAdapters as ('ghl' | 'sidecar')[],
-        maxComplexityTier: projection.stage6.maxComplexityTier!,
-        customDevAllowed: projection.stage6.customDevAllowed!,
-        vertical: projection.stage6.vertical!,
-    };
-
-    // 5. Load registry (static)
-    const inventoryRegistry = loadInventory();
-
-    // 6. Build deterministic envelope payload
-    const payload = buildSelectionEnvelope({
-        tenantId,
-        canonicalFindingsHash,
-        canonicalFindingIds,
-        executionEnvelope,
-        inventoryRegistry,
-        registryVersion: INVENTORY_REGISTRY_VERSION,
-        envelopeVersion: SELECTION_ENGINE_VERSION,
-    });
-
-    // 7. Idempotent insert
-    try {
-        const [inserted] = await db
-            .insert(selectionEnvelopes)
-            .values({
-                tenantId: payload.tenantId,
-                canonicalFindingsHash: payload.canonicalFindingsHash,
-                registryVersion: payload.registryVersion,
-                envelopeVersion: payload.envelopeVersion,
-                executionEnvelope: payload.executionEnvelope as any,
-                inventoryIds: payload.inventoryIds as any,
-                adapterIds: payload.adapterIds as any,
-                findingIds: payload.findingIds as any,
-                selectionHash: payload.selectionHash,
-            })
-            .returning();
-
-        return {
-            envelopeId: inserted.id,
-            selectionHash: inserted.selectionHash,
-            registryVersion: inserted.registryVersion,
-            envelopeVersion: inserted.envelopeVersion,
-            idempotent: false,
-        };
-    } catch (err) {
-        if (!isUniqueViolation(err)) {
-            throw err;
-        }
-
-        // UNIQUE constraint hit — return existing envelope
-        const [existing] = await db
-            .select()
+        // Fetch envelope metadata (for provenance)
+        const [envelopeRecord] = await db.select({
+            sasRunId: selectionEnvelopes.sasRunId
+        })
             .from(selectionEnvelopes)
-            .where(
-                and(
-                    eq(selectionEnvelopes.tenantId, tenantId),
-                    eq(selectionEnvelopes.canonicalFindingsHash, canonicalFindingsHash),
-                    eq(selectionEnvelopes.registryVersion, INVENTORY_REGISTRY_VERSION),
-                    eq(selectionEnvelopes.envelopeVersion, SELECTION_ENGINE_VERSION),
-                )
-            )
-            .orderBy(desc(selectionEnvelopes.createdAt))
+            .where(eq(selectionEnvelopes.id, selectionEnvelopeId))
             .limit(1);
 
-        return {
-            envelopeId: existing.id,
-            selectionHash: existing.selectionHash,
-            registryVersion: existing.registryVersion,
-            envelopeVersion: existing.envelopeVersion,
-            idempotent: true,
+        if (!envelopeRecord) {
+            throw new Error(`ENVELOPE_NOT_FOUND: ${selectionEnvelopeId}`);
+        }
+
+        // Fetch Run state (for projection snapshot hash)
+        const [runRecord] = await db.select({
+            artifactState: sasRuns.artifactState
+        })
+            .from(sasRuns)
+            .where(eq(sasRuns.id, envelopeRecord.sasRunId))
+            .limit(1);
+
+        const projectionHash = runRecord?.artifactState ? JSON.stringify(runRecord.artifactState) : 'UNKNOWN';
+        const generationEventId = randomUUID();
+
+        // 2. Load Selection Envelope Items (The true provenance source)
+        const items = await db.select()
+            .from(selectionEnvelopeItems)
+            .where(eq(selectionEnvelopeItems.envelopeId, selectionEnvelopeId));
+
+        const totalEnvelopeItems = items.length;
+
+        if (!totalEnvelopeItems) {
+            return {
+                envelopeId: selectionEnvelopeId,
+                totalEnvelopeItems: 0,
+                validatedItems: 0,
+                skippedItems: 0,
+                skippedCapabilityIds: [],
+                ticketsCreated: 0,
+                capabilitiesActivated: []
+            };
+        }
+
+        // Group finding IDs by capability
+        const capabilityToFindings = new Map<string, string[]>();
+        for (const item of items) {
+            if (!item.capabilityId) continue; // Skip items without Stage-5 assigned capability
+
+            if (!capabilityToFindings.has(item.capabilityId)) {
+                capabilityToFindings.set(item.capabilityId, []);
+            }
+            capabilityToFindings.get(item.capabilityId)!.push(item.proposalId);
+        }
+
+        const ticketsToCreate: any[] = [];
+        const activatedCapabilities: string[] = [];
+        const inventory = loadInventory();
+        const inventoryMap = new Map(inventory.map(i => [i.inventoryId, i]));
+
+        let validatedItemsCount = 0;
+        let skippedItemsCount = 0;
+        const skippedCapabilityIds: string[] = [];
+
+        // 3. Capability Validation & Resolution
+        for (const [capabilityId, findingIds] of capabilityToFindings.entries()) {
+            // For invariant check, we count capabilities as "items" since tickets are grouped by capability
+            try {
+                // S6-07: Strict validation, no LLM inference
+                CapabilityMatcherService.validateCapabilityId(
+                    capabilityId,
+                    envelope.allowedNamespaces,
+                    envelope.maxComplexity
+                );
+
+                validatedItemsCount++;
+
+                const inventoryItem = inventoryMap.get(capabilityId);
+                if (!inventoryItem) continue; // Should be caught by validation, but TS check
+
+                // 4. Compile Tickets with Provenance (S6-07 & Part 10)
+                const complexityMap: Record<string, string> = { 'low': 'T1', 'medium': 'T2', 'high': 'T3' };
+
+                // Part 10: Deterministic ticketKey
+                const hashContent = `${selectionEnvelopeId}:${capabilityId}:${inventoryItem.category}`;
+                const ticketKey = require('crypto').createHash('sha256').update(hashContent).digest('hex');
+
+                ticketsToCreate.push({
+                    tenantId: envelope.tenantId,
+                    ticketId: `${inventoryItem.category || 'GEN'}-${inventoryItem.inventoryId.substring(0, 4)}`,
+                    inventoryId: inventoryItem.inventoryId,
+                    title: inventoryItem.titleTemplate,
+                    description: inventoryItem.description,
+                    category: inventoryItem.category,
+                    tier: complexityMap[inventoryItem.complexity] || 'T1',
+                    status: 'generated',
+                    moderationStatus: 'pending',
+                    ticketType: 'sop',
+                    selectionEnvelopeId: selectionEnvelopeId,
+                    // PROVENANCE ENFORCEMENT
+                    sourceFindingIds: findingIds,
+                    envelopeVersion: envelope.rawEnvelope?.envelopeHash ? parseInt(envelope.rawEnvelope.envelopeHash as any) || 1 : 1,
+                    generationEventId,
+                    projectionHash,
+                    ticketKey // Part 10
+                });
+
+                activatedCapabilities.push(inventoryItem.inventoryId);
+            } catch (err) {
+                console.warn(`[Stage6Compilation] Skipping capability ${capabilityId} due to validation error:`, err);
+                skippedItemsCount++;
+                skippedCapabilityIds.push(capabilityId);
+                continue;
+            }
+        }
+
+        const compiledTicketsCount = ticketsToCreate.length;
+        if (compiledTicketsCount !== validatedItemsCount) {
+            throw new Error(`STAGE6_CARDINALITY_INVARIANT_VIOLATION: compiled ${compiledTicketsCount} tickets, but validated ${validatedItemsCount} items`);
+        }
+
+        // 5. Persist Tickets (Idempotent UPSERT - Part 10)
+        let ticketsPersistedCount = 0;
+        if (compiledTicketsCount > 0) {
+            const results = await db.insert(sopTickets)
+                .values(ticketsToCreate)
+                .onConflictDoUpdate({
+                    target: sopTickets.ticketKey,
+                    set: {
+  selectionEnvelopeId: sql`excluded.selection_envelope_id`,
+  inventoryId: sql`excluded.inventory_id`,
+  title: sql`excluded.title`,
+  description: sql`excluded.description`,
+  category: sql`excluded.category`,
+  tier: sql`excluded.tier`,
+  sourceFindingIds: sql`excluded.source_finding_ids`,
+  envelopeVersion: sql`excluded.envelope_version`,
+  generationEventId: sql`excluded.generation_event_id`,
+  projectionHash: sql`excluded.projection_hash`,
+  updatedAt: sql`now()`
+}
+                })
+                .returning();
+            ticketsPersistedCount = results.length;
+        }
+
+        const stage6CompilationReport = {
+            envelopeId: selectionEnvelopeId,
+            totalEnvelopeItems,
+            validatedItems: validatedItemsCount,
+            skippedItems: skippedItemsCount,
+            skippedCapabilityIds,
+            ticketsCreated: compiledTicketsCount, // Report the compilation invariant length
+            capabilitiesActivated: activatedCapabilities
         };
+
+        console.log(`[Stage6Compilation] Report:`, stage6CompilationReport);
+
+        return stage6CompilationReport;
     }
 }

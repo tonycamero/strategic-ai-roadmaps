@@ -452,12 +452,10 @@ export const tenantDocuments = pgTable('tenant_documents', {
 
 
 // ============================================================================
-// SELECTION ENVELOPES (EXEC-TICKET-SELECTION-ENVELOPE-SCHEMA-001)
-// Deterministic compiler artifact — binds canonical findings to inventory selection.
-// Immutable after creation. Arrays stored sorted. No timestamps in selectionHash input.
+// LEGACY SELECTION ENVELOPES (v0)
 // ============================================================================
 
-export const selectionEnvelopes = pgTable('selection_envelopes', {
+export const legacySelectionEnvelopes = pgTable('legacy_selection_envelopes', {
   id: uuid('id').primaryKey().defaultRandom(),
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
 
@@ -480,6 +478,35 @@ export const selectionEnvelopes = pgTable('selection_envelopes', {
   // Audit only — excluded from hash input
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
+
+
+// ============================================================================
+// SELECTION ENVELOPES (META-TICKET v2)
+// Deterministic execution container — binds Moderation results to Execution.
+// UNIQUE per (tenant, run)
+// ============================================================================
+
+export const selectionEnvelopes = pgTable('selection_envelopes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  sasRunId: uuid('sas_run_id').notNull().references(() => sasRuns.id, { onDelete: 'cascade' }),
+  envelopeHash: text('envelope_hash').notNull(),
+  createdBy: uuid('created_by').notNull().references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  tenantRunUnique: uniqueIndex('selection_envelopes_tenant_run_unique').on(table.tenantId, table.sasRunId),
+}));
+
+export const selectionEnvelopeItems = pgTable('selection_envelope_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  envelopeId: uuid('envelope_id').notNull().references(() => selectionEnvelopes.id, { onDelete: 'cascade' }),
+  proposalId: uuid('proposal_id').notNull().references(() => sasProposals.id, { onDelete: 'cascade' }),
+  capabilityId: text('capability_id'),
+  decision: text('decision').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  envelopeProposalUnique: uniqueIndex('selection_envelope_items_envelope_proposal_unique').on(table.envelopeId, table.proposalId),
+}));
 
 
 // ============================================================================
@@ -525,6 +552,7 @@ export const sasRuns = pgTable('sas_runs', {
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   scope: jsonb('scope').notNull(),
   sourceArtifactRefs: jsonb('source_artifact_refs').notNull(),
+  artifactState: jsonb('artifact_state'),
   createdByUserId: uuid('created_by_user_id').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -538,8 +566,12 @@ export const sasProposals = pgTable('sas_proposals', {
   sourceAnchors: jsonb('source_anchors').notNull(),
   agentModel: varchar('agent_model', { length: 50 }),
   conceptHash: text('concept_hash'),
+
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => ({
+  sasProposalsRunConceptUnique: uniqueIndex('sas_proposals_run_concept_unique').on(table.tenantId, table.sasRunId, table.conceptHash),
+  idx_sas_proposals_run: index('idx_sas_proposals_run').on(table.tenantId, table.sasRunId),
+}));
 
 export const sasElections = pgTable('sas_elections', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -549,8 +581,23 @@ export const sasElections = pgTable('sas_elections', {
   note: text('note'),
   decidedByUserId: uuid('decided_by_user_id').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 }, (table) => ({
-  proposalIdUnique: uniqueIndex('sas_elections_proposal_id_unique').on(table.proposalId),
+  sasElectionsTenantProposalUnique: uniqueIndex('sas_elections_tenant_proposal_unique').on(table.tenantId, table.proposalId),
+}));
+
+// META-TICKET SAS-ELECTION-ARCH-01: Immutable election event history (append-only)
+export const sasElectionEvents = pgTable('sas_election_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  proposalId: uuid('proposal_id').notNull().references(() => sasProposals.id, { onDelete: 'cascade' }),
+  decision: varchar('decision', { length: 10 }).notNull(),
+  note: text('note'),
+  decidedByUserId: uuid('decided_by_user_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  proposalIdx: index('sas_election_events_proposal_idx').on(table.proposalId),
+  tenantIdx: index('sas_election_events_tenant_idx').on(table.tenantId),
 }));
 
 
@@ -837,9 +884,22 @@ export const sopTickets = pgTable('sop_tickets', {
   roiNotes: text('roi_notes'),
   moderatedAt: timestamp('moderated_at', { withTimezone: true }),
   moderatedBy: uuid('moderated_by').references(() => users.id),
+
+  // EXEC-TICKET-STAGE6-DETERMINISTIC-001
+  selectionEnvelopeId: uuid('selection_envelope_id').references(() => selectionEnvelopes.id, { onDelete: 'restrict' }),
+
+  // EXEC-TICKET-S6-07 (TICKET PROVENANCE ENFORCEMENT)
+  sourceFindingIds: jsonb('source_finding_ids').$type<string[]>(),
+  envelopeVersion: integer('envelope_version'),
+  generationEventId: uuid('generation_event_id'),
+  projectionHash: text('projection_hash'),
+  ticketKey: text('ticket_key').unique(),
+
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => ({
+  envelopeInventoryUnique: uniqueIndex('sop_tickets_envelope_inventory_unique').on(table.selectionEnvelopeId, table.inventoryId),
+}));
 
 // ============================================================================
 // TICKET PACKS (Firm-specific ticket organization)
@@ -1297,3 +1357,48 @@ export type NewTicketModerationSession = typeof ticketModerationSessions.$inferI
 
 export type TicketDraft = typeof ticketsDraft.$inferSelect;
 export type NewTicketDraft = typeof ticketsDraft.$inferInsert;
+
+// ============================================================================
+// ROADMAP GRAPHS (Stage 7 Persistence)
+// ============================================================================
+
+export const roadmapGraphs = pgTable('roadmap_graphs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  selectionEnvelopeId: uuid('selection_envelope_id').notNull().references(() => selectionEnvelopes.id, { onDelete: 'cascade' }),
+  projectionHash: text('projection_hash'),
+  nodeCount: integer('node_count').notNull().default(0),
+  edgeCount: integer('edge_count').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  selectionEnvelopeUnique: uniqueIndex('roadmap_graphs_selection_envelope_unique').on(table.selectionEnvelopeId),
+}));
+
+export const roadmapGraphNodes = pgTable('roadmap_graph_nodes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  graphId: uuid('graph_id').notNull().references(() => roadmapGraphs.id, { onDelete: 'cascade' }),
+  sopTicketId: uuid('sop_ticket_id').notNull().references(() => sopTickets.id), // Link to sopTickets.id (UUID)
+  capabilityId: text('capability_id'),
+  namespace: text('namespace'),
+  stage: integer('stage').notNull(), // phaseNumber
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const roadmapGraphEdges = pgTable('roadmap_graph_edges', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  graphId: uuid('graph_id').notNull().references(() => roadmapGraphs.id, { onDelete: 'cascade' }),
+  fromTicketId: uuid('from_ticket_id').notNull().references(() => sopTickets.id),
+  toTicketId: uuid('to_ticket_id').notNull().references(() => sopTickets.id),
+  dependencyType: varchar('dependency_type', { length: 20 }).notNull(), // hard | soft | sequence
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type RoadmapGraph = typeof roadmapGraphs.$inferSelect;
+export type NewRoadmapGraph = typeof roadmapGraphs.$inferInsert;
+
+export type RoadmapGraphNode = typeof roadmapGraphNodes.$inferSelect;
+export type NewRoadmapGraphNode = typeof roadmapGraphNodes.$inferInsert;
+
+export type RoadmapGraphEdge = typeof roadmapGraphEdges.$inferSelect;
+export type NewRoadmapGraphEdge = typeof roadmapGraphEdges.$inferInsert;

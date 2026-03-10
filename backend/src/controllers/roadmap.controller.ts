@@ -7,7 +7,10 @@ import {
     ticketInstances,
     ticketPacks,
     auditEvents,
-    tenantDocuments
+    tenantDocuments,
+    roadmapGraphs,
+    roadmapGraphNodes,
+    roadmapGraphEdges
 } from '../db/schema';
 import { eq, and, asc, desc, sql } from 'drizzle-orm';
 import { AuthRequest } from '../middleware/auth';
@@ -233,9 +236,9 @@ export async function getRoadmapTickets(req: AuthRequest, res: Response) {
             .from(ticketInstances)
             .where(eq(ticketInstances.ticketPackId, pack.id))
             .orderBy(
-	      asc(ticketInstances.sectionNumber),
-	      asc(ticketInstances.createdAt)
-	    );
+                asc(ticketInstances.sectionNumber),
+                asc(ticketInstances.createdAt)
+            );
 
 
         return res.json({ ticketPack: pack, tickets });
@@ -264,6 +267,57 @@ export async function exportRoadmap(req: AuthRequest, res: Response) {
         return res.json({ roadmap, sections });
     } catch (error: any) {
         console.error('exportRoadmap error:', error);
+        return res.status(500).json({ error: error.message || 'Internal server error' });
+    }
+}
+
+/**
+ * GET /api/roadmap/graph/:tenantId
+ */
+export async function getRoadmapGraph(req: AuthRequest, res: Response) {
+    try {
+        const { tenantId } = req.params;
+
+        const [graph] = await db
+            .select()
+            .from(roadmapGraphs)
+            .where(eq(roadmapGraphs.tenantId, tenantId))
+            .orderBy(desc(roadmapGraphs.createdAt))
+            .limit(1);
+
+        if (!graph) {
+            return res.json({
+                graphId: null,
+                nodes: [],
+                edges: []
+            });
+        }
+
+        const nodes = await db
+            .select({
+                sopTicketId: roadmapGraphNodes.sopTicketId,
+                stage: roadmapGraphNodes.stage,
+                namespace: roadmapGraphNodes.namespace
+            })
+            .from(roadmapGraphNodes)
+            .where(eq(roadmapGraphNodes.graphId, graph.id));
+
+        const edges = await db
+            .select({
+                fromTicketId: roadmapGraphEdges.fromTicketId,
+                toTicketId: roadmapGraphEdges.toTicketId,
+                dependencyType: roadmapGraphEdges.dependencyType
+            })
+            .from(roadmapGraphEdges)
+            .where(eq(roadmapGraphEdges.graphId, graph.id));
+
+        return res.json({
+            graphId: graph.id,
+            nodes,
+            edges
+        });
+    } catch (error: any) {
+        console.error('getRoadmapGraph error:', error);
         return res.status(500).json({ error: error.message || 'Internal server error' });
     }
 }
