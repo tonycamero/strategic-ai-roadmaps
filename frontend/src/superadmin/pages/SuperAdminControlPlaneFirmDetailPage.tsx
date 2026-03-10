@@ -755,7 +755,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     const intakes = snapshot.intakes ?? [];
     const intakeRoles = (snapshot.intakeRoles ?? [])
         // 1. Map/Enrich Tenant Owner if missing data (Ensure Owner card has full data)
-        .map(role => {
+        .map((role: any) => {
             if (role.roleLabel === 'Tenant Owner') {
                 return {
                     ...role,
@@ -766,9 +766,9 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
             return role;
         })
         // 2. Filter out incomplete cards (no name and no email)
-        .filter(r => r.recipientName || r.recipientEmail)
+        .filter((r: any) => r.recipientName || r.recipientEmail)
         // 3. Sort: Owner > Executive > Others
-        .sort((a, b) => {
+        .sort((a: any, b: any) => {
             // Position 1: Tenant Owner
             if (a.roleLabel === 'Tenant Owner') return -1;
             if (b.roleLabel === 'Tenant Owner') return 1;
@@ -1646,7 +1646,7 @@ function StrategicStakeholdersPanel({
             <div>
                 <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">Strategic Stakeholders</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                    {roles.map(role => {
+                    {roles.map((role: any) => {
                         const intakeComplete = stakeholderDotColorHelper(role) === 'bg-emerald-500';
 
                         return (
