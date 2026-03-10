@@ -34,12 +34,16 @@ interface AssistedSynthesisModalProps {
 
 // NOTE: defensive normalization because some callers pass the firm object instead of the id
 export function AssistedSynthesisModal({ open, onClose, tenantId, snapshot, onRefresh }: AssistedSynthesisModalProps) {
-    const sasData = snapshot?.data || {}
-    const artifacts = sasData.artifacts || {}
-    const notes = artifacts.notes || []
-    const diagnostic = artifacts.diagnostic
-    const execBrief = artifacts.execBrief
-    const qa = artifacts.qa || []
+    const snapshotData = snapshot?.data ?? snapshot;
+    const artifacts = snapshotData?.artifacts ?? {};
+    const notes = artifacts.notes ?? [];
+    const discoveryNotes = artifacts.discoveryNotes ?? null;
+    const diagnostic = artifacts.diagnostic ?? null;
+    const executiveBrief = artifacts.executiveBrief ?? null;
+    // Q&A fallback: Source from Diagnostic's discoveryQuestions if standalone Q&A is missing
+    const qaSource = artifacts.qa || diagnostic?.outputs?.discoveryQuestions || diagnostic?.raw?.discoveryQuestions || [];
+    // Ensure qa is an array for mapping, but handle object/single item fallbacks
+    const qa = Array.isArray(qaSource) ? qaSource : (typeof qaSource === 'object' && Object.keys(qaSource).length > 0 ? [qaSource] : []);
 
     // normalize tenantId in case the parent accidentally passes the firm object
     // stronger normalization to guarantee a string id even if an object leaks through
@@ -93,7 +97,7 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, snapshot, onRe
                 }
             }
 
-            const normalized = proposalRes.items.map((p: ProposedFindingItem) => {
+            const normalized = (proposalRes?.items ?? []).map((p: ProposedFindingItem) => {
                 const decision = electionMap[p.id]
                 let status = p.status || 'pending'
                 if (decision === 'keep') status = 'accepted'
@@ -230,7 +234,7 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, snapshot, onRe
     const handleEdit = (id: string, newText: string) => {
 
         setProposals((prev: ProposedFindingItem[]) =>
-            prev.map((p: ProposedFindingItem) =>
+            (prev ?? []).map((p: ProposedFindingItem) =>
                 p.id === id ? { ...p, editedText: newText } : p
             )
         )
@@ -258,8 +262,15 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, snapshot, onRe
         setError(null) // Clear previous errors
 
         try {
-            const accepted = proposals.filter(p => p.status === 'accepted')
-            if (accepted.length === 0) {
+            const acceptedFindings = (proposals ?? [])
+                .filter(p => p.status === 'accepted')
+                .map(p => ({
+                    id: p.id,
+                    text: p.editedText || p.text,
+                    sourceFindingIds: p.sourceFindingIds || []
+                }))
+
+            if (acceptedFindings.length === 0) {
                 setError({
                     code: 'NO_PROPOSALS',
                     message: 'Please accept at least one proposal to declare canonical findings.'
@@ -267,8 +278,11 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, snapshot, onRe
                 return
             }
 
+            const sasRunId = snapshot?.data?.artifacts?.sasRunId || snapshot?.data?.sasRunId
+
             await superadminApi.declareCanonicalFindings(firmId, {
-                proposalIds: accepted.map((p: ProposedFindingItem) => p.id)
+                sasRunId: sasRunId || 'latest',
+                findings: acceptedFindings
             })
 
             await onRefresh?.()
@@ -303,10 +317,10 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, snapshot, onRe
         { type: 'Constraint' as const, label: 'Constraints', color: 'amber' }
     ]
 
-    const pendingCount = proposals.filter(p => p.status === 'pending').length
-    const acceptedCount = proposals.filter(p => p.status === 'accepted').length
-    const rejectedCount = proposals.filter(p => p.status === 'rejected').length
-    const allResolved = proposals.length > 0 && pendingCount === 0
+    const pendingCount = (proposals ?? []).filter(p => p.status === 'pending').length
+    const acceptedCount = (proposals ?? []).filter(p => p.status === 'accepted').length
+    const rejectedCount = (proposals ?? []).filter(p => p.status === 'rejected').length
+    const allResolved = (proposals ?? []).length > 0 && pendingCount === 0
 
     return (
 
@@ -544,7 +558,7 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, snapshot, onRe
 
                                         <div className="space-y-2">
 
-                                            {proposals
+                                            {(proposals ?? [])
                                                 .filter(p => p.type === section.type)
                                                 .map((proposal: ProposedFindingItem) => {
 
@@ -668,9 +682,29 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, snapshot, onRe
                                 <div className="prose prose-invert max-w-none text-xs space-y-4">
 
                                     {activeSourceTab === 'notes' && (
-                                        notes.map((note: any) => (
-                                            <ArtifactViewer key={note.id} artifact={note} />
-                                        ))
+                                        <div className="space-y-6">
+                                            {discoveryNotes && (
+                                                <div className="space-y-2">
+                                                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400/80 px-2">
+                                                        Primary Discovery Note
+                                                    </h4>
+                                                    <ArtifactViewer artifact={discoveryNotes} />
+                                                </div>
+                                            )}
+
+                                            <div className="space-y-2">
+                                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-2">
+                                                    Clarification History
+                                                </h4>
+                                                {(notes ?? []).length > 0 ? (
+                                                    (notes ?? []).map((note: any) => (
+                                                        <ArtifactViewer key={note.id} artifact={note} />
+                                                    ))
+                                                ) : (
+                                                    <div className="px-2 text-[10px] text-slate-600 italic">No history available</div>
+                                                )}
+                                            </div>
+                                        </div>
                                     )}
 
                                     {activeSourceTab === 'diagnostic' && (
@@ -678,13 +712,27 @@ export function AssistedSynthesisModal({ open, onClose, tenantId, snapshot, onRe
                                     )}
 
                                     {activeSourceTab === 'brief' && (
-                                        <ArtifactViewer artifact={execBrief} />
+                                        <ArtifactViewer artifact={executiveBrief} />
                                     )}
 
                                     {activeSourceTab === 'qa' && (
-                                        qa.map((item: any) => (
-                                            <ArtifactViewer key={item.id || Math.random()} artifact={item} />
-                                        ))
+                                        <div className="space-y-4">
+                                            {(() => {
+                                                const qaItems = Array.isArray(qa) ? qa : (qa ? [qa] : []);
+                                                if (qaItems.length > 0) {
+                                                    return qaItems.map((item: any) => (
+                                                        <ArtifactViewer key={item.id || Math.random()} artifact={item} />
+                                                    ));
+                                                }
+                                                return (
+                                                    <div className="flex items-center justify-center p-12 border border-dashed border-slate-800 rounded-xl bg-slate-950/40">
+                                                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic">
+                                                            No canonical Q&A artifact exists for this tenant yet.
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
                                     )}
 
                                 </div>

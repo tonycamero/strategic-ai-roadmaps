@@ -346,6 +346,9 @@ router.get('/firms/:tenantId/assisted-synthesis/agent/session', superadminContro
 router.post('/firms/:tenantId/assisted-synthesis/agent/messages', superadminController.sendAgentMessage);
 router.post('/firms/:tenantId/assisted-synthesis/agent/reset', superadminController.resetAgentSession);
 
+// Phase 3: Canonical Fetch for Latest SAS Run
+router.get('/firms/:tenantId/assisted-synthesis/proposals', superadminController.getSasProposals);
+
 // POST /api/superadmin/firms/:tenantId/ticket-moderation/activate - Activate ticket moderation
 // Uses validateTicketSchema to ensure schema readiness
 router.post('/firms/:tenantId/ticket-moderation/activate', validateTicketSchema, superadminController.activateTicketModeration);

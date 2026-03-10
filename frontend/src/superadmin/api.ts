@@ -572,8 +572,8 @@ export const superadminApi = {
   generateAssistedProposals: (tenantId: string, options?: { force?: boolean }) =>
     apiPost<{ items: any[]; runId: string }>(`/firms/${tenantId}/assisted-synthesis/generate-proposals${options?.force ? '?force=true' : ''}`, {}),
 
-  declareCanonicalFindings: (tenantId: string, findings: any[]) =>
-    apiPost<{ success: boolean }>(`/firms/${tenantId}/findings/declare`, { findings }),
+  declareCanonicalFindings: (tenantId: string, payload: { findings: any[]; sasRunId: string }) =>
+    apiPost<{ success: boolean }>(`/firms/${tenantId}/findings/declare`, payload),
 
   // Stage 5 Assisted Synthesis Agent (Bounded Persistence)
   getAgentSession: (tenantId: string, contextVersion: string) =>

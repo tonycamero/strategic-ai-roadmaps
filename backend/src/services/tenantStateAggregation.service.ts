@@ -28,7 +28,7 @@ import {
     tenantStage6Config,
     discoveryNotesLog
 } from '../db/schema';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, ne, and, desc, asc, sql } from 'drizzle-orm';
 import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
 import { computeCanonicalFindingsHash } from './canonicalFindingsHash.util';
 
@@ -887,29 +887,27 @@ export function normalizeArtifact(artifact: any) {
         }
     };
 
+    let rawOutputs =
+        artifact.outputs ??
+        artifact.content ??
+        artifact.notes ??
+        artifact.markdown ??
+        artifact.delta ??
+        artifact.synthesis ??
+        artifact.payload ??
+        artifact.overview;
+
+    let outputs = parseIfJSON(rawOutputs);
+
     return {
         id: artifact.id ?? null,
         type: artifact.type ?? artifact.category ?? null,
         createdAt: artifact.createdAt ?? artifact.created_at ?? null,
-
-        outputs: parseIfJSON(
-            artifact.outputs ??
-            artifact.content ??
-            artifact.markdown ??
-            artifact.delta ??
-            artifact.synthesis ??
-            artifact.payload ??
-            artifact.overview
-        ),
-
+        outputs: outputs,
         raw: artifact
     };
 }
 
-/**
- * Aggregates all Stage 5 artifacts for a tenant.
- * Returns normalized JSON objects for Notes, Diagnostic, Exec Brief, and Q&A.
- */
 export async function getStage5Artifacts(tenantId: string) {
     console.log(`[SAS] getStage5Artifacts for tenant: ${tenantId}`);
 
@@ -935,12 +933,11 @@ export async function getStage5Artifacts(tenantId: string) {
         .from(diagnostics)
         .where(and(
             eq(diagnostics.tenantId, tenantId),
-            eq(diagnostics.status, 'generated')
+            ne(diagnostics.status, 'not_generated')
         ))
         .orderBy(desc(diagnostics.updatedAt))
         .limit(1);
 
-    // Return flattened normalized overview markdown if record exists
     const diagnostic = diagRecord ? normalizeArtifact(diagRecord) : null;
 
     // 3. Exec Brief
@@ -991,7 +988,8 @@ export interface TenantLifecycleSnapshot {
     artifacts: {
         notes: any[];
         diagnostic: any | null;
-        execBrief: any | null;
+        executiveBrief: any | null;
+        discoveryNotes: any | null;
         qa: any | null;
     };
     roadmap: {
@@ -1014,6 +1012,26 @@ async function getLatestRoadmap(tenantId: string) {
         .limit(1);
 
     return rows?.[0] ?? null;
+}
+
+/**
+ * Normalizes artifacts for the snapshot payload.
+ * Ensures UI always receives a stable { outputs } contract.
+ */
+function normalizeArtifacts({
+    executiveBrief,
+    diagnostic,
+    discoveryNotes
+}: {
+    executiveBrief: any;
+    diagnostic: any;
+    discoveryNotes: any;
+}) {
+    return {
+        executiveBrief: normalizeArtifact(executiveBrief),
+        diagnostic: normalizeArtifact(diagnostic),
+        discoveryNotes: normalizeArtifact(discoveryNotes)
+    };
 }
 
 /**
@@ -1076,31 +1094,38 @@ export async function resolveTenantLifecycleSnapshot(
     const tenantRow = tenantDetails[0] ?? null;
     const ownerRow = ownerDetails[0] ?? null;
 
-    // === LEGACY BACKFILL LOGIC [SNAPSHOT_ARTIFACT_BACKFILL] ===
-    // 1. Resolve Diagnostic fallback
-    let resolvedDiagnostic = artifactsFromService.diagnostic;
-    if (!resolvedDiagnostic && tenantRow?.lastDiagnosticId) {
-        const [fallbackDiag] = await db.select().from(diagnostics).where(eq(diagnostics.id, tenantRow.lastDiagnosticId)).limit(1);
-        if (fallbackDiag) resolvedDiagnostic = normalizeArtifact(fallbackDiag);
-    }
-    if (!resolvedDiagnostic) {
-        const [latestDiag] = await db.select().from(diagnostics).where(eq(diagnostics.tenantId, tenantId)).orderBy(desc(diagnostics.createdAt)).limit(1);
-        if (latestDiag) resolvedDiagnostic = normalizeArtifact(latestDiag);
-    }
+    // === ARTIFACT RESOLUTION [SNAPSHOT_ARTIFACT_STABILIZATION] ===
+    const executiveBrief = await db
+        .select()
+        .from(executiveBriefs)
+        .where(eq(executiveBriefs.tenantId, tenantId))
+        .orderBy(desc(executiveBriefs.createdAt))
+        .limit(1);
 
-    // 2. Resolve Exec Brief fallback
-    let resolvedExecBrief = artifactsFromService.execBrief;
-    if (!resolvedExecBrief) {
-        const [latestBrief] = await db.select().from(executiveBriefs).where(eq(executiveBriefs.tenantId, tenantId)).orderBy(desc(executiveBriefs.createdAt)).limit(1);
-        if (latestBrief) resolvedExecBrief = normalizeArtifact(latestBrief);
-    }
+    const diagnostic = await db
+        .select({
+            id: diagnostics.id,
+            overview: diagnostics.overview,
+            aiOpportunities: diagnostics.aiOpportunities,
+            roadmapSkeleton: diagnostics.roadmapSkeleton,
+            createdAt: diagnostics.createdAt
+        })
+        .from(diagnostics)
+        .where(eq(diagnostics.tenantId, tenantId))
+        .orderBy(desc(diagnostics.createdAt))
+        .limit(1);
 
-    console.log("[SNAPSHOT_ARTIFACT_BACKFILL]", {
-        tenantId,
-        notes: Array.isArray(artifactsFromService.notes) ? artifactsFromService.notes.length : 0,
-        diagnostic: !!resolvedDiagnostic,
-        execBrief: !!resolvedExecBrief,
-        qa: Array.isArray(artifactsFromService.qa) ? artifactsFromService.qa.length : 0
+    const discoveryNotes = await db
+        .select()
+        .from(discoveryCallNotes)
+        .where(eq(discoveryCallNotes.tenantId, tenantId))
+        .orderBy(asc(discoveryCallNotes.createdAt))
+        .limit(1);
+
+    const normalizedArtifacts = normalizeArtifacts({
+        executiveBrief: executiveBrief[0],
+        diagnostic: diagnostic[0],
+        discoveryNotes: discoveryNotes[0]
     });
 
     return {
@@ -1112,9 +1137,8 @@ export async function resolveTenantLifecycleSnapshot(
         intakes: intakeList,
         intakeRoles: vectorList,
         artifacts: {
+            ...normalizedArtifacts,
             notes: artifactsFromService.notes ?? [],
-            diagnostic: resolvedDiagnostic,
-            execBrief: resolvedExecBrief,
             qa: artifactsFromService.qa ?? null
         },
         roadmap: {
@@ -1125,6 +1149,5 @@ export async function resolveTenantLifecycleSnapshot(
         recentActivity: activityList
     };
 }
-
 
 

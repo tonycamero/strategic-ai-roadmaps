@@ -1,5 +1,5 @@
 TOKEN: 
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ZDRkYzVhOC1mZTUxLTQ0ZjQtOTVjYS05YjgyYjQ3YmEzYjkiLCJlbWFpbCI6InRvbnlAc2NlbmQuY2FzaCIsInJvbGUiOiJzdXBlcmFkbWluIiwiaXNJbnRlcm5hbCI6dHJ1ZSwidGVuYW50SWQiOm51bGwsImlhdCI6MTc3MjU5NDAzMSwiZXhwIjoxNzczMTk4ODMxfQ.RAtZcGrNT0B-mvoDJWOQ-4plq3NwTE4WjQDPltmCWTw
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ZDRkYzVhOC1mZTUxLTQ0ZjQtOTVjYS05YjgyYjQ3YmEzYjkiLCJlbWFpbCI6InRvbnlAc2NlbmQuY2FzaCIsInJvbGUiOiJzdXBlcmFkbWluIiwiaXNJbnRlcm5hbCI6dHJ1ZSwidGVuYW50SWQiOm51bGwsImlhdCI6MTc3Mjg1MzE5MCwiZXhwIjoxNzczNDU3OTkwfQ.Hq6YLJV0-qR30Z-wxBdlJRcCZfe0KtKOI88hTxBsWO4
 
 TENANT: 
 8b4dc94a-9028-4bd5-8f2f-04e3440dae35
@@ -8,6 +8,21 @@ DATABASE_URL:
 'postgresql://neondb_owner:npg_5zJucGskB4QI@ep-lively-paper-a4yb6gco-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
 
 =====================================
+
+
+
+export SAR_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ZDRkYzVhOC1mZTUxLTQ0ZjQtOTVjYS05YjgyYjQ3YmEzYjkiLCJlbWFpbCI6InRvbnlAc2NlbmQuY2FzaCIsInJvbGUiOiJzdXBlcmFkbWluIiwiaXNJbnRlcm5hbCI6dHJ1ZSwidGVuYW50SWQiOm51bGwsImlhdCI6MTc3Mjg1MzE5MCwiZXhwIjoxNzczNDU3OTkwfQ.Hq6YLJV0-qR30Z-wxBdlJRcCZfe0KtKOI88hTxBsWO4"
+
+
+
+
+pg_dump "postgresql://neondb_owner:npg_5zJucGskB4QI@ep-lively-paper-a4yb6gco-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require" \
+  --schema=core \
+  --data-only \
+  --no-owner \
+  --no-privileges \
+| psql "postgresql://neondb_owner:npg_5zJucGskB4QI@ep-lively-paper-a4yb6gco-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+
 
 
 
