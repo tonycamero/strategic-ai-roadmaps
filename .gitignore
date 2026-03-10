@@ -46,6 +46,9 @@ docs/_secrets_local/
 # local architecture working library
 docs/00 architecture/
 
+backend/*.sh
+backend/*_errors.txt
+
 # Windows ADS metadata
 *:Zone.Identifier
 backend/verification_output.txt

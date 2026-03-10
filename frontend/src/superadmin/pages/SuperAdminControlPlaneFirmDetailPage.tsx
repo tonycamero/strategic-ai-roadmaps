@@ -100,8 +100,8 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     const [isSynthesisOpen, setSynthesisOpen] = useState(false);
     const [intakeModalOpen, setIntakeModalOpen] = useState(false);
     const [selectedIntake, setSelectedIntake] = useState<any>(null);
-    const [execBriefLoading, setExecBriefLoading] = useState(false);
-    const [execBriefError, setExecBriefError] = useState<string | null>(null);
+    const [executiveBriefLoading, setExecutiveBriefLoading] = useState(false);
+    const [executiveBriefError, setExecutiveBriefError] = useState<string | null>(null);
     const [diagLoading, setDiagLoading] = useState(false);
     const [diagError, setDiagError] = useState<string | null>(null);
     const [snapshotLoading, setSnapshotLoading] = useState(false);
@@ -693,7 +693,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     // Modal Close Handlers
     const closeExecBriefModal = async () => {
         setExecBriefOpen(false);
-        setExecBriefError(null);
+        setExecutiveBriefError(null);
         await refreshData();
     };
 
@@ -787,9 +787,10 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     const moderationStatus = snapshot.diagnosticStatus ?? null;
 
     // SSOT Artifacts
-    const artifacts = snapshot.artifacts ?? {};
+    const snapshotData = snapshot?.data ?? snapshot;
+    const artifacts = snapshotData?.artifacts ?? {};
     const latestDiagnostic = artifacts.diagnostic ?? null;
-    const execBriefData = artifacts.execBrief ?? null;
+    const executiveBriefData = artifacts.executiveBrief ?? null;
     const discoveryNotesLog = artifacts.notes ?? [];
     const tickets = snapshot.tickets ?? [];
 
@@ -1525,24 +1526,24 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                 <ExecutiveBriefModal
                     open={isExecBriefOpen}
                     onClose={closeExecBriefModal}
-                    loading={execBriefLoading}
-                    data={execBriefData}
+                    loading={executiveBriefLoading}
+                    data={executiveBriefData}
                     status={projection.governance.executiveBriefStatus}
-                    error={execBriefError}
+                    error={executiveBriefError}
                     onApprove={handleApproveExecutiveBrief}
                     isApproving={isGenerating}
                     tenantId={params?.tenantId || ''}
                     onDeliver={handleDeliverExecutiveBrief}
                     isDelivering={isGenerating}
-                    hasPdf={execBriefData?.hasPdf}
+                    hasPdf={executiveBriefData?.hasPdf}
                     onGeneratePdf={handleGenerateExecutiveBriefPdf}
                     audit={(() => {
                         // EXEC-RESTORE-REVIEW-PANELS-AND-KILL-DIVERGENCE-022: Prevent pre-deliver generation
                         if (!projection.governance.executiveBriefStatus || projection.governance.executiveBriefStatus !== 'DELIVERED') return undefined;
-                        // Audit info should be persisted in execBriefData if available
-                        return (execBriefData as any)?.deliveredAt ? {
-                            deliveredAt: (execBriefData as any).deliveredAt,
-                            deliveredByRole: (execBriefData as any).deliveredTo
+                        // Audit info should be persisted in executiveBriefData if available
+                        return (executiveBriefData as any)?.deliveredAt ? {
+                            deliveredAt: (executiveBriefData as any).deliveredAt,
+                            deliveredByRole: (executiveBriefData as any).deliveredTo
                         } : undefined;
                     })()}
                     onDownload={() => superadminApi.downloadExecutiveBrief(tenant?.id ?? '', tenant?.name ?? 'ExecutiveBrief')}
@@ -1575,17 +1576,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                     open={isSynthesisOpen}
                     onClose={() => setSynthesisOpen(false)}
                     tenantId={params?.tenantId || ''}
-                    snapshot={{
-                        ...snapshot,
-                        data: {
-                            artifacts: {
-                                notes: artifacts.notes || [],
-                                diagnostic: artifacts.diagnostic,
-                                execBrief: artifacts.execBrief,
-                                qa: artifacts.qa
-                            }
-                        }
-                    }}
+                    snapshot={snapshot}
                     onRefresh={refreshData}
                 />
 
