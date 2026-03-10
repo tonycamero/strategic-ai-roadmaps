@@ -100,8 +100,8 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     const [isSynthesisOpen, setSynthesisOpen] = useState(false);
     const [intakeModalOpen, setIntakeModalOpen] = useState(false);
     const [selectedIntake, setSelectedIntake] = useState<any>(null);
-    const [execBriefLoading, setExecBriefLoading] = useState(false);
-    const [execBriefError, setExecBriefError] = useState<string | null>(null);
+    const [executiveBriefLoading, setExecutiveBriefLoading] = useState(false);
+    const [executiveBriefError, setExecutiveBriefError] = useState<string | null>(null);
     const [diagLoading, setDiagLoading] = useState(false);
     const [diagError, setDiagError] = useState<string | null>(null);
     const [snapshotLoading, setSnapshotLoading] = useState(false);
@@ -693,7 +693,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     // Modal Close Handlers
     const closeExecBriefModal = async () => {
         setExecBriefOpen(false);
-        setExecBriefError(null);
+        setExecutiveBriefError(null);
         await refreshData();
     };
 
@@ -753,17 +753,48 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     const owner = snapshot.owner ?? null;
     const teamMembers = snapshot.teamMembers ?? [];
     const intakes = snapshot.intakes ?? [];
-    const intakeRoles = snapshot.intakeRoles ?? [];
-    const roadmaps = snapshot.roadmaps ?? (snapshot.artifacts?.latestRoadmap ? [snapshot.artifacts.latestRoadmap] : []);
-    const latestRoadmap = snapshot.artifacts?.latestRoadmap ?? null;
+    const intakeRoles = (snapshot.intakeRoles ?? [])
+        // 1. Map/Enrich Tenant Owner if missing data (Ensure Owner card has full data)
+        .map(role => {
+            if (role.roleLabel === 'Tenant Owner') {
+                return {
+                    ...role,
+                    recipientName: role.recipientName || owner?.name || tenant?.ownerName || 'Owner',
+                    recipientEmail: role.recipientEmail || owner?.email || tenant?.ownerEmail || '',
+                };
+            }
+            return role;
+        })
+        // 2. Filter out incomplete cards (no name and no email)
+        .filter(r => r.recipientName || r.recipientEmail)
+        // 3. Sort: Owner > Executive > Others
+        .sort((a, b) => {
+            // Position 1: Tenant Owner
+            if (a.roleLabel === 'Tenant Owner') return -1;
+            if (b.roleLabel === 'Tenant Owner') return 1;
+
+            // Position 2+: Executives
+            if (a.roleType === 'EXECUTIVE' && b.roleType !== 'EXECUTIVE') return -1;
+            if (a.roleType !== 'EXECUTIVE' && b.roleType === 'EXECUTIVE') return 1;
+
+            // Others
+            return 0;
+        });
+
+    const roadmaps = snapshot.roadmap?.all ?? [];
+    const latestRoadmap = snapshot.roadmap?.latest ?? null;
     const recentActivity = snapshot.recentActivity ?? [];
     const moderationStatus = snapshot.diagnosticStatus ?? null;
-    const latestDiagnostic = snapshot.artifacts?.latestDiagnostic ?? null;
-    const execBriefData = snapshot.artifacts?.executiveBrief ?? null;
-    const discoveryNotes = snapshot.artifacts?.discoveryNotes ?? null;
+
+    // SSOT Artifacts
+    const snapshotData = snapshot?.data ?? snapshot;
+    const artifacts = snapshotData?.artifacts ?? {};
+    const latestDiagnostic = artifacts.diagnostic ?? null;
+    const executiveBriefData = artifacts.executiveBrief ?? null;
+    const discoveryNotesLog = artifacts.notes ?? [];
     const tickets = snapshot.tickets ?? [];
 
-    const synthesisNotes = discoveryNotes?.notes || null;
+    const synthesisNotes = discoveryNotesLog[0]?.delta ?? null;
 
     // Canonical Status Helper using strictly projection bindings
     const getCanonicalStatus = (stage: number): 'LOCKED' | 'READY' | 'COMPLETE' => {
@@ -781,7 +812,12 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         if (stage === 4) return projection.workflow.discoveryComplete ? 'COMPLETE' : (projection.derived.canIngestDiscoveryNotes ? 'READY' : 'LOCKED');
 
         // Stage 5: Assisted Synthesis
-        if (stage === 5) return projection.derived.synthesis.ready ? 'READY' : 'LOCKED';
+        // COMPLETION requires canonical findings — draft proposals are NOT completion.
+        // EXEC-TICKET-SAS-COMPLETION-REALIGN-001
+        if (stage === 5) {
+            if (projection.artifacts.hasCanonicalFindings) return 'COMPLETE';
+            return projection.derived.synthesis.ready ? 'READY' : 'LOCKED';
+        }
 
         // Stage 6: Ticket Moderation
         const ticketsModerated = projection.tickets.total > 0 && projection.tickets.pending === 0;
@@ -1204,7 +1240,10 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                         label: 'Assisted Synthesis',
                                         status: getCanonicalStatus(5),
                                         action: (() => {
-                                            if (projection.derived.synthesis.ready || projection.artifacts.hasCanonicalFindings) {
+                                            // EXEC-TICKET-SAS-COMPLETION-REALIGN-001
+                                            // Access gate uses canonical findings OR synthesis.ready.
+                                            // But completion badge is strictly hasCanonicalFindings.
+                                            if (projection.artifacts.hasCanonicalFindings || projection.derived.synthesis.ready) {
                                                 return (
                                                     <button
                                                         onClick={openSynthesisModal}
@@ -1406,14 +1445,15 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                     <div className="text-[10px] text-slate-500 uppercase font-extrabold mb-2">Ticket Moderation {projection.artifacts.diagnostic.exists ? '(Active)' : '(Pending)'}</div>
                                     {projection.artifacts.diagnostic.exists ? (
                                         <div className="space-y-4">
-                                            {/* Stage 6 Activation Trigger */}
-                                            {getCanonicalStatus(5) === 'COMPLETE' && projection.tickets.total > 0 && (
+                                            {/* Stage 6 Activation Trigger — EXEC-TICKET-SAS-COMPLETION-REALIGN-001 */}
+                                            {/* Banner requires canonical findings (not getCanonicalStatus(5) which was ghost-driven) */}
+                                            {projection.artifacts.hasCanonicalFindings && projection.tickets.total > 0 && (
                                                 <div className="p-6 bg-indigo-900/10 border border-indigo-500/30 rounded-xl mb-4">
                                                     <div className="flex items-center justify-between gap-6">
                                                         <div className="flex-1">
                                                             <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-tight">Stage 6: Ticket Moderation Required</h3>
 
-                                                            <p className="text-xs text-slate-400 mt-1">Assisted synthesis is complete. Materialize findings into draft tickets to begin moderation.</p>
+                                                            <p className="text-xs text-slate-400 mt-1">Canonical findings declared. Materialize findings into draft tickets to begin moderation.</p>
                                                         </div>
                                                         <button
                                                             onClick={handleActivateModeration}
@@ -1486,24 +1526,24 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                 <ExecutiveBriefModal
                     open={isExecBriefOpen}
                     onClose={closeExecBriefModal}
-                    loading={execBriefLoading}
-                    data={execBriefData}
+                    loading={executiveBriefLoading}
+                    data={executiveBriefData}
                     status={projection.governance.executiveBriefStatus}
-                    error={execBriefError}
+                    error={executiveBriefError}
                     onApprove={handleApproveExecutiveBrief}
                     isApproving={isGenerating}
                     tenantId={params?.tenantId || ''}
                     onDeliver={handleDeliverExecutiveBrief}
                     isDelivering={isGenerating}
-                    hasPdf={execBriefData?.hasPdf}
+                    hasPdf={executiveBriefData?.hasPdf}
                     onGeneratePdf={handleGenerateExecutiveBriefPdf}
                     audit={(() => {
                         // EXEC-RESTORE-REVIEW-PANELS-AND-KILL-DIVERGENCE-022: Prevent pre-deliver generation
                         if (!projection.governance.executiveBriefStatus || projection.governance.executiveBriefStatus !== 'DELIVERED') return undefined;
-                        // Audit info should be persisted in execBriefData if available
-                        return (execBriefData as any)?.deliveredAt ? {
-                            deliveredAt: (execBriefData as any).deliveredAt,
-                            deliveredByRole: (execBriefData as any).deliveredTo
+                        // Audit info should be persisted in executiveBriefData if available
+                        return (executiveBriefData as any)?.deliveredAt ? {
+                            deliveredAt: (executiveBriefData as any).deliveredAt,
+                            deliveredByRole: (executiveBriefData as any).deliveredTo
                         } : undefined;
                     })()}
                     onDownload={() => superadminApi.downloadExecutiveBrief(tenant?.id ?? '', tenant?.name ?? 'ExecutiveBrief')}
@@ -1536,11 +1576,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                     open={isSynthesisOpen}
                     onClose={() => setSynthesisOpen(false)}
                     tenantId={params?.tenantId || ''}
-                    artifacts={{
-                        discoveryNotes: synthesisNotes,
-                        diagnostic: latestDiagnostic,
-                        executiveBrief: execBriefData
-                    }}
+                    snapshot={snapshot}
                     onRefresh={refreshData}
                 />
 

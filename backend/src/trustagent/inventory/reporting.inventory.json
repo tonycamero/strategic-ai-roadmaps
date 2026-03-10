@@ -31,7 +31,9 @@
       "Agency",
       "E-commerce",
       "Coaching"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "REP-002",
@@ -65,7 +67,9 @@
       "Agency",
       "Real Estate",
       "Professional Services"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "REP-003",
@@ -98,7 +102,9 @@
       "Agency",
       "B2B Services",
       "Coaching"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "REP-004",
@@ -133,7 +139,9 @@
       "Medical",
       "Coaching",
       "Trades"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "REP-005",
@@ -164,7 +172,9 @@
       "Agency",
       "Coaching",
       "Professional Services"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "REP-006",
@@ -197,6 +207,8 @@
       "Agency",
       "Trades",
       "Creative Services"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   }
 ]

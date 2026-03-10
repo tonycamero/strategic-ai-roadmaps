@@ -261,6 +261,7 @@ async function apiPatch<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function apiPost<T>(path: string, body?: unknown): Promise<T> {
+  console.log(`[SAS API] POST ${path}`, body);
   const token = getToken();
   const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
@@ -564,11 +565,15 @@ export const superadminApi = {
   getProposedFindings: (tenantId: string) =>
     apiGet<{ items: any[]; requiresGeneration?: boolean }>(`/firms/${tenantId}/findings/proposed`),
 
-  generateAssistedProposals: (tenantId: string) =>
-    apiPost<{ items: any[]; version: string }>(`/firms/${tenantId}/assisted-synthesis/generate-proposals`, {}),
+  // Phase 3 & 4: Canonical SAS Fetch
+  getAssistedProposals: (tenantId: string) =>
+    apiGet<{ items: any[]; runId: string }>(`/firms/${tenantId}/assisted-synthesis/proposals`),
 
-  declareCanonicalFindings: (tenantId: string, findings: any[]) =>
-    apiPost<{ success: boolean }>(`/firms/${tenantId}/findings/declare`, { findings }),
+  generateAssistedProposals: (tenantId: string, options?: { force?: boolean }) =>
+    apiPost<{ items: any[]; runId: string }>(`/firms/${tenantId}/assisted-synthesis/generate-proposals${options?.force ? '?force=true' : ''}`, {}),
+
+  declareCanonicalFindings: (tenantId: string, payload: { findings: any[]; sasRunId: string }) =>
+    apiPost<{ success: boolean }>(`/firms/${tenantId}/findings/declare`, payload),
 
   // Stage 5 Assisted Synthesis Agent (Bounded Persistence)
   getAgentSession: (tenantId: string, contextVersion: string) =>
@@ -625,4 +630,19 @@ export const superadminApi = {
       user: { id: string; email: string; name: string; role: string };
       sessionId: string;
     }>(`/firms/${tenantId}/impersonate`),
+
+  // S6-02: SAS Proposal Election Persistence
+  recordProposalElection: (tenantId: string, proposalId: string, decision: 'keep' | 'trash', note?: string) => {
+    console.log("SAS API proposalId:", proposalId);
+    return apiPost<{ electionId: string; proposalId: string; decision: string; decidedAt: string }>(
+      `/firms/${tenantId}/sas/proposals/${proposalId}/election`,
+      { decision, note }
+    );
+  },
+
+  // S6-03: SAS Election State Query
+  getElectionSummary: (tenantId: string) =>
+    apiGet<{ elections: Array<{ proposalId: string; decision: string; decidedBy: string; createdAt: string }> }>(
+      `/firms/${tenantId}/sas/elections/summary`
+    ),
 };

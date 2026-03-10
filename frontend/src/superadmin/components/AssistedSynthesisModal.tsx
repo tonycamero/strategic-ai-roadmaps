@@ -1,248 +1,467 @@
 // frontend/src/superadmin/components/AssistedSynthesisModal.tsx
 
-import { useState, useEffect } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import AssistedSynthesisAgentConsole from './AssistedSynthesisAgentConsole';
-import { superadminApi } from '../api';
+import { useState, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import AssistedSynthesisAgentConsole from './AssistedSynthesisAgentConsole'
+import ArtifactViewer from './ArtifactViewer' // Use default export
+import { superadminApi } from '../api'
 
 interface ProposedFindingItem {
-    id: string;
-    type: 'CurrentFact' | 'FrictionPoint' | 'Goal' | 'Constraint';
-    text: string;
-    evidenceRefs: Array<{
-        artifact: 'raw' | 'execBrief' | 'diagnostic' | 'qna';
-        quote: string;
-        location?: string;
-    }>;
-    status: 'pending' | 'accepted' | 'rejected';
-    editedText?: string;
-    operatorNote?: string;
+    id: string
+    findingId?: string
+    title?: string
+    text: string
+    description?: string
+    status: 'pending' | 'accepted' | 'rejected'
+    evidenceRefs?: any[]
+    sourceAnchors?: {
+        capability?: string
+        namespace?: string
+    }
+    type: 'CurrentFact' | 'FrictionPoint' | 'Goal' | 'Constraint'
+    editedText?: string
+    operatorNote?: string
 }
 
 interface AssistedSynthesisModalProps {
-    open: boolean;
-    onClose: () => void;
-    tenantId: string;
-    artifacts: {
-        discoveryNotes?: any;
-        diagnostic?: any;
-        executiveBrief?: any;
-    };
-    onRefresh?: () => void;
+    open: boolean
+    onClose: () => void
+    tenantId: string
+    snapshot: any
+    onRefresh?: () => void
 }
 
-export function AssistedSynthesisModal({ open, onClose, tenantId, artifacts, onRefresh }: AssistedSynthesisModalProps) {
-    const [proposals, setProposals] = useState<ProposedFindingItem[]>([]);
-    const [requiresGeneration, setRequiresGeneration] = useState(false);
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [activeSourceTab, setActiveSourceTab] = useState<'notes' | 'diagnostic' | 'brief' | 'qa'>('notes');
-    const [isSaving, setIsSaving] = useState(false);
-    const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
-    const [error, setError] = useState<{ code: string; message: string; requestId?: string } | null>(null);
+// NOTE: defensive normalization because some callers pass the firm object instead of the id
+export function AssistedSynthesisModal({ open, onClose, tenantId, snapshot, onRefresh }: AssistedSynthesisModalProps) {
+    const snapshotData = snapshot?.data ?? snapshot;
+    const artifacts = snapshotData?.artifacts ?? {};
+    const notes = artifacts.notes ?? [];
+    const discoveryNotes = artifacts.discoveryNotes ?? null;
+    const diagnostic = artifacts.diagnostic ?? null;
+    const executiveBrief = artifacts.executiveBrief ?? null;
+    // Q&A fallback: Source from Diagnostic's discoveryQuestions if standalone Q&A is missing
+    const qaSource = artifacts.qa || diagnostic?.outputs?.discoveryQuestions || diagnostic?.raw?.discoveryQuestions || [];
+    // Ensure qa is an array for mapping, but handle object/single item fallbacks
+    const qa = Array.isArray(qaSource) ? qaSource : (typeof qaSource === 'object' && Object.keys(qaSource).length > 0 ? [qaSource] : []);
+
+    // normalize tenantId in case the parent accidentally passes the firm object
+    // stronger normalization to guarantee a string id even if an object leaks through
+    const firmId: string = typeof tenantId === 'string'
+        ? tenantId
+        : String((tenantId as any)?.id ?? '')
+
+    const [proposals, setProposals] = useState<ProposedFindingItem[]>([])
+    const [requiresGeneration, setRequiresGeneration] = useState(false)
+    const [isGenerating, setIsGenerating] = useState(false)
+    const [activeSourceTab, setActiveSourceTab] = useState<'notes' | 'diagnostic' | 'brief' | 'qa'>('notes')
+    const [isSaving, setIsSaving] = useState(false)
+    const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false)
+    const [error, setError] = useState<{ code: string; message: string; requestId?: string } | null>(null)
+
+
+
+    const [pendingProposalId, setPendingProposalId] = useState<string | null>(null)
+    const [electionError, setElectionError] = useState<string | null>(null)
+    const [sasRunId, setSasRunId] = useState<string | null>(null)
+
+
 
     useEffect(() => {
         if (open) {
-            loadProposedFindings();
-            setError(null); // Clear errors on modal open
+            loadProposedFindings()
+            setError(null)
         }
-    }, [open, tenantId]);
+    }, [open, firmId])
 
     const loadProposedFindings = async () => {
         try {
-            // STRIKE 1: API method does not exist on SuperAdmin API surface
-            // const data = await superadminApi.getProposedFindings({ tenantId });
-            console.warn("getProposedFindings disabled (Strike 1)");
-            setRequiresGeneration(true);
-            setProposals([]);
+            const [proposalRes, electionRes] = await Promise.all([
+                superadminApi.getAssistedProposals(firmId),
+                superadminApi.getElectionSummary(firmId)
+            ])
+
+            if (!proposalRes || !proposalRes.items || proposalRes.items.length === 0) {
+                setProposals([])
+                setSasRunId(proposalRes?.runId || null)
+                return
+            }
+
+            setSasRunId(proposalRes.runId)
+
+            // Map election state to proposals
+            const electionMap: Record<string, 'keep' | 'trash'> = {}
+            if (electionRes?.elections) {
+                for (const e of electionRes.elections) {
+                    electionMap[e.proposalId] = e.decision as 'keep' | 'trash'
+                }
+            }
+
+            const normalized = (proposalRes?.items ?? []).map((p: ProposedFindingItem) => {
+                const decision = electionMap[p.id]
+                let status = p.status || 'pending'
+                if (decision === 'keep') status = 'accepted'
+                if (decision === 'trash') status = 'rejected'
+                return { ...p, status }
+            })
+
+            setProposals(normalized)
+            setRequiresGeneration(false)
+
         } catch (err) {
-            console.error('Failed to load proposed findings:', err);
-            setRequiresGeneration(true);
+            console.error('[SAS] failed loading proposals', err)
+            setRequiresGeneration(true)
+            setProposals([])
         }
-    };
-
-const handleGenerateProposals = async () => {
-    setIsGenerating(true);
-    setError(null);
-    try {
-        const response = await superadminApi.generateAssistedProposals(tenantId);
-
-        setProposals(response.items || []);
-        setRequiresGeneration(false);
-
-    } catch (err: any) {
-        console.error('Failed to generate proposals:', err);
-
-        const errorData = err.response?.data || {};
-        setError({
-            code: errorData.code || 'UNKNOWN_ERROR',
-            message: err.message || 'Failed to generate proposals.',
-            requestId: errorData.requestId
-        });
-    } finally {
-        setIsGenerating(false);
     }
-};
 
-    const handleAccept = (id: string) => {
-        setProposals(prev => prev.map(p => p.id === id ? { ...p, status: 'accepted' as const } : p));
+
+    const handleGenerateProposals = async () => {
+
+        setIsGenerating(true)
+        setError(null)
+
+        try {
+
+            const response = await superadminApi.generateAssistedProposals(firmId)
+
+            setProposals(response.items || [])
+            setSasRunId(response.runId)
+            setRequiresGeneration(false)
+
+        } catch (err: any) {
+
+            console.error('Failed to generate proposals:', err)
+
+            const errorData = err.response?.data || {}
+
+            setError({
+                code: errorData.code || 'UNKNOWN_ERROR',
+                message: err.message || 'Failed to generate proposals.',
+                requestId: errorData.requestId
+            })
+
+        } finally {
+
+            setIsGenerating(false)
+
+        }
+
+    }
+
+    const handleRegenerateProposals = async () => {
+
+        setShowRegenerateConfirm(false)
+        setIsGenerating(true)
+        setError(null)
+
+        try {
+
+            const response = await superadminApi.generateAssistedProposals(
+                firmId,
+                { force: true }
+            )
+
+            setProposals(response.items || [])
+            setSasRunId(response.runId)
+            setRequiresGeneration(false)
+
+        } catch (err: any) {
+
+            console.error('[SAS] regenerate failed', err)
+
+            const errorData = err.response?.data || {}
+
+            setError({
+                code: errorData.code || 'UNKNOWN_ERROR',
+                message: err.message || 'Failed to regenerate proposals.',
+                requestId: errorData.requestId
+            })
+
+        } finally {
+
+            setIsGenerating(false)
+
+        }
+
+    }
+
+    const updateProposalStatus = (index: number, status: 'accepted' | 'rejected') => {
+        setProposals((prev: ProposedFindingItem[]) => {
+            const next = [...prev];
+            if (next[index]) {
+                next[index] = { ...next[index], status };
+            }
+            return next;
+        });
     };
 
-    const handleReject = (id: string) => {
-        setProposals(prev => prev.map(p => p.id === id ? { ...p, status: 'rejected' as const } : p));
-    };
+    // META-TICKET SAS-STAGE5-UI-STABILIZATION-01: Elections with lifecycle guard
+    const handleAccept = async (id: string) => {
+        if (pendingProposalId) return // guard: one request at a time
+        setPendingProposalId(id)
+        setElectionError(null)
+        try {
+            await superadminApi.recordProposalElection(firmId, id, 'keep')
+            const index = proposals.findIndex(p => p.id === id)
+            updateProposalStatus(index, 'accepted')
+        } catch (err: any) {
+            console.error('[SAS] Election failed', err)
+            setElectionError(err?.message || 'Failed to record election. Backend may be unavailable.')
+            // Do NOT update local state on failure
+        } finally {
+            setPendingProposalId(null)
+        }
+    }
+
+    const handleReject = async (id: string) => {
+        if (pendingProposalId) return // guard: one request at a time
+        setPendingProposalId(id)
+        setElectionError(null)
+        try {
+            await superadminApi.recordProposalElection(firmId, id, 'trash')
+            const index = proposals.findIndex(p => p.id === id)
+            updateProposalStatus(index, 'rejected')
+        } catch (err: any) {
+            console.error('[SAS] Election failed', err)
+            setElectionError(err?.message || 'Failed to record election. Backend may be unavailable.')
+            // Do NOT update local state on failure
+        } finally {
+            setPendingProposalId(null)
+        }
+    }
 
     const handleEdit = (id: string, newText: string) => {
-        setProposals(prev => prev.map(p => p.id === id ? { ...p, editedText: newText } : p));
-    };
+
+        setProposals((prev: ProposedFindingItem[]) =>
+            (prev ?? []).map((p: ProposedFindingItem) =>
+                p.id === id ? { ...p, editedText: newText } : p
+            )
+        )
+
+    }
 
     const handleAddProposal = (type: ProposedFindingItem['type']) => {
+
         const newProposal: ProposedFindingItem = {
             id: `human-${Date.now()}`,
             type,
             text: '',
-            evidenceRefs: [],
             status: 'pending',
-            operatorNote: 'Human Added (Pre-Canonical)'
-        };
-        setProposals(prev => [...prev, newProposal]);
-    };
+            operatorNote: 'Human Added',
+            evidenceRefs: []
+        }
 
-    const handleDeclareCanon = async () => {
-  setIsSaving(true);
+        setProposals(prev => [...prev, newProposal])
 
-  try {
-    const accepted = (proposals as any[])
-  .filter(p => p.status === 'accepted');
-
-    if (!accepted.length) {
-      alert('You must accept at least one finding.');
-      return;
     }
 
-    await superadminApi.declareCanonicalFindings(
-      tenantId,
-      accepted
-    );
+    const handleDeclareCanon = async () => {
 
-    await onRefresh?.();
-    onClose();
-  } catch (err) {
-    console.error('Failed to declare canonical findings:', err);
-    alert('Failed to declare findings.');
-  } finally {
-    setIsSaving(false);
-  }
-};
+        setIsSaving(true)
+        setError(null) // Clear previous errors
+
+        try {
+            const acceptedFindings = (proposals ?? [])
+                .filter(p => p.status === 'accepted')
+                .map(p => ({
+                    id: p.id,
+                    text: p.editedText || p.text,
+                    sourceFindingIds: p.sourceFindingIds || []
+                }))
+
+            if (acceptedFindings.length === 0) {
+                setError({
+                    code: 'NO_PROPOSALS',
+                    message: 'Please accept at least one proposal to declare canonical findings.'
+                })
+                return
+            }
+
+            const sasRunId = snapshot?.data?.artifacts?.sasRunId || snapshot?.data?.sasRunId
+
+            await superadminApi.declareCanonicalFindings(firmId, {
+                sasRunId: sasRunId || 'latest',
+                findings: acceptedFindings
+            })
+
+            await onRefresh?.()
+            onClose()
+
+        } catch (err) {
+
+            console.error('Failed to declare canonical findings:', err)
+            setError({
+                code: 'CANON_DECLARATION_FAILED',
+                message: 'Failed to declare findings. Please try again.'
+            })
+
+        } finally {
+
+            setIsSaving(false)
+
+        }
+
+    }
 
     const scrollToArtifact = (artifact: string) => {
-        setActiveSourceTab(artifact as any);
-    };
+        setActiveSourceTab(artifact as any)
+    }
 
-    if (!open) return null;
+    if (!open) return null
 
     const sections = [
         { type: 'CurrentFact' as const, label: 'Current Facts', color: 'indigo' },
         { type: 'FrictionPoint' as const, label: 'Friction Points', color: 'red' },
         { type: 'Goal' as const, label: 'Goals', color: 'emerald' },
-        { type: 'Constraint' as const, label: 'Constraints', color: 'amber' },
-    ];
+        { type: 'Constraint' as const, label: 'Constraints', color: 'amber' }
+    ]
 
-    const pendingCount = proposals.filter(p => p.status === 'pending').length;
-    const acceptedCount = proposals.filter(p => p.status === 'accepted').length;
-    const rejectedCount = proposals.filter(p => p.status === 'rejected').length;
-    const allResolved = proposals.length > 0 && pendingCount === 0;
+    const pendingCount = (proposals ?? []).filter(p => p.status === 'pending').length
+    const acceptedCount = (proposals ?? []).filter(p => p.status === 'accepted').length
+    const rejectedCount = (proposals ?? []).filter(p => p.status === 'rejected').length
+    const allResolved = (proposals ?? []).length > 0 && pendingCount === 0
 
     return (
+
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <style>{`
+                .artifact-text {
+                  white-space: pre-wrap;
+                  line-height: 1.6;
+                  font-size: 14px;
+                  color: #e5e7eb;
+                }
+            `}</style>
+
+            {/* Election Error Toast */}
+            {electionError && (
+                <div className="fixed top-6 right-6 z-[100] bg-red-900/90 border border-red-500/50 rounded-lg p-4 max-w-sm shadow-2xl animate-pulse">
+                    <div className="flex items-start gap-3">
+                        <span className="text-red-400 text-lg">⚠</span>
+                        <div className="flex-1">
+                            <p className="text-xs font-bold text-red-300 uppercase tracking-wider">Election Failed</p>
+                            <p className="text-xs text-red-200/80 mt-1">{electionError}</p>
+                        </div>
+                        <button onClick={() => setElectionError(null)} className="text-red-400/60 hover:text-red-300 text-sm">✕</button>
+                    </div>
+                </div>
+            )}
+
+            {/* General Error Toast */}
+            {error && (
+                <div className="fixed top-6 right-6 z-[100] bg-red-900/90 border border-red-500/50 rounded-lg p-4 max-w-sm shadow-2xl animate-pulse">
+                    <div className="flex items-start gap-3">
+                        <span className="text-red-400 text-lg">⚠</span>
+                        <div className="flex-1">
+                            <p className="text-xs font-bold text-red-300 uppercase tracking-wider">Error: {error.code}</p>
+                            <p className="text-xs text-red-200/80 mt-1">{error.message}</p>
+                        </div>
+                        <button onClick={() => setError(null)} className="text-red-400/60 hover:text-red-300 text-sm">✕</button>
+                    </div>
+                </div>
+            )}
+
             <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-[95vw] h-[90vh] flex flex-col overflow-hidden relative">
 
-                {/* Header */}
+                {/* HEADER */}
+
                 <div className="flex items-center justify-between px-8 py-5 border-b border-slate-800 bg-slate-900/50">
+
                     <div>
+
                         <h2 className="text-2xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
+
                             <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
+
                             Stage 5: Assisted Synthesis
+
                         </h2>
-                        <p className="text-xs text-slate-500 uppercase font-bold tracking-widest mt-1">Pre-Canonical Workspace // Authority Mode</p>
-                    </div>
-                    <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors text-3xl font-light">
-                        &times;
-                    </button>
-                </div>
 
-                {/* Governance Microcopy (Non-Dismissable) */}
-                <div className="px-8 py-3 bg-amber-900/10 border-b border-amber-500/20">
-                    <p className="text-xs text-amber-200 font-bold flex items-center gap-2">
-                        <span>⚠️</span>
-                        These are agent-generated proposals. Source truth is shown on the right. Nothing here becomes canonical until you explicitly declare it.
-                    </p>
-                </div>
-
-                {/* Error Banner (PHASE 3) */}
-                {error && (
-                    <div className="px-8 py-4 bg-red-900/20 border-b border-red-500/30">
-                        <div className="flex items-start gap-3">
-                            <span className="text-red-400 text-xl">⚠</span>
-                            <div className="flex-1">
-                                <h4 className="text-sm font-bold text-red-300 mb-1">Proposal Generation Failed</h4>
-                                <p className="text-xs text-red-200/80 mb-2">{error.message}</p>
-                                <div className="flex items-center gap-4 text-[10px] text-red-300/60">
-                                    <span className="font-mono">Code: {error.code}</span>
-                                    {error.requestId && <span className="font-mono">Request ID: {error.requestId}</span>}
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => setError(null)}
-                                className="text-red-400 hover:text-red-200 text-lg font-bold transition-colors"
-                            >
-                                ×
-                            </button>
+                        <div className="flex items-center gap-4 mt-1">
+                            <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">
+                                Pre-Canonical Workspace // Authority Mode
+                            </p>
+                            {sasRunId && (
+                                <p className="text-[10px] text-indigo-400/60 font-mono tracking-tighter">
+                                    RUN_ID: {sasRunId}
+                                </p>
+                            )}
                         </div>
+
                     </div>
-                )}
+
+                    <button
+                        onClick={onClose}
+                        className="text-slate-500 hover:text-white transition-colors text-3xl font-light"
+                    >
+
+                        &times;
+
+                    </button>
+
+                </div>
+
+                {/* BODY */}
 
                 <div className="flex-1 flex overflow-hidden">
 
-                    {/* Pane 1: Authority Controls (20%) */}
+                    {/* LEFT PANEL */}
+
                     <div className="w-1/5 border-r border-slate-800 bg-slate-950/40 p-6 flex flex-col">
+
                         <div className="flex-1 space-y-8">
+
                             <div className="space-y-4">
-                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Readiness Summary</h3>
+
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+
+                                    Readiness Summary
+
+                                </h3>
+
                                 <div className="space-y-3">
+
                                     <div className="flex justify-between items-center bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+
                                         <span className="text-xs text-slate-400">Total Proposals</span>
+
                                         <span className="text-sm font-bold text-white">{proposals.length}</span>
+
                                     </div>
+
                                     <div className="flex justify-between items-center bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+
                                         <span className="text-xs text-slate-400">Accepted</span>
+
                                         <span className="text-sm font-bold text-emerald-400">{acceptedCount}</span>
+
                                     </div>
+
                                     <div className="flex justify-between items-center bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+
                                         <span className="text-xs text-slate-400">Rejected</span>
+
                                         <span className="text-sm font-bold text-red-400">{rejectedCount}</span>
+
                                     </div>
+
                                     <div className="flex justify-between items-center bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+
                                         <span className="text-xs text-slate-400">Pending</span>
+
                                         <span className="text-sm font-bold text-amber-400">{pendingCount}</span>
+
                                     </div>
+
                                 </div>
+
                             </div>
 
-                            <div className="p-4 bg-amber-900/10 border border-amber-500/20 rounded-lg">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <span className="text-sm">⚠️</span>
-                                    <h4 className="text-[10px] font-black uppercase text-amber-500 tracking-wider">Invariants</h4>
-                                </div>
-                                <ul className="text-[10px] text-amber-200/60 font-medium space-y-2 list-disc pl-4">
-                                    <li>Verbatim grounding required</li>
-                                    <li>No solution language</li>
-                                    <li>Explicit source anchoring</li>
-                                </ul>
-                            </div>
                         </div>
 
-                        <div className="pt-6 border-t border-slate-800 space-y-3">
+                        <div className="pt-6 border-t border-slate-800">
+
                             <button
                                 onClick={handleDeclareCanon}
                                 disabled={!allResolved || isSaving}
@@ -251,364 +470,325 @@ const handleGenerateProposals = async () => {
                                     : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
                                     }`}
                             >
+
                                 {isSaving ? 'Declaring...' : 'Declare Canonical Findings'}
+
                             </button>
-                            {!allResolved && proposals.length > 0 && (
-                                <p className="text-[9px] text-amber-500 text-center uppercase font-bold tracking-tighter">
-                                    🔒 LOCKED: {pendingCount} pending resolution{pendingCount !== 1 ? 's' : ''}
-                                </p>
-                            )}
-                            {allResolved && (
-                                <p className="text-[9px] text-emerald-500 text-center uppercase font-bold tracking-tighter">
-                                    ✓ READY FOR CANON DECLARATION
-                                </p>
-                            )}
+
                         </div>
+
                     </div>
 
-                    {/* Pane 2: Proposed Findings (40%) */}
+                    {/* PROPOSALS */}
+
                     <div className="w-2/5 border-r border-slate-800 bg-slate-900 flex flex-col overflow-hidden">
+
                         <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Proposed Findings (Draft)</h3>
-                            {!requiresGeneration && proposals.length > 0 && (
-                                <button
-                                    onClick={() => setShowRegenerateConfirm(true)}
-                                    className="text-[9px] font-bold text-amber-400 uppercase hover:text-amber-300 transition-colors"
-                                >
-                                    ↻ Regenerate
-                                </button>
-                            )}
+
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                Proposed Findings (Draft)
+                            </h3>
+
+                            <button
+                                onClick={() => setShowRegenerateConfirm(true)}
+                                disabled={isSaving || isGenerating}
+                                className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider bg-slate-800 border border-slate-700 rounded hover:bg-slate-700"
+                            >
+                                Regenerate
+                            </button>
+
                         </div>
 
                         {requiresGeneration || proposals.length === 0 ? (
+
                             <div className="flex-1 flex items-center justify-center p-12">
+
                                 <div className="text-center space-y-6 max-w-md">
+
                                     <div className="w-16 h-16 mx-auto bg-indigo-900/20 rounded-full flex items-center justify-center border border-indigo-500/30">
                                         <span className="text-3xl">🤖</span>
                                     </div>
+
                                     <div>
-                                        <h4 className="text-sm font-bold text-white mb-2">No Proposals Generated Yet</h4>
+                                        <h4 className="text-sm font-bold text-white mb-2">
+                                            No Proposals Generated Yet
+                                        </h4>
+
                                         <p className="text-xs text-slate-400 leading-relaxed">
-                                            Click below to analyze all source artifacts and generate atomic, evidence-anchored findings.
-                                            The agent will synthesize Current Facts, Friction Points, Goals, and Constraints.
+                                            Click below to analyze all source artifacts and generate findings.
                                         </p>
                                     </div>
+
                                     <button
                                         onClick={handleGenerateProposals}
                                         disabled={isGenerating}
-                                        className="px-6 py-3 bg-indigo-600 text-white text-xs font-black uppercase tracking-wider rounded-lg hover:bg-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-900/30"
+                                        className="px-6 py-3 bg-indigo-600 text-white text-xs font-black uppercase tracking-wider rounded-lg hover:bg-indigo-500 transition-all"
                                     >
-                                        {isGenerating ? (
-                                            <>
-                                                <span className="inline-block animate-spin mr-2">⟳</span>
-                                                Agent synthesizing from source artifacts...
-                                            </>
-                                        ) : (
-                                            'Generate Agent Proposals'
-                                        )}
+                                        {isGenerating ? 'Synthesizing…' : 'Generate Agent Proposals'}
                                     </button>
+
                                 </div>
+
                             </div>
+
                         ) : (
+
                             <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-thin scrollbar-thumb-slate-800">
+
                                 {sections.map(section => (
+
                                     <div key={section.type} className="space-y-4">
+
                                         <div className="flex items-center gap-3">
-                                            <h4 className={`text-xs font-black uppercase tracking-widest text-${section.color}-400`}>{section.label}</h4>
+
+                                            <h4 className={`text-xs font-black uppercase tracking-widest ${section.type === 'CurrentFact' ? 'text-indigo-400' : section.type === 'FrictionPoint' ? 'text-red-400' : section.type === 'Goal' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                                {section.label}
+                                            </h4>
+
                                             <div className="h-px flex-1 bg-slate-800" />
+
                                             <button
                                                 onClick={() => handleAddProposal(section.type)}
-                                                className="text-[9px] font-bold text-slate-500 hover:text-indigo-400 uppercase transition-colors"
-                                                title="Add human-authored proposal"
+                                                className="text-[9px] font-bold text-slate-500 hover:text-indigo-400 uppercase"
                                             >
                                                 + Add
                                             </button>
+
                                         </div>
-                                        <div className="space-y-1.5">
-                                            {proposals.filter(p => p.type === section.type).map(proposal => (
-                                                <div
-                                                    key={proposal.id}
-                                                    className={`group relative p-2 rounded border transition-all ${proposal.status === 'accepted' ? `bg-${section.color}-900/5 border-${section.color}-500/30` :
-                                                        proposal.status === 'rejected' ? 'bg-red-900/5 border-red-500/20 opacity-50' :
-                                                            'bg-slate-950 border-slate-800'
-                                                        }`}
-                                                >
-                                                    {/* Badge row + buttons on same line for ultra-compact */}
-                                                    <div className="flex items-center justify-between mb-1.5">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-${section.color}-900/20 text-${section.color}-400 border border-${section.color}-500/20`}>
-                                                                {section.label.replace(/s$/, '')}
-                                                            </span>
-                                                            {proposal.operatorNote && (
-                                                                <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-purple-900/20 text-purple-400 border border-purple-500/20">
-                                                                    {proposal.operatorNote}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5">
-                                                            <button
-                                                                onClick={() => handleReject(proposal.id)}
-                                                                className={`px-2 py-0.5 rounded transition-all text-[10px] font-bold ${proposal.status === 'rejected' ? 'text-red-400 bg-red-900/20 border border-red-500/30' : 'text-slate-500 hover:text-red-400 hover:bg-red-950/50'}`}
-                                                            >
-                                                                ✕
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleAccept(proposal.id)}
-                                                                className={`px-2 py-0.5 rounded transition-all text-[10px] font-bold ${proposal.status === 'accepted' ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-500/30' : 'text-slate-500 hover:text-emerald-400 hover:bg-emerald-950/50'}`}
-                                                            >
-                                                                ✓
-                                                            </button>
-                                                        </div>
-                                                    </div>
 
-                                                    {/* Text - inline editable */}
-                                                    <div
-                                                        contentEditable
-                                                        suppressContentEditableWarning
-                                                        onBlur={(e) => handleEdit(proposal.id, e.currentTarget.textContent || '')}
-                                                        className="text-sm text-slate-300 leading-snug mb-1 focus:outline-none focus:ring-1 focus:ring-indigo-500/30 rounded px-1 py-0.5"
-                                                    >
-                                                        {proposal.editedText !== undefined ? proposal.editedText : proposal.text}
-                                                    </div>
+                                        <div className="space-y-2">
 
-                                                    {/* Evidence chips - ultra-compact */}
-                                                    {proposal.evidenceRefs && proposal.evidenceRefs.length > 0 && (
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {proposal.evidenceRefs.map((ref, idx) => (
-                                                                <button
-                                                                    key={idx}
-                                                                    onClick={() => scrollToArtifact(ref.artifact)}
-                                                                    className="group/ref px-1.5 py-0.5 bg-slate-900 border border-slate-700 rounded text-[8px] text-slate-400 hover:text-indigo-400 hover:border-indigo-500/30 transition-all cursor-pointer"
-                                                                    title={ref.quote}
+                                            {(proposals ?? [])
+                                                .filter(p => p.type === section.type)
+                                                .map((proposal: ProposedFindingItem) => {
+
+                                                    return (
+
+                                                        <div
+                                                            key={proposal.id}
+                                                            className={`p-3 rounded border transition-all ${proposal.status === 'accepted' ? 'bg-emerald-900/10 border-emerald-500/50' :
+                                                                proposal.status === 'rejected' ? 'bg-red-900/10 border-red-500/50' :
+                                                                    'bg-slate-950 border-slate-800'
+                                                                }`}
+                                                        >
+
+                                                            <div className="flex justify-end gap-2 mb-1">
+
+                                                                {pendingProposalId === proposal.id ? (
+                                                                    <span className="text-xs text-slate-500 animate-pulse">⏳</span>
+                                                                ) : (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() => handleReject(proposal.id)}
+                                                                            disabled={!!pendingProposalId}
+                                                                            className={`transition-colors ${proposal.status === 'rejected' ? 'text-red-500' : pendingProposalId ? 'text-slate-700 cursor-not-allowed' : 'text-red-400/40 hover:text-red-400'}`}
+                                                                        >
+                                                                            ✕
+                                                                        </button>
+
+                                                                        <button
+                                                                            onClick={() => handleAccept(proposal.id)}
+                                                                            disabled={!!pendingProposalId}
+                                                                            className={`transition-colors ${proposal.status === 'accepted' ? 'text-emerald-500' : pendingProposalId ? 'text-slate-700 cursor-not-allowed' : 'text-emerald-400/40 hover:text-emerald-400'}`}
+                                                                        >
+                                                                            ✓
+                                                                        </button>
+                                                                    </>
+                                                                )}
+
+                                                            </div>
+
+                                                            <div className="flex items-start gap-3">
+                                                                {/* Removed checkbox input */}
+                                                                <div
+                                                                    contentEditable
+                                                                    suppressContentEditableWarning
+                                                                    onBlur={(e) => handleEdit(proposal.id, e.currentTarget.textContent || '')}
+                                                                    className="text-sm text-slate-300 leading-snug flex-1"
                                                                 >
-                                                                    <span className="font-bold uppercase">{ref.artifact}</span>
-                                                                </button>
-                                                            ))}
+                                                                    {proposal.title || proposal.text}
+                                                                </div>
+                                                            </div>
+                                                            {proposal.sourceAnchors?.capability && (
+                                                                <div className="mt-2 text-[10px] font-bold text-indigo-400/60 uppercase tracking-widest">
+                                                                    ⚓ {proposal.sourceAnchors.capability}
+                                                                </div>
+                                                            )}
+
+
+
                                                         </div>
-                                                    )}
-                                                </div>
-                                            ))}
-                                            {proposals.filter(p => p.type === section.type).length === 0 && (
-                                                <div className="text-[10px] text-slate-600 font-bold uppercase py-4 border border-dashed border-slate-800 rounded-lg text-center">
-                                                    No proposals in this category
+
+                                                    )
+
+                                                })}
+
+                                        </div>
+
+                                    </div>
+
+                                ))}
+
+                            </div>
+
+                        )}
+
+                    </div>
+
+                    {/* RIGHT PANEL */}
+
+                    <div className="w-2/5 bg-slate-950 flex flex-col overflow-hidden">
+
+                        <div className="flex-1 overflow-y-auto p-6">
+
+                            <div className="text-slate-500 text-xs">
+
+                                {/* SOURCE ARTIFACT TABS */}
+
+                                <div className="flex gap-4 mb-4 border-b border-slate-800 pb-2 text-[10px] uppercase tracking-widest">
+
+                                    <button
+                                        onClick={() => setActiveSourceTab('notes')}
+                                        className={`${activeSourceTab === 'notes' ? 'text-white' : 'text-slate-500'}`}
+                                    >
+                                        Notes
+                                    </button>
+
+                                    <button
+                                        onClick={() => setActiveSourceTab('diagnostic')}
+                                        className={`${activeSourceTab === 'diagnostic' ? 'text-white' : 'text-slate-500'}`}
+                                    >
+                                        Diagnostic
+                                    </button>
+
+                                    <button
+                                        onClick={() => setActiveSourceTab('brief')}
+                                        className={`${activeSourceTab === 'brief' ? 'text-white' : 'text-slate-500'}`}
+                                    >
+                                        Exec Brief
+                                    </button>
+
+                                    <button
+                                        onClick={() => setActiveSourceTab('qa')}
+                                        className={`${activeSourceTab === 'qa' ? 'text-white' : 'text-slate-500'}`}
+                                    >
+                                        Q&A
+                                    </button>
+
+                                </div>
+
+                                {/* ARTIFACT CONTENT */}
+
+                                <div className="prose prose-invert max-w-none text-xs space-y-4">
+
+                                    {activeSourceTab === 'notes' && (
+                                        <div className="space-y-6">
+                                            {discoveryNotes && (
+                                                <div className="space-y-2">
+                                                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400/80 px-2">
+                                                        Primary Discovery Note
+                                                    </h4>
+                                                    <ArtifactViewer artifact={discoveryNotes} />
                                                 </div>
                                             )}
+
+                                            <div className="space-y-2">
+                                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-2">
+                                                    Clarification History
+                                                </h4>
+                                                {(notes ?? []).length > 0 ? (
+                                                    (notes ?? []).map((note: any) => (
+                                                        <ArtifactViewer key={note.id} artifact={note} />
+                                                    ))
+                                                ) : (
+                                                    <div className="px-2 text-[10px] text-slate-600 italic">No history available</div>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    )}
+
+                                    {activeSourceTab === 'diagnostic' && (
+                                        <ArtifactViewer artifact={diagnostic} />
+                                    )}
+
+                                    {activeSourceTab === 'brief' && (
+                                        <ArtifactViewer artifact={executiveBrief} />
+                                    )}
+
+                                    {activeSourceTab === 'qa' && (
+                                        <div className="space-y-4">
+                                            {(() => {
+                                                const qaItems = Array.isArray(qa) ? qa : (qa ? [qa] : []);
+                                                if (qaItems.length > 0) {
+                                                    return qaItems.map((item: any) => (
+                                                        <ArtifactViewer key={item.id || Math.random()} artifact={item} />
+                                                    ));
+                                                }
+                                                return (
+                                                    <div className="flex items-center justify-center p-12 border border-dashed border-slate-800 rounded-xl bg-slate-950/40">
+                                                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic">
+                                                            No canonical Q&A artifact exists for this tenant yet.
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+                                    )}
+
+                                </div>
+
                             </div>
-                        )}
-                    </div>
 
-                    {/* Pane 3: Source Artifacts (40%) */}
-                    <div className="w-2/5 bg-slate-950 flex flex-col overflow-hidden relative">
-                        <div className="px-6 pt-4 border-b border-slate-800 bg-slate-900/30">
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3">Source Artifacts (Read-Only Truth)</h3>
-                            <div className="flex gap-1">
-                                {[
-                                    { id: 'notes', label: 'Raw Notes' },
-                                    { id: 'qa', label: 'Discovery Q&A' },
-                                    { id: 'diagnostic', label: 'Diagnostic' },
-                                    { id: 'brief', label: 'Exec Brief' }
-                                ].map(tab => (
-                                    <button
-                                        key={tab.id}
-                                        onClick={() => setActiveSourceTab(tab.id as any)}
-                                        className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeSourceTab === tab.id
-                                            ? 'text-indigo-400 border-b-2 border-indigo-500'
-                                            : 'text-slate-500 hover:text-slate-300'
-                                            }`}
-                                    >
-                                        {tab.label}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-slate-800">
-                            {activeSourceTab === 'notes' && (
-                                <div className="space-y-6 text-sm text-slate-300 leading-relaxed break-words">
-                                    {(() => {
-                                        const notesRaw = artifacts.discoveryNotes;
-                                        if (!notesRaw) return <div className="italic text-slate-500 text-center py-20 uppercase tracking-widest text-[10px] font-black opacity-30">No Raw Notes Available</div>;
-
-                                        try {
-                                            const parsed = typeof notesRaw === 'string' ? JSON.parse(notesRaw) : notesRaw;
-                                            const narrative = parsed.currentBusinessReality || parsed.notes || (typeof parsed === 'string' ? parsed : null);
-
-                                            return (
-                                                <div className="space-y-6">
-                                                    {parsed.sessionMetadata && (
-                                                        <div className="flex justify-between items-center text-[9px] uppercase tracking-[0.2em] text-slate-500 font-bold bg-slate-900/50 px-4 py-2 rounded-full border border-slate-800/50">
-                                                            <span>Date: {parsed.sessionMetadata.date || 'Unknown'}</span>
-                                                            <span>{parsed.sessionMetadata.firmName || 'Project Discovery'}</span>
-                                                        </div>
-                                                    )}
-
-                                                    {narrative ? (
-                                                        <div className="prose prose-invert prose-sm max-w-none">
-                                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                                {narrative}
-                                                            </ReactMarkdown>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="font-mono text-xs whitespace-pre-wrap opacity-50 bg-slate-900/20 p-4 rounded-lg border border-slate-800/30">
-                                                            {JSON.stringify(parsed, null, 2)}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        } catch (e) {
-                                            // Fallback for non-JSON strings or malformed JSON
-                                            return (
-                                                <div className="prose prose-invert prose-sm max-w-none">
-                                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                        {typeof notesRaw === 'string' ? notesRaw : JSON.stringify(notesRaw, null, 2)}
-                                                    </ReactMarkdown>
-                                                </div>
-                                            );
-                                        }
-                                    })()}
-                                </div>
-                            )}
-                            {activeSourceTab === 'qa' && (
-                                <div className="space-y-6 text-sm text-slate-300 leading-relaxed break-words">
-                                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-4 px-1">Iterative Discovery Q&A</h4>
-                                    {artifacts.diagnostic?.outputs?.discoveryQuestions ? (
-                                        <div className="prose prose-invert prose-sm max-w-none bg-slate-900/40 p-6 rounded-xl border border-slate-800/50">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                {artifacts.diagnostic.outputs.discoveryQuestions}
-                                            </ReactMarkdown>
-                                        </div>
-                                    ) : (
-                                        <div className="italic text-slate-500 text-center py-20 uppercase tracking-widest text-[10px] font-black opacity-30">
-                                            No Q&A Data Captured
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                            {activeSourceTab === 'diagnostic' && (
-                                <div className="space-y-8">
-                                    <div>
-                                        <h4 className="text-indigo-400 text-xs font-black uppercase tracking-widest mb-4">1. Strategic Overview</h4>
-                                        <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                {artifacts.diagnostic?.outputs?.overview || 'No Overview'}
-                                            </ReactMarkdown>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h4 className="text-emerald-400 text-xs font-black uppercase tracking-widest mb-4">2. AI Opportunities</h4>
-                                        <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                {artifacts.diagnostic?.outputs?.aiOpportunities || 'No AI Opportunities'}
-                                            </ReactMarkdown>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h4 className="text-amber-400 text-xs font-black uppercase tracking-widest mb-4">3. Roadmap Skeleton</h4>
-                                        <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                {artifacts.diagnostic?.outputs?.roadmapSkeleton || 'No Roadmap Skeleton'}
-                                            </ReactMarkdown>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h4 className="text-purple-400 text-xs font-black uppercase tracking-widest mb-4">4. Discovery Questions</h4>
-                                        <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                {artifacts.diagnostic?.outputs?.discoveryQuestions || 'No Discovery Questions'}
-                                            </ReactMarkdown>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                            {activeSourceTab === 'brief' && (
-                                <div className="space-y-6">
-                                    {artifacts.executiveBrief?.synthesis?.executiveSummary && (
-                                        <div>
-                                            <h4 className="text-indigo-400 text-xs font-black uppercase tracking-widest mb-4">1. Executive Summary</h4>
-                                            <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400">
-                                                {artifacts.executiveBrief.synthesis.executiveSummary}
-                                            </div>
-                                        </div>
-                                    )}
-                                    {artifacts.executiveBrief?.synthesis?.operatingReality && (
-                                        <div>
-                                            <h4 className="text-emerald-400 text-xs font-black uppercase tracking-widest mb-4">2. Operating Reality</h4>
-                                            <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400 whitespace-pre-wrap">
-                                                {artifacts.executiveBrief.synthesis.operatingReality}
-                                            </div>
-                                        </div>
-                                    )}
-                                    {artifacts.executiveBrief?.synthesis?.constraintLandscape && (
-                                        <div>
-                                            <h4 className="text-amber-400 text-xs font-black uppercase tracking-widest mb-4">3. Constraint Landscape</h4>
-                                            <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400 whitespace-pre-wrap">
-                                                {artifacts.executiveBrief.synthesis.constraintLandscape}
-                                            </div>
-                                        </div>
-                                    )}
-                                    {artifacts.executiveBrief?.synthesis?.blindSpotRisks && (
-                                        <div>
-                                            <h4 className="text-red-400 text-xs font-black uppercase tracking-widest mb-4">4. Blind Spot Risks</h4>
-                                            <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400 whitespace-pre-wrap">
-                                                {artifacts.executiveBrief.synthesis.blindSpotRisks}
-                                            </div>
-                                        </div>
-                                    )}
-                                    {artifacts.executiveBrief?.synthesis?.alignmentSignals && (
-                                        <div>
-                                            <h4 className="text-cyan-400 text-xs font-black uppercase tracking-widest mb-4">5. Alignment Signals</h4>
-                                            <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800/50 text-sm text-slate-400 whitespace-pre-wrap">
-                                                {artifacts.executiveBrief.synthesis.alignmentSignals}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
                         </div>
 
-                        {/* Agent Console (Pinned to bottom of Right Pane) */}
                         <div className="border-t border-slate-800 bg-slate-950/80 p-4">
+
                             <AssistedSynthesisAgentConsole
-                                tenantId={tenantId}
-                                currentFactsPending={proposals.filter(p => p.type === 'CurrentFact' && p.status === 'pending').length}
-                                // Stable version: only resets when proposals are regenerated/updated
-                                contextVersion={artifacts?.diagnostic?.id || 'default'}
+                                tenantId={firmId}
+                                currentFactsPending={pendingCount}
+                                contextVersion={String(artifacts?.diagnostic?.id ?? 'default')}
                             />
+
                         </div>
+
                     </div>
+
                 </div>
 
-                {/* Regenerate Confirm Modal */}
-                {showRegenerateConfirm && (
-                    <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10">
-                        <div className="bg-slate-900 border border-amber-500/30 rounded-xl p-8 max-w-md">
-                            <h3 className="text-lg font-bold text-white mb-4">Regenerate Proposals?</h3>
-                            <p className="text-sm text-slate-300 mb-6">
-                                This will archive the current proposals and generate new ones. All pending resolutions will be lost.
-                            </p>
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => {
-                                        setShowRegenerateConfirm(false);
-                                        handleGenerateProposals();
-                                    }}
-                                    className="flex-1 px-4 py-2 bg-amber-600 text-white text-xs font-bold uppercase rounded hover:bg-amber-500 transition-colors"
-                                >
-                                    Confirm Regenerate
-                                </button>
-                                <button
-                                    onClick={() => setShowRegenerateConfirm(false)}
-                                    className="flex-1 px-4 py-2 bg-slate-800 text-slate-300 text-xs font-bold uppercase rounded hover:bg-slate-700 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
+            {showRegenerateConfirm && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70">
+                    <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-[420px]">
+
+                        <h3 className="text-sm font-bold text-white mb-2">
+                            Regenerate Proposals?
+                        </h3>
+
+                        <p className="text-xs text-slate-400 mb-6">
+                            This will create a new synthesis run and generate fresh findings.
+                        </p>
+
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => setShowRegenerateConfirm(false)}
+                                className="px-4 py-2 text-xs bg-slate-800 rounded"
+                            >
+                                Cancel
+                            </button>
+
+                            <button
+                                onClick={handleRegenerateProposals}
+                                className="px-4 py-2 text-xs bg-indigo-600 rounded"
+                            >
+                                Regenerate
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            )}
         </div>
-    );
+
+    )
+
 }

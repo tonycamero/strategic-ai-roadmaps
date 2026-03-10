@@ -5,17 +5,17 @@
  * Every SOP must map to these types to ensure hallucination-proof implementation.
  */
 
-export type InventoryCategory = 
-  | 'Pipeline' 
-  | 'CRM' 
-  | 'Ops' 
-  | 'Onboarding' 
-  | 'Marketing' 
-  | 'Finance' 
-  | 'Reporting' 
+export type InventoryCategory =
+  | 'Pipeline'
+  | 'CRM'
+  | 'Ops'
+  | 'Onboarding'
+  | 'Marketing'
+  | 'Finance'
+  | 'Reporting'
   | 'Team';
 
-export type ValueCategory = 
+export type ValueCategory =
   | 'Lead Intake'
   | 'Lead Nurture'
   | 'Lead Qualification'
@@ -39,6 +39,12 @@ export type ImplementationStatus = 'production-ready' | 'pilot-available';
 
 export type Complexity = 'low' | 'medium' | 'high';
 
+/**
+ * Explicit adapter type — replaces isSidecar inference.
+ * Used by SelectionEngine adapter gate.
+ */
+export type InventoryAdapter = 'ghl' | 'sidecar' | 'custom';
+
 export type Tier = 'core' | 'recommended' | 'advanced';
 
 export type Sprint = 30 | 60 | 90;
@@ -46,7 +52,7 @@ export type Sprint = 30 | 60 | 90;
 /**
  * GHL Component Types (Reality Surface Map)
  */
-export type GHLComponent = 
+export type GHLComponent =
   | 'Workflows'
   | 'Pipelines'
   | 'Forms'
@@ -58,7 +64,7 @@ export type GHLComponent =
   | 'Email/SMS'
   | 'API v2';
 
-export type GHLTrigger = 
+export type GHLTrigger =
   | 'Form Submitted'
   | 'Opportunity Created'
   | 'Pipeline Stage Changed'
@@ -69,7 +75,7 @@ export type GHLTrigger =
   | 'Appointment No-Show'
   | 'Incoming Message';
 
-export type GHLAction = 
+export type GHLAction =
   | 'Send Email'
   | 'Send SMS'
   | 'Create Task'
@@ -86,7 +92,7 @@ export type GHLAction =
 /**
  * Sidecar Categories (Phase 1 approved list)
  */
-export type SidecarCategory = 
+export type SidecarCategory =
   | 'Monitoring'
   | 'Reporting'
   | 'Data Hygiene'
@@ -103,32 +109,38 @@ export interface InventoryTicket {
   // Identity
   inventoryId: string;
   titleTemplate: string;
-  
+
   // Categorization
   category: InventoryCategory;
   valueCategory: ValueCategory;
-  
+
   // GHL Reality Grounding (empty for sidecars)
   ghlComponents: GHLComponent[];
   ghlTriggers?: GHLTrigger[];
   ghlActions?: GHLAction[];
   ghlLimitations?: string[];
-  
-  // Sidecar Flags
-  isSidecar: boolean;
+
+  // Explicit adapter — replaces isSidecar inference (EXEC-TICKET-SELECTION-ENGINE-001)
+  adapter: InventoryAdapter;
   sidecarCategory?: SidecarCategory;
   implementationStatus: ImplementationStatus;
-  
+
+  // Custom dev requirement — used by SelectionEngine customDev gate
+  requiresCustomDev: boolean;
+
   // Content
   description: string;
-  
+
   // Implementation metadata
   implementationPattern: string;
   complexity: Complexity;
   dependencies: string[]; // Array of inventoryIds
-  
-  // Vertical support (Phase 2)
+
+  // Vertical support
   verticalTags: string[];
+
+  /** @deprecated Use adapter === 'sidecar' instead */
+  isSidecar?: boolean;
 }
 
 /**

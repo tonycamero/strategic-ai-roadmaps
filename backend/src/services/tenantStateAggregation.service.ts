@@ -23,10 +23,14 @@ import {
     roadmaps,
     intakeVectors,
     sopTickets,
-    intakeClarifications
+    users,
+    intakeClarifications,
+    tenantStage6Config,
+    discoveryNotesLog
 } from '../db/schema';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, ne, and, desc, asc, sql } from 'drizzle-orm';
 import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
+import { computeCanonicalFindingsHash } from './canonicalFindingsHash.util';
 
 export const PROJECTION_VERSION = "1.0.0";
 /**
@@ -87,6 +91,13 @@ export interface TenantLifecycleView {
         }
         hasRoadmap: boolean
         hasCanonicalFindings: boolean
+        canonicalFindings?: {
+            documentId: string
+            ids: string[]      // sorted finding IDs extracted from content
+            count: number
+            hash: string       // SHA-256 of normalized sorted findings array
+            declaredAt: string // tenantDocuments.createdAt ISO string
+        }
     }
 
     operator: {
@@ -106,6 +117,15 @@ export interface TenantLifecycleView {
             projectedHoursSavedWeekly: number;
             speedToValue: 'LOW' | 'MEDIUM' | 'HIGH';
         };
+    }
+
+    stage6: {
+        constraintConfigExists: boolean
+        vertical: string | null
+        allowedNamespaces: string[]
+        allowedAdapters: string[]
+        maxComplexityTier: 'low' | 'medium' | 'high' | null
+        customDevAllowed: boolean | null
     }
 
     derived: {
@@ -211,6 +231,13 @@ export async function getTenantLifecycleView(
     // Day-4: Omit lifecycleValid from public surface (Clean Separation)
     const { lifecycleValid, ...publicDerived } = derived;
 
+    // 5.c Stage 6 Constraint Config (read-through — no derivation)
+    const [stage6ConfigRow] = await (trx || db)
+        .select()
+        .from(tenantStage6Config)
+        .where(eq(tenantStage6Config.tenantId, tenantId))
+        .limit(1);
+
     return {
         identity: {
             tenantId: tenant.id,
@@ -225,6 +252,14 @@ export async function getTenantLifecycleView(
         tickets,
         operator,
         analytics,
+        stage6: {
+            constraintConfigExists: !!stage6ConfigRow,
+            vertical: stage6ConfigRow?.vertical ?? null,
+            allowedNamespaces: stage6ConfigRow?.allowedNamespaces ?? [],
+            allowedAdapters: stage6ConfigRow?.allowedAdapters ?? [],
+            maxComplexityTier: (stage6ConfigRow?.maxComplexityTier as 'low' | 'medium' | 'high') ?? null,
+            customDevAllowed: stage6ConfigRow?.customDevAllowed ?? null,
+        },
         derived: publicDerived,
         capabilities: buildCapabilityMatrix({ derived, artifacts }),
         meta: {
@@ -521,7 +556,11 @@ async function resolveArtifacts(tenantId: string, trx?: any): Promise<TenantLife
         .limit(1);
 
     const [findings] = await (trx || db)
-        .select({ id: tenantDocuments.id })
+        .select({
+            id: tenantDocuments.id,
+            content: tenantDocuments.content,
+            createdAt: tenantDocuments.createdAt,
+        })
         .from(tenantDocuments)
         .where(and(
             eq(tenantDocuments.tenantId, tenantId),
@@ -530,11 +569,35 @@ async function resolveArtifacts(tenantId: string, trx?: any): Promise<TenantLife
         .orderBy(desc(tenantDocuments.createdAt))
         .limit(1);
 
+    let canonicalFindings: TenantLifecycleView['artifacts']['canonicalFindings'] = undefined;
+    if (findings?.content) {
+        try {
+            const parsed = JSON.parse(findings.content);
+            const rawItems: unknown[] = Array.isArray(parsed.findings) ? parsed.findings : [];
+            // Fail closed: only include items with a valid string id
+            const hashableItems = rawItems.filter(
+                (f): f is { id: string;[key: string]: unknown } => typeof (f as any).id === 'string'
+            );
+            const ids = [...hashableItems.map(f => f.id)].sort();
+            const hash = computeCanonicalFindingsHash(hashableItems);
+            canonicalFindings = {
+                documentId: findings.id,
+                ids,
+                count: ids.length,
+                hash,
+                declaredAt: (findings.createdAt as unknown as Date).toISOString(),
+            };
+        } catch {
+            // Content corrupt — emit undefined; hasCanonicalFindings remains true (existence preserved)
+        }
+    }
+
     return {
         hasExecutiveBrief: !!brief,
         diagnostic: diagnosticResult,
         hasRoadmap: !!roadmap,
-        hasCanonicalFindings: !!findings
+        hasCanonicalFindings: !!findings,
+        canonicalFindings,
     };
 }
 
@@ -673,14 +736,14 @@ function computeDerivedFlags(
     // Ticket generation is enabled even if 0 tickets exist (Phase 6 entry)
 
     // Phase 5 synthesis readiness: ITERATIVE doctrine (decoupled from proposal state)
-const synthesisReady =
-    lifecycle.intakeWindowState === "CLOSED" &&
-    artifacts.diagnostic.exists &&
-    workflow.discoveryComplete;
+    const synthesisReady =
+        lifecycle.intakeWindowState === "CLOSED" &&
+        artifacts.diagnostic.exists &&
+        workflow.discoveryComplete;
 
-if (!synthesisReady && !blockingReasons.includes('SYNTHESIS_NOT_READY')) {
-    blockingReasons.push('SYNTHESIS_NOT_READY');
-}
+    if (!synthesisReady && !blockingReasons.includes('SYNTHESIS_NOT_READY')) {
+        blockingReasons.push('SYNTHESIS_NOT_READY');
+    }
 
     const isHardLocked = false;
     if (isHardLocked) {
@@ -804,3 +867,287 @@ function resolveExecutiveAnalytics(input: {
         }
     };
 }
+
+/**
+ * Normalizes artifact content to ensure it follows the canonical Stage-5 shape.
+ * [SNAPSHOT_ARTIFACT_BACKFILL]
+ */
+export function normalizeArtifact(artifact: any) {
+    if (!artifact) return null;
+
+    // Helper to parse content if it is stringified JSON
+    const parseIfJSON = (val: any) => {
+        if (typeof val !== 'string') return val;
+        try {
+            const parsed = JSON.parse(val);
+            if (typeof parsed === 'string') return JSON.parse(parsed);
+            return parsed;
+        } catch {
+            return val;
+        }
+    };
+
+    let rawOutputs =
+        artifact.outputs ??
+        artifact.content ??
+        artifact.notes ??
+        artifact.markdown ??
+        artifact.delta ??
+        artifact.synthesis ??
+        artifact.payload ??
+        artifact.overview;
+
+    let outputs = parseIfJSON(rawOutputs);
+
+    return {
+        id: artifact.id ?? null,
+        type: artifact.type ?? artifact.category ?? null,
+        createdAt: artifact.createdAt ?? artifact.created_at ?? null,
+        outputs: outputs,
+        raw: artifact
+    };
+}
+
+export async function getStage5Artifacts(tenantId: string) {
+    console.log(`[SAS] getStage5Artifacts for tenant: ${tenantId}`);
+
+    // 1. Notes (Discovery Notes Log)
+    // Returns all entries for the history panel, normalized.
+    const rawNotes = await db
+        .select({
+            id: discoveryNotesLog.id,
+            source: discoveryNotesLog.source,
+            delta: discoveryNotesLog.delta,
+            createdAt: discoveryNotesLog.createdAt,
+            createdByUserId: discoveryNotesLog.createdByUserId,
+        })
+        .from(discoveryNotesLog)
+        .where(eq(discoveryNotesLog.tenantId, tenantId))
+        .orderBy(discoveryNotesLog.createdAt); // Order by createdAt ASC for chronological history
+
+    const notes = rawNotes.map(n => normalizeArtifact(n));
+
+    // 2. Diagnostic
+    const [diagRecord] = await db
+        .select()
+        .from(diagnostics)
+        .where(and(
+            eq(diagnostics.tenantId, tenantId),
+            ne(diagnostics.status, 'not_generated')
+        ))
+        .orderBy(desc(diagnostics.updatedAt))
+        .limit(1);
+
+    const diagnostic = diagRecord ? normalizeArtifact(diagRecord) : null;
+
+    // 3. Exec Brief
+    const [briefRecord] = await db
+        .select()
+        .from(executiveBriefs)
+        .where(eq(executiveBriefs.tenantId, tenantId))
+        .orderBy(desc(executiveBriefs.createdAt))
+        .limit(1);
+
+    const execBrief = briefRecord ? normalizeArtifact(briefRecord) : null;
+
+    // 4. Q&A (Legacy fallback or future qna_canonical)
+    const [qnaRecord] = await db
+        .select()
+        .from(tenantDocuments)
+        .where(and(
+            eq(tenantDocuments.tenantId, tenantId),
+            eq(tenantDocuments.category, 'qna_canonical')
+        ))
+        .orderBy(desc(tenantDocuments.createdAt))
+        .limit(1);
+
+    const qa = qnaRecord ? normalizeArtifact(qnaRecord) : null;
+
+    return {
+        notes,
+        diagnostic,
+        execBrief,
+        qa
+    };
+}
+
+/**
+ * TENANT LIFECYCLE SNAPSHOT (SSOT)
+ * 
+ * Centralized interface for the complete tenant state.
+ * Prevents structural drift between backend and frontend.
+ */
+export interface TenantLifecycleSnapshot {
+    tenantId: string;
+    projection: any;
+    tenant: any | null;
+    owner: any | null;
+    teamMembers: any[];
+    intakes: any[];
+    intakeRoles: any[];
+    artifacts: {
+        notes: any[];
+        diagnostic: any | null;
+        executiveBrief: any | null;
+        discoveryNotes: any | null;
+        qa: any | null;
+    };
+    roadmap: {
+        latest: any | null;
+        all: any[];
+    };
+    tickets: any[];
+    recentActivity: any[];
+}
+
+/**
+ * Service helper to fetch the latest roadmap.
+ */
+async function getLatestRoadmap(tenantId: string) {
+    const rows = await db
+        .select()
+        .from(roadmaps)
+        .where(eq(roadmaps.tenantId, tenantId))
+        .orderBy(desc(roadmaps.createdAt))
+        .limit(1);
+
+    return rows?.[0] ?? null;
+}
+
+/**
+ * Normalizes artifacts for the snapshot payload.
+ * Ensures UI always receives a stable { outputs } contract.
+ */
+function normalizeArtifacts({
+    executiveBrief,
+    diagnostic,
+    discoveryNotes
+}: {
+    executiveBrief: any;
+    diagnostic: any;
+    discoveryNotes: any;
+}) {
+    return {
+        executiveBrief: normalizeArtifact(executiveBrief),
+        diagnostic: normalizeArtifact(diagnostic),
+        discoveryNotes: normalizeArtifact(discoveryNotes)
+    };
+}
+
+/**
+ * Resolves the complete tenant lifecycle snapshot.
+ * Acts as the SSOT for the /snapshot endpoint.
+ */
+export async function resolveTenantLifecycleSnapshot(
+    tenantId: string
+): Promise<TenantLifecycleSnapshot> {
+    // === CANONICAL PROJECTION SPINE ===
+    const projection = await getTenantLifecycleView(tenantId);
+
+    // === DATA ORCHESTRATION ===
+    const [
+        tenantDetails,
+        ownerDetails,
+        members,
+        intakeList,
+        vectorList,
+        roadmapList,
+        activityList,
+        ticketList,
+        artifactsFromService
+    ] = await Promise.all([
+        db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1),
+
+        projection.identity.ownerUserId
+            ? db
+                .select()
+                .from(users)
+                .where(eq(users.id, projection.identity.ownerUserId))
+                .limit(1)
+            : Promise.resolve([]),
+
+        db.select().from(users).where(eq(users.tenantId, tenantId)).limit(50),
+
+        db.select().from(intakes).where(eq(intakes.tenantId, tenantId)),
+
+        db.select().from(intakeVectors).where(eq(intakeVectors.tenantId, tenantId)),
+
+        db
+            .select()
+            .from(roadmaps)
+            .where(eq(roadmaps.tenantId, tenantId))
+            .orderBy(desc(roadmaps.createdAt)),
+
+        db
+            .select()
+            .from(auditEvents)
+            .where(eq(auditEvents.tenantId, tenantId))
+            .orderBy(desc(auditEvents.createdAt))
+            .limit(30),
+
+        db.select().from(sopTickets).where(eq(sopTickets.tenantId, tenantId)),
+
+        // Stage-5 Artifact SSOT
+        getStage5Artifacts(tenantId)
+    ]);
+
+    const tenantRow = tenantDetails[0] ?? null;
+    const ownerRow = ownerDetails[0] ?? null;
+
+    // === ARTIFACT RESOLUTION [SNAPSHOT_ARTIFACT_STABILIZATION] ===
+    const executiveBrief = await db
+        .select()
+        .from(executiveBriefs)
+        .where(eq(executiveBriefs.tenantId, tenantId))
+        .orderBy(desc(executiveBriefs.createdAt))
+        .limit(1);
+
+    const diagnostic = await db
+        .select({
+            id: diagnostics.id,
+            overview: diagnostics.overview,
+            aiOpportunities: diagnostics.aiOpportunities,
+            roadmapSkeleton: diagnostics.roadmapSkeleton,
+            createdAt: diagnostics.createdAt
+        })
+        .from(diagnostics)
+        .where(eq(diagnostics.tenantId, tenantId))
+        .orderBy(desc(diagnostics.createdAt))
+        .limit(1);
+
+    const discoveryNotes = await db
+        .select()
+        .from(discoveryCallNotes)
+        .where(eq(discoveryCallNotes.tenantId, tenantId))
+        .orderBy(asc(discoveryCallNotes.createdAt))
+        .limit(1);
+
+    const normalizedArtifacts = normalizeArtifacts({
+        executiveBrief: executiveBrief[0],
+        diagnostic: diagnostic[0],
+        discoveryNotes: discoveryNotes[0]
+    });
+
+    return {
+        tenantId,
+        projection,
+        tenant: tenantRow,
+        owner: ownerRow,
+        teamMembers: members,
+        intakes: intakeList,
+        intakeRoles: vectorList,
+        artifacts: {
+            ...normalizedArtifacts,
+            notes: artifactsFromService.notes ?? [],
+            qa: artifactsFromService.qa ?? null
+        },
+        roadmap: {
+            latest: roadmapList[0] ?? null,
+            all: roadmapList
+        },
+        tickets: ticketList,
+        recentActivity: activityList
+    };
+}
+
+

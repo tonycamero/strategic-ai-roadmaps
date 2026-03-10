@@ -34,7 +34,9 @@
       "Consulting",
       "Trades",
       "Real Estate"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "FIN_PAYMENT_RECOVERY",
@@ -69,7 +71,9 @@
       "Agency",
       "Coaching",
       "Subscription Businesses"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "FIN_RECURRING_BILLING_SETUP",
@@ -105,7 +109,9 @@
       "Coaching",
       "SaaS",
       "Trades"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "FIN_AGED_AR_ALERTS",
@@ -139,7 +145,9 @@
       "Agency",
       "Healthcare",
       "Professional Services"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "FIN_PAID_ACTIVATE_SERVICE",
@@ -176,7 +184,9 @@
       "Coaching",
       "Trades",
       "Legal"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "FIN_PREBILL_REQUIREMENTS",
@@ -211,7 +221,9 @@
       "Construction",
       "Legal",
       "Consulting"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "FIN_REFUND_CREDIT_AUTOMATION",
@@ -245,6 +257,8 @@
       "Agency",
       "Ecommerce",
       "Coaching"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   }
 ]

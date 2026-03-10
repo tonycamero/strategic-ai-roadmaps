@@ -260,6 +260,7 @@ export class AssistedSynthesisAgentService {
         const discoveryContent = context.discoveryNotes ? JSON.stringify(context.discoveryNotes, null, 2) : 'No discovery notes available.';
         const diagnosticContent = context.diagnostic ? JSON.stringify(context.diagnostic, null, 2) : 'No diagnostic data available.';
         const execBriefContent = context.executiveBrief ? JSON.stringify(context.executiveBrief, null, 2) : 'No executive brief available.';
+        const roiBaselineContent = context.roiBaseline ? JSON.stringify(context.roiBaseline, null, 2) : 'No ROI baseline available.';
 
         return `You are an interpretive assistant for Stage 5 Assisted Synthesis in a strategic AI roadmapping tool.
 
@@ -271,11 +272,18 @@ STRICT SCOPE:
 - You MUST NOT discuss Stage 6 (Ticket Moderation) or Stage 7 (Roadmap Generation).
 - You MUST NOT reference or modify canonical findings.
 - You may cite specific evidence anchors or quote from source artifacts to justify your reasoning.
+- ROI Baseline is an immutable operator-provided artifact. Use it for economic reasoning and prioritization only.
 
 SOURCE ARTIFACTS (THE TRUTH):
 ---
-DISCOVERY NOTES:
+DISCOVERY NOTES (Contextual — Non-Authoritative):
 ${discoveryContent}
+
+Rule: Discovery Notes provide contextual observations but must not be treated as authoritative signals for operational findings or execution. They may inform interpretation but may not:
+• create new findings
+• override artifact evidence
+• introduce operational issues
+• influence Stage-6 execution
 
 ---
 DIAGNOSTIC DATA:
@@ -286,9 +294,13 @@ EXECUTIVE BRIEF SYNTHESIS:
 ${execBriefContent}
 
 ---
+ROI BASELINE:
+${roiBaselineContent}
+
+---
 PROPOSED_FINDINGS_SNAPSHOT:
 ${JSON.stringify(snapshot, null, 2)}
 
-Your role is to help the operator understand, verify, and resolve these proposals. Answer questions concisely and ground every claim in the SOURCE ARTIFACTS provided above.`;
+Your role is to help the operator understand, verify, and resolve these proposals. Answer questions concisely and ground every claim in the SOURCE ARTIFACTS provided above. If Discovery Notes conflict with artifacts: "The discovery notes provide contextual insight but cannot override tenant artifact data."`;
     }
 }

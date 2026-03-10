@@ -26,7 +26,9 @@
     "implementationPattern": "Use UTM fields + workflows to apply standardized source tags and ensure data completeness.",
     "complexity": "low",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "CRM_FIELD_SCHEMA_STANDARDIZATION",
@@ -54,7 +56,9 @@
     "implementationPattern": "Define required fields and workflows to notify teams when contact records are missing key data.",
     "complexity": "medium",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "CRM_DUPLICATE_PREVENTION",
@@ -81,7 +85,9 @@
     "implementationPattern": "Detect dupes using phone/email, tag them, and notify ops for manual merge.",
     "complexity": "low",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "CRM_TAGGING_CONVENTIONS",
@@ -109,7 +115,9 @@
     "implementationPattern": "Create a canonical tag library and use workflows to enforce structured tagging.",
     "complexity": "low",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "CRM_LIFECYCLE_STAGE_FRAMEWORK",
@@ -140,7 +148,9 @@
     "dependencies": [
       "CRM_TAGGING_CONVENTIONS"
     ],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "CRM_DATA_ENRICHMENT",
@@ -173,7 +183,9 @@
     "dependencies": [
       "CRM_FIELD_SCHEMA_STANDARDIZATION"
     ],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "CRM_COMPLIANCE_TAGGING",
@@ -203,7 +215,9 @@
     "implementationPattern": "Capture explicit consent fields and automate tagging rules.",
     "complexity": "low",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "CRM_SMART_LIST_FRAMEWORK",
@@ -229,7 +243,9 @@
       "CRM_LIFECYCLE_STAGE_FRAMEWORK",
       "CRM_TAGGING_CONVENTIONS"
     ],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "CRM_COLD_CONTACT_CLEANUP",
@@ -257,6 +273,8 @@
     "implementationPattern": "Tag-based inactivity detection → cleanup tasks + optional nurture reactivation.",
     "complexity": "medium",
     "dependencies": [],
-    "verticalTags": []
+    "verticalTags": [],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   }
 ]

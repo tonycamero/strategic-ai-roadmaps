@@ -36,7 +36,9 @@
       "Coaching",
       "Services",
       "Trades"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "ONB-002",
@@ -73,7 +75,9 @@
       "Freelancer",
       "Consulting",
       "Trades"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "ONB-003",
@@ -111,7 +115,9 @@
       "Creative",
       "Trades",
       "Real Estate"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "ONB-004",
@@ -148,7 +154,9 @@
       "Agency",
       "Consulting",
       "Coaching"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "ONB-005",
@@ -183,7 +191,9 @@
       "Agency",
       "Coaching",
       "Financial Services"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "ONB-006",
@@ -218,7 +228,9 @@
       "Agency",
       "Healthcare",
       "Financial Services"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "ONB-007",
@@ -251,7 +263,9 @@
       "Agency",
       "Coaching",
       "Trades"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   },
   {
     "inventoryId": "ONB-008",
@@ -286,6 +300,8 @@
       "Agency",
       "Coaching",
       "Education"
-    ]
+    ],
+    "adapter": "ghl",
+    "requiresCustomDev": false
   }
 ]

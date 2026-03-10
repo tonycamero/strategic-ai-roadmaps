@@ -181,6 +181,10 @@ describe('TenantStateAggregation — Invariant Freeze (Day-1)', () => {
             expect(domain.lockEligible).toBe(true);
         });
 
+        // NOTE: This test documents intended future hard lock behavior.
+        // Current runtime has isHardLocked = false (see tenantStateAggregation.service.ts line ~685).
+        // This test WILL FAIL until terminal hard lock is explicitly authorized and implemented.
+        // Do NOT modify expectations or "fix" this as part of Stage 6 authority hardening tickets.
         it('CASE 4 — Canonical findings present → hard lock', async () => {
             mockDbSequence({
                 intakes: [
