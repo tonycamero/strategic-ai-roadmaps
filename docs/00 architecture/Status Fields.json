@@ -1,0 +1,70 @@
+[{
+  "table_name": "diagnostic_jobs",
+  "column_name": "status"
+}, {
+  "table_name": "diagnostics",
+  "column_name": "status"
+}, {
+  "table_name": "discovery_call_notes",
+  "column_name": "status"
+}, {
+  "table_name": "executive_briefs",
+  "column_name": "status"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "status"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "status"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "email_status"
+}, {
+  "table_name": "intake_vectors",
+  "column_name": "invite_status"
+}, {
+  "table_name": "intakes",
+  "column_name": "status"
+}, {
+  "table_name": "onboarding_states",
+  "column_name": "status"
+}, {
+  "table_name": "pg_replication_slots",
+  "column_name": "wal_status"
+}, {
+  "table_name": "pg_stat_wal_receiver",
+  "column_name": "status"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "status"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "status"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "status"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "moderation_status"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "status"
+}, {
+  "table_name": "tenants",
+  "column_name": "status"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "status"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "status"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "status"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "status"
+}, {
+  "table_name": "webinar_registrations",
+  "column_name": "status"
+}]

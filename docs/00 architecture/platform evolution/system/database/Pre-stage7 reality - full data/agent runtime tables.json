@@ -1,0 +1,13 @@
+[{
+  "table_name": "agent_configs"
+}, {
+  "table_name": "agent_logs"
+}, {
+  "table_name": "agent_messages"
+}, {
+  "table_name": "agent_routing_rules"
+}, {
+  "table_name": "agent_strategy_contexts"
+}, {
+  "table_name": "agent_threads"
+}]

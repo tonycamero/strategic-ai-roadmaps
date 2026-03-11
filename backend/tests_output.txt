@@ -1,0 +1,56 @@
+npm warn config ignoring workspace config at /home/tonycamero/code/Strategic_AI_Roadmaps/backend/.npmrc
+The CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.
+
+ RUN  v1.6.1 /home/tonycamero/code/Strategic_AI_Roadmaps/backend
+
+ Γ¥» src/services/__tests__/tenantStateAggregation.test.ts  (11 tests | 2 failed) 22ms
+   Γ¥» src/services/__tests__/tenantStateAggregation.test.ts > TenantStateAggregationService (EXEC-12) > Governance Precedence > should resolve to CREATED when brief exists but no approval/delivery events
+     ΓåÆ expected 'DRAFT' to be 'CREATED' // Object.is equality
+   Γ¥» src/services/__tests__/tenantStateAggregation.test.ts > TenantStateAggregationService (EXEC-12) > Derived Flags > should allow roadmap assembly only if Diagnostic exists and Intakes are complete
+     ΓåÆ expected false to be true // Object.is equality
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 2 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  src/services/__tests__/tenantStateAggregation.test.ts > TenantStateAggregationService (EXEC-12) > Governance Precedence > should resolve to CREATED when brief exists but no approval/delivery events
+AssertionError: expected 'DRAFT' to be 'CREATED' // Object.is equality
+
+- Expected
++ Received
+
+- CREATED
++ DRAFT
+
+ Γ¥» src/services/__tests__/tenantStateAggregation.test.ts:94:58
+     92|             ]);
+     93|             const view = await getTenantLifecycleView(tenantId);
+     94|             expect(view.governance.executiveBriefStatus).toBe('CREATEDΓÇª
+       |                                                          ^
+     95|         });
+     96| 
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/2]ΓÄ»
+
+ FAIL  src/services/__tests__/tenantStateAggregation.test.ts > TenantStateAggregationService (EXEC-12) > Derived Flags > should allow roadmap assembly only if Diagnostic exists and Intakes are complete
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ Γ¥» src/services/__tests__/tenantStateAggregation.test.ts:205:53
+    203|             ]);
+    204|             const view = await getTenantLifecycleView(tenantId);
+    205|             expect(view.derived.canAssembleRoadmap).toBe(true);
+       |                                                     ^
+    206|         });
+    207| 
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[2/2]ΓÄ»
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 9 passed (11)
+   Start at  10:14:48
+   Duration  308ms (transform 83ms, setup 0ms, collect 127ms, tests 22ms, environment 0ms, prepare 47ms)
+

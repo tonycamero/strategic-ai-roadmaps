@@ -1,0 +1,233 @@
+[{
+  "table_schema": "drizzle",
+  "table_name": "__drizzle_migrations",
+  "column_name": "id"
+}, {
+  "table_schema": "drizzle",
+  "table_name": "__drizzle_migrations",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "__drizzle_migrations",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "__drizzle_migrations",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "agent_configs",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "agent_logs",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "agent_messages",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "agent_routing_rules",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "agent_strategy_contexts",
+  "column_name": "tenant_id"
+}, {
+  "table_schema": "public",
+  "table_name": "agent_threads",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "assisted_synthesis_agent_messages",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "assisted_synthesis_agent_sessions",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "audit_events",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "baseline_review_cycles",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "diagnostic_jobs",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "diagnostic_snapshots",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "diagnostics",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "discovery_call_notes",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "discovery_notes_log",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "evidence_artifacts",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "evidence_bindings",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "executive_brief_artifacts",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "executive_briefs",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "feature_flags",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "firm_baseline_intake",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "impersonation_sessions",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "implementation_snapshots",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "intake_clarifications",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "intake_vectors",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "intakes",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "invites",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "onboarding_states",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "password_reset_tokens",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "public_agent_events",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "public_agent_sessions",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "roadmap_outcomes",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "roadmap_sections",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "roadmaps",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "sas_elections",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "sas_proposals",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "sas_runs",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "selection_envelopes",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "sop_tickets",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "tenant_documents",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "tenant_feature_flags",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "tenant_metrics_daily",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "tenant_stage6_config",
+  "column_name": "tenant_id"
+}, {
+  "table_schema": "public",
+  "table_name": "tenant_vector_stores",
+  "column_name": "tenant_id"
+}, {
+  "table_schema": "public",
+  "table_name": "tenants",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "ticket_instances",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "ticket_packs",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "tickets_draft",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "training_modules",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "training_progress",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "users",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "webinar_registrations",
+  "column_name": "id"
+}, {
+  "table_schema": "public",
+  "table_name": "webinar_settings",
+  "column_name": "id"
+}]
