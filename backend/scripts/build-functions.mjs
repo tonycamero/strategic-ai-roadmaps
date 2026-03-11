@@ -6,14 +6,13 @@ const outdir = "netlify/functions-dist";
 fs.mkdirSync(outdir, { recursive: true });
 
 await build({
-  entryPoints: ["netlify/functions/api.ts"],
-  outfile: path.join(outdir, "api.js"),
+  entryPoints: ["src/api.ts"],
   bundle: true,
   platform: "node",
-  target: "node20",
+  target: "node18",
+  outfile: "netlify/functions-dist/api.js",
   format: "cjs",
   sourcemap: true,
   logLevel: "info",
-
-  external: ["@roadmap/shared"],
+  packages: "bundle"
 });
