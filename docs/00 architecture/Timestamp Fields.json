@@ -1,0 +1,244 @@
+[{
+  "table_name": "agent_configs",
+  "column_name": "last_updated_by"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "updated_by"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "updated_at"
+}, {
+  "table_name": "agent_strategy_contexts",
+  "column_name": "updated_at"
+}, {
+  "table_name": "assisted_synthesis_agent_sessions",
+  "column_name": "updated_at"
+}, {
+  "table_name": "attributes",
+  "column_name": "datetime_precision"
+}, {
+  "table_name": "baseline_review_cycles",
+  "column_name": "updated_at"
+}, {
+  "table_name": "baseline_review_cycles",
+  "column_name": "overtime_pct"
+}, {
+  "table_name": "columns",
+  "column_name": "datetime_precision"
+}, {
+  "table_name": "diagnostic_jobs",
+  "column_name": "updated_at"
+}, {
+  "table_name": "diagnostic_snapshots",
+  "column_name": "updated_at"
+}, {
+  "table_name": "diagnostics",
+  "column_name": "updated_at"
+}, {
+  "table_name": "discovery_call_notes",
+  "column_name": "updated_at"
+}, {
+  "table_name": "domains",
+  "column_name": "datetime_precision"
+}, {
+  "table_name": "element_types",
+  "column_name": "datetime_precision"
+}, {
+  "table_name": "executive_briefs",
+  "column_name": "updated_at"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "overtime_pct"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "updated_at"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "avg_response_time_minutes"
+}, {
+  "table_name": "implementation_snapshots",
+  "column_name": "snapshot_date"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "updated_at"
+}, {
+  "table_name": "intake_vectors",
+  "column_name": "updated_at"
+}, {
+  "table_name": "onboarding_states",
+  "column_name": "updated_at"
+}, {
+  "table_name": "parameters",
+  "column_name": "datetime_precision"
+}, {
+  "table_name": "pg_constraint",
+  "column_name": "convalidated"
+}, {
+  "table_name": "pg_cursors",
+  "column_name": "creation_time"
+}, {
+  "table_name": "pg_prepared_statements",
+  "column_name": "prepare_time"
+}, {
+  "table_name": "pg_publication",
+  "column_name": "pubupdate"
+}, {
+  "table_name": "pg_stat_archiver",
+  "column_name": "last_archived_time"
+}, {
+  "table_name": "pg_stat_archiver",
+  "column_name": "last_failed_time"
+}, {
+  "table_name": "pg_stat_checkpointer",
+  "column_name": "num_timed"
+}, {
+  "table_name": "pg_stat_checkpointer",
+  "column_name": "sync_time"
+}, {
+  "table_name": "pg_stat_checkpointer",
+  "column_name": "write_time"
+}, {
+  "table_name": "pg_stat_checkpointer",
+  "column_name": "restartpoints_timed"
+}, {
+  "table_name": "pg_stat_database",
+  "column_name": "active_time"
+}, {
+  "table_name": "pg_stat_database",
+  "column_name": "blk_read_time"
+}, {
+  "table_name": "pg_stat_database",
+  "column_name": "tup_updated"
+}, {
+  "table_name": "pg_stat_database",
+  "column_name": "blk_write_time"
+}, {
+  "table_name": "pg_stat_database",
+  "column_name": "session_time"
+}, {
+  "table_name": "pg_stat_database",
+  "column_name": "idle_in_transaction_time"
+}, {
+  "table_name": "pg_stat_io",
+  "column_name": "extend_time"
+}, {
+  "table_name": "pg_stat_io",
+  "column_name": "fsync_time"
+}, {
+  "table_name": "pg_stat_io",
+  "column_name": "writeback_time"
+}, {
+  "table_name": "pg_stat_io",
+  "column_name": "write_time"
+}, {
+  "table_name": "pg_stat_io",
+  "column_name": "read_time"
+}, {
+  "table_name": "pg_stat_replication",
+  "column_name": "reply_time"
+}, {
+  "table_name": "pg_stat_subscription",
+  "column_name": "last_msg_receipt_time"
+}, {
+  "table_name": "pg_stat_subscription",
+  "column_name": "latest_end_time"
+}, {
+  "table_name": "pg_stat_subscription",
+  "column_name": "last_msg_send_time"
+}, {
+  "table_name": "pg_stat_user_functions",
+  "column_name": "self_time"
+}, {
+  "table_name": "pg_stat_user_functions",
+  "column_name": "total_time"
+}, {
+  "table_name": "pg_stat_wal",
+  "column_name": "wal_sync_time"
+}, {
+  "table_name": "pg_stat_wal",
+  "column_name": "wal_write_time"
+}, {
+  "table_name": "pg_stat_wal_receiver",
+  "column_name": "latest_end_time"
+}, {
+  "table_name": "pg_stat_wal_receiver",
+  "column_name": "last_msg_send_time"
+}, {
+  "table_name": "pg_stat_wal_receiver",
+  "column_name": "last_msg_receipt_time"
+}, {
+  "table_name": "pg_stat_xact_user_functions",
+  "column_name": "self_time"
+}, {
+  "table_name": "pg_stat_xact_user_functions",
+  "column_name": "total_time"
+}, {
+  "table_name": "referential_constraints",
+  "column_name": "update_rule"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "updated_at"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "last_updated_at"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "updated_at"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "updated_at"
+}, {
+  "table_name": "routines",
+  "column_name": "result_cast_datetime_precision"
+}, {
+  "table_name": "routines",
+  "column_name": "datetime_precision"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "time_estimate_hours"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "updated_at"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "updated_at"
+}, {
+  "table_name": "tenant_feature_flags",
+  "column_name": "updated_at"
+}, {
+  "table_name": "tenant_metrics_daily",
+  "column_name": "metric_date"
+}, {
+  "table_name": "tenant_stage6_config",
+  "column_name": "updated_at"
+}, {
+  "table_name": "tenant_vector_stores",
+  "column_name": "updated_at"
+}, {
+  "table_name": "tenants",
+  "column_name": "roles_validated_at"
+}, {
+  "table_name": "tenants",
+  "column_name": "updated_at"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "updated_at"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "updated_at"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "updated_at"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "updated_at"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "time_estimate_hours"
+}, {
+  "table_name": "user_defined_types",
+  "column_name": "datetime_precision"
+}, {
+  "table_name": "webinar_settings",
+  "column_name": "updated_at"
+}]

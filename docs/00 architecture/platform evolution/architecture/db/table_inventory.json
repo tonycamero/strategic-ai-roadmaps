@@ -1,0 +1,111 @@
+[{
+  "table_name": "__drizzle_migrations"
+}, {
+  "table_name": "agent_configs"
+}, {
+  "table_name": "agent_logs"
+}, {
+  "table_name": "agent_messages"
+}, {
+  "table_name": "agent_routing_rules"
+}, {
+  "table_name": "agent_strategy_contexts"
+}, {
+  "table_name": "agent_threads"
+}, {
+  "table_name": "assisted_synthesis_agent_messages"
+}, {
+  "table_name": "assisted_synthesis_agent_sessions"
+}, {
+  "table_name": "audit_events"
+}, {
+  "table_name": "baseline_review_cycles"
+}, {
+  "table_name": "diagnostic_jobs"
+}, {
+  "table_name": "diagnostic_snapshots"
+}, {
+  "table_name": "diagnostics"
+}, {
+  "table_name": "discovery_call_notes"
+}, {
+  "table_name": "discovery_notes_log"
+}, {
+  "table_name": "evidence_artifacts"
+}, {
+  "table_name": "evidence_bindings"
+}, {
+  "table_name": "executive_brief_artifacts"
+}, {
+  "table_name": "executive_briefs"
+}, {
+  "table_name": "feature_flags"
+}, {
+  "table_name": "firm_baseline_intake"
+}, {
+  "table_name": "impersonation_sessions"
+}, {
+  "table_name": "implementation_snapshots"
+}, {
+  "table_name": "intake_clarifications"
+}, {
+  "table_name": "intake_vectors"
+}, {
+  "table_name": "intakes"
+}, {
+  "table_name": "invites"
+}, {
+  "table_name": "onboarding_states"
+}, {
+  "table_name": "password_reset_tokens"
+}, {
+  "table_name": "public_agent_events"
+}, {
+  "table_name": "public_agent_sessions"
+}, {
+  "table_name": "roadmap_outcomes"
+}, {
+  "table_name": "roadmap_sections"
+}, {
+  "table_name": "roadmaps"
+}, {
+  "table_name": "sas_elections"
+}, {
+  "table_name": "sas_proposals"
+}, {
+  "table_name": "sas_runs"
+}, {
+  "table_name": "selection_envelopes"
+}, {
+  "table_name": "sop_tickets"
+}, {
+  "table_name": "tenant_documents"
+}, {
+  "table_name": "tenant_feature_flags"
+}, {
+  "table_name": "tenant_metrics_daily"
+}, {
+  "table_name": "tenant_stage6_config"
+}, {
+  "table_name": "tenant_vector_stores"
+}, {
+  "table_name": "tenants"
+}, {
+  "table_name": "ticket_instances"
+}, {
+  "table_name": "ticket_moderation_sessions"
+}, {
+  "table_name": "ticket_packs"
+}, {
+  "table_name": "tickets_draft"
+}, {
+  "table_name": "training_modules"
+}, {
+  "table_name": "training_progress"
+}, {
+  "table_name": "users"
+}, {
+  "table_name": "webinar_registrations"
+}, {
+  "table_name": "webinar_settings"
+}]

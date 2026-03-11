@@ -1,0 +1,521 @@
+[{
+  "source_table": "agent_configs",
+  "source_column": "created_by",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "agent_configs",
+  "source_column": "last_updated_by",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "agent_configs",
+  "source_column": "updated_by",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "agent_configs",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "agent_logs",
+  "source_column": "agent_config_id",
+  "target_table": "agent_configs",
+  "target_column": "id"
+}, {
+  "source_table": "agent_messages",
+  "source_column": "agent_thread_id",
+  "target_table": "agent_threads",
+  "target_column": "id"
+}, {
+  "source_table": "agent_routing_rules",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "agent_strategy_contexts",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "agent_threads",
+  "source_column": "agent_config_id",
+  "target_table": "agent_configs",
+  "target_column": "id"
+}, {
+  "source_table": "agent_threads",
+  "source_column": "actor_user_id",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "agent_threads",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "assisted_synthesis_agent_messages",
+  "source_column": "session_id",
+  "target_table": "assisted_synthesis_agent_sessions",
+  "target_column": "id"
+}, {
+  "source_table": "assisted_synthesis_agent_messages",
+  "source_column": "session_id",
+  "target_table": "assisted_synthesis_agent_sessions",
+  "target_column": "id"
+}, {
+  "source_table": "assisted_synthesis_agent_sessions",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "audit_events",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "audit_events",
+  "source_column": "actor_user_id",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "diagnostic_jobs",
+  "source_column": "created_by_user_id",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "diagnostic_jobs",
+  "source_column": "firm_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "diagnostic_snapshots",
+  "source_column": "user_id",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "diagnostics",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "diagnostics",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "diagnostics",
+  "source_column": "approved_by_user_id",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "diagnostics",
+  "source_column": "generated_by_user_id",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "discovery_call_notes",
+  "source_column": "approved_by",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "discovery_call_notes",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "discovery_call_notes",
+  "source_column": "diagnostic_id",
+  "target_table": "diagnostics",
+  "target_column": "id"
+}, {
+  "source_table": "discovery_call_notes",
+  "source_column": "created_by_user_id",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "discovery_notes_log",
+  "source_column": "created_by_user_id",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "discovery_notes_log",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "entities",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "evidence_bindings",
+  "source_column": "artifact_id",
+  "target_table": "evidence_artifacts",
+  "target_column": "id"
+}, {
+  "source_table": "execution_state",
+  "source_column": "graph_node_id",
+  "target_table": "roadmap_graph_nodes",
+  "target_column": "id"
+}, {
+  "source_table": "executive_brief_artifacts",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "executive_brief_artifacts",
+  "source_column": "executive_brief_id",
+  "target_table": "executive_briefs",
+  "target_column": "id"
+}, {
+  "source_table": "executive_briefs",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "executive_briefs",
+  "source_column": "approved_by",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "firm_baseline_intake",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "firm_baseline_intake",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "impersonation_sessions",
+  "source_column": "owner_user_id",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "impersonation_sessions",
+  "source_column": "super_admin_id",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "impersonation_sessions",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "implementation_snapshots",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "implementation_snapshots",
+  "source_column": "roadmap_id",
+  "target_table": "roadmaps",
+  "target_column": "id"
+}, {
+  "source_table": "intake_clarifications",
+  "source_column": "intake_id",
+  "target_table": "intakes",
+  "target_column": "id"
+}, {
+  "source_table": "intake_clarifications",
+  "source_column": "requested_by_user_id",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "intake_clarifications",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "intake_vectors",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "intake_vectors",
+  "source_column": "intake_id",
+  "target_table": "intakes",
+  "target_column": "id"
+}, {
+  "source_table": "intakes",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "intakes",
+  "source_column": "user_id",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "invites",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "onboarding_states",
+  "source_column": "user_id",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "onboarding_states",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "password_reset_tokens",
+  "source_column": "user_id",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "roadmap_graph_edges",
+  "source_column": "to_ticket_id",
+  "target_table": "sop_tickets",
+  "target_column": "id"
+}, {
+  "source_table": "roadmap_graph_edges",
+  "source_column": "from_ticket_id",
+  "target_table": "sop_tickets",
+  "target_column": "id"
+}, {
+  "source_table": "roadmap_graph_nodes",
+  "source_column": "sop_ticket_id",
+  "target_table": "sop_tickets",
+  "target_column": "id"
+}, {
+  "source_table": "roadmap_outcomes",
+  "source_column": "at_90d_snapshot_id",
+  "target_table": "implementation_snapshots",
+  "target_column": "id"
+}, {
+  "source_table": "roadmap_outcomes",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "roadmap_outcomes",
+  "source_column": "roadmap_id",
+  "target_table": "roadmaps",
+  "target_column": "id"
+}, {
+  "source_table": "roadmap_outcomes",
+  "source_column": "baseline_snapshot_id",
+  "target_table": "implementation_snapshots",
+  "target_column": "id"
+}, {
+  "source_table": "roadmap_outcomes",
+  "source_column": "at_30d_snapshot_id",
+  "target_table": "implementation_snapshots",
+  "target_column": "id"
+}, {
+  "source_table": "roadmap_outcomes",
+  "source_column": "at_60d_snapshot_id",
+  "target_table": "implementation_snapshots",
+  "target_column": "id"
+}, {
+  "source_table": "roadmap_sections",
+  "source_column": "roadmap_id",
+  "target_table": "roadmaps",
+  "target_column": "id"
+}, {
+  "source_table": "roadmaps",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "roadmaps",
+  "source_column": "created_by_user_id",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "roadmaps",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "roadmaps",
+  "source_column": "snapshot_id",
+  "target_table": "implementation_snapshots",
+  "target_column": "id"
+}, {
+  "source_table": "sas_elections",
+  "source_column": "proposal_id",
+  "target_table": "sas_proposals",
+  "target_column": "id"
+}, {
+  "source_table": "sas_elections",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "sas_proposals",
+  "source_column": "sas_run_id",
+  "target_table": "sas_runs",
+  "target_column": "id"
+}, {
+  "source_table": "sas_proposals",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "sas_runs",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "selection_envelopes",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "sop_tickets",
+  "source_column": "diagnostic_id",
+  "target_table": "diagnostics",
+  "target_column": "id"
+}, {
+  "source_table": "sop_tickets",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "sop_tickets",
+  "source_column": "moderated_by",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "tenant_documents",
+  "source_column": "uploaded_by",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "tenant_documents",
+  "source_column": "owner_user_id",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "tenant_documents",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "tenant_feature_flags",
+  "source_column": "feature_flag_id",
+  "target_table": "feature_flags",
+  "target_column": "id"
+}, {
+  "source_table": "tenant_feature_flags",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "tenant_metrics_daily",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "tenant_stage6_config",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "tenant_vector_stores",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "tenants",
+  "source_column": "intake_locked_by_user_id",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "ticket_instances",
+  "source_column": "ticket_pack_id",
+  "target_table": "ticket_packs",
+  "target_column": "id"
+}, {
+  "source_table": "ticket_moderation_sessions",
+  "source_column": "source_doc_id",
+  "target_table": "tenant_documents",
+  "target_column": "id"
+}, {
+  "source_table": "ticket_moderation_sessions",
+  "source_column": "selection_envelope_id",
+  "target_table": "selection_envelopes",
+  "target_column": "id"
+}, {
+  "source_table": "ticket_moderation_sessions",
+  "source_column": "started_by",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "ticket_moderation_sessions",
+  "source_column": "source_doc_id",
+  "target_table": "tenant_documents",
+  "target_column": "id"
+}, {
+  "source_table": "ticket_moderation_sessions",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "ticket_moderation_sessions",
+  "source_column": "started_by",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "ticket_moderation_sessions",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "ticket_packs",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "ticket_packs",
+  "source_column": "roadmap_id",
+  "target_table": "roadmaps",
+  "target_column": "id"
+}, {
+  "source_table": "tickets_draft",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "tickets_draft",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "tickets_draft",
+  "source_column": "moderation_session_id",
+  "target_table": "ticket_moderation_sessions",
+  "target_column": "id"
+}, {
+  "source_table": "tickets_draft",
+  "source_column": "moderation_session_id",
+  "target_table": "ticket_moderation_sessions",
+  "target_column": "id"
+}, {
+  "source_table": "training_progress",
+  "source_column": "user_id",
+  "target_table": "users",
+  "target_column": "id"
+}, {
+  "source_table": "training_progress",
+  "source_column": "module_id",
+  "target_table": "training_modules",
+  "target_column": "id"
+}, {
+  "source_table": "users",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}, {
+  "source_table": "users",
+  "source_column": "tenant_id",
+  "target_table": "tenants",
+  "target_column": "id"
+}]

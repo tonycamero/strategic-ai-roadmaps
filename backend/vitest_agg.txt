@@ -1,0 +1,56 @@
+npm warn config ignoring workspace config at /home/tonycamero/code/Strategic_AI_Roadmaps/backend/.npmrc
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+[7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90m/home/tonycamero/code/Strategic_AI_Roadmaps/backend[39m
+
+ [33m❯[39m src/services/__tests__/tenantStateAggregation.test.ts [2m ([22m[2m11 tests[22m [2m|[22m [31m2 failed[39m[2m)[22m[90m 21[2mms[22m[39m
+[31m   [33m❯[31m src/services/__tests__/tenantStateAggregation.test.ts[2m > [22mTenantStateAggregationService (EXEC-12)[2m > [22mGovernance Precedence[2m > [22mshould resolve to CREATED when brief exists but no approval/delivery events[39m
+[31m     → expected 'DRAFT' to be 'CREATED' // Object.is equality[39m
+[31m   [33m❯[31m src/services/__tests__/tenantStateAggregation.test.ts[2m > [22mTenantStateAggregationService (EXEC-12)[2m > [22mDerived Flags[2m > [22mshould allow roadmap assembly only if Diagnostic exists and Intakes are complete[39m
+[31m     → expected false to be true // Object.is equality[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[1m[7m Failed Tests 2 [27m[22m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/services/__tests__/tenantStateAggregation.test.ts[2m > [22mTenantStateAggregationService (EXEC-12)[2m > [22mGovernance Precedence[2m > [22mshould resolve to CREATED when brief exists but no approval/delivery events
+[31m[1mAssertionError[22m: expected 'DRAFT' to be 'CREATED' // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- CREATED[39m
+[31m+ DRAFT[39m
+
+[36m [2m❯[22m src/services/__tests__/tenantStateAggregation.test.ts:[2m94:58[22m[39m
+    [90m 92| [39m            ])[33m;[39m
+    [90m 93| [39m            [35mconst[39m view [33m=[39m [35mawait[39m [34mgetTenantLifecycleView[39m(tenantId)[33m;[39m
+    [90m 94| [39m            [34mexpect[39m(view[33m.[39mgovernance[33m.[39mexecutiveBriefStatus)[33m.[39m[34mtoBe[39m([32m'CREATED[39m…
+    [90m   | [39m                                                         [31m^[39m
+    [90m 95| [39m        })[33m;[39m
+    [90m 96| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/services/__tests__/tenantStateAggregation.test.ts[2m > [22mTenantStateAggregationService (EXEC-12)[2m > [22mDerived Flags[2m > [22mshould allow roadmap assembly only if Diagnostic exists and Intakes are complete
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m src/services/__tests__/tenantStateAggregation.test.ts:[2m205:53[22m[39m
+    [90m203| [39m            ])[33m;[39m
+    [90m204| [39m            [35mconst[39m view [33m=[39m [35mawait[39m [34mgetTenantLifecycleView[39m(tenantId)[33m;[39m
+    [90m205| [39m            [34mexpect[39m(view[33m.[39mderived[33m.[39mcanAssembleRoadmap)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   | [39m                                                    [31m^[39m
+    [90m206| [39m        })[33m;[39m
+    [90m207| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m9 passed[39m[22m[90m (11)[39m
+[2m   Start at [22m 10:13:53
+[2m   Duration [22m 278ms[2m (transform 74ms, setup 0ms, collect 116ms, tests 21ms, environment 0ms, prepare 43ms)[22m
+

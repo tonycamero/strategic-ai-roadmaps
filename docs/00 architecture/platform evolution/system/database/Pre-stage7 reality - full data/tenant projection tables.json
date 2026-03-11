@@ -1,0 +1,15 @@
+[{
+  "table_name": "tenant_metrics_daily"
+}, {
+  "table_name": "tenant_stage6_config"
+}, {
+  "table_name": "tenant_feature_flags"
+}, {
+  "table_name": "tenant_vector_stores"
+}, {
+  "table_name": "tenants"
+}, {
+  "table_name": "tenant_documents"
+}, {
+  "table_name": "tenants"
+}]

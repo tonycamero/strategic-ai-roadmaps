@@ -3,19 +3,22 @@ import * as opsSignalService from '../services/opsSignal.service';
 
 export const registerParticipant = async (req: Request, res: Response) => {
     try {
-        const { name, email, department, roleLabel, tenantId } = req.body;
+        const { name, email, department, roleLabel, role, tenantId } = req.body;
+        const finalRoleLabel = roleLabel || role;
 
-        if (!name || !email || !roleLabel || !tenantId) {
-            return res.status(400).json({ error: 'Missing required fields' });
+        if (!name || !email || !finalRoleLabel || !tenantId) {
+            return res.status(400).json({ error: 'Missing required fields (name, email, roleLabel/role, tenantId)' });
         }
+
 
         const participant = await opsSignalService.createOrFetchParticipant({
             name,
             email,
             department: department || '',
-            roleLabel,
+            roleLabel: finalRoleLabel,
             tenantId
         });
+
 
         return res.json({
             ok: true,

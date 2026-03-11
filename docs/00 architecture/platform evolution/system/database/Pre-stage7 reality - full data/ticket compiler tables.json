@@ -1,0 +1,301 @@
+[{
+  "table_name": "sop_tickets",
+  "column_name": "id"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "tenant_id"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "diagnostic_id"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "ticket_id"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "title"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "category"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "pain_source"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "description"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "current_state"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "target_state"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "ai_design"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "ghl_implementation"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "implementation_steps"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "owner"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "dependencies"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "time_estimate_hours"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "cost_estimate"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "success_metric"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "roadmap_section"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "priority"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "sprint"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "projected_hours_saved_weekly"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "projected_leads_recovered_monthly"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "roi_notes"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "created_at"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "updated_at"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "tier"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "value_category"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "approved"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "admin_notes"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "moderated_at"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "moderated_by"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "moderation_status"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "inventory_id"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "is_sidecar"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "ticket_type"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "status"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "selection_envelope_id"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "source_finding_ids"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "generation_event_id"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "projection_hash"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "envelope_version"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "capability_id"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "ticket_key"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "capability_namespace"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "id"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "ticket_pack_id"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "ticket_id"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "status"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "assignee"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "started_at"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "completed_at"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "notes"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "created_at"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "updated_at"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "section_number"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "id"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "tenant_id"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "status"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "started_by"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "started_at"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "completed_at"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "created_at"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "updated_at"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "source_doc_id"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "source_doc_version"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "selection_envelope_id"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "id"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "tenant_id"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "roadmap_id"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "version"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "status"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "total_tickets"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "total_sprints"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "sprint_assignments"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "totals"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "created_at"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "updated_at"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "id"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "tenant_id"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "finding_id"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "finding_category"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "title"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "description"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "evidence_refs"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "status"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "moderation_session_id"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "created_at"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "updated_at"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "finding_type"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "ticket_type"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "sprint"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "category"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "tier"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "time_estimate_hours"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "ghl_implementation"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "implementation_steps"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "success_metric"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "roi_notes"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "pain_source"
+}]
