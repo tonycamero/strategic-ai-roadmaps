@@ -14,5 +14,9 @@ await build({
   format: "cjs",
   sourcemap: true,
   logLevel: "info",
-  packages: "bundle"
+  packages: "bundle",
+
+  alias: {
+    "@roadmap/shared": path.resolve("../shared/src")
+  }
 });
