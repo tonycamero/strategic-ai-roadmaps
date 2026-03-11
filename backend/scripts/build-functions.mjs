@@ -6,7 +6,7 @@ const outdir = "netlify/functions-dist";
 fs.mkdirSync(outdir, { recursive: true });
 
 await build({
-  entryPoints: ["src/api.ts"],
+  entryPoints: ["netlify/functions/api.ts"],
   bundle: true,
   platform: "node",
   target: "node18",
