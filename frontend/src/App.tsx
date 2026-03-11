@@ -33,6 +33,8 @@ import RequestPasswordReset from './pages/RequestPasswordReset';
 import ResetPassword from './pages/ResetPassword';
 import { OnboardingLayout } from './layouts/OnboardingLayout';
 import { TrustAgentShell as SmartShell } from './trustagent/TrustAgentShell';
+import OpsSignalPortal from './pages/ops-signal';
+
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -86,11 +88,15 @@ function App() {
                 {/* Back-compat (optional but recommended) */}
                 <Route path="/forgot-password" component={RequestPasswordReset} />
                 <Route path="/reset-password/:token" component={ResetPassword} />
-                
+
                 <Route path="/clarify/:token" component={ClarificationForm} />
                 <Route path="/accept-invite/:token" component={AcceptInvite} />
 
+                {/* Ops Team Signal Portal (Tenant-Scoped) */}
+                <Route path="/ops-signal/:tenantId" component={OpsSignalPortal} />
+
                 {/* Onboarding (with sidebar) */}
+
                 <ProtectedRoute path="/dashboard">
                   <OnboardingLayout><Dashboard /></OnboardingLayout>
                 </ProtectedRoute>

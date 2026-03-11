@@ -216,6 +216,20 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ response }),
     }),
+
+  // Ops Signal Portal endpoints
+  registerOpsParticipant: (data: { name: string; email: string; department?: string; roleLabel: string; tenantId: string }) =>
+    fetchAPI<{ ok: boolean; participantId: string; participant: any }>('/api/ops-signal/participant', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  submitOpsSignal: (data: { tenantId: string; participantId: string; signalType: string; signalData: any }) =>
+    fetchAPI<{ ok: boolean; entryId: string }>('/api/ops-signal/submit', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
+
 
 export { ApiError };
