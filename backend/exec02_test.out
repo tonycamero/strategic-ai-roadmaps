@@ -1,0 +1,502 @@
+npm warn config ignoring workspace config at /home/tonycamero/code/Strategic_AI_Roadmaps/backend/.npmrc
+npm warn config ignoring workspace config at /home/tonycamero/code/Strategic_AI_Roadmaps/backend/.npmrc
+
+> @roadmap/backend@1.0.0 test
+> vitest run
+
+The CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.
+
+ RUN  v1.6.1 /home/tonycamero/code/Strategic_AI_Roadmaps/backend
+
+ Γ£ô src/services/__tests__/tenantStateAggregation.test.ts  (11 tests) 13ms
+ Γ£ô src/services/__tests__/tenantStateAggregation.projection.test.ts  (8 tests) 14ms
+ Γ£ô src/__tests__/executiveBriefSynthesis/determinism.test.ts  (34 tests) 40ms
+stderr | src/__tests__/executiveBriefSynthesis/determinism.test.ts > Executive Brief Synthesis - Determinism Tests > Contract Validation Tests (EXEC-BRIEF-VALIDATION-KIT-003) > should throw CONTRACT_VIOLATION for assertion exceeding 24-word limit
+[ExecutiveBriefContract][VIOLATIONS] {
+  "violations": [
+    {
+      "path": "executiveAssertionBlock[0].assertion",
+      "rule": "EAB_ASSERTION_WORD_LIMIT",
+      "message": "Assertion must be 1-24 words",
+      "severity": "ERROR",
+      "context": {
+        "wordCount": 26,
+        "min": 1,
+        "max": 24
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[0].primarySection",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'primarySection' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "primarySection"
+      }
+    }
+  ]
+}
+
+stderr | src/__tests__/executiveBriefSynthesis/determinism.test.ts > Executive Brief Synthesis - Determinism Tests > Contract Validation Tests (EXEC-BRIEF-VALIDATION-KIT-003) > should throw CONTRACT_VIOLATION for invalid evidence count
+[ExecutiveBriefContract][VIOLATIONS] {
+  "violations": [
+    {
+      "path": "executiveAssertionBlock[0].evidence",
+      "rule": "EAB_EVIDENCE_COUNT",
+      "message": "Evidence must contain 1-3 items",
+      "severity": "ERROR",
+      "context": {
+        "count": 0,
+        "min": 1,
+        "max": 3
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[0].primarySection",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'primarySection' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "primarySection"
+      }
+    }
+  ]
+}
+
+stderr | src/__tests__/executiveBriefSynthesis/determinism.test.ts > Executive Brief Synthesis - Determinism Tests > Contract Validation Tests (EXEC-BRIEF-VALIDATION-KIT-003) > should throw CONTRACT_VIOLATION for missing required fields
+[ExecutiveBriefContract][VIOLATIONS] {
+  "violations": [
+    {
+      "path": "executiveAssertionBlock[0].alignment_scope",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'alignment_scope' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "alignment_scope"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[0].alignment_strength",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'alignment_strength' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "alignment_strength"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[0].confidence_score",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'confidence_score' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "confidence_score"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[0].constraint_signal",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'constraint_signal' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "constraint_signal"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[0].implication",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'implication' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "implication"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[0].primarySection",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'primarySection' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "primarySection"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[0].source_refs",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'source_refs' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "source_refs"
+      }
+    }
+  ]
+}
+
+stderr | src/__tests__/executiveBriefSynthesis/determinism.test.ts > Executive Brief Synthesis - Determinism Tests > Contract Validation Tests (EXEC-BRIEF-VALIDATION-KIT-003) > should enforce section caps and throw CONTRACT_VIOLATION
+[ExecutiveBriefContract][VIOLATIONS] {
+  "violations": [
+    {
+      "path": "executiveAssertionBlock",
+      "rule": "SECTION_CAP_EXEC_ASSERTIONS",
+      "message": "Executive assertions must not exceed 4",
+      "severity": "ERROR",
+      "context": {
+        "count": 5,
+        "cap": 4
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[0].primarySection",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'primarySection' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "primarySection"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[1].primarySection",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'primarySection' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "primarySection"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[2].primarySection",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'primarySection' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "primarySection"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[3].primarySection",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'primarySection' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "primarySection"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[4].primarySection",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'primarySection' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "primarySection"
+      }
+    }
+  ]
+}
+
+stderr | src/__tests__/executiveBriefSynthesis/determinism.test.ts > Executive Brief Synthesis - Determinism Tests > Contract Validation Tests (EXEC-BRIEF-VALIDATION-KIT-003) > should sort violations deterministically (path ASC, then rule ASC)
+[ExecutiveBriefContract][VIOLATIONS] {
+  "violations": [
+    {
+      "path": "content",
+      "rule": "CONTENT_MISSING",
+      "message": "Canonical content block is missing",
+      "severity": "ERROR"
+    },
+    {
+      "path": "executiveAssertionBlock[0].alignment_scope",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'alignment_scope' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "alignment_scope"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[0].alignment_strength",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'alignment_strength' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "alignment_strength"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[0].confidence_score",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'confidence_score' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "confidence_score"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[0].constraint_signal",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'constraint_signal' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "constraint_signal"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[0].evidence",
+      "rule": "EAB_EVIDENCE_COUNT",
+      "message": "Evidence must contain 1-3 items",
+      "severity": "ERROR",
+      "context": {
+        "count": 0,
+        "min": 1,
+        "max": 3
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[0].implication",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'implication' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "implication"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[0].primarySection",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'primarySection' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "primarySection"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[0].source_refs",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'source_refs' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "source_refs"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[1].alignment_scope",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'alignment_scope' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "alignment_scope"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[1].alignment_strength",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'alignment_strength' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "alignment_strength"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[1].confidence_score",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'confidence_score' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "confidence_score"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[1].constraint_signal",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'constraint_signal' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "constraint_signal"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[1].evidence",
+      "rule": "EAB_EVIDENCE_COUNT",
+      "message": "Evidence must contain 1-3 items",
+      "severity": "ERROR",
+      "context": {
+        "count": 4,
+        "min": 1,
+        "max": 3
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[1].implication",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'implication' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "implication"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[1].primarySection",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'primarySection' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "primarySection"
+      }
+    },
+    {
+      "path": "executiveAssertionBlock[1].source_refs",
+      "rule": "EAB_REQUIRED_FIELD",
+      "message": "Required field 'source_refs' is missing",
+      "severity": "ERROR",
+      "context": {
+        "field": "source_refs"
+      }
+    },
+    {
+      "path": "meta",
+      "rule": "META_MISSING",
+      "message": "Canonical meta block is missing or incomplete",
+      "severity": "ERROR"
+    }
+  ]
+}
+
+[MirrorNarrative] Offline bypass active for test environment.
+ Γ£ô src/__tests__/executiveBriefSynthesis/interpretation.test.ts  (3 tests) 5ms
+stdout | src/__tests__/executiveBriefSynthesis/interpretation.test.ts > Executive Interpretation Layer (EXEC-BRIEF-INTERPRETATION-015) > should replace epistemic fallbacks with executive implications (Low Signal)
+CONSTRAINT FALLBACK: The execution environment demonstrates structural stability. Existing constraints appear managed within local capacity limits rather than acting as systemic blockers.
+RISK FALLBACK: Systemic risk exposure remains latent. No critical escalation patterns currently threaten the strategic baseline.
+ALIGNMENT FALLBACK: Cross-functional execution is proceeding through distributed coordination. Shared strategic intent is implicit in operational routines.
+
+stdout | src/__tests__/executiveBriefSynthesis/interpretation.test.ts > Executive Interpretation Layer (EXEC-BRIEF-INTERPRETATION-015) > should generate interpretive strategic summary instead of stats
+SUMMARY: High-confidence signals confirm clear strategic direction. Cross-functional alignment is visible.
+
+stdout | src/__tests__/executiveBriefSynthesis/interpretation.test.ts > Executive Interpretation Layer (EXEC-BRIEF-INTERPRETATION-015) > should use latent stability summary for low confidence set
+LOW CONF SUMMARY: Executive landscape defined by distributed operational patterns. Synthesis points to implied stability with localized optimization opportunities.
+
+stdout | src/__tests__/executiveBriefSynthesis/mirrorNarrative.contract.test.ts > Mirror Narrative Contract Tests > Fixture: fixture_minimal_valid.json
+[MirrorNarrative] Generation complete
+[MirrorNarrative][DEPTH] Expanding shallow blocks in OPERATING_REALITY: livedReality
+
+ Γ£ô src/__tests__/executiveBriefSynthesis/contrastSignal.test.ts  (3 tests) 3ms
+ Γ£ô src/__tests__/staleArtifactInvalidation.test.ts  (5 tests) 1ms
+stderr | src/__tests__/executiveBriefSynthesis/expansion.test.ts > Executive Brief Mode 2 ΓÇö Assertion Expansion Tests > should fail-soft if expansion service throws
+[Synthesis] Mode 2 Expansion failed, falling back to Track A only: Error: LLM Timeout
+    at /home/tonycamero/code/Strategic_AI_Roadmaps/backend/src/__tests__/executiveBriefSynthesis/expansion.test.ts:79:94
+    at file:///home/tonycamero/code/Strategic_AI_Roadmaps/node_modules/.pnpm/@vitest+runner@1.6.1/node_modules/@vitest/runner/dist/index.js:135:14
+    at file:///home/tonycamero/code/Strategic_AI_Roadmaps/node_modules/.pnpm/@vitest+runner@1.6.1/node_modules/@vitest/runner/dist/index.js:60:26
+    at runTest (file:///home/tonycamero/code/Strategic_AI_Roadmaps/node_modules/.pnpm/@vitest+runner@1.6.1/node_modules/@vitest/runner/dist/index.js:781:17)
+    at runSuite (file:///home/tonycamero/code/Strategic_AI_Roadmaps/node_modules/.pnpm/@vitest+runner@1.6.1/node_modules/@vitest/runner/dist/index.js:909:15)
+    at runSuite (file:///home/tonycamero/code/Strategic_AI_Roadmaps/node_modules/.pnpm/@vitest+runner@1.6.1/node_modules/@vitest/runner/dist/index.js:909:15)
+    at runFiles (file:///home/tonycamero/code/Strategic_AI_Roadmaps/node_modules/.pnpm/@vitest+runner@1.6.1/node_modules/@vitest/runner/dist/index.js:958:5)
+    at startTests (file:///home/tonycamero/code/Strategic_AI_Roadmaps/node_modules/.pnpm/@vitest+runner@1.6.1/node_modules/@vitest/runner/dist/index.js:967:3)
+    at file:///home/tonycamero/code/Strategic_AI_Roadmaps/node_modules/.pnpm/vitest@1.6.1_@edge-runtime+vm@3.2.0_@types+node@20.11.0_@vitest+ui@1.6.1/node_modules/vitest/dist/chunks/runtime-runBaseTests.oAvMKtQC.js:116:7
+    at withEnv (file:///home/tonycamero/code/Strategic_AI_Roadmaps/node_modules/.pnpm/vitest@1.6.1_@edge-runtime+vm@3.2.0_@types+node@20.11.0_@vitest+ui@1.6.1/node_modules/vitest/dist/chunks/runtime-runBaseTests.oAvMKtQC.js:83:5)
+
+ Γ£ô src/__tests__/executiveBriefSynthesis/expansion.test.ts  (5 tests) 8ms
+stdout | src/services/__tests__/mirrorEnforcement.test.ts > Mirror Narrative Enforcement (v2.2 Operator Voice) > repairs banned jargon "cross-functional" and "go-to-market" via sentence-only rewrite
+[MirrorNarrative][ENFORCEMENT] Complete. jargonHits=2 repairedSentences=2 noRepeatTriggered=true callSpecPatched=true
+
+stdout | src/services/__tests__/mirrorEnforcement.test.ts > Mirror Narrative Enforcement (v2.2 Operator Voice) > jargon repair is surgical: only the sentence containing jargon changes
+[MirrorNarrative][ENFORCEMENT] Complete. jargonHits=1 repairedSentences=1 noRepeatTriggered=false callSpecPatched=true
+
+stdout | src/services/__tests__/mirrorEnforcement.test.ts > Mirror Narrative Enforcement (v2.2 Operator Voice) > should patch missing tokens in THE CALL Spec
+[MirrorNarrative][ENFORCEMENT] Complete. jargonHits=0 repairedSentences=0 noRepeatTriggered=false callSpecPatched=true
+
+ Γ£ô src/services/__tests__/mirrorEnforcement.test.ts  (5 tests) 5ms
+ Γ£ô src/__tests__/pdf/pdfMarkupPass.test.ts  (10 tests) 3ms
+ Γ£ô src/__tests__/executiveBriefSynthesis/elaboration.test.ts  (4 tests) 3ms
+ Γ£ô src/__tests__/executiveBriefSynthesis/sectionCoverage.test.ts  (3 tests) 2ms
+stderr | src/__tests__/executiveBriefSynthesis/integrity.test.ts > Executive Brief Narrative Integrity (EXEC-BRIEF-RENDER-INTEGRITY-012) > should REJECT narrative containing Mode 2 Expansion debug banners
+[ExecutiveBriefContract][VIOLATIONS] {
+  "violations": [
+    {
+      "path": "content.operatingReality",
+      "rule": "CONTENT_DEBUG_LEAK",
+      "message": "Content field 'operatingReality' contains internal leak or debug banner: /\\[Expansion applied:/i",
+      "severity": "ERROR",
+      "context": {
+        "pattern": "/\\[Expansion applied:/i"
+      }
+    }
+  ]
+}
+
+stderr | src/__tests__/executiveBriefSynthesis/integrity.test.ts > Executive Brief Narrative Integrity (EXEC-BRIEF-RENDER-INTEGRITY-012) > should REJECT narrative containing ALL_CAPS_WITH_UNDERSCORES (internal tokens)
+[ExecutiveBriefContract][VIOLATIONS] {
+  "violations": [
+    {
+      "path": "content.constraintLandscape",
+      "rule": "CONTENT_DEBUG_LEAK",
+      "message": "Content field 'constraintLandscape' contains internal leak or debug banner: /[A-Z]+_[A-Z]+(_[A-Z]+)*/",
+      "severity": "ERROR",
+      "context": {
+        "pattern": "/[A-Z]+_[A-Z]+(_[A-Z]+)*/"
+      }
+    }
+  ]
+}
+
+stderr | src/__tests__/executiveBriefSynthesis/integrity.test.ts > Executive Brief Narrative Integrity (EXEC-BRIEF-RENDER-INTEGRITY-012) > should REJECT if content block is missing
+[ExecutiveBriefContract][VIOLATIONS] {
+  "violations": [
+    {
+      "path": "content",
+      "rule": "CONTENT_MISSING",
+      "message": "Canonical content block is missing",
+      "severity": "ERROR"
+    }
+  ]
+}
+
+ Γ£ô src/__tests__/executiveBriefSynthesis/integrity.test.ts  (5 tests) 4ms
+stderr | src/__tests__/executiveBriefSynthesis/integrity.test.ts > Executive Brief Narrative Integrity (EXEC-BRIEF-RENDER-INTEGRITY-012) > should REJECT if meta block is missing
+[ExecutiveBriefContract][VIOLATIONS] {
+  "violations": [
+    {
+      "path": "meta",
+      "rule": "META_MISSING",
+      "message": "Canonical meta block is missing or incomplete",
+      "severity": "ERROR"
+    }
+  ]
+}
+
+ Γ£ô src/services/__tests__/email.service.test.ts  (2 tests) 71ms
+ Γ£ô src/services/pdf/__tests__/pagination.test.ts  (2 tests) 3ms
+stdout | src/__tests__/executiveBriefSynthesis/mirrorNarrative.contract.test.ts > Mirror Narrative Contract Tests > Fixture: fixture_minimal_valid.json
+[MirrorNarrative][DEPTH] Expanding shallow blocks in CONSTRAINT_LANDSCAPE: livedReality
+
+stdout | src/__tests__/executiveBriefSynthesis/mirrorNarrative.contract.test.ts > Mirror Narrative Contract Tests > Fixture: fixture_minimal_valid.json
+[MirrorNarrative][DEPTH] Expanding shallow blocks in BLIND_SPOT_RISKS: livedReality
+
+stdout | src/__tests__/executiveBriefSynthesis/mirrorNarrative.contract.test.ts > Mirror Narrative Contract Tests > Fixture: fixture_minimal_valid.json
+[MirrorNarrative][DEPTH] Expanding shallow blocks in ALIGNMENT_SIGNALS: livedReality
+
+[MirrorNarrative] Offline bypass active for test environment.
+stdout | src/__tests__/executiveBriefSynthesis/mirrorNarrative.contract.test.ts > Mirror Narrative Contract Tests > Fixture: fixture_minimal_valid.json
+[MirrorNarrative][ENFORCEMENT] Complete. jargonHits=2 repairedSentences=2 noRepeatTriggered=true callSpecPatched=true
+[MirrorNarrative][DEBUG] Flag set on synthesis.content. isMirrorNarrative=true patternsUsed=0
+[MirrorNarrative][SOFT_CONTRACT_VIOLATIONS] count=9 {
+  violations: [
+    { ruleId: 'BANNED_JARGON', sectionKey: 'OPERATING_REALITY' },
+    { ruleId: 'TRIAD_LIVED_REALITY', sectionKey: 'OPERATING_REALITY' },
+    {
+      ruleId: 'MISSING_OPERATIONAL_ANCHOR',
+      sectionKey: 'OPERATING_REALITY'
+    },
+    { ruleId: 'BANNED_JARGON', sectionKey: 'CONSTRAINT_LANDSCAPE' },
+    {
+      ruleId: 'TRIAD_LIVED_REALITY',
+      sectionKey: 'CONSTRAINT_LANDSCAPE'
+    },
+    { ruleId: 'TRIAD_LIVED_REALITY', sectionKey: 'BLIND_SPOT_RISKS' },
+    { ruleId: 'BANNED_JARGON', sectionKey: 'ALIGNMENT_SIGNALS' },
+    { ruleId: 'BANNED_JARGON', sectionKey: 'ALIGNMENT_SIGNALS' },
+    { ruleId: 'TRIAD_LIVED_REALITY', sectionKey: 'ALIGNMENT_SIGNALS' }
+  ]
+}
+[MirrorNarrative] Persisted with counts. softViolations=9
+
+stdout | src/__tests__/executiveBriefSynthesis/mirrorNarrative.contract.test.ts > Mirror Narrative Contract Tests > Fixture: fixture_typical_valid.json
+[MirrorNarrative] Generation complete
+[MirrorNarrative][DEPTH] Expanding shallow blocks in OPERATING_REALITY: livedReality
+

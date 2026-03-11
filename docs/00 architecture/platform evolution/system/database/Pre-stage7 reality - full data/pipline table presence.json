@@ -1,0 +1,33 @@
+[{
+  "table_name": "intakes"
+}, {
+  "table_name": "roadmaps"
+}, {
+  "table_name": "diagnostics"
+}, {
+  "table_name": "ticket_packs"
+}, {
+  "table_name": "ticket_instances"
+}, {
+  "table_name": "intake_vectors"
+}, {
+  "table_name": "discovery_notes_log"
+}, {
+  "table_name": "sas_runs"
+}, {
+  "table_name": "firm_baseline_intake"
+}, {
+  "table_name": "selection_envelopes"
+}, {
+  "table_name": "sas_elections"
+}, {
+  "table_name": "sop_tickets"
+}, {
+  "table_name": "sas_proposals"
+}, {
+  "table_name": "roadmap_execution_nodes"
+}, {
+  "table_name": "selection_envelope_items"
+}, {
+  "table_name": "sas_election_events"
+}]

@@ -1,0 +1,12 @@
+npm warn config ignoring workspace config at /home/tonycamero/code/Strategic_AI_Roadmaps/backend/.npmrc
+The CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.
+
+ RUN  v1.6.1 /home/tonycamero/code/Strategic_AI_Roadmaps/backend
+
+ Γ£ô src/services/__tests__/tenantStateAggregation.projection.test.ts  (8 tests) 12ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  09:59:55
+   Duration  298ms (transform 82ms, setup 0ms, collect 120ms, tests 12ms, environment 0ms, prepare 45ms)
+
