@@ -14,4 +14,6 @@ await build({
   format: "cjs",
   sourcemap: true,
   logLevel: "info",
+
+  external: ["@roadmap/shared"],
 });

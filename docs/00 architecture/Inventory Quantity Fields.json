@@ -1,0 +1,4 @@
+[{
+  "table_name": "pg_sequence",
+  "column_name": "seqtypid"
+}]

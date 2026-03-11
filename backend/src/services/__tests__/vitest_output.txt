@@ -1,0 +1,35 @@
+npm warn config ignoring workspace config at /home/tonycamero/code/Strategic_AI_Roadmaps/backend/.npmrc
+The CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.
+
+ RUN  v1.6.1 /home/tonycamero/code/Strategic_AI_Roadmaps/backend
+
+ Γ¥» src/services/__tests__/tenantStateAggregation.projection.test.ts  (4 tests | 1 failed) 9ms
+   Γ¥» src/services/__tests__/tenantStateAggregation.projection.test.ts > TenantStateAggregation ΓÇö Invariant Freeze (Day-1) > Domain Invariants > CASE 4 ΓÇö Canonical findings present ΓåÆ hard lock
+     ΓåÆ expected true to be false // Object.is equality
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 1 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  src/services/__tests__/tenantStateAggregation.projection.test.ts > TenantStateAggregation ΓÇö Invariant Freeze (Day-1) > Domain Invariants > CASE 4 ΓÇö Canonical findings present ΓåÆ hard lock
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ Γ¥» src/services/__tests__/tenantStateAggregation.projection.test.ts:164:43
+    162|             expect(domain.hasCanonicalFindings).toBe(true);
+    163|             expect(domain.synthesisEligible).toBe(false);
+    164|             expect(domain.lifecycleValid).toBe(false);
+       |                                           ^
+    165|         });
+    166| 
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/1]ΓÄ»
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  09:18:35
+   Duration  269ms (transform 72ms, setup 1ms, collect 111ms, tests 9ms, environment 0ms, prepare 44ms)
+

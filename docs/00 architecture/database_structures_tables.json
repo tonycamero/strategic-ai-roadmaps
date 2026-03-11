@@ -1,0 +1,373 @@
+[{
+  "table_schema": "drizzle",
+  "table_name": "__drizzle_migrations"
+}, {
+  "table_schema": "information_schema",
+  "table_name": "sql_features"
+}, {
+  "table_schema": "information_schema",
+  "table_name": "sql_implementation_info"
+}, {
+  "table_schema": "information_schema",
+  "table_name": "sql_parts"
+}, {
+  "table_schema": "information_schema",
+  "table_name": "sql_sizing"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_aggregate"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_am"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_amop"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_amproc"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_attrdef"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_attribute"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_auth_members"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_authid"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_cast"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_class"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_collation"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_constraint"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_conversion"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_database"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_db_role_setting"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_default_acl"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_depend"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_description"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_enum"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_event_trigger"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_extension"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_foreign_data_wrapper"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_foreign_server"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_foreign_table"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_index"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_inherits"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_init_privs"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_language"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_largeobject"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_largeobject_metadata"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_namespace"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_opclass"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_operator"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_opfamily"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_parameter_acl"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_partitioned_table"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_policy"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_proc"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_publication"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_publication_namespace"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_publication_rel"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_range"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_replication_origin"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_rewrite"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_seclabel"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_sequence"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_shdepend"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_shdescription"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_shseclabel"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_statistic"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_statistic_ext"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_statistic_ext_data"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_subscription"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_subscription_rel"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_tablespace"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_transform"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_trigger"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_ts_config"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_ts_config_map"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_ts_dict"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_ts_parser"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_ts_template"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_type"
+}, {
+  "table_schema": "pg_catalog",
+  "table_name": "pg_user_mapping"
+}, {
+  "table_schema": "public",
+  "table_name": "__drizzle_migrations"
+}, {
+  "table_schema": "public",
+  "table_name": "agent_configs"
+}, {
+  "table_schema": "public",
+  "table_name": "agent_logs"
+}, {
+  "table_schema": "public",
+  "table_name": "agent_messages"
+}, {
+  "table_schema": "public",
+  "table_name": "agent_routing_rules"
+}, {
+  "table_schema": "public",
+  "table_name": "agent_strategy_contexts"
+}, {
+  "table_schema": "public",
+  "table_name": "agent_threads"
+}, {
+  "table_schema": "public",
+  "table_name": "assisted_synthesis_agent_messages"
+}, {
+  "table_schema": "public",
+  "table_name": "assisted_synthesis_agent_sessions"
+}, {
+  "table_schema": "public",
+  "table_name": "audit_events"
+}, {
+  "table_schema": "public",
+  "table_name": "baseline_review_cycles"
+}, {
+  "table_schema": "public",
+  "table_name": "diagnostic_jobs"
+}, {
+  "table_schema": "public",
+  "table_name": "diagnostic_snapshots"
+}, {
+  "table_schema": "public",
+  "table_name": "diagnostics"
+}, {
+  "table_schema": "public",
+  "table_name": "discovery_call_notes"
+}, {
+  "table_schema": "public",
+  "table_name": "discovery_notes_log"
+}, {
+  "table_schema": "public",
+  "table_name": "evidence_artifacts"
+}, {
+  "table_schema": "public",
+  "table_name": "evidence_bindings"
+}, {
+  "table_schema": "public",
+  "table_name": "executive_brief_artifacts"
+}, {
+  "table_schema": "public",
+  "table_name": "executive_briefs"
+}, {
+  "table_schema": "public",
+  "table_name": "feature_flags"
+}, {
+  "table_schema": "public",
+  "table_name": "firm_baseline_intake"
+}, {
+  "table_schema": "public",
+  "table_name": "impersonation_sessions"
+}, {
+  "table_schema": "public",
+  "table_name": "implementation_snapshots"
+}, {
+  "table_schema": "public",
+  "table_name": "intake_clarifications"
+}, {
+  "table_schema": "public",
+  "table_name": "intake_vectors"
+}, {
+  "table_schema": "public",
+  "table_name": "intakes"
+}, {
+  "table_schema": "public",
+  "table_name": "invites"
+}, {
+  "table_schema": "public",
+  "table_name": "onboarding_states"
+}, {
+  "table_schema": "public",
+  "table_name": "password_reset_tokens"
+}, {
+  "table_schema": "public",
+  "table_name": "public_agent_events"
+}, {
+  "table_schema": "public",
+  "table_name": "public_agent_sessions"
+}, {
+  "table_schema": "public",
+  "table_name": "roadmap_outcomes"
+}, {
+  "table_schema": "public",
+  "table_name": "roadmap_sections"
+}, {
+  "table_schema": "public",
+  "table_name": "roadmaps"
+}, {
+  "table_schema": "public",
+  "table_name": "sas_elections"
+}, {
+  "table_schema": "public",
+  "table_name": "sas_proposals"
+}, {
+  "table_schema": "public",
+  "table_name": "sas_runs"
+}, {
+  "table_schema": "public",
+  "table_name": "selection_envelopes"
+}, {
+  "table_schema": "public",
+  "table_name": "sop_tickets"
+}, {
+  "table_schema": "public",
+  "table_name": "tenant_documents"
+}, {
+  "table_schema": "public",
+  "table_name": "tenant_feature_flags"
+}, {
+  "table_schema": "public",
+  "table_name": "tenant_metrics_daily"
+}, {
+  "table_schema": "public",
+  "table_name": "tenant_stage6_config"
+}, {
+  "table_schema": "public",
+  "table_name": "tenant_vector_stores"
+}, {
+  "table_schema": "public",
+  "table_name": "tenants"
+}, {
+  "table_schema": "public",
+  "table_name": "ticket_instances"
+}, {
+  "table_schema": "public",
+  "table_name": "ticket_moderation_sessions"
+}, {
+  "table_schema": "public",
+  "table_name": "ticket_packs"
+}, {
+  "table_schema": "public",
+  "table_name": "tickets_draft"
+}, {
+  "table_schema": "public",
+  "table_name": "training_modules"
+}, {
+  "table_schema": "public",
+  "table_name": "training_progress"
+}, {
+  "table_schema": "public",
+  "table_name": "users"
+}, {
+  "table_schema": "public",
+  "table_name": "webinar_registrations"
+}, {
+  "table_schema": "public",
+  "table_name": "webinar_settings"
+}]

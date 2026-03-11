@@ -1,0 +1,19 @@
+npm warn config ignoring workspace config at /home/tonycamero/code/Strategic_AI_Roadmaps/backend/.npmrc
+The CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.
+
+[7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90m/home/tonycamero/code/Strategic_AI_Roadmaps/backend[39m
+
+ [32mΓ£ô[39m src/services/__tests__/tenantStateAggregation.projection.test.ts[2m > [22mTenantStateAggregation ΓÇö Invariant Freeze (Day-1)[2m > [22mDomain Invariants[2m > [22mCASE 1 ΓÇö Owner only ΓåÆ synthesis blocked, lifecycle invalid
+ [32mΓ£ô[39m src/services/__tests__/tenantStateAggregation.projection.test.ts[2m > [22mTenantStateAggregation ΓÇö Invariant Freeze (Day-1)[2m > [22mDomain Invariants[2m > [22mCASE 2 ΓÇö Owner + 1 role ΓåÆ synthesis allowed, lifecycle invalid
+ [32mΓ£ô[39m src/services/__tests__/tenantStateAggregation.projection.test.ts[2m > [22mTenantStateAggregation ΓÇö Invariant Freeze (Day-1)[2m > [22mDomain Invariants[2m > [22mCASE 3 ΓÇö All 4 roles ΓåÆ synthesis + lifecycle valid
+ [32mΓ£ô[39m src/services/__tests__/tenantStateAggregation.projection.test.ts[2m > [22mTenantStateAggregation ΓÇö Invariant Freeze (Day-1)[2m > [22mDomain Invariants[2m > [22mCASE 4 ΓÇö Canonical findings present ΓåÆ hard lock
+ [32mΓ£ô[39m src/services/__tests__/tenantStateAggregation.projection.test.ts[2m > [22mTenantStateAggregation ΓÇö Invariant Freeze (Day-1)[2m > [22mDomain Invariants[2m > [22mCASE 5 ΓÇö Race: canonical findings between reads
+ [32mΓ£ô[39m src/services/__tests__/tenantStateAggregation.projection.test.ts[2m > [22mTenantStateAggregation ΓÇö Invariant Freeze (Day-1)[2m > [22mCapability Adapter[2m > [22mFull valid state ΓåÆ generateSynthesis allowed
+ [32mΓ£ô[39m src/services/__tests__/tenantStateAggregation.projection.test.ts[2m > [22mTenantStateAggregation ΓÇö Invariant Freeze (Day-1)[2m > [22mCapability Adapter[2m > [22mCanonical findings present ΓåÆ generateSynthesis denied
+ [32mΓ£ô[39m src/services/__tests__/tenantStateAggregation.projection.test.ts[2m > [22mTenantStateAggregation ΓÇö Invariant Freeze (Day-1)[2m > [22mCapability Adapter[2m > [22mLifecycle invalid ΓåÆ lockDiagnostic denied
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m8 passed[39m[22m[90m (8)[39m
+[2m   Start at [22m 10:47:27
+[2m   Duration [22m 290ms[2m (transform 77ms, setup 0ms, collect 139ms, tests 13ms, environment 0ms, prepare 44ms)[22m
+

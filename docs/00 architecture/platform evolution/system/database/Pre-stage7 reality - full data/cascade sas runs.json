@@ -1,0 +1,137 @@
+[{
+  "id": "97cae028-2302-4c43-a4d8-39713e2f9021",
+  "tenant_id": "8b4dc94a-9028-4bd5-8f2f-04e3440dae35",
+  "scope": "\"{\\\"allowedArtifactTypes\\\":[\\\"discovery\\\",\\\"diagnostic\\\",\\\"exec_brief\\\"],\\\"allowedProposalTypes\\\":[\\\"CurrentFact\\\",\\\"FrictionPoint\\\",\\\"Goal\\\",\\\"Constraint\\\"],\\\"topicFilters\\\":[],\\\"strictGrounding\\\":true}\"",
+  "source_artifact_refs": "\"{\\\"diagnostic\\\":\\\"645b4566-118e-49de-bd8e-f0ff3c4525f3\\\",\\\"executiveBrief\\\":\\\"b8eb760c-7146-4240-ba85-380691056ada\\\"}\"",
+  "created_by_user_id": "6d4dc5a8-fe51-44f4-95ca-9b82b47ba3b9",
+  "created_at": "2026-03-09 17:20:14.805444+00",
+  "artifact_state": null
+}, {
+  "id": "66d43c95-d496-4d3f-b79a-e6e2ca4c0e95",
+  "tenant_id": "8b4dc94a-9028-4bd5-8f2f-04e3440dae35",
+  "scope": "\"{\\\"allowedArtifactTypes\\\":[\\\"discovery\\\",\\\"diagnostic\\\",\\\"exec_brief\\\"],\\\"allowedProposalTypes\\\":[\\\"CurrentFact\\\",\\\"FrictionPoint\\\",\\\"Goal\\\",\\\"Constraint\\\"],\\\"topicFilters\\\":[],\\\"strictGrounding\\\":true}\"",
+  "source_artifact_refs": "\"{\\\"diagnostic\\\":\\\"645b4566-118e-49de-bd8e-f0ff3c4525f3\\\",\\\"executiveBrief\\\":\\\"b8eb760c-7146-4240-ba85-380691056ada\\\"}\"",
+  "created_by_user_id": "6d4dc5a8-fe51-44f4-95ca-9b82b47ba3b9",
+  "created_at": "2026-03-09 02:17:27.131335+00",
+  "artifact_state": null
+}, {
+  "id": "343dc43a-e1f6-430c-9026-393f4252c260",
+  "tenant_id": "8b4dc94a-9028-4bd5-8f2f-04e3440dae35",
+  "scope": "\"{\\\"allowedArtifactTypes\\\":[\\\"discovery\\\",\\\"diagnostic\\\",\\\"exec_brief\\\"],\\\"allowedProposalTypes\\\":[\\\"CurrentFact\\\",\\\"FrictionPoint\\\",\\\"Goal\\\",\\\"Constraint\\\"],\\\"topicFilters\\\":[],\\\"strictGrounding\\\":true}\"",
+  "source_artifact_refs": "\"{\\\"diagnostic\\\":\\\"645b4566-118e-49de-bd8e-f0ff3c4525f3\\\",\\\"executiveBrief\\\":\\\"b8eb760c-7146-4240-ba85-380691056ada\\\"}\"",
+  "created_by_user_id": "6d4dc5a8-fe51-44f4-95ca-9b82b47ba3b9",
+  "created_at": "2026-03-08 21:00:55.538145+00",
+  "artifact_state": null
+}, {
+  "id": "6da529b7-c503-4f09-be28-749094ad95d3",
+  "tenant_id": "8b4dc94a-9028-4bd5-8f2f-04e3440dae35",
+  "scope": "\"{\\\"allowedArtifactTypes\\\":[\\\"discovery\\\",\\\"diagnostic\\\",\\\"exec_brief\\\"],\\\"allowedProposalTypes\\\":[\\\"CurrentFact\\\",\\\"FrictionPoint\\\",\\\"Goal\\\",\\\"Constraint\\\"],\\\"topicFilters\\\":[],\\\"strictGrounding\\\":true}\"",
+  "source_artifact_refs": "\"{\\\"diagnostic\\\":\\\"645b4566-118e-49de-bd8e-f0ff3c4525f3\\\",\\\"executiveBrief\\\":\\\"b8eb760c-7146-4240-ba85-380691056ada\\\"}\"",
+  "created_by_user_id": "6d4dc5a8-fe51-44f4-95ca-9b82b47ba3b9",
+  "created_at": "2026-03-07 03:00:26.618581+00",
+  "artifact_state": null
+}, {
+  "id": "d51f9f84-d014-46a6-9315-65723a4901f4",
+  "tenant_id": "8b4dc94a-9028-4bd5-8f2f-04e3440dae35",
+  "scope": "\"{\\\"allowedArtifactTypes\\\":[\\\"discovery\\\",\\\"diagnostic\\\",\\\"exec_brief\\\"],\\\"allowedProposalTypes\\\":[\\\"CurrentFact\\\",\\\"FrictionPoint\\\",\\\"Goal\\\",\\\"Constraint\\\"],\\\"topicFilters\\\":[],\\\"strictGrounding\\\":true}\"",
+  "source_artifact_refs": "\"{\\\"diagnostic\\\":\\\"645b4566-118e-49de-bd8e-f0ff3c4525f3\\\",\\\"executiveBrief\\\":\\\"b8eb760c-7146-4240-ba85-380691056ada\\\"}\"",
+  "created_by_user_id": "6d4dc5a8-fe51-44f4-95ca-9b82b47ba3b9",
+  "created_at": "2026-03-06 23:44:33.386144+00",
+  "artifact_state": null
+}, {
+  "id": "0c5ccee5-262a-4010-9c9b-65251c100314",
+  "tenant_id": "8b4dc94a-9028-4bd5-8f2f-04e3440dae35",
+  "scope": "\"{\\\"allowedArtifactTypes\\\":[\\\"discovery\\\",\\\"diagnostic\\\",\\\"exec_brief\\\"],\\\"allowedProposalTypes\\\":[\\\"CurrentFact\\\",\\\"FrictionPoint\\\",\\\"Goal\\\",\\\"Constraint\\\"],\\\"topicFilters\\\":[],\\\"strictGrounding\\\":true}\"",
+  "source_artifact_refs": "\"{\\\"diagnostic\\\":\\\"645b4566-118e-49de-bd8e-f0ff3c4525f3\\\",\\\"executiveBrief\\\":\\\"b8eb760c-7146-4240-ba85-380691056ada\\\"}\"",
+  "created_by_user_id": "6d4dc5a8-fe51-44f4-95ca-9b82b47ba3b9",
+  "created_at": "2026-03-05 00:03:27.219084+00",
+  "artifact_state": null
+}, {
+  "id": "ea447e85-8f66-49fd-9849-d877f0a70f14",
+  "tenant_id": "8b4dc94a-9028-4bd5-8f2f-04e3440dae35",
+  "scope": "\"{\\\"allowedArtifactTypes\\\":[\\\"discovery\\\",\\\"diagnostic\\\",\\\"exec_brief\\\"],\\\"allowedProposalTypes\\\":[\\\"CurrentFact\\\",\\\"FrictionPoint\\\",\\\"Goal\\\",\\\"Constraint\\\"],\\\"topicFilters\\\":[],\\\"strictGrounding\\\":true}\"",
+  "source_artifact_refs": "\"{\\\"diagnostic\\\":\\\"645b4566-118e-49de-bd8e-f0ff3c4525f3\\\",\\\"executiveBrief\\\":\\\"b8eb760c-7146-4240-ba85-380691056ada\\\"}\"",
+  "created_by_user_id": "6d4dc5a8-fe51-44f4-95ca-9b82b47ba3b9",
+  "created_at": "2026-03-04 04:31:41.37121+00",
+  "artifact_state": null
+}, {
+  "id": "18a755e1-afbd-410b-a9ca-ab67f93433bd",
+  "tenant_id": "8b4dc94a-9028-4bd5-8f2f-04e3440dae35",
+  "scope": "\"{\\\"allowedArtifactTypes\\\":[\\\"discovery\\\",\\\"diagnostic\\\",\\\"exec_brief\\\"],\\\"allowedProposalTypes\\\":[\\\"CurrentFact\\\",\\\"FrictionPoint\\\",\\\"Goal\\\",\\\"Constraint\\\"],\\\"topicFilters\\\":[],\\\"strictGrounding\\\":true}\"",
+  "source_artifact_refs": "\"{\\\"diagnostic\\\":\\\"645b4566-118e-49de-bd8e-f0ff3c4525f3\\\",\\\"executiveBrief\\\":\\\"b8eb760c-7146-4240-ba85-380691056ada\\\"}\"",
+  "created_by_user_id": "6d4dc5a8-fe51-44f4-95ca-9b82b47ba3b9",
+  "created_at": "2026-03-04 03:14:36.008254+00",
+  "artifact_state": null
+}, {
+  "id": "88b0d3a2-1f5a-4b24-99f6-07e953be315a",
+  "tenant_id": "8b4dc94a-9028-4bd5-8f2f-04e3440dae35",
+  "scope": "\"{\\\"allowedArtifactTypes\\\":[\\\"discovery\\\",\\\"diagnostic\\\",\\\"exec_brief\\\"],\\\"allowedProposalTypes\\\":[\\\"CurrentFact\\\",\\\"FrictionPoint\\\",\\\"Goal\\\",\\\"Constraint\\\"],\\\"topicFilters\\\":[],\\\"strictGrounding\\\":true}\"",
+  "source_artifact_refs": "\"{\\\"diagnostic\\\":\\\"645b4566-118e-49de-bd8e-f0ff3c4525f3\\\",\\\"executiveBrief\\\":\\\"b8eb760c-7146-4240-ba85-380691056ada\\\"}\"",
+  "created_by_user_id": "6d4dc5a8-fe51-44f4-95ca-9b82b47ba3b9",
+  "created_at": "2026-03-04 02:11:39.688417+00",
+  "artifact_state": null
+}, {
+  "id": "a09ee638-e578-440c-8a88-fdb8ed0f33ab",
+  "tenant_id": "8b4dc94a-9028-4bd5-8f2f-04e3440dae35",
+  "scope": "\"{\\\"allowedArtifactTypes\\\":[\\\"discovery\\\",\\\"diagnostic\\\",\\\"exec_brief\\\"],\\\"allowedProposalTypes\\\":[\\\"CurrentFact\\\",\\\"FrictionPoint\\\",\\\"Goal\\\",\\\"Constraint\\\"],\\\"topicFilters\\\":[],\\\"strictGrounding\\\":true}\"",
+  "source_artifact_refs": "\"{\\\"diagnostic\\\":\\\"645b4566-118e-49de-bd8e-f0ff3c4525f3\\\",\\\"executiveBrief\\\":\\\"b8eb760c-7146-4240-ba85-380691056ada\\\"}\"",
+  "created_by_user_id": "6d4dc5a8-fe51-44f4-95ca-9b82b47ba3b9",
+  "created_at": "2026-03-04 02:02:54.230911+00",
+  "artifact_state": null
+}, {
+  "id": "8d32616b-8288-401f-a96a-fb8d49f37e7c",
+  "tenant_id": "8b4dc94a-9028-4bd5-8f2f-04e3440dae35",
+  "scope": "\"{\\\"allowedArtifactTypes\\\":[\\\"discovery\\\",\\\"diagnostic\\\",\\\"exec_brief\\\"],\\\"allowedProposalTypes\\\":[\\\"CurrentFact\\\",\\\"FrictionPoint\\\",\\\"Goal\\\",\\\"Constraint\\\"],\\\"topicFilters\\\":[],\\\"strictGrounding\\\":true}\"",
+  "source_artifact_refs": "\"{\\\"diagnostic\\\":\\\"645b4566-118e-49de-bd8e-f0ff3c4525f3\\\",\\\"executiveBrief\\\":\\\"b8eb760c-7146-4240-ba85-380691056ada\\\"}\"",
+  "created_by_user_id": "6d4dc5a8-fe51-44f4-95ca-9b82b47ba3b9",
+  "created_at": "2026-03-04 01:45:54.329909+00",
+  "artifact_state": null
+}, {
+  "id": "9367db16-dd55-4716-af52-0f6ec051cb83",
+  "tenant_id": "8b4dc94a-9028-4bd5-8f2f-04e3440dae35",
+  "scope": "\"{\\\"allowedArtifactTypes\\\":[\\\"discovery\\\",\\\"diagnostic\\\",\\\"exec_brief\\\"],\\\"allowedProposalTypes\\\":[\\\"CurrentFact\\\",\\\"FrictionPoint\\\",\\\"Goal\\\",\\\"Constraint\\\"],\\\"topicFilters\\\":[],\\\"strictGrounding\\\":true}\"",
+  "source_artifact_refs": "\"{\\\"diagnostic\\\":\\\"645b4566-118e-49de-bd8e-f0ff3c4525f3\\\",\\\"executiveBrief\\\":\\\"b8eb760c-7146-4240-ba85-380691056ada\\\"}\"",
+  "created_by_user_id": "6d4dc5a8-fe51-44f4-95ca-9b82b47ba3b9",
+  "created_at": "2026-03-04 01:44:34.963843+00",
+  "artifact_state": null
+}, {
+  "id": "d53d2d11-523f-4e00-a073-82904d81e5f4",
+  "tenant_id": "8b4dc94a-9028-4bd5-8f2f-04e3440dae35",
+  "scope": "\"{\\\"allowedArtifactTypes\\\":[\\\"discovery\\\",\\\"diagnostic\\\",\\\"exec_brief\\\"],\\\"allowedProposalTypes\\\":[\\\"CurrentFact\\\",\\\"FrictionPoint\\\",\\\"Goal\\\",\\\"Constraint\\\"],\\\"topicFilters\\\":[],\\\"strictGrounding\\\":true}\"",
+  "source_artifact_refs": "\"{\\\"diagnostic\\\":\\\"645b4566-118e-49de-bd8e-f0ff3c4525f3\\\",\\\"executiveBrief\\\":\\\"b8eb760c-7146-4240-ba85-380691056ada\\\"}\"",
+  "created_by_user_id": "6d4dc5a8-fe51-44f4-95ca-9b82b47ba3b9",
+  "created_at": "2026-03-04 01:41:25.876769+00",
+  "artifact_state": null
+}, {
+  "id": "e0271f85-4170-49bc-84ef-d63422750a5c",
+  "tenant_id": "8b4dc94a-9028-4bd5-8f2f-04e3440dae35",
+  "scope": "\"{\\\"allowedArtifactTypes\\\":[\\\"discovery\\\",\\\"diagnostic\\\",\\\"exec_brief\\\"],\\\"allowedProposalTypes\\\":[\\\"CurrentFact\\\",\\\"FrictionPoint\\\",\\\"Goal\\\",\\\"Constraint\\\"],\\\"topicFilters\\\":[],\\\"strictGrounding\\\":true}\"",
+  "source_artifact_refs": "\"{\\\"diagnostic\\\":\\\"645b4566-118e-49de-bd8e-f0ff3c4525f3\\\",\\\"executiveBrief\\\":\\\"b8eb760c-7146-4240-ba85-380691056ada\\\"}\"",
+  "created_by_user_id": "6d4dc5a8-fe51-44f4-95ca-9b82b47ba3b9",
+  "created_at": "2026-03-04 01:41:22.604957+00",
+  "artifact_state": null
+}, {
+  "id": "12c88add-9df1-4971-b93a-7c4303770567",
+  "tenant_id": "8b4dc94a-9028-4bd5-8f2f-04e3440dae35",
+  "scope": "\"{\\\"allowedArtifactTypes\\\":[\\\"discovery\\\",\\\"diagnostic\\\",\\\"exec_brief\\\"],\\\"allowedProposalTypes\\\":[\\\"CurrentFact\\\",\\\"FrictionPoint\\\",\\\"Goal\\\",\\\"Constraint\\\"],\\\"topicFilters\\\":[],\\\"strictGrounding\\\":true}\"",
+  "source_artifact_refs": "\"{\\\"diagnostic\\\":\\\"645b4566-118e-49de-bd8e-f0ff3c4525f3\\\",\\\"executiveBrief\\\":\\\"b8eb760c-7146-4240-ba85-380691056ada\\\"}\"",
+  "created_by_user_id": "6d4dc5a8-fe51-44f4-95ca-9b82b47ba3b9",
+  "created_at": "2026-03-04 00:46:35.398286+00",
+  "artifact_state": null
+}, {
+  "id": "603bec3c-d4b1-4643-a51d-5a30e39976f0",
+  "tenant_id": "8b4dc94a-9028-4bd5-8f2f-04e3440dae35",
+  "scope": "\"{\\\"allowedArtifactTypes\\\":[\\\"discovery\\\",\\\"diagnostic\\\",\\\"exec_brief\\\"],\\\"allowedProposalTypes\\\":[\\\"CurrentFact\\\",\\\"FrictionPoint\\\",\\\"Goal\\\",\\\"Constraint\\\"],\\\"topicFilters\\\":[],\\\"strictGrounding\\\":true}\"",
+  "source_artifact_refs": "\"{\\\"diagnostic\\\":\\\"645b4566-118e-49de-bd8e-f0ff3c4525f3\\\",\\\"executiveBrief\\\":\\\"b8eb760c-7146-4240-ba85-380691056ada\\\"}\"",
+  "created_by_user_id": "6d4dc5a8-fe51-44f4-95ca-9b82b47ba3b9",
+  "created_at": "2026-03-04 00:44:27.72998+00",
+  "artifact_state": null
+}, {
+  "id": "0070ad0e-3d96-469e-9403-37433be87955",
+  "tenant_id": "8b4dc94a-9028-4bd5-8f2f-04e3440dae35",
+  "scope": "\"{\\\"allowedArtifactTypes\\\":[\\\"discovery\\\",\\\"diagnostic\\\",\\\"exec_brief\\\"],\\\"allowedProposalTypes\\\":[\\\"CurrentFact\\\",\\\"FrictionPoint\\\",\\\"Goal\\\",\\\"Constraint\\\"],\\\"topicFilters\\\":[],\\\"strictGrounding\\\":true}\"",
+  "source_artifact_refs": "\"{\\\"diagnostic\\\":\\\"645b4566-118e-49de-bd8e-f0ff3c4525f3\\\",\\\"executiveBrief\\\":\\\"b8eb760c-7146-4240-ba85-380691056ada\\\"}\"",
+  "created_by_user_id": "6d4dc5a8-fe51-44f4-95ca-9b82b47ba3b9",
+  "created_at": "2026-03-04 00:36:09.903614+00",
+  "artifact_state": null
+}]

@@ -29,6 +29,8 @@ import healthRoutes from './routes/health.routes';
 import agentRoutes from './routes/agent.routes';
 import agentConfigRoutes from './routes/agentConfig.routes';
 import clarificationRoutes from './routes/clarification.routes';
+import opsSignalRoutes from './routes/opsSignal.routes';
+
 
 const app = express();
 app.set('etag', false);
@@ -96,7 +98,9 @@ app.use('/api/public/diagnostic', diagnosticRoutes); // Team Execution Diagnosti
 app.use('/api/tenants', tenantsRoutes); // Tenant business profile
 app.use('/api/tenants', onboardingRoutes); // Tenant onboarding progress
 app.use('/api/clarify', clarificationRoutes); // Stakeholder Clarification Form
+app.use('/api/ops-signal', opsSignalRoutes); // Ops Team Signal Portal
 app.use('/api', leadRequestRoutes); // Public routes
+
 
 if (process.env.INTERNAL_EVIDENCE_TOKEN) {
     app.use('/api/internal/evidence', internalEvidenceRoutes);

@@ -1,0 +1,501 @@
+[{
+  "table_name": "agent_configs",
+  "column_name": "created_by",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "last_updated_by",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "updated_by",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "agent_logs",
+  "column_name": "agent_config_id",
+  "foreign_table": "agent_configs",
+  "foreign_column": "id"
+}, {
+  "table_name": "agent_messages",
+  "column_name": "agent_thread_id",
+  "foreign_table": "agent_threads",
+  "foreign_column": "id"
+}, {
+  "table_name": "agent_routing_rules",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "agent_strategy_contexts",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "agent_threads",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "agent_threads",
+  "column_name": "actor_user_id",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "agent_threads",
+  "column_name": "agent_config_id",
+  "foreign_table": "agent_configs",
+  "foreign_column": "id"
+}, {
+  "table_name": "assisted_synthesis_agent_messages",
+  "column_name": "session_id",
+  "foreign_table": "assisted_synthesis_agent_sessions",
+  "foreign_column": "id"
+}, {
+  "table_name": "assisted_synthesis_agent_messages",
+  "column_name": "session_id",
+  "foreign_table": "assisted_synthesis_agent_sessions",
+  "foreign_column": "id"
+}, {
+  "table_name": "assisted_synthesis_agent_sessions",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "audit_events",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "audit_events",
+  "column_name": "actor_user_id",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "diagnostic_jobs",
+  "column_name": "created_by_user_id",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "diagnostic_jobs",
+  "column_name": "firm_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "diagnostic_snapshots",
+  "column_name": "user_id",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "diagnostics",
+  "column_name": "generated_by_user_id",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "diagnostics",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "diagnostics",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "diagnostics",
+  "column_name": "approved_by_user_id",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "discovery_call_notes",
+  "column_name": "created_by_user_id",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "discovery_call_notes",
+  "column_name": "diagnostic_id",
+  "foreign_table": "diagnostics",
+  "foreign_column": "id"
+}, {
+  "table_name": "discovery_call_notes",
+  "column_name": "approved_by",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "discovery_call_notes",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "discovery_notes_log",
+  "column_name": "created_by_user_id",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "discovery_notes_log",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "entities",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "evidence_bindings",
+  "column_name": "artifact_id",
+  "foreign_table": "evidence_artifacts",
+  "foreign_column": "id"
+}, {
+  "table_name": "executive_brief_artifacts",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "executive_brief_artifacts",
+  "column_name": "executive_brief_id",
+  "foreign_table": "executive_briefs",
+  "foreign_column": "id"
+}, {
+  "table_name": "executive_briefs",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "executive_briefs",
+  "column_name": "approved_by",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "impersonation_sessions",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "impersonation_sessions",
+  "column_name": "owner_user_id",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "impersonation_sessions",
+  "column_name": "super_admin_id",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "implementation_snapshots",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "implementation_snapshots",
+  "column_name": "roadmap_id",
+  "foreign_table": "roadmaps",
+  "foreign_column": "id"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "intake_id",
+  "foreign_table": "intakes",
+  "foreign_column": "id"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "requested_by_user_id",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "intake_vectors",
+  "column_name": "intake_id",
+  "foreign_table": "intakes",
+  "foreign_column": "id"
+}, {
+  "table_name": "intake_vectors",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "intakes",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "intakes",
+  "column_name": "user_id",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "invites",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "onboarding_states",
+  "column_name": "user_id",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "onboarding_states",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "password_reset_tokens",
+  "column_name": "user_id",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "roadmap_id",
+  "foreign_table": "roadmaps",
+  "foreign_column": "id"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "baseline_snapshot_id",
+  "foreign_table": "implementation_snapshots",
+  "foreign_column": "id"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "at_30d_snapshot_id",
+  "foreign_table": "implementation_snapshots",
+  "foreign_column": "id"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "at_60d_snapshot_id",
+  "foreign_table": "implementation_snapshots",
+  "foreign_column": "id"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "at_90d_snapshot_id",
+  "foreign_table": "implementation_snapshots",
+  "foreign_column": "id"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "roadmap_id",
+  "foreign_table": "roadmaps",
+  "foreign_column": "id"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "created_by_user_id",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "snapshot_id",
+  "foreign_table": "implementation_snapshots",
+  "foreign_column": "id"
+}, {
+  "table_name": "sas_elections",
+  "column_name": "proposal_id",
+  "foreign_table": "sas_proposals",
+  "foreign_column": "id"
+}, {
+  "table_name": "sas_elections",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "sas_proposals",
+  "column_name": "sas_run_id",
+  "foreign_table": "sas_runs",
+  "foreign_column": "id"
+}, {
+  "table_name": "sas_proposals",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "sas_runs",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "diagnostic_id",
+  "foreign_table": "diagnostics",
+  "foreign_column": "id"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "moderated_by",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "owner_user_id",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "uploaded_by",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "tenant_feature_flags",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "tenant_feature_flags",
+  "column_name": "feature_flag_id",
+  "foreign_table": "feature_flags",
+  "foreign_column": "id"
+}, {
+  "table_name": "tenant_metrics_daily",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "tenant_stage6_config",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "tenant_vector_stores",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "tenants",
+  "column_name": "intake_locked_by_user_id",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "ticket_pack_id",
+  "foreign_table": "ticket_packs",
+  "foreign_column": "id"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "started_by",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "source_doc_id",
+  "foreign_table": "tenant_documents",
+  "foreign_column": "id"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "source_doc_id",
+  "foreign_table": "tenant_documents",
+  "foreign_column": "id"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "started_by",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "selection_envelope_id",
+  "foreign_table": "selection_envelopes",
+  "foreign_column": "id"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "roadmap_id",
+  "foreign_table": "roadmaps",
+  "foreign_column": "id"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "moderation_session_id",
+  "foreign_table": "ticket_moderation_sessions",
+  "foreign_column": "id"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "moderation_session_id",
+  "foreign_table": "ticket_moderation_sessions",
+  "foreign_column": "id"
+}, {
+  "table_name": "training_progress",
+  "column_name": "module_id",
+  "foreign_table": "training_modules",
+  "foreign_column": "id"
+}, {
+  "table_name": "training_progress",
+  "column_name": "user_id",
+  "foreign_table": "users",
+  "foreign_column": "id"
+}, {
+  "table_name": "users",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}, {
+  "table_name": "users",
+  "column_name": "tenant_id",
+  "foreign_table": "tenants",
+  "foreign_column": "id"
+}]

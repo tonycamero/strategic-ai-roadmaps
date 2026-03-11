@@ -1,0 +1,238 @@
+[{
+  "table_name": "roadmap_execution_nodes",
+  "column_name": "id"
+}, {
+  "table_name": "roadmap_execution_nodes",
+  "column_name": "tenant_id"
+}, {
+  "table_name": "roadmap_execution_nodes",
+  "column_name": "selection_envelope_id"
+}, {
+  "table_name": "roadmap_execution_nodes",
+  "column_name": "sop_ticket_id"
+}, {
+  "table_name": "roadmap_execution_nodes",
+  "column_name": "ticket_key"
+}, {
+  "table_name": "roadmap_execution_nodes",
+  "column_name": "phase_index"
+}, {
+  "table_name": "roadmap_execution_nodes",
+  "column_name": "execution_order"
+}, {
+  "table_name": "roadmap_execution_nodes",
+  "column_name": "status"
+}, {
+  "table_name": "roadmap_execution_nodes",
+  "column_name": "namespace"
+}, {
+  "table_name": "roadmap_execution_nodes",
+  "column_name": "capability_id"
+}, {
+  "table_name": "roadmap_execution_nodes",
+  "column_name": "complexity_tier"
+}, {
+  "table_name": "roadmap_execution_nodes",
+  "column_name": "scheduled_start_at"
+}, {
+  "table_name": "roadmap_execution_nodes",
+  "column_name": "scheduled_end_at"
+}, {
+  "table_name": "roadmap_execution_nodes",
+  "column_name": "started_at"
+}, {
+  "table_name": "roadmap_execution_nodes",
+  "column_name": "completed_at"
+}, {
+  "table_name": "roadmap_execution_nodes",
+  "column_name": "created_at"
+}, {
+  "table_name": "roadmap_execution_nodes",
+  "column_name": "updated_at"
+}, {
+  "table_name": "roadmap_graph_edges",
+  "column_name": "id"
+}, {
+  "table_name": "roadmap_graph_edges",
+  "column_name": "graph_id"
+}, {
+  "table_name": "roadmap_graph_edges",
+  "column_name": "from_ticket_id"
+}, {
+  "table_name": "roadmap_graph_edges",
+  "column_name": "to_ticket_id"
+}, {
+  "table_name": "roadmap_graph_edges",
+  "column_name": "dependency_type"
+}, {
+  "table_name": "roadmap_graph_edges",
+  "column_name": "created_at"
+}, {
+  "table_name": "roadmap_graph_nodes",
+  "column_name": "id"
+}, {
+  "table_name": "roadmap_graph_nodes",
+  "column_name": "graph_id"
+}, {
+  "table_name": "roadmap_graph_nodes",
+  "column_name": "sop_ticket_id"
+}, {
+  "table_name": "roadmap_graph_nodes",
+  "column_name": "capability_id"
+}, {
+  "table_name": "roadmap_graph_nodes",
+  "column_name": "namespace"
+}, {
+  "table_name": "roadmap_graph_nodes",
+  "column_name": "stage"
+}, {
+  "table_name": "roadmap_graph_nodes",
+  "column_name": "created_at"
+}, {
+  "table_name": "roadmap_graphs",
+  "column_name": "id"
+}, {
+  "table_name": "roadmap_graphs",
+  "column_name": "tenant_id"
+}, {
+  "table_name": "roadmap_graphs",
+  "column_name": "selection_envelope_id"
+}, {
+  "table_name": "roadmap_graphs",
+  "column_name": "projection_hash"
+}, {
+  "table_name": "roadmap_graphs",
+  "column_name": "node_count"
+}, {
+  "table_name": "roadmap_graphs",
+  "column_name": "edge_count"
+}, {
+  "table_name": "roadmap_graphs",
+  "column_name": "created_at"
+}, {
+  "table_name": "roadmap_graphs",
+  "column_name": "updated_at"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "id"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "tenant_id"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "roadmap_id"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "baseline_snapshot_id"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "at_30d_snapshot_id"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "at_60d_snapshot_id"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "at_90d_snapshot_id"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "deltas"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "realized_roi"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "status"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "notes"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "created_at"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "updated_at"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "id"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "roadmap_id"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "section_number"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "section_name"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "content_markdown"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "status"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "last_updated_at"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "agent_cheatsheet"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "word_count"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "diagrams"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "created_at"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "updated_at"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "id"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "id"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "tenant_id"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "created_at"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "pdf_url"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "created_at"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "status"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "tenant_id"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "created_by_user_id"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "version"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "model_json"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "snapshot_id"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "source_refs"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "metadata"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "updated_at"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "delivered_at"
+}]
