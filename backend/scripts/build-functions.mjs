@@ -15,5 +15,4 @@ await build({
   sourcemap: true,
   logLevel: "info",
 
-  external: ["@roadmap/shared"],
 });
