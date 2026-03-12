@@ -1,0 +1,401 @@
+[{
+  "tablename": "__drizzle_migrations",
+  "indexname": "__drizzle_migrations_hash_unique",
+  "indexdef": "CREATE UNIQUE INDEX __drizzle_migrations_hash_unique ON public.__drizzle_migrations USING btree (hash)"
+}, {
+  "tablename": "__drizzle_migrations",
+  "indexname": "__drizzle_migrations_pkey",
+  "indexdef": "CREATE UNIQUE INDEX __drizzle_migrations_pkey ON public.__drizzle_migrations USING btree (id)"
+}, {
+  "tablename": "agent_configs",
+  "indexname": "agent_configs_pkey",
+  "indexdef": "CREATE UNIQUE INDEX agent_configs_pkey ON public.agent_configs USING btree (id)"
+}, {
+  "tablename": "agent_logs",
+  "indexname": "agent_logs_pkey",
+  "indexdef": "CREATE UNIQUE INDEX agent_logs_pkey ON public.agent_logs USING btree (id)"
+}, {
+  "tablename": "agent_messages",
+  "indexname": "agent_messages_pkey",
+  "indexdef": "CREATE UNIQUE INDEX agent_messages_pkey ON public.agent_messages USING btree (id)"
+}, {
+  "tablename": "agent_routing_rules",
+  "indexname": "agent_routing_rules_pkey",
+  "indexdef": "CREATE UNIQUE INDEX agent_routing_rules_pkey ON public.agent_routing_rules USING btree (id)"
+}, {
+  "tablename": "agent_strategy_contexts",
+  "indexname": "agent_strategy_contexts_pkey",
+  "indexdef": "CREATE UNIQUE INDEX agent_strategy_contexts_pkey ON public.agent_strategy_contexts USING btree (tenant_id)"
+}, {
+  "tablename": "agent_threads",
+  "indexname": "agent_threads_pkey",
+  "indexdef": "CREATE UNIQUE INDEX agent_threads_pkey ON public.agent_threads USING btree (id)"
+}, {
+  "tablename": "assisted_synthesis_agent_messages",
+  "indexname": "assisted_synthesis_agent_messages_pkey",
+  "indexdef": "CREATE UNIQUE INDEX assisted_synthesis_agent_messages_pkey ON public.assisted_synthesis_agent_messages USING btree (id)"
+}, {
+  "tablename": "assisted_synthesis_agent_messages",
+  "indexname": "as_agent_messages_session_idx",
+  "indexdef": "CREATE INDEX as_agent_messages_session_idx ON public.assisted_synthesis_agent_messages USING btree (session_id)"
+}, {
+  "tablename": "assisted_synthesis_agent_sessions",
+  "indexname": "as_agent_sessions_tenant_idx",
+  "indexdef": "CREATE INDEX as_agent_sessions_tenant_idx ON public.assisted_synthesis_agent_sessions USING btree (tenant_id)"
+}, {
+  "tablename": "assisted_synthesis_agent_sessions",
+  "indexname": "assisted_synthesis_agent_sessions_pkey",
+  "indexdef": "CREATE UNIQUE INDEX assisted_synthesis_agent_sessions_pkey ON public.assisted_synthesis_agent_sessions USING btree (id)"
+}, {
+  "tablename": "audit_events",
+  "indexname": "audit_events_pkey",
+  "indexdef": "CREATE UNIQUE INDEX audit_events_pkey ON public.audit_events USING btree (id)"
+}, {
+  "tablename": "baseline_review_cycles",
+  "indexname": "baseline_review_cycles_pkey",
+  "indexdef": "CREATE UNIQUE INDEX baseline_review_cycles_pkey ON public.baseline_review_cycles USING btree (id)"
+}, {
+  "tablename": "diagnostic_jobs",
+  "indexname": "diagnostic_jobs_pkey",
+  "indexdef": "CREATE UNIQUE INDEX diagnostic_jobs_pkey ON public.diagnostic_jobs USING btree (id)"
+}, {
+  "tablename": "diagnostic_jobs",
+  "indexname": "diagnostic_jobs_firm_id_idx",
+  "indexdef": "CREATE INDEX diagnostic_jobs_firm_id_idx ON public.diagnostic_jobs USING btree (firm_id)"
+}, {
+  "tablename": "diagnostic_snapshots",
+  "indexname": "diagnostic_snapshots_pkey",
+  "indexdef": "CREATE UNIQUE INDEX diagnostic_snapshots_pkey ON public.diagnostic_snapshots USING btree (id)"
+}, {
+  "tablename": "diagnostics",
+  "indexname": "diagnostics_pkey",
+  "indexdef": "CREATE UNIQUE INDEX diagnostics_pkey ON public.diagnostics USING btree (id)"
+}, {
+  "tablename": "diagnostics",
+  "indexname": "one_published_diagnostic_per_tenant",
+  "indexdef": "CREATE UNIQUE INDEX one_published_diagnostic_per_tenant ON public.diagnostics USING btree (tenant_id) WHERE ((status)::text = 'published'::text)"
+}, {
+  "tablename": "discovery_call_notes",
+  "indexname": "discovery_call_notes_pkey",
+  "indexdef": "CREATE UNIQUE INDEX discovery_call_notes_pkey ON public.discovery_call_notes USING btree (id)"
+}, {
+  "tablename": "discovery_call_notes",
+  "indexname": "idx_discovery_call_notes_tenant_diagnostic",
+  "indexdef": "CREATE INDEX idx_discovery_call_notes_tenant_diagnostic ON public.discovery_call_notes USING btree (tenant_id, diagnostic_id)"
+}, {
+  "tablename": "discovery_call_notes",
+  "indexname": "idx_discovery_call_notes_diagnostic_id",
+  "indexdef": "CREATE INDEX idx_discovery_call_notes_diagnostic_id ON public.discovery_call_notes USING btree (diagnostic_id)"
+}, {
+  "tablename": "discovery_notes_log",
+  "indexname": "discovery_notes_log_tenant_idx",
+  "indexdef": "CREATE INDEX discovery_notes_log_tenant_idx ON public.discovery_notes_log USING btree (tenant_id, created_at DESC)"
+}, {
+  "tablename": "discovery_notes_log",
+  "indexname": "discovery_notes_log_pkey",
+  "indexdef": "CREATE UNIQUE INDEX discovery_notes_log_pkey ON public.discovery_notes_log USING btree (id)"
+}, {
+  "tablename": "evidence_artifacts",
+  "indexname": "evidence_artifacts_pkey",
+  "indexdef": "CREATE UNIQUE INDEX evidence_artifacts_pkey ON public.evidence_artifacts USING btree (id)"
+}, {
+  "tablename": "evidence_bindings",
+  "indexname": "evidence_bindings_pkey",
+  "indexdef": "CREATE UNIQUE INDEX evidence_bindings_pkey ON public.evidence_bindings USING btree (id)"
+}, {
+  "tablename": "executive_brief_artifacts",
+  "indexname": "executive_brief_artifacts_brief_id_idx",
+  "indexdef": "CREATE INDEX executive_brief_artifacts_brief_id_idx ON public.executive_brief_artifacts USING btree (executive_brief_id)"
+}, {
+  "tablename": "executive_brief_artifacts",
+  "indexname": "executive_brief_artifacts_brief_type_unique",
+  "indexdef": "CREATE UNIQUE INDEX executive_brief_artifacts_brief_type_unique ON public.executive_brief_artifacts USING btree (executive_brief_id, artifact_type)"
+}, {
+  "tablename": "executive_brief_artifacts",
+  "indexname": "executive_brief_artifacts_tenant_id_idx",
+  "indexdef": "CREATE INDEX executive_brief_artifacts_tenant_id_idx ON public.executive_brief_artifacts USING btree (tenant_id)"
+}, {
+  "tablename": "executive_brief_artifacts",
+  "indexname": "executive_brief_artifacts_pkey",
+  "indexdef": "CREATE UNIQUE INDEX executive_brief_artifacts_pkey ON public.executive_brief_artifacts USING btree (id)"
+}, {
+  "tablename": "executive_briefs",
+  "indexname": "executive_briefs_pkey",
+  "indexdef": "CREATE UNIQUE INDEX executive_briefs_pkey ON public.executive_briefs USING btree (id)"
+}, {
+  "tablename": "executive_briefs",
+  "indexname": "executive_briefs_tenant_id_idx",
+  "indexdef": "CREATE INDEX executive_briefs_tenant_id_idx ON public.executive_briefs USING btree (tenant_id)"
+}, {
+  "tablename": "executive_briefs",
+  "indexname": "executive_briefs_tenant_id_version_unique",
+  "indexdef": "CREATE UNIQUE INDEX executive_briefs_tenant_id_version_unique ON public.executive_briefs USING btree (tenant_id, version)"
+}, {
+  "tablename": "feature_flags",
+  "indexname": "feature_flags_pkey",
+  "indexdef": "CREATE UNIQUE INDEX feature_flags_pkey ON public.feature_flags USING btree (id)"
+}, {
+  "tablename": "feature_flags",
+  "indexname": "feature_flags_key_unique",
+  "indexdef": "CREATE UNIQUE INDEX feature_flags_key_unique ON public.feature_flags USING btree (key)"
+}, {
+  "tablename": "firm_baseline_intake",
+  "indexname": "firm_baseline_intake_pkey",
+  "indexdef": "CREATE UNIQUE INDEX firm_baseline_intake_pkey ON public.firm_baseline_intake USING btree (id)"
+}, {
+  "tablename": "firm_baseline_intake",
+  "indexname": "firm_baseline_intake_tenant_id_unique",
+  "indexdef": "CREATE UNIQUE INDEX firm_baseline_intake_tenant_id_unique ON public.firm_baseline_intake USING btree (tenant_id)"
+}, {
+  "tablename": "firm_baseline_intake",
+  "indexname": "idx_firm_baseline_intake_tenant_id",
+  "indexdef": "CREATE INDEX idx_firm_baseline_intake_tenant_id ON public.firm_baseline_intake USING btree (tenant_id)"
+}, {
+  "tablename": "impersonation_sessions",
+  "indexname": "impersonation_sessions_pkey",
+  "indexdef": "CREATE UNIQUE INDEX impersonation_sessions_pkey ON public.impersonation_sessions USING btree (id)"
+}, {
+  "tablename": "implementation_snapshots",
+  "indexname": "implementation_snapshots_pkey",
+  "indexdef": "CREATE UNIQUE INDEX implementation_snapshots_pkey ON public.implementation_snapshots USING btree (id)"
+}, {
+  "tablename": "intake_clarifications",
+  "indexname": "idx_intake_clarifications_intake_id",
+  "indexdef": "CREATE INDEX idx_intake_clarifications_intake_id ON public.intake_clarifications USING btree (intake_id)"
+}, {
+  "tablename": "intake_clarifications",
+  "indexname": "intake_clarifications_pkey",
+  "indexdef": "CREATE UNIQUE INDEX intake_clarifications_pkey ON public.intake_clarifications USING btree (id)"
+}, {
+  "tablename": "intake_clarifications",
+  "indexname": "intake_clarifications_token_key",
+  "indexdef": "CREATE UNIQUE INDEX intake_clarifications_token_key ON public.intake_clarifications USING btree (token)"
+}, {
+  "tablename": "intake_clarifications",
+  "indexname": "idx_intake_clarifications_token",
+  "indexdef": "CREATE INDEX idx_intake_clarifications_token ON public.intake_clarifications USING btree (token)"
+}, {
+  "tablename": "intake_clarifications",
+  "indexname": "idx_intake_clarifications_tenant_id",
+  "indexdef": "CREATE INDEX idx_intake_clarifications_tenant_id ON public.intake_clarifications USING btree (tenant_id)"
+}, {
+  "tablename": "intake_vectors",
+  "indexname": "intake_vectors_pkey",
+  "indexdef": "CREATE UNIQUE INDEX intake_vectors_pkey ON public.intake_vectors USING btree (id)"
+}, {
+  "tablename": "intakes",
+  "indexname": "intakes_pkey",
+  "indexdef": "CREATE UNIQUE INDEX intakes_pkey ON public.intakes USING btree (id)"
+}, {
+  "tablename": "invites",
+  "indexname": "invites_pkey",
+  "indexdef": "CREATE UNIQUE INDEX invites_pkey ON public.invites USING btree (id)"
+}, {
+  "tablename": "invites",
+  "indexname": "invites_token_unique",
+  "indexdef": "CREATE UNIQUE INDEX invites_token_unique ON public.invites USING btree (token)"
+}, {
+  "tablename": "onboarding_states",
+  "indexname": "onboarding_states_pkey",
+  "indexdef": "CREATE UNIQUE INDEX onboarding_states_pkey ON public.onboarding_states USING btree (id)"
+}, {
+  "tablename": "password_reset_tokens",
+  "indexname": "idx_password_reset_tokens_token_hash",
+  "indexdef": "CREATE INDEX idx_password_reset_tokens_token_hash ON public.password_reset_tokens USING btree (token_hash)"
+}, {
+  "tablename": "password_reset_tokens",
+  "indexname": "idx_password_reset_tokens_user_id",
+  "indexdef": "CREATE INDEX idx_password_reset_tokens_user_id ON public.password_reset_tokens USING btree (user_id)"
+}, {
+  "tablename": "password_reset_tokens",
+  "indexname": "password_reset_tokens_token_hash_key",
+  "indexdef": "CREATE UNIQUE INDEX password_reset_tokens_token_hash_key ON public.password_reset_tokens USING btree (token_hash)"
+}, {
+  "tablename": "password_reset_tokens",
+  "indexname": "password_reset_tokens_pkey",
+  "indexdef": "CREATE UNIQUE INDEX password_reset_tokens_pkey ON public.password_reset_tokens USING btree (id)"
+}, {
+  "tablename": "password_reset_tokens",
+  "indexname": "idx_password_reset_tokens_expires_at",
+  "indexdef": "CREATE INDEX idx_password_reset_tokens_expires_at ON public.password_reset_tokens USING btree (expires_at)"
+}, {
+  "tablename": "public_agent_events",
+  "indexname": "public_agent_events_pkey",
+  "indexdef": "CREATE UNIQUE INDEX public_agent_events_pkey ON public.public_agent_events USING btree (id)"
+}, {
+  "tablename": "public_agent_sessions",
+  "indexname": "public_agent_sessions_pkey",
+  "indexdef": "CREATE UNIQUE INDEX public_agent_sessions_pkey ON public.public_agent_sessions USING btree (id)"
+}, {
+  "tablename": "public_agent_sessions",
+  "indexname": "public_agent_sessions_session_id_unique",
+  "indexdef": "CREATE UNIQUE INDEX public_agent_sessions_session_id_unique ON public.public_agent_sessions USING btree (session_id)"
+}, {
+  "tablename": "roadmap_outcomes",
+  "indexname": "roadmap_outcomes_pkey",
+  "indexdef": "CREATE UNIQUE INDEX roadmap_outcomes_pkey ON public.roadmap_outcomes USING btree (id)"
+}, {
+  "tablename": "roadmap_sections",
+  "indexname": "roadmap_sections_pkey",
+  "indexdef": "CREATE UNIQUE INDEX roadmap_sections_pkey ON public.roadmap_sections USING btree (id)"
+}, {
+  "tablename": "roadmaps",
+  "indexname": "roadmaps_pkey",
+  "indexdef": "CREATE UNIQUE INDEX roadmaps_pkey ON public.roadmaps USING btree (id)"
+}, {
+  "tablename": "roadmaps",
+  "indexname": "idx_roadmaps_tenant_delivered_at",
+  "indexdef": "CREATE INDEX idx_roadmaps_tenant_delivered_at ON public.roadmaps USING btree (tenant_id, delivered_at DESC)"
+}, {
+  "tablename": "sas_elections",
+  "indexname": "sas_elections_proposal_idx",
+  "indexdef": "CREATE INDEX sas_elections_proposal_idx ON public.sas_elections USING btree (proposal_id)"
+}, {
+  "tablename": "sas_elections",
+  "indexname": "sas_elections_tenant_idx",
+  "indexdef": "CREATE INDEX sas_elections_tenant_idx ON public.sas_elections USING btree (tenant_id)"
+}, {
+  "tablename": "sas_elections",
+  "indexname": "sas_elections_pkey",
+  "indexdef": "CREATE UNIQUE INDEX sas_elections_pkey ON public.sas_elections USING btree (id)"
+}, {
+  "tablename": "sas_proposals",
+  "indexname": "idx_sas_proposals_capability",
+  "indexdef": "CREATE INDEX idx_sas_proposals_capability ON public.sas_proposals USING btree (tenant_id, capability_id)"
+}, {
+  "tablename": "sas_proposals",
+  "indexname": "idx_sas_proposals_concept_hash",
+  "indexdef": "CREATE INDEX idx_sas_proposals_concept_hash ON public.sas_proposals USING btree (tenant_id, concept_hash)"
+}, {
+  "tablename": "sas_proposals",
+  "indexname": "sas_proposals_pkey",
+  "indexdef": "CREATE UNIQUE INDEX sas_proposals_pkey ON public.sas_proposals USING btree (id)"
+}, {
+  "tablename": "sas_proposals",
+  "indexname": "sas_proposals_tenant_idx",
+  "indexdef": "CREATE INDEX sas_proposals_tenant_idx ON public.sas_proposals USING btree (tenant_id)"
+}, {
+  "tablename": "sas_proposals",
+  "indexname": "sas_proposals_run_idx",
+  "indexdef": "CREATE INDEX sas_proposals_run_idx ON public.sas_proposals USING btree (sas_run_id)"
+}, {
+  "tablename": "sas_runs",
+  "indexname": "sas_runs_tenant_idx",
+  "indexdef": "CREATE INDEX sas_runs_tenant_idx ON public.sas_runs USING btree (tenant_id)"
+}, {
+  "tablename": "sas_runs",
+  "indexname": "sas_runs_pkey",
+  "indexdef": "CREATE UNIQUE INDEX sas_runs_pkey ON public.sas_runs USING btree (id)"
+}, {
+  "tablename": "selection_envelopes",
+  "indexname": "selection_envelopes_unique_binding",
+  "indexdef": "CREATE UNIQUE INDEX selection_envelopes_unique_binding ON public.selection_envelopes USING btree (tenant_id, canonical_findings_hash, registry_version, envelope_version)"
+}, {
+  "tablename": "selection_envelopes",
+  "indexname": "selection_envelopes_pkey",
+  "indexdef": "CREATE UNIQUE INDEX selection_envelopes_pkey ON public.selection_envelopes USING btree (id)"
+}, {
+  "tablename": "selection_envelopes",
+  "indexname": "selection_envelopes_selection_hash_idx",
+  "indexdef": "CREATE INDEX selection_envelopes_selection_hash_idx ON public.selection_envelopes USING btree (selection_hash)"
+}, {
+  "tablename": "sop_tickets",
+  "indexname": "sop_ticket_envelope_inventory_unique",
+  "indexdef": "CREATE UNIQUE INDEX sop_ticket_envelope_inventory_unique ON public.sop_tickets USING btree (selection_envelope_id, inventory_id)"
+}, {
+  "tablename": "sop_tickets",
+  "indexname": "sop_tickets_pkey",
+  "indexdef": "CREATE UNIQUE INDEX sop_tickets_pkey ON public.sop_tickets USING btree (id)"
+}, {
+  "tablename": "tenant_documents",
+  "indexname": "tenant_documents_pkey",
+  "indexdef": "CREATE UNIQUE INDEX tenant_documents_pkey ON public.tenant_documents USING btree (id)"
+}, {
+  "tablename": "tenant_documents",
+  "indexname": "tenant_doc_sop_idx",
+  "indexdef": "CREATE UNIQUE INDEX tenant_doc_sop_idx ON public.tenant_documents USING btree (tenant_id, category, sop_number, output_number)"
+}, {
+  "tablename": "tenant_documents",
+  "indexname": "tenant_documents_canonical_findings_unique",
+  "indexdef": "CREATE UNIQUE INDEX tenant_documents_canonical_findings_unique ON public.tenant_documents USING btree (tenant_id) WHERE ((category)::text = 'findings_canonical'::text)"
+}, {
+  "tablename": "tenant_feature_flags",
+  "indexname": "tenant_feature_flags_pkey",
+  "indexdef": "CREATE UNIQUE INDEX tenant_feature_flags_pkey ON public.tenant_feature_flags USING btree (id)"
+}, {
+  "tablename": "tenant_metrics_daily",
+  "indexname": "tenant_metrics_daily_pkey",
+  "indexdef": "CREATE UNIQUE INDEX tenant_metrics_daily_pkey ON public.tenant_metrics_daily USING btree (id)"
+}, {
+  "tablename": "tenant_stage6_config",
+  "indexname": "tenant_stage6_config_pkey",
+  "indexdef": "CREATE UNIQUE INDEX tenant_stage6_config_pkey ON public.tenant_stage6_config USING btree (tenant_id)"
+}, {
+  "tablename": "tenant_stage6_config",
+  "indexname": "tenant_stage6_config_vertical_idx",
+  "indexdef": "CREATE INDEX tenant_stage6_config_vertical_idx ON public.tenant_stage6_config USING btree (vertical)"
+}, {
+  "tablename": "tenant_vector_stores",
+  "indexname": "tenant_vector_stores_pkey",
+  "indexdef": "CREATE UNIQUE INDEX tenant_vector_stores_pkey ON public.tenant_vector_stores USING btree (tenant_id)"
+}, {
+  "tablename": "tenants",
+  "indexname": "tenants_owner_user_id_unique",
+  "indexdef": "CREATE UNIQUE INDEX tenants_owner_user_id_unique ON public.tenants USING btree (owner_user_id)"
+}, {
+  "tablename": "tenants",
+  "indexname": "tenants_pkey",
+  "indexdef": "CREATE UNIQUE INDEX tenants_pkey ON public.tenants USING btree (id)"
+}, {
+  "tablename": "ticket_instances",
+  "indexname": "ticket_instances_pkey",
+  "indexdef": "CREATE UNIQUE INDEX ticket_instances_pkey ON public.ticket_instances USING btree (id)"
+}, {
+  "tablename": "ticket_moderation_sessions",
+  "indexname": "tms_selection_envelope_id_idx",
+  "indexdef": "CREATE INDEX tms_selection_envelope_id_idx ON public.ticket_moderation_sessions USING btree (selection_envelope_id) WHERE (selection_envelope_id IS NOT NULL)"
+}, {
+  "tablename": "ticket_moderation_sessions",
+  "indexname": "ticket_moderation_sessions_pkey",
+  "indexdef": "CREATE UNIQUE INDEX ticket_moderation_sessions_pkey ON public.ticket_moderation_sessions USING btree (id)"
+}, {
+  "tablename": "ticket_packs",
+  "indexname": "ticket_packs_pkey",
+  "indexdef": "CREATE UNIQUE INDEX ticket_packs_pkey ON public.ticket_packs USING btree (id)"
+}, {
+  "tablename": "tickets_draft",
+  "indexname": "moderation_session_finding_idx",
+  "indexdef": "CREATE UNIQUE INDEX moderation_session_finding_idx ON public.tickets_draft USING btree (moderation_session_id, finding_id)"
+}, {
+  "tablename": "tickets_draft",
+  "indexname": "tickets_draft_pkey",
+  "indexdef": "CREATE UNIQUE INDEX tickets_draft_pkey ON public.tickets_draft USING btree (id)"
+}, {
+  "tablename": "training_modules",
+  "indexname": "training_modules_pkey",
+  "indexdef": "CREATE UNIQUE INDEX training_modules_pkey ON public.training_modules USING btree (id)"
+}, {
+  "tablename": "training_progress",
+  "indexname": "training_progress_pkey",
+  "indexdef": "CREATE UNIQUE INDEX training_progress_pkey ON public.training_progress USING btree (id)"
+}, {
+  "tablename": "users",
+  "indexname": "users_pkey",
+  "indexdef": "CREATE UNIQUE INDEX users_pkey ON public.users USING btree (id)"
+}, {
+  "tablename": "users",
+  "indexname": "users_reset_token_unique",
+  "indexdef": "CREATE UNIQUE INDEX users_reset_token_unique ON public.users USING btree (reset_token)"
+}, {
+  "tablename": "users",
+  "indexname": "users_email_unique",
+  "indexdef": "CREATE UNIQUE INDEX users_email_unique ON public.users USING btree (email)"
+}, {
+  "tablename": "webinar_registrations",
+  "indexname": "lead_requests_pkey",
+  "indexdef": "CREATE UNIQUE INDEX lead_requests_pkey ON public.webinar_registrations USING btree (id)"
+}, {
+  "tablename": "webinar_settings",
+  "indexname": "webinar_settings_pkey",
+  "indexdef": "CREATE UNIQUE INDEX webinar_settings_pkey ON public.webinar_settings USING btree (id)"
+}]

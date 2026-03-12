@@ -1,0 +1,55 @@
+[{
+  "table_name": "selection_envelope_items",
+  "column_name": "id"
+}, {
+  "table_name": "selection_envelope_items",
+  "column_name": "selection_envelope_id"
+}, {
+  "table_name": "selection_envelope_items",
+  "column_name": "finding_id"
+}, {
+  "table_name": "selection_envelope_items",
+  "column_name": "capability_id"
+}, {
+  "table_name": "selection_envelope_items",
+  "column_name": "capability_namespace"
+}, {
+  "table_name": "selection_envelope_items",
+  "column_name": "created_at"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "id"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "tenant_id"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "canonical_findings_hash"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "registry_version"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "envelope_version"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "execution_envelope"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "inventory_ids"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "adapter_ids"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "finding_ids"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "selection_hash"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "created_at"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "envelope_hash"
+}]

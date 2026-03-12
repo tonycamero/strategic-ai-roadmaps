@@ -1,0 +1,14 @@
+[{
+  "id": "b7a5d3ba-cf76-4510-88ab-2c0d454c8107",
+  "tenant_id": "8b4dc94a-9028-4bd5-8f2f-04e3440dae35",
+  "canonical_findings_hash": "7a4d2a67bf8ffb59a459485b24a9e0c0df37aad9e14081d9cf0b3724e04887a5",
+  "registry_version": "1.0.0",
+  "envelope_version": "1.0.0",
+  "execution_envelope": "\"{\\\"namespaces\\\":[\\\"Delivery\\\",\\\"Ops\\\",\\\"Pipeline\\\"],\\\"adapters\\\":[\\\"ghl\\\",\\\"sidecar\\\"],\\\"maxComplexityTier\\\":\\\"medium\\\",\\\"customDevAllowed\\\":false,\\\"vertical\\\":\\\"generic\\\"}\"",
+  "inventory_ids": "\"[\\\"OPS_CLIENT_STATUS_UPDATES\\\",\\\"OPS_DAILY_OPS_DIGEST\\\",\\\"OPS_HANDOFF_PROTOCOL\\\",\\\"OPS_INTERNAL_JOB_TICKETING\\\",\\\"OPS_INTERNAL_SLA_ENFORCEMENT\\\",\\\"OPS_INTERNAL_TASK_ENGINE\\\",\\\"OPS_MISSED_DEADLINE_ESCALATION\\\",\\\"OPS_MULTI_OWNER_ROUTING\\\",\\\"OPS_OVERDUE_RECOVERY\\\",\\\"OPS_PIPELINE_TASK_SYNC\\\",\\\"OPS_PROJECT_CHECKLIST_GENERATOR\\\",\\\"OPS_REVISION_REQUEST_LOOP\\\",\\\"PM_AUTO_ASSIGNMENT\\\",\\\"PM_DORMANT_REENGAGEMENT\\\",\\\"PM_MISSED_OPP_RECOVERY\\\",\\\"PM_PIPELINE_HYGIENE\\\",\\\"PM_PIPELINE_STANDARDIZATION\\\",\\\"PM_SLA_TASK_AUTOMATION\\\",\\\"PM_SOURCE_ENFORCEMENT\\\",\\\"PM_SPEED_TO_CONTACT\\\",\\\"PM_STAGE_AUTOMATION_CHECKLIST\\\",\\\"PM_UNIFY_LEAD_CAPTURE\\\"]\"",
+  "adapter_ids": "\"[\\\"ghl\\\"]\"",
+  "finding_ids": "\"[\\\"1\\\",\\\"10\\\",\\\"2\\\",\\\"3\\\",\\\"5\\\",\\\"6\\\",\\\"7\\\",\\\"8\\\",\\\"9\\\"]\"",
+  "selection_hash": "ebfeac54a5e08ae3084c6fc7e44fcf55185ea55ea31a5231607578de4b0694bd",
+  "created_at": "2026-03-03 22:33:29.286365",
+  "envelope_hash": null
+}]

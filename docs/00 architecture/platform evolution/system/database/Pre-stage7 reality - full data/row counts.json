@@ -1,0 +1,341 @@
+[{
+  "schemaname": "drizzle",
+  "table_name": "__drizzle_migrations",
+  "n_live_tup": 2,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "__drizzle_migrations",
+  "n_live_tup": 4,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "agent_configs",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "agent_logs",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "agent_messages",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "agent_routing_rules",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "agent_strategy_contexts",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "agent_threads",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "assisted_synthesis_agent_messages",
+  "n_live_tup": 98,
+  "n_dead_tup": 10
+}, {
+  "schemaname": "public",
+  "table_name": "assisted_synthesis_agent_sessions",
+  "n_live_tup": 8,
+  "n_dead_tup": 3
+}, {
+  "schemaname": "public",
+  "table_name": "audit_events",
+  "n_live_tup": 569,
+  "n_dead_tup": 5
+}, {
+  "schemaname": "public",
+  "table_name": "baseline_review_cycles",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "diagnostic_jobs",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "diagnostic_snapshots",
+  "n_live_tup": 1,
+  "n_dead_tup": 1
+}, {
+  "schemaname": "core",
+  "table_name": "diagnostics",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "diagnostics",
+  "n_live_tup": 7,
+  "n_dead_tup": 9
+}, {
+  "schemaname": "public",
+  "table_name": "discovery_call_notes",
+  "n_live_tup": 4,
+  "n_dead_tup": 9
+}, {
+  "schemaname": "public",
+  "table_name": "discovery_notes_log",
+  "n_live_tup": 12,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "core",
+  "table_name": "entities",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "evidence_artifacts",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "evidence_bindings",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "execution_state",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "executive_brief_artifacts",
+  "n_live_tup": 6,
+  "n_dead_tup": 33
+}, {
+  "schemaname": "public",
+  "table_name": "executive_briefs",
+  "n_live_tup": 6,
+  "n_dead_tup": 9
+}, {
+  "schemaname": "public",
+  "table_name": "feature_flags",
+  "n_live_tup": 2,
+  "n_dead_tup": 4
+}, {
+  "schemaname": "public",
+  "table_name": "firm_baseline_intake",
+  "n_live_tup": 3,
+  "n_dead_tup": 17
+}, {
+  "schemaname": "public",
+  "table_name": "impersonation_sessions",
+  "n_live_tup": 9,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "implementation_snapshots",
+  "n_live_tup": 6,
+  "n_dead_tup": 2
+}, {
+  "schemaname": "public",
+  "table_name": "intake_clarifications",
+  "n_live_tup": 0,
+  "n_dead_tup": 1
+}, {
+  "schemaname": "public",
+  "table_name": "intake_vectors",
+  "n_live_tup": 54,
+  "n_dead_tup": 11
+}, {
+  "schemaname": "public",
+  "table_name": "intakes",
+  "n_live_tup": 38,
+  "n_dead_tup": 11
+}, {
+  "schemaname": "public",
+  "table_name": "invites",
+  "n_live_tup": 42,
+  "n_dead_tup": 11
+}, {
+  "schemaname": "public",
+  "table_name": "onboarding_states",
+  "n_live_tup": 30,
+  "n_dead_tup": 7
+}, {
+  "schemaname": "public",
+  "table_name": "password_reset_tokens",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "public_agent_events",
+  "n_live_tup": 8,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "public_agent_sessions",
+  "n_live_tup": 4,
+  "n_dead_tup": 2
+}, {
+  "schemaname": "public",
+  "table_name": "roadmap_execution_nodes",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "roadmap_graph_edges",
+  "n_live_tup": 29,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "roadmap_graph_nodes",
+  "n_live_tup": 30,
+  "n_dead_tup": 30
+}, {
+  "schemaname": "public",
+  "table_name": "roadmap_graphs",
+  "n_live_tup": 1,
+  "n_dead_tup": 1
+}, {
+  "schemaname": "public",
+  "table_name": "roadmap_outcomes",
+  "n_live_tup": 2,
+  "n_dead_tup": 2
+}, {
+  "schemaname": "public",
+  "table_name": "roadmap_sections",
+  "n_live_tup": 8,
+  "n_dead_tup": 40
+}, {
+  "schemaname": "core",
+  "table_name": "roadmaps",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "roadmaps",
+  "n_live_tup": 2,
+  "n_dead_tup": 5
+}, {
+  "schemaname": "public",
+  "table_name": "sas_election_events",
+  "n_live_tup": 14,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "sas_elections",
+  "n_live_tup": 19,
+  "n_dead_tup": 22
+}, {
+  "schemaname": "public",
+  "table_name": "sas_proposals",
+  "n_live_tup": 104,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "sas_runs",
+  "n_live_tup": 17,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "selection_envelope_items",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "selection_envelopes",
+  "n_live_tup": 1,
+  "n_dead_tup": 1
+}, {
+  "schemaname": "public",
+  "table_name": "sop_tickets",
+  "n_live_tup": 30,
+  "n_dead_tup": 21
+}, {
+  "schemaname": "public",
+  "table_name": "tenant_documents",
+  "n_live_tup": 60,
+  "n_dead_tup": 12
+}, {
+  "schemaname": "public",
+  "table_name": "tenant_feature_flags",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "tenant_metrics_daily",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "tenant_stage6_config",
+  "n_live_tup": 3,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "tenant_vector_stores",
+  "n_live_tup": 0,
+  "n_dead_tup": 15
+}, {
+  "schemaname": "public",
+  "table_name": "tenants",
+  "n_live_tup": 10,
+  "n_dead_tup": 8
+}, {
+  "schemaname": "core",
+  "table_name": "tenants",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "ticket_instances",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "ticket_moderation_sessions",
+  "n_live_tup": 1,
+  "n_dead_tup": 7
+}, {
+  "schemaname": "public",
+  "table_name": "ticket_packs",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "tickets_draft",
+  "n_live_tup": 15,
+  "n_dead_tup": 20
+}, {
+  "schemaname": "public",
+  "table_name": "training_modules",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "training_progress",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "users",
+  "n_live_tup": 82,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "core",
+  "table_name": "users",
+  "n_live_tup": 0,
+  "n_dead_tup": 0
+}, {
+  "schemaname": "public",
+  "table_name": "webinar_registrations",
+  "n_live_tup": 2,
+  "n_dead_tup": 2
+}, {
+  "schemaname": "public",
+  "table_name": "webinar_settings",
+  "n_live_tup": 1,
+  "n_dead_tup": 1
+}]

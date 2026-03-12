@@ -1,0 +1,13 @@
+[{
+  "schema_name": "core"
+}, {
+  "schema_name": "drizzle"
+}, {
+  "schema_name": "information_schema"
+}, {
+  "schema_name": "pg_catalog"
+}, {
+  "schema_name": "pg_toast"
+}, {
+  "schema_name": "public"
+}]

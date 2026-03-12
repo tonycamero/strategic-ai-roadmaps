@@ -1,0 +1,2461 @@
+[{
+  "table_name": "__drizzle_migrations",
+  "column_name": "id",
+  "data_type": "integer"
+}, {
+  "table_name": "__drizzle_migrations",
+  "column_name": "hash",
+  "data_type": "text"
+}, {
+  "table_name": "__drizzle_migrations",
+  "column_name": "created_at",
+  "data_type": "bigint"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "system_identity",
+  "data_type": "text"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "business_context",
+  "data_type": "text"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "custom_instructions",
+  "data_type": "text"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "role_playbook",
+  "data_type": "text"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "tool_context",
+  "data_type": "json"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "is_active",
+  "data_type": "boolean"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "version",
+  "data_type": "integer"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "created_by",
+  "data_type": "uuid"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "updated_by",
+  "data_type": "uuid"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "updated_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "openai_assistant_id",
+  "data_type": "character varying"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "openai_vector_store_id",
+  "data_type": "character varying"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "openai_model",
+  "data_type": "character varying"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "last_provisioned_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "roadmap_metadata",
+  "data_type": "json"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "agent_type",
+  "data_type": "text"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "config_version",
+  "data_type": "integer"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "instructions_hash",
+  "data_type": "text"
+}, {
+  "table_name": "agent_configs",
+  "column_name": "last_updated_by",
+  "data_type": "uuid"
+}, {
+  "table_name": "agent_logs",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "agent_logs",
+  "column_name": "agent_config_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "agent_logs",
+  "column_name": "event_type",
+  "data_type": "character varying"
+}, {
+  "table_name": "agent_logs",
+  "column_name": "metadata",
+  "data_type": "json"
+}, {
+  "table_name": "agent_logs",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "agent_logs",
+  "column_name": "interaction_mode",
+  "data_type": "text"
+}, {
+  "table_name": "agent_messages",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "agent_messages",
+  "column_name": "agent_thread_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "agent_messages",
+  "column_name": "role",
+  "data_type": "character varying"
+}, {
+  "table_name": "agent_messages",
+  "column_name": "content",
+  "data_type": "text"
+}, {
+  "table_name": "agent_messages",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "agent_routing_rules",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "agent_routing_rules",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "agent_routing_rules",
+  "column_name": "pattern",
+  "data_type": "text"
+}, {
+  "table_name": "agent_routing_rules",
+  "column_name": "route_to",
+  "data_type": "character varying"
+}, {
+  "table_name": "agent_routing_rules",
+  "column_name": "priority",
+  "data_type": "integer"
+}, {
+  "table_name": "agent_routing_rules",
+  "column_name": "is_active",
+  "data_type": "boolean"
+}, {
+  "table_name": "agent_routing_rules",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "agent_strategy_contexts",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "agent_strategy_contexts",
+  "column_name": "context",
+  "data_type": "json"
+}, {
+  "table_name": "agent_strategy_contexts",
+  "column_name": "updated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "agent_threads",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "agent_threads",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "agent_threads",
+  "column_name": "agent_config_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "agent_threads",
+  "column_name": "role_type",
+  "data_type": "character varying"
+}, {
+  "table_name": "agent_threads",
+  "column_name": "openai_thread_id",
+  "data_type": "character varying"
+}, {
+  "table_name": "agent_threads",
+  "column_name": "actor_user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "agent_threads",
+  "column_name": "actor_role",
+  "data_type": "character varying"
+}, {
+  "table_name": "agent_threads",
+  "column_name": "visibility",
+  "data_type": "character varying"
+}, {
+  "table_name": "agent_threads",
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "agent_threads",
+  "column_name": "last_activity_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "assisted_synthesis_agent_messages",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "assisted_synthesis_agent_messages",
+  "column_name": "session_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "assisted_synthesis_agent_messages",
+  "column_name": "role",
+  "data_type": "text"
+}, {
+  "table_name": "assisted_synthesis_agent_messages",
+  "column_name": "content",
+  "data_type": "text"
+}, {
+  "table_name": "assisted_synthesis_agent_messages",
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "assisted_synthesis_agent_sessions",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "assisted_synthesis_agent_sessions",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "assisted_synthesis_agent_sessions",
+  "column_name": "stage",
+  "data_type": "text"
+}, {
+  "table_name": "assisted_synthesis_agent_sessions",
+  "column_name": "phase",
+  "data_type": "text"
+}, {
+  "table_name": "assisted_synthesis_agent_sessions",
+  "column_name": "context_version",
+  "data_type": "text"
+}, {
+  "table_name": "assisted_synthesis_agent_sessions",
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "assisted_synthesis_agent_sessions",
+  "column_name": "updated_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "audit_events",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "audit_events",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "audit_events",
+  "column_name": "actor_user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "audit_events",
+  "column_name": "actor_role",
+  "data_type": "character varying"
+}, {
+  "table_name": "audit_events",
+  "column_name": "event_type",
+  "data_type": "character varying"
+}, {
+  "table_name": "audit_events",
+  "column_name": "entity_type",
+  "data_type": "character varying"
+}, {
+  "table_name": "audit_events",
+  "column_name": "entity_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "audit_events",
+  "column_name": "metadata",
+  "data_type": "json"
+}, {
+  "table_name": "audit_events",
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "baseline_review_cycles",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "baseline_review_cycles",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "baseline_review_cycles",
+  "column_name": "cycle_label",
+  "data_type": "character varying"
+}, {
+  "table_name": "baseline_review_cycles",
+  "column_name": "weekly_revenue",
+  "data_type": "numeric"
+}, {
+  "table_name": "baseline_review_cycles",
+  "column_name": "peak_hour_revenue_pct",
+  "data_type": "numeric"
+}, {
+  "table_name": "baseline_review_cycles",
+  "column_name": "labor_pct",
+  "data_type": "numeric"
+}, {
+  "table_name": "baseline_review_cycles",
+  "column_name": "overtime_pct",
+  "data_type": "numeric"
+}, {
+  "table_name": "baseline_review_cycles",
+  "column_name": "gross_margin_pct",
+  "data_type": "numeric"
+}, {
+  "table_name": "baseline_review_cycles",
+  "column_name": "average_ticket",
+  "data_type": "numeric"
+}, {
+  "table_name": "baseline_review_cycles",
+  "column_name": "notes",
+  "data_type": "text"
+}, {
+  "table_name": "baseline_review_cycles",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "baseline_review_cycles",
+  "column_name": "updated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "diagnostic_jobs",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "diagnostic_jobs",
+  "column_name": "firm_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "diagnostic_jobs",
+  "column_name": "created_by_user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "diagnostic_jobs",
+  "column_name": "status",
+  "data_type": "character varying"
+}, {
+  "table_name": "diagnostic_jobs",
+  "column_name": "progress",
+  "data_type": "integer"
+}, {
+  "table_name": "diagnostic_jobs",
+  "column_name": "error_message",
+  "data_type": "text"
+}, {
+  "table_name": "diagnostic_jobs",
+  "column_name": "started_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "diagnostic_jobs",
+  "column_name": "finished_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "diagnostic_jobs",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "diagnostic_jobs",
+  "column_name": "updated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "diagnostic_snapshots",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "diagnostic_snapshots",
+  "column_name": "user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "diagnostic_snapshots",
+  "column_name": "email",
+  "data_type": "character varying"
+}, {
+  "table_name": "diagnostic_snapshots",
+  "column_name": "org_name",
+  "data_type": "character varying"
+}, {
+  "table_name": "diagnostic_snapshots",
+  "column_name": "team_session_id",
+  "data_type": "character varying"
+}, {
+  "table_name": "diagnostic_snapshots",
+  "column_name": "payload",
+  "data_type": "json"
+}, {
+  "table_name": "diagnostic_snapshots",
+  "column_name": "version",
+  "data_type": "integer"
+}, {
+  "table_name": "diagnostic_snapshots",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "diagnostic_snapshots",
+  "column_name": "updated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "diagnostics",
+  "column_name": "id",
+  "data_type": "character varying"
+}, {
+  "table_name": "diagnostics",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "diagnostics",
+  "column_name": "sop_version",
+  "data_type": "character varying"
+}, {
+  "table_name": "diagnostics",
+  "column_name": "status",
+  "data_type": "character varying"
+}, {
+  "table_name": "diagnostics",
+  "column_name": "overview",
+  "data_type": "json"
+}, {
+  "table_name": "diagnostics",
+  "column_name": "ai_opportunities",
+  "data_type": "json"
+}, {
+  "table_name": "diagnostics",
+  "column_name": "roadmap_skeleton",
+  "data_type": "json"
+}, {
+  "table_name": "diagnostics",
+  "column_name": "discovery_questions",
+  "data_type": "json"
+}, {
+  "table_name": "diagnostics",
+  "column_name": "generated_by_user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "diagnostics",
+  "column_name": "approved_by_user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "diagnostics",
+  "column_name": "approved_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "diagnostics",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "diagnostics",
+  "column_name": "updated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "discovery_call_notes",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "discovery_call_notes",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "discovery_call_notes",
+  "column_name": "created_by_user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "discovery_call_notes",
+  "column_name": "notes",
+  "data_type": "text"
+}, {
+  "table_name": "discovery_call_notes",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "discovery_call_notes",
+  "column_name": "updated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "discovery_call_notes",
+  "column_name": "diagnostic_id",
+  "data_type": "character varying"
+}, {
+  "table_name": "discovery_call_notes",
+  "column_name": "synthesis_json",
+  "data_type": "jsonb"
+}, {
+  "table_name": "discovery_call_notes",
+  "column_name": "approval_state",
+  "data_type": "character varying"
+}, {
+  "table_name": "discovery_call_notes",
+  "column_name": "approved_by",
+  "data_type": "uuid"
+}, {
+  "table_name": "discovery_call_notes",
+  "column_name": "approved_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "discovery_call_notes",
+  "column_name": "rejection_reason",
+  "data_type": "text"
+}, {
+  "table_name": "discovery_call_notes",
+  "column_name": "status",
+  "data_type": "character varying"
+}, {
+  "table_name": "discovery_notes_log",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "discovery_notes_log",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "discovery_notes_log",
+  "column_name": "source",
+  "data_type": "character varying"
+}, {
+  "table_name": "discovery_notes_log",
+  "column_name": "delta",
+  "data_type": "text"
+}, {
+  "table_name": "discovery_notes_log",
+  "column_name": "created_by_user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "discovery_notes_log",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "evidence_artifacts",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "evidence_artifacts",
+  "column_name": "kind",
+  "data_type": "character varying"
+}, {
+  "table_name": "evidence_artifacts",
+  "column_name": "storage_provider",
+  "data_type": "character varying"
+}, {
+  "table_name": "evidence_artifacts",
+  "column_name": "storage_key",
+  "data_type": "text"
+}, {
+  "table_name": "evidence_artifacts",
+  "column_name": "public_url",
+  "data_type": "text"
+}, {
+  "table_name": "evidence_artifacts",
+  "column_name": "mime_type",
+  "data_type": "character varying"
+}, {
+  "table_name": "evidence_artifacts",
+  "column_name": "bytes",
+  "data_type": "integer"
+}, {
+  "table_name": "evidence_artifacts",
+  "column_name": "width",
+  "data_type": "integer"
+}, {
+  "table_name": "evidence_artifacts",
+  "column_name": "height",
+  "data_type": "integer"
+}, {
+  "table_name": "evidence_artifacts",
+  "column_name": "caption",
+  "data_type": "text"
+}, {
+  "table_name": "evidence_artifacts",
+  "column_name": "source",
+  "data_type": "character varying"
+}, {
+  "table_name": "evidence_artifacts",
+  "column_name": "created_by",
+  "data_type": "text"
+}, {
+  "table_name": "evidence_artifacts",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "evidence_bindings",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "evidence_bindings",
+  "column_name": "team_session_id",
+  "data_type": "character varying"
+}, {
+  "table_name": "evidence_bindings",
+  "column_name": "role",
+  "data_type": "character varying"
+}, {
+  "table_name": "evidence_bindings",
+  "column_name": "slot_key",
+  "data_type": "character varying"
+}, {
+  "table_name": "evidence_bindings",
+  "column_name": "artifact_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "evidence_bindings",
+  "column_name": "strength",
+  "data_type": "integer"
+}, {
+  "table_name": "evidence_bindings",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "executive_brief_artifacts",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "executive_brief_artifacts",
+  "column_name": "executive_brief_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "executive_brief_artifacts",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "executive_brief_artifacts",
+  "column_name": "artifact_type",
+  "data_type": "character varying"
+}, {
+  "table_name": "executive_brief_artifacts",
+  "column_name": "file_name",
+  "data_type": "text"
+}, {
+  "table_name": "executive_brief_artifacts",
+  "column_name": "file_path",
+  "data_type": "text"
+}, {
+  "table_name": "executive_brief_artifacts",
+  "column_name": "file_size",
+  "data_type": "integer"
+}, {
+  "table_name": "executive_brief_artifacts",
+  "column_name": "checksum",
+  "data_type": "text"
+}, {
+  "table_name": "executive_brief_artifacts",
+  "column_name": "is_immutable",
+  "data_type": "boolean"
+}, {
+  "table_name": "executive_brief_artifacts",
+  "column_name": "metadata",
+  "data_type": "jsonb"
+}, {
+  "table_name": "executive_brief_artifacts",
+  "column_name": "generated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "executive_brief_artifacts",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "executive_briefs",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "executive_briefs",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "executive_briefs",
+  "column_name": "version",
+  "data_type": "character varying"
+}, {
+  "table_name": "executive_briefs",
+  "column_name": "generated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "executive_briefs",
+  "column_name": "synthesis",
+  "data_type": "jsonb"
+}, {
+  "table_name": "executive_briefs",
+  "column_name": "signals",
+  "data_type": "jsonb"
+}, {
+  "table_name": "executive_briefs",
+  "column_name": "sources",
+  "data_type": "jsonb"
+}, {
+  "table_name": "executive_briefs",
+  "column_name": "status",
+  "data_type": "character varying"
+}, {
+  "table_name": "executive_briefs",
+  "column_name": "approved_by",
+  "data_type": "uuid"
+}, {
+  "table_name": "executive_briefs",
+  "column_name": "approved_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "executive_briefs",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "executive_briefs",
+  "column_name": "updated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "executive_briefs",
+  "column_name": "brief_mode",
+  "data_type": "character varying"
+}, {
+  "table_name": "executive_briefs",
+  "column_name": "metadata",
+  "data_type": "jsonb"
+}, {
+  "table_name": "feature_flags",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "feature_flags",
+  "column_name": "key",
+  "data_type": "character varying"
+}, {
+  "table_name": "feature_flags",
+  "column_name": "description",
+  "data_type": "text"
+}, {
+  "table_name": "feature_flags",
+  "column_name": "default_enabled",
+  "data_type": "boolean"
+}, {
+  "table_name": "feature_flags",
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "monthly_lead_volume",
+  "data_type": "integer"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "avg_response_time_minutes",
+  "data_type": "integer"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "close_rate_percent",
+  "data_type": "integer"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "avg_job_value",
+  "data_type": "integer"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "current_tools",
+  "data_type": "jsonb"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "sales_reps_count",
+  "data_type": "integer"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "ops_admin_count",
+  "data_type": "integer"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "primary_bottleneck",
+  "data_type": "text"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "status",
+  "data_type": "character varying"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "updated_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "weekly_revenue",
+  "data_type": "numeric"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "peak_hour_revenue_pct",
+  "data_type": "numeric"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "labor_pct",
+  "data_type": "numeric"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "overtime_pct",
+  "data_type": "numeric"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "gross_margin_pct",
+  "data_type": "numeric"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "average_ticket",
+  "data_type": "numeric"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "economic_confidence_level",
+  "data_type": "character varying"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "baseline_locked_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "locked_by_user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "max_throughput_per_hour",
+  "data_type": "integer"
+}, {
+  "table_name": "firm_baseline_intake",
+  "column_name": "avg_throughput_per_hour",
+  "data_type": "integer"
+}, {
+  "table_name": "impersonation_sessions",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "impersonation_sessions",
+  "column_name": "super_admin_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "impersonation_sessions",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "impersonation_sessions",
+  "column_name": "owner_user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "impersonation_sessions",
+  "column_name": "reason",
+  "data_type": "text"
+}, {
+  "table_name": "impersonation_sessions",
+  "column_name": "started_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "impersonation_sessions",
+  "column_name": "ended_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "impersonation_sessions",
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "implementation_snapshots",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "implementation_snapshots",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "implementation_snapshots",
+  "column_name": "roadmap_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "implementation_snapshots",
+  "column_name": "snapshot_date",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "implementation_snapshots",
+  "column_name": "label",
+  "data_type": "character varying"
+}, {
+  "table_name": "implementation_snapshots",
+  "column_name": "source",
+  "data_type": "character varying"
+}, {
+  "table_name": "implementation_snapshots",
+  "column_name": "metrics",
+  "data_type": "json"
+}, {
+  "table_name": "implementation_snapshots",
+  "column_name": "notes",
+  "data_type": "text"
+}, {
+  "table_name": "implementation_snapshots",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "intake_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "question_id",
+  "data_type": "text"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "original_response",
+  "data_type": "text"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "clarification_prompt",
+  "data_type": "text"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "clarification_response",
+  "data_type": "text"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "status",
+  "data_type": "text"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "token",
+  "data_type": "text"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "blocking",
+  "data_type": "boolean"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "requested_by_user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "requested_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "responded_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "updated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "email_status",
+  "data_type": "character varying"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "email_error",
+  "data_type": "text"
+}, {
+  "table_name": "intake_clarifications",
+  "column_name": "last_email_attempt_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "intake_vectors",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "intake_vectors",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "intake_vectors",
+  "column_name": "role_label",
+  "data_type": "character varying"
+}, {
+  "table_name": "intake_vectors",
+  "column_name": "role_type",
+  "data_type": "character varying"
+}, {
+  "table_name": "intake_vectors",
+  "column_name": "perceived_constraints",
+  "data_type": "text"
+}, {
+  "table_name": "intake_vectors",
+  "column_name": "anticipated_blind_spots",
+  "data_type": "text"
+}, {
+  "table_name": "intake_vectors",
+  "column_name": "recipient_email",
+  "data_type": "character varying"
+}, {
+  "table_name": "intake_vectors",
+  "column_name": "recipient_name",
+  "data_type": "character varying"
+}, {
+  "table_name": "intake_vectors",
+  "column_name": "invite_status",
+  "data_type": "character varying"
+}, {
+  "table_name": "intake_vectors",
+  "column_name": "intake_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "intake_vectors",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "intake_vectors",
+  "column_name": "updated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "intake_vectors",
+  "column_name": "metadata",
+  "data_type": "json"
+}, {
+  "table_name": "intakes",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "intakes",
+  "column_name": "user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "intakes",
+  "column_name": "role",
+  "data_type": "character varying"
+}, {
+  "table_name": "intakes",
+  "column_name": "answers",
+  "data_type": "json"
+}, {
+  "table_name": "intakes",
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "intakes",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "intakes",
+  "column_name": "status",
+  "data_type": "character varying"
+}, {
+  "table_name": "intakes",
+  "column_name": "completed_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "intakes",
+  "column_name": "coaching_feedback",
+  "data_type": "json"
+}, {
+  "table_name": "invites",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "invites",
+  "column_name": "email",
+  "data_type": "character varying"
+}, {
+  "table_name": "invites",
+  "column_name": "role",
+  "data_type": "character varying"
+}, {
+  "table_name": "invites",
+  "column_name": "token",
+  "data_type": "character varying"
+}, {
+  "table_name": "invites",
+  "column_name": "accepted",
+  "data_type": "boolean"
+}, {
+  "table_name": "invites",
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "invites",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "onboarding_states",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "onboarding_states",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "onboarding_states",
+  "column_name": "percent_complete",
+  "data_type": "integer"
+}, {
+  "table_name": "onboarding_states",
+  "column_name": "total_points",
+  "data_type": "integer"
+}, {
+  "table_name": "onboarding_states",
+  "column_name": "max_points",
+  "data_type": "integer"
+}, {
+  "table_name": "onboarding_states",
+  "column_name": "steps",
+  "data_type": "json"
+}, {
+  "table_name": "onboarding_states",
+  "column_name": "badges",
+  "data_type": "json"
+}, {
+  "table_name": "onboarding_states",
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "onboarding_states",
+  "column_name": "updated_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "onboarding_states",
+  "column_name": "user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "onboarding_states",
+  "column_name": "step",
+  "data_type": "character varying"
+}, {
+  "table_name": "onboarding_states",
+  "column_name": "status",
+  "data_type": "character varying"
+}, {
+  "table_name": "onboarding_states",
+  "column_name": "metadata",
+  "data_type": "json"
+}, {
+  "table_name": "onboarding_states",
+  "column_name": "completed_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "onboarding_states",
+  "column_name": "onboarding_state",
+  "data_type": "character varying"
+}, {
+  "table_name": "onboarding_states",
+  "column_name": "reasons",
+  "data_type": "jsonb"
+}, {
+  "table_name": "onboarding_states",
+  "column_name": "flags",
+  "data_type": "jsonb"
+}, {
+  "table_name": "password_reset_tokens",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "password_reset_tokens",
+  "column_name": "user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "password_reset_tokens",
+  "column_name": "token_hash",
+  "data_type": "text"
+}, {
+  "table_name": "password_reset_tokens",
+  "column_name": "request_ip",
+  "data_type": "text"
+}, {
+  "table_name": "password_reset_tokens",
+  "column_name": "request_ua",
+  "data_type": "text"
+}, {
+  "table_name": "password_reset_tokens",
+  "column_name": "expires_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "password_reset_tokens",
+  "column_name": "used_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "password_reset_tokens",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "public_agent_events",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "public_agent_events",
+  "column_name": "session_id",
+  "data_type": "character varying"
+}, {
+  "table_name": "public_agent_events",
+  "column_name": "event_type",
+  "data_type": "character varying"
+}, {
+  "table_name": "public_agent_events",
+  "column_name": "message",
+  "data_type": "text"
+}, {
+  "table_name": "public_agent_events",
+  "column_name": "metadata",
+  "data_type": "json"
+}, {
+  "table_name": "public_agent_events",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "public_agent_sessions",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "public_agent_sessions",
+  "column_name": "session_id",
+  "data_type": "character varying"
+}, {
+  "table_name": "public_agent_sessions",
+  "column_name": "openai_thread_id",
+  "data_type": "character varying"
+}, {
+  "table_name": "public_agent_sessions",
+  "column_name": "page_context",
+  "data_type": "json"
+}, {
+  "table_name": "public_agent_sessions",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "public_agent_sessions",
+  "column_name": "last_activity_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "roadmap_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "baseline_snapshot_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "at_30d_snapshot_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "at_60d_snapshot_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "at_90d_snapshot_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "deltas",
+  "data_type": "json"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "realized_roi",
+  "data_type": "json"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "status",
+  "data_type": "character varying"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "notes",
+  "data_type": "text"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "roadmap_outcomes",
+  "column_name": "updated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "roadmap_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "section_number",
+  "data_type": "integer"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "section_name",
+  "data_type": "character varying"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "content_markdown",
+  "data_type": "text"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "status",
+  "data_type": "character varying"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "last_updated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "agent_cheatsheet",
+  "data_type": "json"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "word_count",
+  "data_type": "integer"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "diagrams",
+  "data_type": "json"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "roadmap_sections",
+  "column_name": "updated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "pdf_url",
+  "data_type": "character varying"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "status",
+  "data_type": "character varying"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "created_by_user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "version",
+  "data_type": "character varying"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "model_json",
+  "data_type": "jsonb"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "snapshot_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "source_refs",
+  "data_type": "jsonb"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "metadata",
+  "data_type": "jsonb"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "updated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "roadmaps",
+  "column_name": "delivered_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "sas_elections",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "sas_elections",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "sas_elections",
+  "column_name": "proposal_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "sas_elections",
+  "column_name": "decision",
+  "data_type": "character varying"
+}, {
+  "table_name": "sas_elections",
+  "column_name": "note",
+  "data_type": "text"
+}, {
+  "table_name": "sas_elections",
+  "column_name": "decided_by_user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "sas_elections",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "sas_proposals",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "sas_proposals",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "sas_proposals",
+  "column_name": "sas_run_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "sas_proposals",
+  "column_name": "proposal_type",
+  "data_type": "character varying"
+}, {
+  "table_name": "sas_proposals",
+  "column_name": "content",
+  "data_type": "text"
+}, {
+  "table_name": "sas_proposals",
+  "column_name": "source_anchors",
+  "data_type": "jsonb"
+}, {
+  "table_name": "sas_proposals",
+  "column_name": "agent_model",
+  "data_type": "character varying"
+}, {
+  "table_name": "sas_proposals",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "sas_proposals",
+  "column_name": "concept_hash",
+  "data_type": "text"
+}, {
+  "table_name": "sas_proposals",
+  "column_name": "capability_id",
+  "data_type": "text"
+}, {
+  "table_name": "sas_proposals",
+  "column_name": "capability_namespace",
+  "data_type": "text"
+}, {
+  "table_name": "sas_runs",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "sas_runs",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "sas_runs",
+  "column_name": "scope",
+  "data_type": "jsonb"
+}, {
+  "table_name": "sas_runs",
+  "column_name": "source_artifact_refs",
+  "data_type": "jsonb"
+}, {
+  "table_name": "sas_runs",
+  "column_name": "created_by_user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "sas_runs",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "canonical_findings_hash",
+  "data_type": "character varying"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "registry_version",
+  "data_type": "character varying"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "envelope_version",
+  "data_type": "character varying"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "execution_envelope",
+  "data_type": "jsonb"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "inventory_ids",
+  "data_type": "jsonb"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "adapter_ids",
+  "data_type": "jsonb"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "finding_ids",
+  "data_type": "jsonb"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "selection_hash",
+  "data_type": "character varying"
+}, {
+  "table_name": "selection_envelopes",
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "diagnostic_id",
+  "data_type": "character varying"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "ticket_id",
+  "data_type": "character varying"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "title",
+  "data_type": "character varying"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "category",
+  "data_type": "character varying"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "pain_source",
+  "data_type": "text"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "description",
+  "data_type": "text"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "current_state",
+  "data_type": "text"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "target_state",
+  "data_type": "text"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "ai_design",
+  "data_type": "text"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "ghl_implementation",
+  "data_type": "text"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "implementation_steps",
+  "data_type": "json"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "owner",
+  "data_type": "character varying"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "dependencies",
+  "data_type": "json"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "time_estimate_hours",
+  "data_type": "integer"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "cost_estimate",
+  "data_type": "integer"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "success_metric",
+  "data_type": "text"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "roadmap_section",
+  "data_type": "text"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "priority",
+  "data_type": "character varying"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "sprint",
+  "data_type": "integer"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "projected_hours_saved_weekly",
+  "data_type": "integer"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "projected_leads_recovered_monthly",
+  "data_type": "integer"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "roi_notes",
+  "data_type": "text"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "updated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "tier",
+  "data_type": "character varying"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "value_category",
+  "data_type": "character varying"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "approved",
+  "data_type": "boolean"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "admin_notes",
+  "data_type": "text"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "moderated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "moderated_by",
+  "data_type": "uuid"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "moderation_status",
+  "data_type": "character varying"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "inventory_id",
+  "data_type": "text"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "is_sidecar",
+  "data_type": "boolean"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "ticket_type",
+  "data_type": "character varying"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "status",
+  "data_type": "character varying"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "selection_envelope_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "source_finding_ids",
+  "data_type": "jsonb"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "generation_event_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "projection_hash",
+  "data_type": "text"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "envelope_version",
+  "data_type": "integer"
+}, {
+  "table_name": "sop_tickets",
+  "column_name": "capability_id",
+  "data_type": "text"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "owner_user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "filename",
+  "data_type": "character varying"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "original_filename",
+  "data_type": "character varying"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "file_path",
+  "data_type": "text"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "file_size",
+  "data_type": "integer"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "mime_type",
+  "data_type": "character varying"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "category",
+  "data_type": "character varying"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "title",
+  "data_type": "character varying"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "description",
+  "data_type": "text"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "sop_number",
+  "data_type": "text"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "output_number",
+  "data_type": "text"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "uploaded_by",
+  "data_type": "uuid"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "is_public",
+  "data_type": "boolean"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "updated_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "section",
+  "data_type": "text"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "content",
+  "data_type": "text"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "storage_provider",
+  "data_type": "character varying"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "tags",
+  "data_type": "text"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "artifact_hash",
+  "data_type": "character varying"
+}, {
+  "table_name": "tenant_documents",
+  "column_name": "is_immutable",
+  "data_type": "boolean"
+}, {
+  "table_name": "tenant_feature_flags",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "tenant_feature_flags",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "tenant_feature_flags",
+  "column_name": "feature_flag_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "tenant_feature_flags",
+  "column_name": "enabled",
+  "data_type": "boolean"
+}, {
+  "table_name": "tenant_feature_flags",
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "tenant_feature_flags",
+  "column_name": "updated_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "tenant_metrics_daily",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "tenant_metrics_daily",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "tenant_metrics_daily",
+  "column_name": "metric_date",
+  "data_type": "date"
+}, {
+  "table_name": "tenant_metrics_daily",
+  "column_name": "intake_started_count",
+  "data_type": "integer"
+}, {
+  "table_name": "tenant_metrics_daily",
+  "column_name": "intake_completed_count",
+  "data_type": "integer"
+}, {
+  "table_name": "tenant_metrics_daily",
+  "column_name": "roadmap_created_count",
+  "data_type": "integer"
+}, {
+  "table_name": "tenant_metrics_daily",
+  "column_name": "roadmap_delivered_count",
+  "data_type": "integer"
+}, {
+  "table_name": "tenant_metrics_daily",
+  "column_name": "pilot_open_count",
+  "data_type": "integer"
+}, {
+  "table_name": "tenant_metrics_daily",
+  "column_name": "pilot_won_count",
+  "data_type": "integer"
+}, {
+  "table_name": "tenant_metrics_daily",
+  "column_name": "last_activity_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "tenant_metrics_daily",
+  "column_name": "metrics_json",
+  "data_type": "json"
+}, {
+  "table_name": "tenant_metrics_daily",
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "tenant_stage6_config",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "tenant_stage6_config",
+  "column_name": "vertical",
+  "data_type": "character varying"
+}, {
+  "table_name": "tenant_stage6_config",
+  "column_name": "allowed_namespaces",
+  "data_type": "ARRAY"
+}, {
+  "table_name": "tenant_stage6_config",
+  "column_name": "allowed_adapters",
+  "data_type": "ARRAY"
+}, {
+  "table_name": "tenant_stage6_config",
+  "column_name": "max_complexity_tier",
+  "data_type": "character varying"
+}, {
+  "table_name": "tenant_stage6_config",
+  "column_name": "custom_dev_allowed",
+  "data_type": "boolean"
+}, {
+  "table_name": "tenant_stage6_config",
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "tenant_stage6_config",
+  "column_name": "updated_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "tenant_vector_stores",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "tenant_vector_stores",
+  "column_name": "vector_store_id",
+  "data_type": "character varying"
+}, {
+  "table_name": "tenant_vector_stores",
+  "column_name": "last_refreshed_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "tenant_vector_stores",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "tenant_vector_stores",
+  "column_name": "updated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "tenants",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "tenants",
+  "column_name": "owner_user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "tenants",
+  "column_name": "name",
+  "data_type": "character varying"
+}, {
+  "table_name": "tenants",
+  "column_name": "cohort_label",
+  "data_type": "character varying"
+}, {
+  "table_name": "tenants",
+  "column_name": "segment",
+  "data_type": "character varying"
+}, {
+  "table_name": "tenants",
+  "column_name": "region",
+  "data_type": "character varying"
+}, {
+  "table_name": "tenants",
+  "column_name": "status",
+  "data_type": "character varying"
+}, {
+  "table_name": "tenants",
+  "column_name": "notes",
+  "data_type": "text"
+}, {
+  "table_name": "tenants",
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "tenants",
+  "column_name": "updated_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "tenants",
+  "column_name": "discovery_complete",
+  "data_type": "boolean"
+}, {
+  "table_name": "tenants",
+  "column_name": "last_diagnostic_id",
+  "data_type": "character varying"
+}, {
+  "table_name": "tenants",
+  "column_name": "team_headcount",
+  "data_type": "integer"
+}, {
+  "table_name": "tenants",
+  "column_name": "baseline_monthly_leads",
+  "data_type": "integer"
+}, {
+  "table_name": "tenants",
+  "column_name": "firm_size_tier",
+  "data_type": "character varying"
+}, {
+  "table_name": "tenants",
+  "column_name": "business_type",
+  "data_type": "text"
+}, {
+  "table_name": "tenants",
+  "column_name": "intake_window_state",
+  "data_type": "character varying"
+}, {
+  "table_name": "tenants",
+  "column_name": "intake_snapshot_id",
+  "data_type": "character varying"
+}, {
+  "table_name": "tenants",
+  "column_name": "intake_closed_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "tenants",
+  "column_name": "knowledge_base_ready_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "tenants",
+  "column_name": "roles_validated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "tenants",
+  "column_name": "exec_ready_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "tenants",
+  "column_name": "readiness_notes",
+  "data_type": "text"
+}, {
+  "table_name": "tenants",
+  "column_name": "discovery_acknowledged_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "tenants",
+  "column_name": "slug",
+  "data_type": "character varying"
+}, {
+  "table_name": "tenants",
+  "column_name": "domain",
+  "data_type": "character varying"
+}, {
+  "table_name": "tenants",
+  "column_name": "intake_locked_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "tenants",
+  "column_name": "intake_locked_by_user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "tenants",
+  "column_name": "exec_ready_by_user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "tenants",
+  "column_name": "intake_phase",
+  "data_type": "USER-DEFINED"
+}, {
+  "table_name": "tenants",
+  "column_name": "intake_version",
+  "data_type": "integer"
+}, {
+  "table_name": "tenants",
+  "column_name": "intake_reopened_by",
+  "data_type": "uuid"
+}, {
+  "table_name": "tenants",
+  "column_name": "intake_reopen_reason",
+  "data_type": "text"
+}, {
+  "table_name": "tenants",
+  "column_name": "intake_reopened_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "ticket_pack_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "ticket_id",
+  "data_type": "character varying"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "status",
+  "data_type": "character varying"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "assignee",
+  "data_type": "character varying"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "started_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "completed_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "notes",
+  "data_type": "text"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "updated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "ticket_instances",
+  "column_name": "section_number",
+  "data_type": "integer"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "status",
+  "data_type": "character varying"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "started_by",
+  "data_type": "uuid"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "started_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "completed_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "updated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "source_doc_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "source_doc_version",
+  "data_type": "character varying"
+}, {
+  "table_name": "ticket_moderation_sessions",
+  "column_name": "selection_envelope_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "roadmap_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "version",
+  "data_type": "character varying"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "status",
+  "data_type": "character varying"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "total_tickets",
+  "data_type": "integer"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "total_sprints",
+  "data_type": "integer"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "sprint_assignments",
+  "data_type": "json"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "totals",
+  "data_type": "json"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "ticket_packs",
+  "column_name": "updated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "finding_id",
+  "data_type": "character varying"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "finding_category",
+  "data_type": "character varying"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "title",
+  "data_type": "text"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "description",
+  "data_type": "text"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "evidence_refs",
+  "data_type": "jsonb"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "status",
+  "data_type": "character varying"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "moderation_session_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "updated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "finding_type",
+  "data_type": "character varying"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "ticket_type",
+  "data_type": "character varying"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "sprint",
+  "data_type": "integer"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "category",
+  "data_type": "character varying"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "tier",
+  "data_type": "character varying"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "time_estimate_hours",
+  "data_type": "integer"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "ghl_implementation",
+  "data_type": "text"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "implementation_steps",
+  "data_type": "jsonb"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "success_metric",
+  "data_type": "text"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "roi_notes",
+  "data_type": "text"
+}, {
+  "table_name": "tickets_draft",
+  "column_name": "pain_source",
+  "data_type": "text"
+}, {
+  "table_name": "training_modules",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "training_modules",
+  "column_name": "title",
+  "data_type": "character varying"
+}, {
+  "table_name": "training_modules",
+  "column_name": "description",
+  "data_type": "character varying"
+}, {
+  "table_name": "training_modules",
+  "column_name": "content",
+  "data_type": "character varying"
+}, {
+  "table_name": "training_modules",
+  "column_name": "order",
+  "data_type": "integer"
+}, {
+  "table_name": "training_modules",
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "training_progress",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "training_progress",
+  "column_name": "user_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "training_progress",
+  "column_name": "module_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "training_progress",
+  "column_name": "completed",
+  "data_type": "boolean"
+}, {
+  "table_name": "training_progress",
+  "column_name": "completed_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "training_progress",
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "users",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "users",
+  "column_name": "email",
+  "data_type": "character varying"
+}, {
+  "table_name": "users",
+  "column_name": "password_hash",
+  "data_type": "character varying"
+}, {
+  "table_name": "users",
+  "column_name": "role",
+  "data_type": "character varying"
+}, {
+  "table_name": "users",
+  "column_name": "name",
+  "data_type": "character varying"
+}, {
+  "table_name": "users",
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "users",
+  "column_name": "tenant_id",
+  "data_type": "uuid"
+}, {
+  "table_name": "users",
+  "column_name": "reset_token",
+  "data_type": "character varying"
+}, {
+  "table_name": "users",
+  "column_name": "reset_token_expiry",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "users",
+  "column_name": "is_internal",
+  "data_type": "boolean"
+}, {
+  "table_name": "webinar_registrations",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "webinar_registrations",
+  "column_name": "name",
+  "data_type": "character varying"
+}, {
+  "table_name": "webinar_registrations",
+  "column_name": "email",
+  "data_type": "character varying"
+}, {
+  "table_name": "webinar_registrations",
+  "column_name": "company",
+  "data_type": "character varying"
+}, {
+  "table_name": "webinar_registrations",
+  "column_name": "role",
+  "data_type": "character varying"
+}, {
+  "table_name": "webinar_registrations",
+  "column_name": "team_size",
+  "data_type": "integer"
+}, {
+  "table_name": "webinar_registrations",
+  "column_name": "current_crm",
+  "data_type": "character varying"
+}, {
+  "table_name": "webinar_registrations",
+  "column_name": "bottleneck",
+  "data_type": "text"
+}, {
+  "table_name": "webinar_registrations",
+  "column_name": "source",
+  "data_type": "character varying"
+}, {
+  "table_name": "webinar_registrations",
+  "column_name": "status",
+  "data_type": "character varying"
+}, {
+  "table_name": "webinar_registrations",
+  "column_name": "notes",
+  "data_type": "text"
+}, {
+  "table_name": "webinar_registrations",
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone"
+}, {
+  "table_name": "webinar_registrations",
+  "column_name": "metadata",
+  "data_type": "json"
+}, {
+  "table_name": "webinar_settings",
+  "column_name": "id",
+  "data_type": "uuid"
+}, {
+  "table_name": "webinar_settings",
+  "column_name": "password_hash",
+  "data_type": "text"
+}, {
+  "table_name": "webinar_settings",
+  "column_name": "password_version",
+  "data_type": "integer"
+}, {
+  "table_name": "webinar_settings",
+  "column_name": "updated_at",
+  "data_type": "timestamp with time zone"
+}, {
+  "table_name": "webinar_settings",
+  "column_name": "created_at",
+  "data_type": "timestamp with time zone"
+}]
