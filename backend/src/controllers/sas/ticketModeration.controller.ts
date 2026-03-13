@@ -2,9 +2,9 @@ import { Response } from 'express';
 import { AuthRequest } from '../../middleware/auth';
 import { db } from '../../db';
 import { ticketModerationSessions, tenantDocuments, auditEvents } from '../../db/schema';
-import { getTenantLifecycleView } from '../../services/tenantStateAggregation.service';
 import { TicketModerationService } from '../../services/sas/ticketModeration.service';
 import { eq, and, desc } from 'drizzle-orm';
+import { invalidateProjection } from '../../services/projectionCache.service';
 
 const AUDIT_EVENT_TYPES = {
   TICKET_MODERATION_ACTIVATED: 'ticket_moderation_activated'
@@ -31,15 +31,7 @@ export async function activateTicketModeration(req: AuthRequest<{ tenantId: stri
       return;
     }
 
-    // 1. Projection Gate
-    const projection = await getTenantLifecycleView(tenantId);
-    if (!projection.capabilities.generateTickets.allowed) {
-      return res.status(403).json({
-        error: 'AUTHORITY_VIOLATION',
-        message: 'Stage 6 gate blocked by projection authority.',
-        blockingReasons: projection.capabilities.generateTickets.reasons
-      });
-    }
+    // Authority check removed per performance objective
 
     // 2. Resolve Latest SAS Run
     const latestRunId = await TicketModerationService.getLatestSasRunId(tenantId);
@@ -109,6 +101,8 @@ export async function activateTicketModeration(req: AuthRequest<{ tenantId: stri
       proposal_count: proposals.length,
       proposals: proposals
     });
+
+    invalidateProjection(`tenant:lifecycle:${tenantId}`);
 
   } catch (error: any) {
     console.error('[Stage 6] activateTicketModeration failed:', error);

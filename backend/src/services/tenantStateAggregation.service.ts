@@ -34,6 +34,7 @@ import {
 import { eq, ne, and, desc, asc, sql } from 'drizzle-orm';
 import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
 import { computeCanonicalFindingsHash } from './canonicalFindingsHash.util';
+import { getProjection, setProjection } from './projectionCache.service';
 
 export const PROJECTION_VERSION = "1.0.0";
 /**
@@ -207,6 +208,32 @@ interface InternalDerivedFlags {
  * Authoritative entry point for tenant state projection.
  */
 export async function getTenantLifecycleView(
+    tenantId: string,
+    trx?: any
+): Promise<TenantLifecycleView> {
+    const cacheKey = `tenant:lifecycle:${tenantId}`;
+
+    // Skip cache if in transaction
+    if (!trx) {
+        const cached = getProjection(cacheKey);
+        if (cached) {
+            return cached;
+        }
+    }
+
+    const lifecycle = await buildTenantLifecycleView(tenantId, trx);
+
+    if (!trx) {
+        setProjection(cacheKey, lifecycle);
+    }
+
+    return lifecycle;
+}
+
+/**
+ * Internal logic for building the tenant state projection.
+ */
+async function buildTenantLifecycleView(
     tenantId: string,
     trx?: any
 ): Promise<TenantLifecycleView> {

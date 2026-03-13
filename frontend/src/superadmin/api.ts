@@ -655,4 +655,6 @@ export const superadminApi = {
     apiPost<{ success: boolean; tickets: any[] }>(`/firms/${tenantId}/sas/synthesize`, {}),
   getSopTickets: (tenantId: string) =>
     apiGet<{ tickets: any[] }>(`/firms/${tenantId}/sop/tickets`),
+  patchTicketStatus: (ticketId: string, status: string) =>
+    apiPatch<{ ok: boolean }>(`/tickets/${ticketId}/status`, { status }),
 };
