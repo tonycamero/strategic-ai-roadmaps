@@ -45,15 +45,19 @@ export class SelectionEnvelopeService {
         });
         acceptedItems.sort((a, b) => a.proposalId.localeCompare(b.proposalId));
 
-        // 3. Compute Hash using sorted proposal IDs
-        const payload = tenantId + sasRunId + acceptedItems.map(i => i.proposalId).join(',');
+        // 3. Compute Selection Hash using sorted proposal IDs (for lookups & determinism)
+        const hashInput = acceptedItems.map(i => i.proposalId).sort().join(',');
+        const selectionHash = crypto.createHash('sha256').update(hashInput).digest('hex');
+
+        // 4. Compute Envelope Hash (versioned)
+        const payload = tenantId + sasRunId + hashInput;
         const envelopeHash = crypto
             .createHash('sha256')
             .update(payload)
             .update('v2') // Version anchor for schema v2
             .digest('hex');
 
-        // 4. Insert Envelope (deterministic per tenant/run via UNIQUE index)
+        // 5. Insert Envelope (deterministic per tenant/selection via LOOKUP)
         return await db.transaction(async (tx) => {
             const [existing] = await tx
                 .select()
@@ -61,7 +65,7 @@ export class SelectionEnvelopeService {
                 .where(
                     and(
                         eq(selectionEnvelopes.tenantId, tenantId),
-                        eq(selectionEnvelopes.sasRunId, sasRunId)
+                        eq(selectionEnvelopes.selectionHash, selectionHash)
                     )
                 )
                 .limit(1);
@@ -69,22 +73,29 @@ export class SelectionEnvelopeService {
             if (existing) {
                 return {
                     envelopeId: existing.id,
-                    envelopeHash: existing.envelopeHash
+                    envelopeHash: (existing as any).envelopeHash
                 };
             }
 
-            // Insert new envelope
+            // Insert new envelope with legacy-compliant columns
+            // SELECTION_ENGINE_VERSION = '1.0.0', Registry version = '1.0.0'
             const [envelope] = await tx
                 .insert(selectionEnvelopes)
                 .values({
                     tenantId,
-                    sasRunId,
+                    canonicalFindingsHash: 'PENDING_RECALC', // Placeholder or from context
+                    registryVersion: '1.0.0',
+                    envelopeVersion: '1.0.0',
+                    executionEnvelope: { items: acceptedItems },
+                    inventoryIds: acceptedItems.filter(i => i.proposalId).map(i => i.proposalId),
+                    adapterIds: [], // Placeholder
+                    findingIds: acceptedItems.map(i => i.proposalId),
+                    selectionHash,
                     envelopeHash,
-                    createdBy: userId,
-                })
+                } as any)
                 .returning();
 
-            // 5. Insert Envelope Items
+            // 6. Insert Envelope Items
             const itemValues = acceptedItems.map(item => ({
                 envelopeId: envelope.id,
                 proposalId: item.proposalId,
@@ -96,7 +107,7 @@ export class SelectionEnvelopeService {
 
             return {
                 envelopeId: envelope.id,
-                envelopeHash: envelope.envelopeHash
+                envelopeHash: (envelope as any).envelopeHash
             };
         });
     }

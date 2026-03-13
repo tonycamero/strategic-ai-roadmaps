@@ -137,6 +137,7 @@ export interface TenantLifecycleView {
         canGenerateTickets: boolean
         canAssembleRoadmap: boolean
         canReopenIntake: boolean
+        mutationLocked: boolean
         synthesis: {
             ready: boolean
         }
@@ -173,6 +174,7 @@ interface InternalDerivedFlags {
     canGenerateTickets: boolean
     canAssembleRoadmap: boolean
     canReopenIntake: boolean
+    mutationLocked: boolean
     lifecycleValid: boolean
     synthesis: {
         ready: boolean
@@ -770,6 +772,7 @@ function computeDerivedFlags(
         canGenerateTickets,
         canAssembleRoadmap,
         canReopenIntake,
+        mutationLocked: governance.governanceLocked || isHardLocked,
         lifecycleValid,
         synthesis: {
             ready: synthesisReady

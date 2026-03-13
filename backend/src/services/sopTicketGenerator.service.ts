@@ -110,8 +110,24 @@ export async function generateSopTickets(
     );
   }
 
-  const tickets = parsed.tickets;
-  console.log(`[SOP Ticket Generator] Parsed ${tickets.length} tickets from model response`);
+  let tickets = parsed.tickets;
+console.log(`[SOP Ticket Generator] Parsed ${tickets.length} tickets from model response`);
+
+// ---- DEDUPE TICKETS (by title + description) ----
+const seen = new Map<string, any>();
+
+for (const ticket of tickets) {
+  const key = `${ticket.title?.trim()}::${ticket.description?.trim()}`;
+  if (!seen.has(key)) {
+    seen.set(key, ticket);
+  }
+}
+
+tickets.sort((a,b) => a.value_category.localeCompare(b.value_category));
+
+tickets = Array.from(seen.values());
+
+console.log(`[SOP Ticket Generator] After dedupe: ${tickets.length} tickets`);
 
   // Validate ticket count (scaled to firm size - increased for moderation)
   const minTickets = firmSizeTier === 'micro' ? 12 : 15;

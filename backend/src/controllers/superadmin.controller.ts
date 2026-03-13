@@ -24,9 +24,9 @@ import { refreshVectorStoreContent } from '../services/tenantVectorStore.service
 import { getModerationStatus } from '../services/ticketModeration.service';
 import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
 import { AuthorityCategory, CanonicalDiscoveryNotes } from '@roadmap/shared';
-import { generateRawTickets, ParsedTicket, InventoryEmptyError } from '../services/diagnosticIngestion.service';
 import { Sop01Outputs } from '../services/sop01Engine';
 import { sendClarificationRequestEmail } from '../services/email.service';
+import { generateTicketsFromFindings } from '../services/ticketGeneration.service';
 
 // META-TICKET v2: Gate & SOP Architecture Imports
 import { generateSop01Outputs } from '../services/sop01Engine';
@@ -4438,23 +4438,17 @@ export async function activateTicketModeration(req: AuthRequest, res: Response) 
       return;
     }
 
-    // 1. Projection gate — canonical authority (EXEC-TICKET-STAGE6-GATE-REALIGNMENT-001)
-    //    Replaces: direct DB query for findings_canonical existence used as readiness check.
-    //    The projection is the single authority for whether Stage 6 may proceed.
-    console.log(`[Stage 6] Evaluating projection gate for tenant: ${tenantId}`);
+    // 1. Projection Gate (Pipeline Step 1)
     const projection = await getTenantLifecycleView(tenantId);
     if (!projection.capabilities.generateTickets.allowed) {
-      console.warn(`[Stage 6] Gate denied. Blocking reasons: ${projection.capabilities.generateTickets.reasons.join(', ')}`);
       return res.status(403).json({
         error: 'AUTHORITY_VIOLATION',
-        blockingReasons: projection.capabilities.generateTickets.reasons,
-        message: 'Stage 6 gate blocked by projection authority. Canonical findings must be declared first.'
+        message: 'Stage 6 gate blocked by projection authority.',
+        blockingReasons: projection.capabilities.generateTickets.reasons
       });
     }
-    console.log(`[Stage 6] Projection gate passed. Proceeding to content read.`);
 
-    // 2. Content read — after gate passes, fetch canonical doc for hydration
-    //    This is a content hydration step, NOT a readiness check.
+    // 2. Load Canonical Findings (Pipeline Step 2)
     const [canonicalDoc] = await db
       .select()
       .from(tenantDocuments)
@@ -4468,188 +4462,68 @@ export async function activateTicketModeration(req: AuthRequest, res: Response) 
       .limit(1);
 
     if (!canonicalDoc) {
-      // Projection approved but no content found — fail closed, do not proceed.
-      console.error(`[Stage 6] PROJECTION_CONTENT_MISMATCH: projection approved but canonical doc missing for ${tenantId}`);
       return res.status(409).json({
         error: 'PROJECTION_CONTENT_MISMATCH',
-        message: 'Projection approved Stage 6 but canonical findings content could not be read. Contact support.'
+        message: 'No canonical findings found for this tenant.'
       });
     }
-    console.log(`[Stage 6] Canonical doc loaded: ${canonicalDoc.id}`);
 
-
-    // 2. Check for existing active session
-    console.log(`[Stage 6] Checking for existing active session for ${tenantId}`);
-    const [existingSession] = await db
+    // 3. Resolve Current Run (Pipeline Step 4)
+    const [latestRun] = await db
       .select()
-      .from(ticketModerationSessions)
-      .where(
-        and(
-          eq(ticketModerationSessions.tenantId, tenantId),
-          eq(ticketModerationSessions.status, 'active')
-        )
-      )
+      .from(sasRuns)
+      .where(eq(sasRuns.tenantId, tenantId))
+      .orderBy(desc(sasRuns.createdAt))
       .limit(1);
 
-    if (existingSession) {
-      console.warn(`[Stage 6] Active session already exists for ${tenantId}: ${existingSession.id}`);
-      return res.status(400).json({ error: 'Ticket moderation session is already active.' });
-    }
-
-    // 3. Create Session & Materialize Tickets (Atomic logic)
-    console.log(`[Stage 6] Materializing tickets from canonical findings...`);
-    const content = JSON.parse(canonicalDoc.content || '{}');
-    const sourceFindings = content.findings || [];
-    console.log(`[Stage 6] Source findings count: ${sourceFindings.length}`);
-
-    // Support both 'accepted' status AND implicit acceptance (anything in canon is accepted)
-    // 3. Generate tickets via Legacy AI Architect (SOP-01)
-    // Fetch SOP artifacts
-    console.log(`[Stage 6] Fetching SOP-01 artifacts...`);
-    const sopDocs = await db.select().from(tenantDocuments).where(and(eq(tenantDocuments.tenantId, tenantId), eq(tenantDocuments.category, 'sop_output')));
-
-    const sop01Artifacts = {
-      diagnosticMap: sopDocs.find(d => d.outputNumber === 'DIAGNOSTIC_MAP'),
-      aiLeverageMap: sopDocs.find(d => d.outputNumber === 'AI_LEVERAGE_MAP'),
-      roadmapSkeleton: sopDocs.find(d => d.outputNumber === 'ROADMAP_SKELETON'),
-      discoveryQuestions: sopDocs.find(d => d.outputNumber === 'DISCOVERY_QUESTIONS'),
-    };
-
-    // Validate we have enough to generate
-    if (!sop01Artifacts.diagnosticMap || !sop01Artifacts.roadmapSkeleton) {
-      console.error(`[Stage 6] Missing artifacts: diagMap=${!!sop01Artifacts.diagnosticMap}, skeleton=${!!sop01Artifacts.roadmapSkeleton}`);
+    if (!latestRun) {
       return res.status(409).json({
-        error: 'MISSING_ARTIFACTS',
-        message: 'Cannot generate tickets: SOP-01 artifacts (Diagnostic Map, Roadmap Skeleton) are missing. Please ensure diagnostic interpretation is complete.'
-      });
-    }
-    // Fetch Tenant Data for AI Context
-    const [tenantData] = await db
-      .select({
-        tenantName: tenants.name,
-        firmSizeTier: tenants.firmSizeTier,
-        teamHeadcount: tenants.teamHeadcount
-      })
-      .from(tenants)
-      .where(eq(tenants.id, tenantId))
-      .limit(1);
-
-    if (!tenantData) {
-      console.error(`[Stage 6] Tenant not found for context: ${tenantId}`);
-      return res.status(404).json({ error: 'Tenant data not found' });
-    }
-
-    let rawTickets: ParsedTicket[] = [];
-    try {
-      const diagMap = {
-        tenantId,
-        firmName: tenantData.tenantName || 'Firm',
-        firmSize: tenantData.firmSizeTier || 'Small',
-        employeeCount: tenantData.teamHeadcount || 5
-      };
-
-      console.log(`[Stage 6] invoking legacy AI Ticket Architect for ${tenantId}...`);
-      rawTickets = await generateRawTickets(tenantId, diagMap, sop01Artifacts);
-      console.log(`[Stage 6] Raw tickets generated: ${rawTickets.length}`);
-    } catch (e: any) {
-      if (e instanceof InventoryEmptyError) {
-        console.warn(`[Stage 6] Fail-Closed: Inventory Empty for ${tenantId}. Skipping OpenAI.`);
-        return res.status(409).json({
-          error: 'INVENTORY_EMPTY',
-          message: 'No inventory items could be extracted from SOP artifacts. Check artifact format.',
-          debug: e.debug
-        });
-      }
-      console.error('[Stage 6] AI Ticket Generation Failed:', e);
-      return res.status(502).json({ error: 'AI_GENERATION_FAILED', message: e.message });
-    }
-
-    // 3a. Envelope validation gate (EXEC-TICKET-MODERATION-BINDING-001)
-    //     SelectionEnvelope must exist for this tenant before moderation may proceed.
-    //     No recompute. No fallback. Fail closed.
-    console.log(`[Stage 6] Validating SelectionEnvelope for tenant: ${tenantId}`);
-    const [boundEnvelope] = await db
-      .select()
-      .from(legacySelectionEnvelopes)
-      .where(eq(legacySelectionEnvelopes.tenantId, tenantId))
-      .orderBy(desc(legacySelectionEnvelopes.createdAt))
-      .limit(1);
-
-    if (!boundEnvelope) {
-      console.error(`[Stage 6] ENVELOPE_NOT_FOUND: No SelectionEnvelope exists for ${tenantId}`);
-      return res.status(409).json({
-        error: 'ENVELOPE_NOT_FOUND',
-        message: 'No SelectionEnvelope found for this tenant. Selection must be compiled before moderation can be activated.',
+        error: 'SAS_RUN_NOT_FOUND',
+        message: 'No active SAS run found for this tenant.'
       });
     }
 
-    // Validate canonicalFindingsHash matches — prevents stale envelope binding.
-    const persistedHash = canonicalDoc.artifactHash;
-    if (persistedHash && boundEnvelope.canonicalFindingsHash !== persistedHash) {
-      console.error(
-        `[Stage 6] ENVELOPE_HASH_MISMATCH: envelope.canonicalFindingsHash=${boundEnvelope.canonicalFindingsHash} !== doc.artifactHash=${persistedHash}`
-      );
-      return res.status(409).json({
-        error: 'ENVELOPE_HASH_MISMATCH',
-        message: 'SelectionEnvelope was compiled against a different canonical findings set. Recompile the selection before activating moderation.',
-        envelopeHash: boundEnvelope.canonicalFindingsHash,
-        documentHash: persistedHash,
-      });
-    }
-    if (boundEnvelope.envelopeVersion !== SELECTION_ENGINE_VERSION) {
-      console.error(
-        `[Stage 6] ENVELOPE_VERSION_MISMATCH: envelope.envelopeVersion=${boundEnvelope.envelopeVersion} !== current SELECTION_ENGINE_VERSION=${SELECTION_ENGINE_VERSION}`
-      );
-      return res.status(409).json({
-        error: 'ENVELOPE_VERSION_MISMATCH',
-        message: 'SelectionEnvelope was compiled with an older engine version. Recompile the selection before activating moderation.',
-        envelopeVersion: boundEnvelope.envelopeVersion,
-        currentVersion: SELECTION_ENGINE_VERSION,
-      });
-    }
-    console.log(`[Stage 6] Envelope bound: ${boundEnvelope.id} (selectionHash: ${boundEnvelope.selectionHash})`);
+    // 4. Generate Tickets (Pipeline Step 3 - Refactored for Governance)
+    // SSOT: Generation MUST derive from canonical findings via dedicated service.
+    // Controller MUST NOT shape or construct proposals.
+    const findingsObject = JSON.parse(canonicalDoc.content || '{}');
+    const proposals = await generateTicketsFromFindings(tenantId, latestRun.id, findingsObject);
 
+    if (proposals.length === 0) {
+      return res.status(409).json({
+        error: 'NO_TICKETS_GENERATED',
+        message: 'No tickets generated from canonical findings.'
+      });
+    }
+
+    // 5 & 6. Materialize & Start Session (Pipeline Steps 5 & 6)
     const { session, draftCount } = await db.transaction(async (tx) => {
+      // Step 6: Start Moderation Session (Orchestration ONLY)
       const [newSession] = await tx.insert(ticketModerationSessions).values({
         tenantId,
         sourceDocId: canonicalDoc.id,
         sourceDocVersion: 'v1.0',
         status: 'active',
         startedBy: req.user!.userId,
-        selectionEnvelopeId: boundEnvelope.id,  // EXEC-TICKET-MODERATION-BINDING-001
+        selectionEnvelopeId: null, // SSOT pipeline skips envelope binding at this stage
       }).returning();
 
-      const ticketsToCreate = rawTickets.map((t, idx) => ({
-        tenantId,
-        moderationSessionId: newSession.id,
-        findingId: `ai-gen-${randomUUID().substring(0, 8)}`, // Synthetic ID as AI output is new creation
-        findingType: 'AI_SOP_GEN',
-        ticketType: 'Implementation',
-        title: t.title.substring(0, 255),
-        description: t.description,
-        status: 'pending',
-        evidenceRefs: [],
+      // Step 5: Materialize Proposals (Persist ONLY)
+      // proposals are fully constructed by the TicketGenerationService
+      await tx.insert(sasProposals).values(proposals as any);
 
-        // Rich Fields (Stage 6)
-        category: t.category,
-        tier: t.tier,
-        ghlImplementation: t.ghl_implementation,
-        implementationSteps: t.implementation_steps, // ParsedTicket types is string[] | undefined, schema is json
-        successMetric: t.success_metric,
-        roiNotes: t.roi_notes,
-        timeEstimateHours: t.time_estimate_hours || 0,
-        sprint: t.sprint || 30,
-        painSource: 'AI Diagnostic Analysis'
-      }));
-
-      if (ticketsToCreate.length > 0) {
-        await tx.insert(ticketsDraft).values(ticketsToCreate as any);
-      }
-
-      return { session: newSession, draftCount: ticketsToCreate.length };
+      return { session: newSession, draftCount: proposals.length };
     });
 
-    // 4. Audit
+    // 7. Response (Pipeline Step 7)
+    return res.status(200).json({
+      success: true,
+      message: 'Ticket moderation session activated.',
+      sessionId: session.id,
+      ticketCount: draftCount
+    });
+
+    // 6. Audit
     await db.insert(auditEvents).values({
       tenantId,
       actorUserId: req.user!.userId,
@@ -4669,8 +4543,11 @@ export async function activateTicketModeration(req: AuthRequest, res: Response) 
       draftTicketCount: draftCount,
     });
   } catch (error: any) {
-    console.error('Activate Ticket Moderation Error:', error);
-    return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+    console.error('[Stage 6] activateTicketModeration failed:', error);
+    return res.status(500).json({
+      error: 'ACTIVATE_MODERATION_FAILED',
+      message: error.message
+    });
   }
 }
 
@@ -5298,5 +5175,70 @@ export async function getSasRuns(req: AuthRequest, res: Response) {
   } catch (err: any) {
     console.error('[SAS Runs] Error:', err);
     return res.status(500).json({ error: 'SAS_RUNS_FAILED', message: err.message });
+  }
+}
+
+/**
+ * POST /api/superadmin/tickets/generate/:tenantId/:diagnosticId
+ * Orchestrates ticket generation from Discovery Synthesis (findings_canonical)
+ * SSOT: Orchestration only. No generation/shaping logic allowed in controller.
+ */
+export async function generateTicketsFromDiscoverySynthesis(req: AuthRequest, res: Response) {
+  const { tenantId } = req.params;
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+
+    // 1. Load Canonical Findings
+    const [doc] = await db.select()
+      .from(tenantDocuments)
+      .where(and(
+        eq(tenantDocuments.tenantId, tenantId),
+        eq(tenantDocuments.category, 'findings_canonical')
+      ))
+      .orderBy(desc(tenantDocuments.createdAt))
+      .limit(1);
+
+    if (!doc || !doc.content) {
+      return res.status(404).json({
+        error: 'FINDINGS_MISSING',
+        message: 'No Canonical Findings found. Discovery Ingestion must be completed first.'
+      });
+    }
+
+    // 2. Resolve Current Run
+    const [latestRun] = await db
+      .select()
+      .from(sasRuns)
+      .where(eq(sasRuns.tenantId, tenantId))
+      .orderBy(desc(sasRuns.createdAt))
+      .limit(1);
+
+    if (!latestRun) {
+      return res.status(409).json({
+        error: 'SAS_RUN_NOT_FOUND',
+        message: 'No active SAS run found for this tenant.'
+      });
+    }
+
+    // 3. Generate & Persist (Service Invocation ONLY)
+    const findingsObject = JSON.parse(doc.content);
+    const proposals = await generateTicketsFromFindings(tenantId, latestRun.id, findingsObject);
+
+    if (proposals.length > 0) {
+      await db.insert(sasProposals).values(proposals as any);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Generated ${proposals.length} Canonical Tickets from Findings`,
+      ticketCount: proposals.length
+    });
+
+  } catch (error: any) {
+    console.error('[Stage 6] generateTicketsFromDiscoverySynthesis failed:', error);
+    return res.status(500).json({
+      error: 'TICKET_GENERATION_FAILED',
+      message: error.message
+    });
   }
 }

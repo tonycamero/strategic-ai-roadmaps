@@ -1,21 +1,28 @@
 import { db } from '../db/index';
-import { sopTickets, roadmapGraphs, roadmapGraphNodes, roadmapGraphEdges, selectionEnvelopes } from '../db/schema';
+import {
+    sopTickets,
+    roadmapGraphs,
+    roadmapGraphNodes,
+    roadmapGraphEdges,
+    selectionEnvelopes
+} from '../db/schema';
+
 import { eq } from 'drizzle-orm';
 import { loadInventory } from '../trustagent/services/inventory.service';
 
 export interface RoadmapNode {
     ticketId: string;
     inventoryId: string;
-    capabilityId: string;     // Added for Stage 7 persistence
+    capabilityId: string;
     namespace: string;
     complexityTier: string;
-    stage: number;            // Added for Stage 7 persistence (phaseNumber)
+    stage: number;
 }
 
 export interface DependencyEdge {
-    fromTicketId: string;     // The prerequisite ticket
-    toTicketId: string;       // The ticket that depends on it
-    dependencyType: 'hard' | 'soft' | 'sequence' | 'prerequisite'; // Updated to match request
+    fromTicketId: string;
+    toTicketId: string;
+    dependencyType: 'hard' | 'soft' | 'sequence' | 'prerequisite';
 }
 
 export interface ExecutionPhase {
@@ -30,81 +37,165 @@ export interface ExecutionGraph {
 }
 
 export class Stage7GraphCompilerService {
-    /**
-     * Compile a deterministic execution graph from a selection envelope's ticket set.
-     */
+
     static async compileGraph(selectionEnvelopeId: string): Promise<ExecutionGraph> {
-        // 1. Load Tickets
-        const tickets = await db.select()
+
+        const ticketsRaw = await db.select()
             .from(sopTickets)
             .where(eq(sopTickets.selectionEnvelopeId, selectionEnvelopeId));
 
-        if (!tickets.length) {
+        if (!ticketsRaw.length) {
             return { nodes: [], edges: [], phases: [] };
         }
 
-        // 2. Load Inventory for Dependency Resolution
+        /**
+         * ------------------------------------------------------------------
+         * DETERMINISTIC ORDERING FIX
+         * ------------------------------------------------------------------
+         * Sort tickets before graph construction so runs are stable.
+         */
+
+        const executionOrder: Record<string, number> = {
+            INVESTIGATE: 1,
+            VERIFY_CONSTRAINT: 2,
+            BUILD_CAPABILITY: 3
+        };
+
+        const tickets = [...ticketsRaw].sort((a, b) => {
+
+            const aOrder = executionOrder[a.ticketType || ''] ?? 99;
+            const bOrder = executionOrder[b.ticketType || ''] ?? 99;
+
+            if (aOrder !== bOrder) return aOrder - bOrder;
+
+            const aKey = a.ticketKey || a.title || '';
+            const bKey = b.ticketKey || b.title || '';
+
+            return aKey.localeCompare(bKey);
+        });
+
+        /**
+         * ------------------------------------------------------------------
+         * LOAD INVENTORY
+         * ------------------------------------------------------------------
+         */
+
         const inventory = loadInventory();
         const inventoryMap = new Map(inventory.map(i => [i.inventoryId, i]));
 
         const nodes: RoadmapNode[] = [];
         const edges: DependencyEdge[] = [];
-        const ticketIdByInventoryId = new Map<string, string>();
 
-        // 3. Compile Nodes & Map Tickets
+        const complexityMap: Record<string, string> = {
+            low: 'T1',
+            medium: 'T2',
+            high: 'T3'
+        };
+
+        /**
+         * ------------------------------------------------------------------
+         * BUILD NODES
+         * ------------------------------------------------------------------
+         */
+
         for (const ticket of tickets) {
+
             if (!ticket.inventoryId) continue;
 
             const inventoryItem = inventoryMap.get(ticket.inventoryId);
-            const complexityMap: Record<string, string> = { 'low': 'T1', 'medium': 'T2', 'high': 'T3' };
 
             nodes.push({
-                ticketId: ticket.id, // Use UUID for stable graph mapping
+                ticketId: ticket.id,
                 inventoryId: ticket.inventoryId,
-                capabilityId: ticket.inventoryId, // In Stage 6, capabilityId = inventoryId
+                capabilityId: ticket.inventoryId,
                 namespace: ticket.category || 'GEN',
-                complexityTier: ticket.tier || (inventoryItem ? (complexityMap[inventoryItem.complexity] || 'T1') : 'T1'),
-                stage: 0 // Will be populated by topological sort
+                complexityTier:
+                    ticket.tier ||
+                    (inventoryItem
+                        ? complexityMap[inventoryItem.complexity] || 'T1'
+                        : 'T1'),
+                stage: 0
             });
-
-            ticketIdByInventoryId.set(ticket.inventoryId, ticket.id);
         }
 
-// 4. Compile Edges
-for (const ticket of tickets) {
-    // Read dependencies directly from sop_tickets JSON column
-    const deps = Array.isArray(ticket.dependencies)
-        ? ticket.dependencies
-        : JSON.parse(ticket.dependencies || '[]');
+        /**
+         * Ensure deterministic node order
+         */
 
-    for (const depTicketId of deps) {
-        edges.push({
-            fromTicketId: depTicketId,
-            toTicketId: ticket.id,
-            dependencyType: 'sequence'
+        nodes.sort((a, b) => a.ticketId.localeCompare(b.ticketId));
+
+        /**
+         * ------------------------------------------------------------------
+         * BUILD EDGES
+         * ------------------------------------------------------------------
+         */
+
+        for (const ticket of tickets) {
+
+            let deps: string[] = [];
+
+            if (Array.isArray(ticket.dependencies)) {
+                deps = ticket.dependencies;
+            } else if (typeof ticket.dependencies === 'string') {
+                try {
+                    deps = JSON.parse(ticket.dependencies);
+                } catch {
+                    deps = [];
+                }
+            }
+
+            deps.sort();
+
+            for (const depTicketId of deps) {
+
+                edges.push({
+                    fromTicketId: depTicketId,
+                    toTicketId: ticket.id,
+                    dependencyType: 'sequence'
+                });
+            }
+        }
+
+        /**
+         * Deterministic edge ordering
+         */
+
+        edges.sort((a, b) => {
+
+            if (a.fromTicketId !== b.fromTicketId)
+                return a.fromTicketId.localeCompare(b.fromTicketId);
+
+            return a.toTicketId.localeCompare(b.toTicketId);
         });
-    }
-}
 
-        // 5. Compile Phases (Topological Sort)
+        /**
+         * ------------------------------------------------------------------
+         * TOPOLOGICAL SORT (PHASE BUILDING)
+         * ------------------------------------------------------------------
+         */
+
         const phases: ExecutionPhase[] = [];
+
         const nodeIds = new Set(nodes.map(n => n.ticketId));
+
         const incomingEdgesCount = new Map<string, number>();
         const outgoingEdges = new Map<string, string[]>();
 
-        // Initialize structures
         for (const nodeId of nodeIds) {
             incomingEdgesCount.set(nodeId, 0);
             outgoingEdges.set(nodeId, []);
         }
 
-        // Populate graph structure
         for (const edge of edges) {
+
             const count = incomingEdgesCount.get(edge.toTicketId) || 0;
             incomingEdgesCount.set(edge.toTicketId, count + 1);
 
             const out = outgoingEdges.get(edge.fromTicketId) || [];
             out.push(edge.toTicketId);
+
+            out.sort();
+
             outgoingEdges.set(edge.fromTicketId, out);
         }
 
@@ -112,42 +203,49 @@ for (const ticket of tickets) {
         let remainingNodes = new Set(nodeIds);
 
         while (remainingNodes.size > 0) {
-            const currentPhaseNodes: string[] = [];
+    const currentPhaseNodes: string[] = [];
 
-            // Find all nodes with 0 incoming edges
-            for (const nodeId of remainingNodes) {
-                if (incomingEdgesCount.get(nodeId) === 0) {
-                    currentPhaseNodes.push(nodeId);
-                }
-            }
+    const sortedRemaining = Array.from(remainingNodes).sort();
 
-            // Cycle detection (if no nodes have 0 incoming edges but there are remaining nodes)
-            if (currentPhaseNodes.length === 0 && remainingNodes.size > 0) {
-                // Fallback: put remaining nodes in the final phase to avoid infinite loop
+    for (const nodeId of sortedRemaining) {
+        if (incomingEdgesCount.get(nodeId) === 0) {
+            currentPhaseNodes.push(nodeId);
+        }
+    }
+
+            /**
+             * Cycle protection fallback
+             */
+
+            if (currentPhaseNodes.length === 0) {
+
                 phases.push({
                     phaseNumber: currentPhaseNumber,
-                    ticketIds: Array.from(remainingNodes)
+                    ticketIds: [...remainingNodes].sort()
                 });
+
                 break;
             }
 
-            // Add phase
             phases.push({
                 phaseNumber: currentPhaseNumber,
                 ticketIds: currentPhaseNodes
             });
 
-            // Update nodes with their stage
             for (const nodeId of currentPhaseNodes) {
+
                 const node = nodes.find(n => n.ticketId === nodeId);
-                if (node) {
-                    node.stage = currentPhaseNumber;
-                }
+
+                if (node) node.stage = currentPhaseNumber;
 
                 remainingNodes.delete(nodeId);
+
                 const outNodes = outgoingEdges.get(nodeId) || [];
+
                 for (const outNode of outNodes) {
+
                     const currentCount = incomingEdgesCount.get(outNode) || 0;
+
                     incomingEdgesCount.set(outNode, currentCount - 1);
                 }
             }
@@ -155,23 +253,21 @@ for (const ticket of tickets) {
             currentPhaseNumber++;
         }
 
-        return {
-            nodes,
-            edges,
-            phases
-        };
+        return { nodes, edges, phases };
     }
 
     /**
-     * Compile and persist the roadmap graph for a given selection envelope.
-     * Implements Part 1-6 of Stage-7 Roadmap Graph Persistence.
+     * ------------------------------------------------------------------
+     * COMPILE + PERSIST GRAPH
+     * ------------------------------------------------------------------
      */
-    static async compileAndPersistGraph(selectionEnvelopeId: string): Promise<{ graphId: string; nodeCount: number; edgeCount: number }> {
+
+    static async compileAndPersistGraph(selectionEnvelopeId: string) {
+
         return await db.transaction(async (tx) => {
-            // 1. Compile ExecutionGraph
+
             const graph = await this.compileGraph(selectionEnvelopeId);
 
-            // Fetch envelope metadata (for tenantId and projectionHash)
             const [envelope] = await tx.select({
                 tenantId: selectionEnvelopes.tenantId,
                 envelopeHash: selectionEnvelopes.envelopeHash
@@ -184,19 +280,27 @@ for (const ticket of tickets) {
                 throw new Error(`ENVELOPE_NOT_FOUND: ${selectionEnvelopeId}`);
             }
 
-            // 2. Idempotency Guard (Part 5)
+            /**
+             * Idempotent rebuild
+             */
+
             const [existingGraph] = await tx.select({ id: roadmapGraphs.id })
                 .from(roadmapGraphs)
                 .where(eq(roadmapGraphs.selectionEnvelopeId, selectionEnvelopeId))
                 .limit(1);
 
             if (existingGraph) {
-                await tx.delete(roadmapGraphNodes).where(eq(roadmapGraphNodes.graphId, existingGraph.id));
-                await tx.delete(roadmapGraphEdges).where(eq(roadmapGraphEdges.graphId, existingGraph.id));
-                await tx.delete(roadmapGraphs).where(eq(roadmapGraphs.id, existingGraph.id));
+
+                await tx.delete(roadmapGraphNodes)
+                    .where(eq(roadmapGraphNodes.graphId, existingGraph.id));
+
+                await tx.delete(roadmapGraphEdges)
+                    .where(eq(roadmapGraphEdges.graphId, existingGraph.id));
+
+                await tx.delete(roadmapGraphs)
+                    .where(eq(roadmapGraphs.id, existingGraph.id));
             }
 
-            // 3. Persist Graph Metadata (Part 2)
             const [newGraph] = await tx.insert(roadmapGraphs)
                 .values({
                     tenantId: envelope.tenantId,
@@ -207,30 +311,31 @@ for (const ticket of tickets) {
                 })
                 .returning();
 
-            // 4. Persist Nodes (Part 3)
-            if (graph.nodes.length > 0) {
-                const nodeValues = graph.nodes.map(node => ({
+            if (graph.nodes.length) {
+
+                const nodeValues = graph.nodes.map(n => ({
                     graphId: newGraph.id,
-                    sopTicketId: node.ticketId,
-                    capabilityId: node.capabilityId,
-                    namespace: node.namespace,
-                    stage: node.stage
+                    sopTicketId: n.ticketId,
+                    capabilityId: n.capabilityId,
+                    namespace: n.namespace,
+                    stage: n.stage
                 }));
+
                 await tx.insert(roadmapGraphNodes).values(nodeValues);
             }
 
-            // 5. Persist Edges (Part 4)
-            if (graph.edges.length > 0) {
-                const edgeValues = graph.edges.map(edge => ({
+            if (graph.edges.length) {
+
+                const edgeValues = graph.edges.map(e => ({
                     graphId: newGraph.id,
-                    fromTicketId: edge.fromTicketId,
-                    toTicketId: edge.toTicketId,
-                    dependencyType: edge.dependencyType as any // 'hard' | 'soft' | 'sequence'
+                    fromTicketId: e.fromTicketId,
+                    toTicketId: e.toTicketId,
+                    dependencyType: e.dependencyType as any
                 }));
+
                 await tx.insert(roadmapGraphEdges).values(edgeValues);
             }
 
-            // 6. Return Result (Part 6)
             return {
                 graphId: newGraph.id,
                 nodeCount: graph.nodes.length,

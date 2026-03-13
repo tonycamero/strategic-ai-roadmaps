@@ -489,13 +489,21 @@ export const legacySelectionEnvelopes = pgTable('legacy_selection_envelopes', {
 export const selectionEnvelopes = pgTable('selection_envelopes', {
   id: uuid('id').primaryKey().defaultRandom(),
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  sasRunId: uuid('sas_run_id').notNull().references(() => sasRuns.id, { onDelete: 'cascade' }),
-  envelopeHash: text('envelope_hash').notNull(),
-  createdBy: uuid('created_by').notNull().references(() => users.id),
+
+  canonicalFindingsHash: varchar('canonical_findings_hash', { length: 64 }),
+  registryVersion: varchar('registry_version', { length: 50 }),
+  envelopeVersion: varchar('envelope_version', { length: 50 }),
+
+  executionEnvelope: jsonb('execution_envelope'),
+  inventoryIds: jsonb('inventory_ids'),
+  adapterIds: jsonb('adapter_ids'),
+  findingIds: jsonb('finding_ids'),
+
+  selectionHash: varchar('selection_hash', { length: 64 }),
+  envelopeHash: text('envelope_hash'), // Included in user dump
+
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => ({
-  tenantRunUnique: uniqueIndex('selection_envelopes_tenant_run_unique').on(table.tenantId, table.sasRunId),
-}));
+});
 
 export const selectionEnvelopeItems = pgTable('selection_envelope_items', {
   id: uuid('id').primaryKey().defaultRandom(),

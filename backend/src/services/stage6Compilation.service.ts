@@ -30,16 +30,18 @@ export class Stage6CompilationService {
         // 1. Load Execution Envelope (with firm constraints)
         const envelope = await ExecutionEnvelopeService.loadEnvelope(selectionEnvelopeId);
 
-        // Fetch envelope metadata (for provenance)
+        // 2. Fetch envelope metadata (for provenance)
+        // NOTE: selection_envelopes does NOT have sas_run_id. We resolve it via proposals.
         const [envelopeRecord] = await db.select({
-            sasRunId: selectionEnvelopes.sasRunId
+            sasRunId: sasProposals.sasRunId
         })
-            .from(selectionEnvelopes)
-            .where(eq(selectionEnvelopes.id, selectionEnvelopeId))
+            .from(selectionEnvelopeItems)
+            .innerJoin(sasProposals, eq(selectionEnvelopeItems.proposalId, sasProposals.id))
+            .where(eq(selectionEnvelopeItems.envelopeId, selectionEnvelopeId))
             .limit(1);
 
         if (!envelopeRecord) {
-            throw new Error(`ENVELOPE_NOT_FOUND: ${selectionEnvelopeId}`);
+            throw new Error(`ENVELOPE_METADATA_MISSING: No linked proposals found for envelope ${selectionEnvelopeId}`);
         }
 
         // Fetch Run state (for projection snapshot hash)
