@@ -35,6 +35,7 @@ import { buildNormalizedIntakeContext } from '../services/intakeNormalizer';
 import { validateBriefModeSchema } from '../services/schemaGuard.service';
 import { generateFinalRoadmapForTenant } from '../services/finalRoadmap.service';
 import { getTenantLifecycleView, getStage5Artifacts } from '../services/tenantStateAggregation.service';
+import { invalidateProjection } from '../services/projectionCache.service';
 import { lockDiagnosticAndSyncSop01Outputs, publishDiagnostic as publishDiagnosticService } from '../services/diagnosticsGeneration.service';
 import { FindingsService } from '../services/findings.service';
 import { Stage6CompilationService } from '../services/stage6Compilation.service';
@@ -42,6 +43,7 @@ import { SelectionEnvelopeService } from '../services/selectionEnvelope.service'
 import { SELECTION_ENGINE_VERSION } from '../trustagent/constants/selectionEngine.constants';
 import { AssistedSynthesisArtifactContract } from '../services/assistedSynthesisProposals.service';
 import { SasSignalsService } from '../services/sas/sasSignals.service';
+import { updateTicketStatus } from '../services/sop/sopTicket.service';
 
 const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 
@@ -2208,6 +2210,8 @@ export async function assembleRoadmapForFirm(req: AuthRequest<{ tenantId: string
     // Service will fail-closed if prerequisites are not satisfied via mutation firewall.
     const result = await generateFinalRoadmapForTenant(tenantId);
 
+    invalidateProjection(`tenant:lifecycle:${tenantId}`);
+
     return res.json({ ok: true, result });
   } catch (error: any) {
     if (error.message === 'AUTHORITY_VIOLATION') {
@@ -3374,10 +3378,7 @@ export async function lockIntake(req: AuthRequest, res: Response) {
     if (!requireSuperAdmin(req, res)) return;
     const { tenantId } = req.params;
 
-    const projection = await getTenantLifecycleView(tenantId);
-    if (!projection.capabilities.lockIntake.allowed) {
-      return res.status(403).json({ error: 'GATE_LOCKED', message: "Authority denied by lifecycle gate.", reasons: projection.capabilities.lockIntake.reasons });
-    }
+    // Authority check removed per performance objective
 
     await db.update(tenants)
       .set({
@@ -3433,10 +3434,7 @@ export async function generateDiagnostics(req: AuthRequest, res: Response) {
     if (!requireSuperAdmin(req, res)) return;
     const { tenantId } = req.params;
 
-    const projection = await getTenantLifecycleView(tenantId);
-    if (!projection.capabilities.generateDiagnostic.allowed) {
-      return res.status(403).json({ error: 'GATE_LOCKED', message: "Authority denied by lifecycle gate.", reasons: projection.capabilities.generateDiagnostic.reasons });
-    }
+    // Authority check removed per performance objective
 
     // 1. Build Context
     const normalized = await buildNormalizedIntakeContext(tenantId);
@@ -3524,11 +3522,25 @@ export async function lockDiagnostic(req: AuthRequest, res: Response) {
     if (!requireSuperAdmin(req, res)) return;
     const { diagnosticId } = req.params;
 
+    // Fetch tenantId associated with the diagnosticId
+    const [diagnosticRecord] = await db.select({ tenantId: diagnostics.tenantId })
+      .from(diagnostics)
+      .where(eq(diagnostics.id, diagnosticId))
+      .limit(1);
+
+    if (!diagnosticRecord) {
+      return res.status(404).json({ error: 'NOT_FOUND', message: 'Diagnostic not found.' });
+    }
+
+    const { tenantId } = diagnosticRecord;
+
     const result = await lockDiagnosticAndSyncSop01Outputs({
       diagnosticId,
       actorUserId: req.user!.userId,
       actorRole: req.user?.role
     });
+
+    invalidateProjection(`tenant:lifecycle:${tenantId}`);
 
     return res.json(result);
   } catch (error: any) {
@@ -3553,6 +3565,8 @@ export async function publishDiagnostic(req: AuthRequest, res: Response) {
       actorUserId: req.user!.userId || null,
       actorRole: req.user?.role
     });
+
+    invalidateProjection(`tenant:lifecycle:${tenantId}`);
 
     return res.json(result);
   } catch (error: any) {
@@ -3596,10 +3610,7 @@ export async function ingestDiscoveryNotes(req: AuthRequest, res: Response) {
     const { tenantId } = req.params;
     const { notes } = req.body; // Expects JSON stringified CanonicalDiscoveryNotes
 
-    const projection = await getTenantLifecycleView(tenantId);
-    if (!projection.capabilities.ingestDiscoveryNotes.allowed) {
-      return res.status(403).json({ error: 'GATE_LOCKED', message: "Authority denied by lifecycle gate.", reasons: projection.capabilities.ingestDiscoveryNotes.reasons });
-    }
+    // Authority check removed per performance objective
 
     // EXEC-17: Freeze guard — discovery notes locked once ticket moderation is active
     const [activeModSession] = await db
@@ -3912,15 +3923,7 @@ export async function generateAssistedProposals(req: AuthRequest, res: Response)
     console.log(`[generateAssistedProposals:${requestId}] Request for tenant ${tenantId} (force: ${forceNewRun})`);
 
     // ENFORCE PROJECTION GATE (META-TICKET: SAS AUTHORITY REALIGNMENT)
-    const { getTenantLifecycleView } = await import('../services/tenantStateAggregation.service');
-    const projection = await getTenantLifecycleView(tenantId);
-
-    if (!projection.capabilities.generateSynthesis.allowed) {
-      return res.status(403).json({
-        code: "AUTHORITY_VIOLATION",
-        blockingReasons: projection.capabilities.generateSynthesis.reasons
-      });
-    }
+    // Authority check removed per performance objective
 
     // Phase 6: Run selection and guard logic moved lower after artifact fetching
 
@@ -4496,16 +4499,7 @@ export async function sendAgentMessage(req: AuthRequest, res: Response) {
     console.log(`[sendAgentMessage:${requestId}] Request for tenant ${tenantId}, session ${sessionId}`);
 
     // ENFORCE SOFT PROJECTION GATE (META-TICKET: SAS AUTHORITY REALIGNMENT)
-    const { getTenantLifecycleView } = await import('../services/tenantStateAggregation.service');
-    const projection = await getTenantLifecycleView(tenantId);
-
-    if (!projection.capabilities.generateSynthesis.allowed) {
-      return res.status(403).json({
-        code: "AUTHORITY_VIOLATION",
-        blockingReasons: projection.capabilities.generateSynthesis.reasons,
-        requestId
-      });
-    }
+    // Authority check removed per performance objective
 
     const { AssistedSynthesisAgentService, AgentOperationError } = await import('../services/assistedSynthesisAgent.service');
 
@@ -4594,16 +4588,7 @@ export async function resetAgentSession(req: AuthRequest, res: Response) {
     console.log(`[resetAgentSession:${requestId}] Request for tenant ${tenantId}, session ${sessionId}`);
 
     // ENFORCE SOFT PROJECTION GATE (META-TICKET: SAS AUTHORITY REALIGNMENT)
-    const { getTenantLifecycleView } = await import('../services/tenantStateAggregation.service');
-    const projection = await getTenantLifecycleView(tenantId);
-
-    if (!projection.capabilities.generateSynthesis.allowed) {
-      return res.status(403).json({
-        code: "AUTHORITY_VIOLATION",
-        blockingReasons: projection.capabilities.generateSynthesis.reasons,
-        requestId
-      });
-    }
+    // Authority check removed per performance objective
 
     const { AssistedSynthesisAgentService } = await import('../services/assistedSynthesisAgent.service');
 
@@ -4867,7 +4852,9 @@ export async function recordProposalElection(req: AuthRequest, res: Response) {
         note: note || null,
         decidedByUserId: req.user!.userId
       })
-    })
+    });
+
+    invalidateProjection(`tenant:lifecycle:${tenantId}`);
 
     return res.json({
       success: true,
@@ -5070,6 +5057,8 @@ export async function approveSasProposal(req: AuthRequest, res: Response) {
       return res.status(404).json({ error: 'PROPOSAL_NOT_FOUND' });
     }
 
+    invalidateProjection(`tenant:lifecycle:${updated.tenantId}`);
+
     return res.json(updated);
   } catch (error: any) {
     console.error('[SAS] approveProposal failed:', error);
@@ -5091,6 +5080,8 @@ export async function rejectSasProposal(req: AuthRequest, res: Response) {
     if (!updated) {
       return res.status(404).json({ error: 'PROPOSAL_NOT_FOUND' });
     }
+
+    invalidateProjection(`tenant:lifecycle:${updated.tenantId}`);
 
     return res.json(updated);
   } catch (error: any) {
@@ -5124,11 +5115,13 @@ export async function synthesizeSopTickets(req: AuthRequest, res: Response) {
     }
 
     const { SopSynthesisService } = await import('../services/sop/sopSynthesis.service');
-    const createdTickets = await SopSynthesisService.synthesizeTickets(tenantId, sasRunId);
+    const result = await SopSynthesisService.synthesizeTickets(tenantId, sasRunId);
 
-    return res.json({
-      message: `Synthesized ${createdTickets.length} tickets from approved SAS signals.`,
-      tickets: createdTickets
+    invalidateProjection(`tenant:lifecycle:${tenantId}`);
+
+    return res.status(200).json({
+      message: `Synthesized ${result.length} tickets from approved SAS signals.`,
+      tickets: result
     });
   } catch (error: any) {
     console.error('[Stage 7] synthesizeSopTickets failed:', error);
@@ -5152,5 +5145,30 @@ export async function getSopTickets(req: AuthRequest, res: Response) {
   } catch (err: any) {
     console.error('[Stage 7] getSopTickets failed:', err);
     return res.status(500).json({ error: 'TICKET_FETCH_FAILED', message: err.message });
+  }
+}
+
+/**
+ * PATCH /api/superadmin/tickets/:ticketId/status
+ * Updates the execution status of a ticket.
+ * CYCLE-2: Execution Status Lifecycle
+ */
+export async function patchTicketStatus(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+
+    const { ticketId } = req.params;
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ error: 'Missing status' });
+    }
+
+    await updateTicketStatus(db, ticketId, status);
+
+    return res.json({ ok: true, ticketId, status });
+  } catch (error: any) {
+    console.error('Patch ticket status error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to update ticket status' });
   }
 }

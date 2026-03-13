@@ -7,7 +7,8 @@ interface Ticket {
   description: string;
   capability_namespace: string;
   source_anchors: any;
-  status: 'pending' | 'approved' | 'rejected' | 'in_progress' | 'completed';
+  status: 'pending' | 'approved' | 'rejected' | 'generated' | 'locked';
+  execution_status: 'OPEN' | 'IN_PROGRESS' | 'BLOCKED' | 'COMPLETE';
   created_at: string;
 }
 
@@ -16,27 +17,25 @@ export default function TicketsPage({ params }: { params: { tenantId: string } }
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const handleStatusChange = async (ticketId: string, newStatus: string) => {
+    try {
+      await superadminApi.patchTicketStatus(ticketId, newStatus);
+      // Optimistic update
+      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, execution_status: newStatus as any } : t));
+    } catch (err) {
+      console.error('Failed to update ticket status:', err);
+      alert('Failed to update ticket status');
+      fetchTickets(); // Rollback
+    }
+  };
+
   useEffect(() => {
-    // Note: The user requested GET /api/superadmin/firms/:tenantId/sop/tickets
-    // I need to ensure this endpoint exists or use a generic ticket fetcher if available.
-    // Based on the task, I should check if I need to implement this backend endpoint as well.
-    superadminApi.getFirmDetailV2(tenantId)
-      .then(data => {
-        // FirmDetailResponseV2 currently doesn't have the full list of Stage-7 SOP tickets.
-        // It has tickets.ticketPack.
-        // Let's assume a dedicated fetcher is needed or added to superadminApi.
-        fetchTickets();
-      })
-      .catch(err => {
-        console.error('Failed to fetch firm detail:', err);
-        setLoading(false);
-      });
+    fetchTickets();
   }, [tenantId]);
 
   const fetchTickets = async () => {
     try {
-      // I'll add getSopTickets to superadminApi.ts if not present
-      const res = await (superadminApi as any).getSopTickets(tenantId);
+      const res = await superadminApi.getSopTickets(tenantId);
       setTickets(res.tickets || []);
     } catch (err) {
       console.error('Failed to fetch tickets:', err);
@@ -101,7 +100,7 @@ export default function TicketsPage({ params }: { params: { tenantId: string } }
                 <tr className="bg-slate-900/50 border-b border-slate-900">
                   <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Capability / Namespace</th>
                   <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Ticket Details</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Status</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Execution Status</th>
                   <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">Anchors</th>
                 </tr>
               </thead>
@@ -122,14 +121,22 @@ export default function TicketsPage({ params }: { params: { tenantId: string } }
                       </p>
                     </td>
                     <td className="px-6 py-6 text-center">
-                      <div className={`
-                        inline-flex px-2 py-1 rounded text-[9px] font-bold uppercase border
-                        ${ticket.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 
-                          ticket.status === 'in_progress' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                          'bg-slate-500/10 text-slate-400 border-slate-500/20'}
-                      `}>
-                        {ticket.status === 'in_progress' ? 'IN_PROGRESS' : ticket.status?.toUpperCase() || 'OPEN'}
-                      </div>
+                      <select 
+                        value={ticket.execution_status || 'OPEN'}
+                        onChange={(e) => handleStatusChange(ticket.id, e.target.value)}
+                        className={`
+                          appearance-none px-3 py-1.5 rounded text-[10px] font-bold uppercase border cursor-pointer bg-slate-900/50 hover:bg-slate-800 focus:outline-none transition-all
+                          ${ticket.execution_status === 'COMPLETE' ? 'text-emerald-400 border-emerald-500/30' : 
+                            ticket.execution_status === 'IN_PROGRESS' ? 'text-amber-400 border-amber-500/30' :
+                            ticket.execution_status === 'BLOCKED' ? 'text-rose-400 border-rose-500/30' :
+                            'text-slate-400 border-slate-700'}
+                        `}
+                      >
+                        <option value="OPEN">OPEN</option>
+                        <option value="IN_PROGRESS">IN_PROGRESS</option>
+                        <option value="BLOCKED">BLOCKED</option>
+                        <option value="COMPLETE">COMPLETE</option>
+                      </select>
                     </td>
                     <td className="px-6 py-6 text-right">
                       <div className="flex flex-wrap gap-1 justify-end">

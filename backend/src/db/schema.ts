@@ -908,7 +908,7 @@ export const sopTickets = pgTable('sop_tickets', {
   ticketKey: text('ticket_key').unique(),
   sasRunId: uuid('sas_run_id').references(() => sasRuns.id, { onDelete: 'cascade' }),
   sourceAnchors: jsonb('source_anchors'),
-  executionStatus: varchar('execution_status', { length: 30 }).notNull().default('OPEN'),
+  executionStatus: varchar('execution_status', { length: 20 }).notNull().default('OPEN'),
 
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

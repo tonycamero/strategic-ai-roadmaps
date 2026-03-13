@@ -3,6 +3,7 @@ import { sasProposals, sopTickets } from '../../db/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { resolveLatestRunId } from "../tenantStateAggregation.service";
+import { invalidateProjection } from '../projectionCache.service';
 
 export class SopSynthesisService {
   /**
@@ -56,7 +57,8 @@ export class SopSynthesisService {
         capabilityNamespace,
         sourceAnchors: p.sourceAnchors,
         status: 'generated',
-        moderationStatus: 'pending' // Stage-7 tickets start as pending SOP review
+        moderationStatus: 'pending', // Stage-7 tickets start as pending SOP review
+        executionStatus: 'OPEN'
       };
     });
 
@@ -79,6 +81,8 @@ export class SopSynthesisService {
         }
       })
       .returning();
+      
+    invalidateProjection(`tenant:lifecycle:${tenantId}`);
 
     return createdTickets;
   }
