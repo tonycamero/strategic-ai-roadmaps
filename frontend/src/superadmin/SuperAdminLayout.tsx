@@ -13,6 +13,8 @@ import EugeneCohortPage from './pages/EugeneCohortPage';
 import SuperAdminRoadmapViewerPage from './pages/SuperAdminRoadmapViewerPage';
 import SuperAdminLeadsPage from './pages/SuperAdminLeadsPage';
 import SuperAdminExecutePage from './pages/SuperAdminExecutePage';
+import ModerationPage from '../pages/superadmin/ModerationPage';
+import TicketsPage from '../pages/superadmin/TicketsPage';
 
 export function SuperAdminLayout() {
   const [location] = useLocation();
@@ -179,6 +181,12 @@ export function SuperAdminLayout() {
               path="/superadmin/firms/:tenantId"
               component={SuperAdminFirmDetailPage}
             />
+            <Route path="/superadmin/firms/:tenantId/moderation">
+              {(params) => <ModerationPage params={params} />}
+            </Route>
+            <Route path="/superadmin/firms/:tenantId/tickets">
+              {(params) => <TicketsPage params={params} />}
+            </Route>
 
             {/* Strategy (Portfolio Overview) */}
             <Route path="/superadmin" component={SuperAdminOverviewPage} />

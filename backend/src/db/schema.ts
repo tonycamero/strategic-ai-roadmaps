@@ -501,19 +501,20 @@ export const selectionEnvelopes = pgTable('selection_envelopes', {
 
   selectionHash: varchar('selection_hash', { length: 64 }),
   envelopeHash: text('envelope_hash'), // Included in user dump
+  sasRunId: uuid('sas_run_id').references(() => sasRuns.id, { onDelete: 'cascade' }),
 
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const selectionEnvelopeItems = pgTable('selection_envelope_items', {
   id: uuid('id').primaryKey().defaultRandom(),
-  envelopeId: uuid('envelope_id').notNull().references(() => selectionEnvelopes.id, { onDelete: 'cascade' }),
-  proposalId: uuid('proposal_id').notNull().references(() => sasProposals.id, { onDelete: 'cascade' }),
+  selectionEnvelopeId: uuid('selection_envelope_id').notNull().references(() => selectionEnvelopes.id, { onDelete: 'cascade' }),
+  proposalId: uuid('finding_id').notNull().references(() => sasProposals.id, { onDelete: 'cascade' }),
   capabilityId: text('capability_id'),
   decision: text('decision').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
-  envelopeProposalUnique: uniqueIndex('selection_envelope_items_envelope_proposal_unique').on(table.envelopeId, table.proposalId),
+  envelopeProposalUnique: uniqueIndex('selection_envelope_items_envelope_proposal_unique').on(table.selectionEnvelopeId, table.proposalId),
 }));
 
 
@@ -574,6 +575,7 @@ export const sasProposals = pgTable('sas_proposals', {
   sourceAnchors: jsonb('source_anchors').notNull(),
   agentModel: varchar('agent_model', { length: 50 }),
   conceptHash: text('concept_hash'),
+  moderationStatus: varchar('moderation_status', { length: 20 }).notNull().default('PENDING'),
 
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
@@ -898,10 +900,15 @@ export const sopTickets = pgTable('sop_tickets', {
 
   // EXEC-TICKET-S6-07 (TICKET PROVENANCE ENFORCEMENT)
   sourceFindingIds: jsonb('source_finding_ids').$type<string[]>(),
+  proposalId: uuid('proposal_id').references(() => sasProposals.id),
+  capabilityNamespace: varchar('capability_namespace', { length: 100 }),
   envelopeVersion: integer('envelope_version'),
   generationEventId: uuid('generation_event_id'),
   projectionHash: text('projection_hash'),
   ticketKey: text('ticket_key').unique(),
+  sasRunId: uuid('sas_run_id').references(() => sasRuns.id, { onDelete: 'cascade' }),
+  sourceAnchors: jsonb('source_anchors'),
+  executionStatus: varchar('execution_status', { length: 30 }).notNull().default('OPEN'),
 
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -1325,6 +1332,9 @@ export const ticketModerationSessions = pgTable('ticket_moderation_sessions', {
   // Nullable for backward-compat with pre-enforcement sessions.
   // All new sessions MUST populate this field — activation rejects if no envelope exists.
   selectionEnvelopeId: uuid('selection_envelope_id').references(() => selectionEnvelopes.id, { onDelete: 'restrict' }),
+
+  // META-TICKET v2: Bind moderation session to sas_run_id
+  sasRunId: uuid('sas_run_id').references(() => sasRuns.id, { onDelete: 'cascade' }),
 });
 
 export const ticketsDraft = pgTable('tickets_draft', {

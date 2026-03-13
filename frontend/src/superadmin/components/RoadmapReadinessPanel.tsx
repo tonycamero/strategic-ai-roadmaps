@@ -2,56 +2,32 @@ import React, { useState } from 'react';
 
 interface RoadmapReadinessPanelProps {
     tenantId: string;
-    intakeWindowState: 'OPEN' | 'CLOSED';
-    briefStatus: string | null;
-    moderationStatus: {
-        readyForRoadmap: boolean;
-        pending: number;
-        approved: number;
-    } | null;
-    readinessFlags: {
-        knowledgeBaseReady: boolean;
-        rolesValidated: boolean;
-        execReady: boolean;
-    };
+    projection: any; // Now the primary source
     roadmapStatus: string | null;
     onFinalize: () => Promise<void>;
     isGenerating: boolean;
 }
 
 export function RoadmapReadinessPanel({
-    intakeWindowState,
-    briefStatus,
-    moderationStatus,
-    readinessFlags,
+    projection,
     roadmapStatus,
     onFinalize,
     isGenerating
 }: RoadmapReadinessPanelProps) {
     const [showConfirm, setShowConfirm] = useState(false);
 
-    // Gate 1: Intake Window
-    const isIntakeReady = intakeWindowState === 'CLOSED';
+    if (!projection) return null;
 
-    // Gate 2: Executive Brief
-    const isBriefReady = ['ACKNOWLEDGED', 'WAIVED'].includes(briefStatus || '');
+    // REBIND: Gates are now derived purely from projection (SSOT)
+    const isIntakeReady = projection.lifecycle.intakeWindowState === 'CLOSED';
+    const isBriefReady = projection.governance.executiveBriefStatus === 'APPROVED' || projection.governance.executiveBriefStatus === 'DELIVERED';
+    const isModerationReady = projection.tickets.pending === 0 && projection.tickets.total > 0;
+    const isKBReady = projection.workflow.intakesComplete;
+    const isRolesReady = projection.workflow.vectorCount >= 2;
+    const isExecReady = projection.operator.confirmedSufficiency;
 
-    // Gate 3: Moderation
-    const isModerationReady = moderationStatus?.readyForRoadmap || false;
-    const pendingCount = moderationStatus?.pending || 0;
-    const approvedCount = moderationStatus?.approved || 0;
-
-    // Gate 4: Knowledge Base
-    const isKBReady = readinessFlags.knowledgeBaseReady;
-
-    // Gate 5: Roles Validated
-    const isRolesReady = readinessFlags.rolesValidated;
-
-    // Gate 6: Executive Ready
-    const isExecReady = readinessFlags.execReady;
-
-    // Overall Readiness
-    const isReady = isIntakeReady && isBriefReady && isModerationReady && isKBReady && isRolesReady && isExecReady;
+    // Overall Readiness (Canonical Projection Authority)
+    const isReady = projection.derived.canAssembleRoadmap;
 
     const handleClick = () => {
         if (isReady) {

@@ -645,4 +645,14 @@ export const superadminApi = {
     apiGet<{ elections: Array<{ proposalId: string; decision: string; decidedBy: string; createdAt: string }> }>(
       `/firms/${tenantId}/sas/elections/summary`
     ),
+  getSasSignals: (tenantId: string) =>
+    apiGet<any[]>(`/firms/${tenantId}/sas/signals`),
+  approveSasProposal: (tenantId: string, proposalId: string) =>
+    apiPost<{ proposal: any }>(`/firms/${tenantId}/sas/proposals/${proposalId}/approve`, {}),
+  rejectSasProposal: (tenantId: string, proposalId: string) =>
+    apiPost<{ proposal: any }>(`/firms/${tenantId}/sas/proposals/${proposalId}/reject`, {}),
+  synthesizeTickets: (tenantId: string) =>
+    apiPost<{ success: boolean; tickets: any[] }>(`/firms/${tenantId}/sas/synthesize`, {}),
+  getSopTickets: (tenantId: string) =>
+    apiGet<{ tickets: any[] }>(`/firms/${tenantId}/sop/tickets`),
 };

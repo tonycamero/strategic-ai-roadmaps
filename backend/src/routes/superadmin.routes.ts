@@ -15,6 +15,7 @@ import { projectionAuthorityGuard } from '../middleware/projectionAuthorityGuard
 
 import * as snapshotController from '../controllers/snapshot.controller';
 import * as executionStateController from '../controllers/executionState.controller';
+import * as sasTicketModerationController from '../controllers/sas/ticketModeration.controller';
 
 const router = Router();
 
@@ -349,7 +350,7 @@ router.get('/firms/:tenantId/assisted-synthesis/proposals', superadminController
 
 // POST /api/superadmin/firms/:tenantId/ticket-moderation/activate - Activate ticket moderation
 // Uses validateTicketSchema to ensure schema readiness
-router.post('/firms/:tenantId/ticket-moderation/activate', validateTicketSchema, projectionAuthorityGuard, superadminController.activateTicketModeration);
+router.post('/firms/:tenantId/ticket-moderation/activate', validateTicketSchema, projectionAuthorityGuard, sasTicketModerationController.activateTicketModeration);
 router.get('/firms/:tenantId/ticket-moderation/active', superadminController.getActiveModerationSession);
 
 // POST /api/superadmin/firms/:tenantId/stage6/compile-envelope
@@ -367,5 +368,14 @@ router.get('/firms/:tenantId/sas/elections/summary', superadminController.getEle
 
 // S6-12: Run history endpoint
 router.get('/firms/:tenantId/sas/runs', superadminController.getSasRuns);
+router.get('/firms/:tenantId/sas/signals', superadminController.getSasSignals);
+
+// Stage-7: Moderation Gates (Approve/Reject)
+router.post('/firms/:tenantId/sas/proposals/:proposalId/approve', projectionAuthorityGuard, superadminController.approveSasProposal);
+router.post('/firms/:tenantId/sas/proposals/:proposalId/reject', projectionAuthorityGuard, superadminController.rejectSasProposal);
+
+// Stage-7: Ticket Synthesis
+router.post('/firms/:tenantId/sas/synthesize', projectionAuthorityGuard, superadminController.synthesizeSopTickets);
+router.get('/firms/:tenantId/sop/tickets', superadminController.getSopTickets);
 
 export default router;

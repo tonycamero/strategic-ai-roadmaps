@@ -26,7 +26,10 @@ import {
     users,
     intakeClarifications,
     tenantStage6Config,
-    discoveryNotesLog
+    discoveryNotesLog,
+    sasProposals,
+    selectionEnvelopes,
+    sasRuns
 } from '../db/schema';
 import { eq, ne, and, desc, asc, sql } from 'drizzle-orm';
 import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
@@ -77,10 +80,20 @@ export interface TenantLifecycleView {
     }
 
     tickets: {
-        total: number
-        pending: number
-        approved: number
-        rejected: number
+        ticketCount: number
+        sopPendingCount: number
+        sopApprovedCount: number
+        sopRejectedCount: number
+        approvedProposalCount: number
+        pendingProposalCount: number
+        rejectedProposalCount: number
+        moderationSessionActive: boolean
+        selectionEnvelopeBinding: string | null
+        stageState: {
+            stage6ModerationReady: boolean
+            stage7SynthesisReady: boolean
+            stage7TicketsExist: boolean
+        }
     }
 
     artifacts: {
@@ -128,6 +141,12 @@ export interface TenantLifecycleView {
         customDevAllowed: boolean | null
     }
 
+    stageState: {
+        stage6ModerationReady: boolean
+        stage7SynthesisReady: boolean
+        stage7TicketsExist: boolean
+    }
+
     derived: {
         canLockIntake: boolean
         canGenerateDiagnostic: boolean
@@ -136,6 +155,7 @@ export interface TenantLifecycleView {
         canIngestDiscoveryNotes: boolean
         canGenerateTickets: boolean
         canAssembleRoadmap: boolean
+        canSynthesizeTickets: boolean
         canReopenIntake: boolean
         mutationLocked: boolean
         synthesis: {
@@ -173,6 +193,7 @@ interface InternalDerivedFlags {
     canIngestDiscoveryNotes: boolean
     canGenerateTickets: boolean
     canAssembleRoadmap: boolean
+    canSynthesizeTickets: boolean
     canReopenIntake: boolean
     mutationLocked: boolean
     lifecycleValid: boolean
@@ -262,6 +283,7 @@ export async function getTenantLifecycleView(
             maxComplexityTier: (stage6ConfigRow?.maxComplexityTier as 'low' | 'medium' | 'high') ?? null,
             customDevAllowed: stage6ConfigRow?.customDevAllowed ?? null,
         },
+        stageState: tickets.stageState,
         derived: publicDerived,
         capabilities: buildCapabilityMatrix({ derived, artifacts }),
         meta: {
@@ -603,23 +625,80 @@ async function resolveArtifacts(tenantId: string, trx?: any): Promise<TenantLife
     };
 }
 
-async function resolveTickets(tenantId: string, trx?: any): Promise<TenantLifecycleView['tickets']> {
-    const stats = await (trx || db)
-        .select({
-            total: sql<number>`count(*)`.mapWith(Number),
-            pending: sql<number>`count(*) filter (where ${sopTickets.status} = 'pending')`.mapWith(Number),
-            approved: sql<number>`count(*) filter (where ${sopTickets.status} = 'approved')`.mapWith(Number),
-            rejected: sql<number>`count(*) filter (where ${sopTickets.status} = 'rejected')`.mapWith(Number)
-        })
-        .from(sopTickets)
-        .where(eq(sopTickets.tenantId, tenantId));
+export async function resolveLatestRunId(tenantId: string, trx?: any) {
+    const [latestRun] = await (trx || db)
+        .select({ id: sasRuns.id })
+        .from(sasRuns)
+        .where(eq(sasRuns.tenantId, tenantId))
+        .orderBy(desc(sasRuns.createdAt))
+        .limit(1);
 
-    const row = stats[0];
+    return latestRun?.id ?? null;
+}
+
+async function resolveTickets(tenantId: string, trx?: any): Promise<TenantLifecycleView['tickets']> {
+    const runId = await resolveLatestRunId(tenantId, trx);
+
+    const [sasStats] = runId 
+        ? await (trx || db)
+            .select({
+                approved: sql<number>`count(*) filter (where ${sasProposals.moderationStatus} = 'APPROVED')`.mapWith(Number),
+                pending: sql<number>`count(*) filter (where ${sasProposals.moderationStatus} = 'PENDING')`.mapWith(Number),
+                rejected: sql<number>`count(*) filter (where ${sasProposals.moderationStatus} = 'REJECTED')`.mapWith(Number),
+                total: sql<number>`count(*)`.mapWith(Number)
+            })
+            .from(sasProposals)
+            .where(and(
+                eq(sasProposals.tenantId, tenantId),
+                eq(sasProposals.sasRunId, runId)
+            ))
+        : [{ approved: 0, pending: 0, rejected: 0, total: 0 }];
+
+    const [sopStats] = runId
+        ? await (trx || db)
+            .select({
+                total: sql<number>`count(*)`.mapWith(Number),
+                pending: sql<number>`count(*) filter (where ${sopTickets.status} = 'pending')`.mapWith(Number),
+                approved: sql<number>`count(*) filter (where ${sopTickets.status} = 'approved')`.mapWith(Number),
+                rejected: sql<number>`count(*) filter (where ${sopTickets.status} = 'rejected')`.mapWith(Number)
+            })
+            .from(sopTickets)
+            .innerJoin(selectionEnvelopes, eq(sopTickets.selectionEnvelopeId, selectionEnvelopes.id))
+            .where(and(
+                eq(selectionEnvelopes.tenantId, tenantId),
+                eq(selectionEnvelopes.sasRunId, runId)
+            ))
+        : [{ total: 0, pending: 0, approved: 0, rejected: 0 }];
+
+    const [latestEnvelope] = await (trx || db)
+        .select({
+            id: selectionEnvelopes.id,
+            selectionHash: selectionEnvelopes.selectionHash
+        })
+        .from(selectionEnvelopes)
+        .where(eq(selectionEnvelopes.tenantId, tenantId))
+        .orderBy(desc(selectionEnvelopes.createdAt))
+        .limit(1);
+
+    const proposalCount = sasStats?.total || 0;
+    const approvedProposalCount = sasStats?.approved || 0;
+    const ticketCount = sopStats?.total || 0;
+
     return {
-        total: row?.total || 0,
-        pending: row?.pending || 0,
-        approved: row?.approved || 0,
-        rejected: row?.rejected || 0
+        ticketCount,
+        sopPendingCount: sopStats?.pending || 0,
+        sopApprovedCount: sopStats?.approved || 0,
+        sopRejectedCount: sopStats?.rejected || 0,
+        approvedProposalCount,
+        pendingProposalCount: sasStats?.pending || 0,
+        rejectedProposalCount: sasStats?.rejected || 0,
+        moderationSessionActive: proposalCount > 0,
+        selectionEnvelopeBinding: latestEnvelope?.selectionHash || latestEnvelope?.id || null,
+        stageState: {
+            stage6ModerationReady: proposalCount > 0,
+            stage7SynthesisReady: approvedProposalCount > 0,
+            stage7TicketsExist: ticketCount > 0
+        }
     };
 }
 
@@ -721,8 +800,9 @@ function computeDerivedFlags(
     const canAssembleRoadmap =
         artifacts.diagnostic.exists &&
         workflow.intakesComplete &&
-        tickets.total > 0 &&
-        tickets.pending === 0;
+        tickets.ticketCount > 0;
+
+    const canSynthesizeTickets = tickets.approvedProposalCount > 0;
 
     const blockingReasons: string[] = [];
     if (!workflow.hasOwnerIntake) blockingReasons.push('INTAKE_INCOMPLETE');
@@ -771,6 +851,7 @@ function computeDerivedFlags(
         canIngestDiscoveryNotes,
         canGenerateTickets,
         canAssembleRoadmap,
+        canSynthesizeTickets,
         canReopenIntake,
         mutationLocked: governance.governanceLocked || isHardLocked,
         lifecycleValid,

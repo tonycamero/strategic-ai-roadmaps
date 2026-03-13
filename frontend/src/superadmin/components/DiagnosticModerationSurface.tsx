@@ -31,6 +31,7 @@ interface DiagnosticModerationSurfaceProps {
     diagnosticId: string;
     tickets: Ticket[];
     status: ModerationStatus | null;
+    projection?: any; // New: Full canonical projection
     loading?: boolean;
     error?: string | null;
     onRefresh?: () => Promise<void>;
@@ -42,6 +43,7 @@ export function DiagnosticModerationSurface({
     diagnosticId,
     tickets: propTickets,
     status: propStatus,
+    projection,
     loading = false,
     error: propError = null,
     onRefresh,
@@ -106,32 +108,61 @@ export function DiagnosticModerationSurface({
 
     if (loading) return <div className="text-slate-500 text-xs animate-pulse">Loading diagnostic tickets...</div>;
 
-    if (localTickets.length === 0) return <div className="text-slate-500 text-xs italic">No findings generated yet.</div>;
+    if (localTickets.length === 0) {
+        const isSynthesisReady = projection?.derived?.synthesis?.ready;
+        const emptyStateLabel = isSynthesisReady
+            ? "Synthesis ready. Activate moderation to begin."
+            : "Awaiting prerequisite stages (Diagnostic/Discovery).";
+
+        return (
+            <div className="text-slate-500 text-xs italic py-4 bg-slate-900/20 rounded border border-dashed border-slate-800 text-center">
+                {emptyStateLabel}
+            </div>
+        );
+    }
+
+    const displayStatus = projection?.tickets || localStatus;
 
     return (
         <div className="space-y-4">
             {/* Status Header */}
-            {localStatus && (
+            {displayStatus && (
                 <div className="flex items-center justify-between bg-slate-900/50 p-3 rounded-lg border border-slate-800">
                     <div className="flex gap-4">
                         <div className="flex flex-col">
                             <span className="text-[10px] uppercase text-slate-500 font-bold">Pending</span>
-                            <span className="text-lg font-mono text-amber-500 font-bold leading-none">{localStatus.pending}</span>
+                            <span className="text-lg font-mono text-amber-500 font-bold leading-none">{displayStatus.pending}</span>
                         </div>
                         <div className="flex flex-col">
                             <span className="text-[10px] uppercase text-slate-500 font-bold">Approved</span>
-                            <span className="text-lg font-mono text-emerald-500 font-bold leading-none">{localStatus.approved}</span>
+                            <span className="text-lg font-mono text-emerald-500 font-bold leading-none">{displayStatus.approved}</span>
                         </div>
                         <div className="flex flex-col">
                             <span className="text-[10px] uppercase text-slate-500 font-bold">Rejected</span>
-                            <span className="text-lg font-mono text-red-500 font-bold leading-none">{localStatus.rejected}</span>
+                            <span className="text-lg font-mono text-red-500 font-bold leading-none">{displayStatus.rejected}</span>
                         </div>
+                        {displayStatus.proposalCount !== undefined && (
+                             <div className="flex flex-col border-l border-slate-800 pl-4">
+                                <span className="text-[10px] uppercase text-slate-500 font-bold">SAS Proposals</span>
+                                <span className="text-lg font-mono text-blue-500 font-bold leading-none">{displayStatus.proposalCount}</span>
+                            </div>
+                        )}
                     </div>
 
-                    <div className="text-right">
-                        <div className={`text-[10px] uppercase font-bold px-2 py-1 rounded inline-block ${localStatus.readyForRoadmap ? 'bg-emerald-900/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-500 border border-slate-700'}`}>
-                            {localStatus.readyForRoadmap ? 'READY FOR ROADMAP' : 'MODERATION INCOMPLETE'}
+                    <div className="text-right flex flex-col items-end gap-1">
+                        <div className={`text-[10px] uppercase font-bold px-2 py-1 rounded inline-block ${displayStatus.readyForRoadmap || projection?.derived?.canAssembleRoadmap ? 'bg-emerald-900/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-500 border border-slate-700'}`}>
+                            {displayStatus.readyForRoadmap || projection?.derived?.canAssembleRoadmap ? 'READY FOR ROADMAP' : 'MODERATION INCOMPLETE'}
                         </div>
+                        {displayStatus.selectionEnvelopeBinding && (
+                            <div className="text-[9px] text-indigo-400/70 uppercase font-mono tracking-tighter">
+                                BINDING: {displayStatus.selectionEnvelopeBinding.substring(0, 12)}...
+                            </div>
+                        )}
+                        {projection?.derived?.blockingReasons?.length > 0 && !projection.derived.canAssembleRoadmap && (
+                            <div className="text-[9px] text-red-400/70 uppercase font-mono">
+                                Blocked: {projection.derived.blockingReasons[0]}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

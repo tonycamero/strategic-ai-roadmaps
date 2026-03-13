@@ -3,6 +3,7 @@ import { selectionEnvelopes, selectionEnvelopeItems, sasElections, sasProposals 
 import { eq, and } from 'drizzle-orm';
 import crypto from 'crypto';
 import { Stage7GraphCompilerService } from './stage7GraphCompiler.service';
+import { resolveLatestRunId } from './tenantStateAggregation.service';
 
 export class SelectionEnvelopeService {
     /**
@@ -14,6 +15,17 @@ export class SelectionEnvelopeService {
         sasRunId: string,
         userId: string
     ): Promise<{ envelopeId: string; envelopeHash: string }> {
+        // 0. Run Guard: Block envelope creation if not the latest run
+        const latestRunId = await resolveLatestRunId(tenantId);
+        if (sasRunId !== latestRunId) {
+            console.warn("RUN_GUARD_TRIGGERED [Envelope]", {
+                tenantId,
+                requestedRunId: sasRunId,
+                latestRunId
+            });
+            throw new Error("Envelope creation blocked: stale SAS run");
+        }
+
         // 1. Fetch Accepted Proposals (decision = 'keep')
         const elections = await db
             .select({
@@ -92,12 +104,12 @@ export class SelectionEnvelopeService {
                     findingIds: acceptedItems.map(i => i.proposalId),
                     selectionHash,
                     envelopeHash,
+                    sasRunId,
                 } as any)
                 .returning();
 
-            // 6. Insert Envelope Items
             const itemValues = acceptedItems.map(item => ({
-                envelopeId: envelope.id,
+                selectionEnvelopeId: envelope.id,
                 proposalId: item.proposalId,
                 capabilityId: item.capabilityId,
                 decision: 'keep'

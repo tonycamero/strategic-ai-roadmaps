@@ -41,6 +41,7 @@ import { Stage6CompilationService } from '../services/stage6Compilation.service'
 import { SelectionEnvelopeService } from '../services/selectionEnvelope.service';
 import { SELECTION_ENGINE_VERSION } from '../trustagent/constants/selectionEngine.constants';
 import { AssistedSynthesisArtifactContract } from '../services/assistedSynthesisProposals.service';
+import { SasSignalsService } from '../services/sas/sasSignals.service';
 
 const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 
@@ -3303,9 +3304,9 @@ export async function getTruthProbe(req: AuthRequest, res: Response) {
         exists: view.workflow.findingsComplete
       },
       tickets: {
-        total: view.tickets.total,
-        pending: view.tickets.pending,
-        approved: view.tickets.approved
+        total: view.tickets.ticketCount,
+        pending: view.tickets.sopPendingCount,
+        approved: view.tickets.sopApprovedCount
       },
       roadmap: {
         exists: view.artifacts.hasRoadmap,
@@ -4045,99 +4046,20 @@ export async function generateAssistedProposals(req: AuthRequest, res: Response)
 
     // POST-LLM VALIDATION: Strip proposals with types outside allowed set
     const validItems = draft.items.filter((item: any) => allowedProposalTypes.includes(item.type));
-    if (validItems.length < draft.items.length) {
-      console.log(`[generateAssistedProposals:${requestId}] Stripped ${draft.items.length - validItems.length} proposals with invalid types`);
-      draft.items = validItems;
-    }
+    
+    // EXEC-TICKET: Populate concept_hash for SAS proposals
+    const { SasSynthesisService } = await import('../services/sas/sasSynthesis.service');
+    const { TicketModerationService } = await import('../services/sas/ticketModeration.service');
+    
+    await SasSynthesisService.persistProposals(tenantId, run.id, validItems);
+    
+    // Load persisted proposals to return to UI (ensures IDs and deterministic state)
+    const finalProposals = await TicketModerationService.getProposalsForRun(tenantId, run.id);
 
-    // S6-13: Concept dedup — compute hash and skip duplicates
-    const { createHash } = await import('crypto');
-    const proposalRows: any[] = [];
-    let dedupSkipped = 0;
-
-    for (const item of draft.items) {
-      const conceptHash = createHash('sha256')
-        .update(item.text.trim().toLowerCase())
-        .digest('hex');
-
-      // Check if concept already exists for this tenant
-      const [existing] = await db
-        .select({ id: sasProposals.id })
-        .from(sasProposals)
-        .where(and(
-          eq(sasProposals.tenantId, tenantId),
-          eq(sasProposals.sasRunId, run.id),
-          eq(sasProposals.conceptHash, conceptHash)
-        ))
-        .limit(1);
-
-      if (existing) {
-        dedupSkipped++;
-        continue;
-      }
-
-      // META-TICKET Stage-6 Part 6: JSONB Capability Mapping
-      // Mapping lives at the top level of sourceAnchors object
-      const sourceAnchors = {
-        capabilityId: item.capabilityId || null,
-        capabilityNamespace: item.capabilityNamespace || null,
-        evidenceRefs: (item.evidenceRefs || []).map((ref: any) => ({
-          ...ref,
-          sourceType: ref.sourceType || ref.artifact || 'evidence',
-        }))
-      };
-
-      proposalRows.push({
-        tenantId,
-        sasRunId: run.id,
-        proposalType: item.type,
-        content: item.text,
-        sourceAnchors: sourceAnchors as any,
-        agentModel: 'gpt-4o-2024-08-06',
-        conceptHash,
-      });
-    }
-
-    let insertedProposals: any[] = [];
-    if (proposalRows.length > 0) {
-      insertedProposals = await db.insert(sasProposals).values(proposalRows).returning();
-    }
-
-    // Map draft items back to their persistent counterparts (newly inserted or existing)
-    const finalItems = await Promise.all(draft.items.map(async (item: any) => {
-      const conceptHash = createHash('sha256')
-        .update(item.text.trim().toLowerCase())
-        .digest('hex');
-
-      const [row] = await db
-        .select()
-        .from(sasProposals)
-        .where(and(
-          eq(sasProposals.tenantId, tenantId),
-          eq(sasProposals.sasRunId, run.id),
-          eq(sasProposals.conceptHash, conceptHash)
-        ))
-        .limit(1);
-
-      if (row) {
-        return {
-          id: row.id,
-          findingId: row.id, // for frontend compatibility
-          type: row.proposalType,
-          title: row.content.substring(0, 100),
-          text: row.content,
-          description: row.content,
-          status: 'pending', // Fresh generation always pending
-          sourceAnchors: row.sourceAnchors
-        };
-      }
-      return null;
-    }));
-
-    (draft as any).items = finalItems.filter(Boolean);
-
-    console.log(`[generateAssistedProposals:${requestId}] Persisted run ${run.id} with ${insertedProposals.length} proposals (${dedupSkipped} deduped)`);
-    return res.json(draft);
+    return res.json({
+      ...draft,
+      items: finalProposals
+    });
   } catch (error: any) {
     console.error(`[generateAssistedProposals:${requestId}] Error:`, error);
 
@@ -4382,6 +4304,21 @@ export async function getSasProposals(req: AuthRequest, res: Response) {
 }
 
 /**
+ * GET /api/superadmin/firms/:tenantId/sas/signals
+ * STAGE6_SIGNAL_RENDERING_CONSTITUTION: Read-only projection of SAS signals.
+ */
+export async function getSasSignals(req: AuthRequest, res: Response) {
+  try {
+    const { tenantId } = req.params;
+    const signals = await SasSignalsService.getSasSignals(tenantId);
+    return res.json(signals);
+  } catch (error: any) {
+    console.error('[SAS] getSasSignals error:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+}
+
+/**
  * POST /api/superadmin/firms/:tenantId/findings/declare
  * S6-18: Promotes reviewed findings to canonical status.
  * Rejects if no findings provided.
@@ -4425,131 +4362,6 @@ export async function declareCanonicalFindings(req: AuthRequest, res: Response) 
   }
 }
 
-// ============================================================================
-// POST /api/superadmin/firms/:tenantId/ticket-moderation/activate
-// ============================================================================
-
-export async function activateTicketModeration(req: AuthRequest, res: Response) {
-  const { tenantId } = req.params;
-  console.log(`[Stage 6] activateTicketModeration triggered for tenant: ${tenantId}`);
-  try {
-    if (!requireSuperAdmin(req, res)) {
-      console.warn(`[Stage 6] Unauthorized attempt by user: ${req.user?.userId}`);
-      return;
-    }
-
-    // 1. Projection Gate (Pipeline Step 1)
-    const projection = await getTenantLifecycleView(tenantId);
-    if (!projection.capabilities.generateTickets.allowed) {
-      return res.status(403).json({
-        error: 'AUTHORITY_VIOLATION',
-        message: 'Stage 6 gate blocked by projection authority.',
-        blockingReasons: projection.capabilities.generateTickets.reasons
-      });
-    }
-
-    // 2. Load Canonical Findings (Pipeline Step 2)
-    const [canonicalDoc] = await db
-      .select()
-      .from(tenantDocuments)
-      .where(
-        and(
-          eq(tenantDocuments.tenantId, tenantId),
-          eq(tenantDocuments.category, 'findings_canonical')
-        )
-      )
-      .orderBy(desc(tenantDocuments.createdAt))
-      .limit(1);
-
-    if (!canonicalDoc) {
-      return res.status(409).json({
-        error: 'PROJECTION_CONTENT_MISMATCH',
-        message: 'No canonical findings found for this tenant.'
-      });
-    }
-
-    // 3. Resolve Current Run (Pipeline Step 4)
-    const [latestRun] = await db
-      .select()
-      .from(sasRuns)
-      .where(eq(sasRuns.tenantId, tenantId))
-      .orderBy(desc(sasRuns.createdAt))
-      .limit(1);
-
-    if (!latestRun) {
-      return res.status(409).json({
-        error: 'SAS_RUN_NOT_FOUND',
-        message: 'No active SAS run found for this tenant.'
-      });
-    }
-
-    // 4. Generate Tickets (Pipeline Step 3 - Refactored for Governance)
-    // SSOT: Generation MUST derive from canonical findings via dedicated service.
-    // Controller MUST NOT shape or construct proposals.
-    const findingsObject = JSON.parse(canonicalDoc.content || '{}');
-    const proposals = await generateTicketsFromFindings(tenantId, latestRun.id, findingsObject);
-
-    if (proposals.length === 0) {
-      return res.status(409).json({
-        error: 'NO_TICKETS_GENERATED',
-        message: 'No tickets generated from canonical findings.'
-      });
-    }
-
-    // 5 & 6. Materialize & Start Session (Pipeline Steps 5 & 6)
-    const { session, draftCount } = await db.transaction(async (tx) => {
-      // Step 6: Start Moderation Session (Orchestration ONLY)
-      const [newSession] = await tx.insert(ticketModerationSessions).values({
-        tenantId,
-        sourceDocId: canonicalDoc.id,
-        sourceDocVersion: 'v1.0',
-        status: 'active',
-        startedBy: req.user!.userId,
-        selectionEnvelopeId: null, // SSOT pipeline skips envelope binding at this stage
-      }).returning();
-
-      // Step 5: Materialize Proposals (Persist ONLY)
-      // proposals are fully constructed by the TicketGenerationService
-      await tx.insert(sasProposals).values(proposals as any);
-
-      return { session: newSession, draftCount: proposals.length };
-    });
-
-    // 7. Response (Pipeline Step 7)
-    return res.status(200).json({
-      success: true,
-      message: 'Ticket moderation session activated.',
-      sessionId: session.id,
-      ticketCount: draftCount
-    });
-
-    // 6. Audit
-    await db.insert(auditEvents).values({
-      tenantId,
-      actorUserId: req.user!.userId,
-      actorRole: req.user?.role,
-      eventType: AUDIT_EVENT_TYPES.TICKET_MODERATION_ACTIVATED,
-      entityType: 'ticket_moderation_session',
-      entityId: session.id,
-      metadata: {
-        sourceDocId: session.sourceDocId,
-        draftTicketCount: draftCount,
-      }
-    });
-
-    return res.json({
-      status: 'activated',
-      sessionId: session.id,
-      draftTicketCount: draftCount,
-    });
-  } catch (error: any) {
-    console.error('[Stage 6] activateTicketModeration failed:', error);
-    return res.status(500).json({
-      error: 'ACTIVATE_MODERATION_FAILED',
-      message: error.message
-    });
-  }
-}
 
 /**
  * GET /api/superadmin/firms/:tenantId/ticket-moderation/active
@@ -4997,8 +4809,8 @@ export async function compileStage6Envelope(req: AuthRequest, res: Response) {
 export async function recordProposalElection(req: AuthRequest, res: Response) {
   try {
     if (!requireSuperAdmin(req, res)) return;
-    const { tenantId, proposalId } = req.params;
-    const { decision, note } = req.body;
+    const { tenantId, proposalId } = (req as any).params;
+    const { decision, note } = (req as any).body;
 
     if (!tenantId || !proposalId) {
       return res.status(400).json({ error: 'Missing tenantId or proposalId' });
@@ -5184,7 +4996,7 @@ export async function getSasRuns(req: AuthRequest, res: Response) {
  * SSOT: Orchestration only. No generation/shaping logic allowed in controller.
  */
 export async function generateTicketsFromDiscoverySynthesis(req: AuthRequest, res: Response) {
-  const { tenantId } = req.params;
+  const { tenantId } = (req as any).params;
   try {
     if (!requireSuperAdmin(req, res)) return;
 
@@ -5240,5 +5052,105 @@ export async function generateTicketsFromDiscoverySynthesis(req: AuthRequest, re
       error: 'TICKET_GENERATION_FAILED',
       message: error.message
     });
+  }
+}
+
+/**
+ * Approve a SAS proposal (Stage-7 Gate)
+ */
+export async function approveSasProposal(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { proposalId } = req.params;
+
+    const { SasModerationService } = await import('../services/sas/sasModeration.service');
+    const updated = await SasModerationService.approveProposal(proposalId);
+
+    if (!updated) {
+      return res.status(404).json({ error: 'PROPOSAL_NOT_FOUND' });
+    }
+
+    return res.json(updated);
+  } catch (error: any) {
+    console.error('[SAS] approveProposal failed:', error);
+    return res.status(500).json({ error: 'APPROVE_FAILED', message: error.message });
+  }
+}
+
+/**
+ * Reject a SAS proposal (Stage-7 Gate)
+ */
+export async function rejectSasProposal(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { proposalId } = req.params;
+
+    const { SasModerationService } = await import('../services/sas/sasModeration.service');
+    const updated = await SasModerationService.rejectProposal(proposalId);
+
+    if (!updated) {
+      return res.status(404).json({ error: 'PROPOSAL_NOT_FOUND' });
+    }
+
+    return res.json(updated);
+  } catch (error: any) {
+    console.error('[SAS] rejectProposal failed:', error);
+    return res.status(500).json({ error: 'REJECT_FAILED', message: error.message });
+  }
+}
+
+/**
+ * Transform approved SAS signals into SOP tickets (Stage-7 Synthesis)
+ */
+export async function synthesizeSopTickets(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { tenantId } = (req as any).params;
+    let { sasRunId } = (req as any).body;
+
+    if (!sasRunId) {
+      // Auto-resolve latest run if not provided
+      const [latestRun] = await db
+        .select()
+        .from(sasRuns)
+        .where(eq(sasRuns.tenantId, tenantId))
+        .orderBy(desc(sasRuns.createdAt))
+        .limit(1);
+      
+      if (!latestRun) {
+        return res.status(404).json({ error: 'NO_RUN_FOUND', message: 'Cannot synthesize without a SAS run.' });
+      }
+      sasRunId = latestRun.id;
+    }
+
+    const { SopSynthesisService } = await import('../services/sop/sopSynthesis.service');
+    const createdTickets = await SopSynthesisService.synthesizeTickets(tenantId, sasRunId);
+
+    return res.json({
+      message: `Synthesized ${createdTickets.length} tickets from approved SAS signals.`,
+      tickets: createdTickets
+    });
+  } catch (error: any) {
+    console.error('[Stage 7] synthesizeSopTickets failed:', error);
+    return res.status(500).json({ error: 'SYNTHESIS_FAILED', message: error.message });
+  }
+}
+
+/**
+ * GET /api/superadmin/firms/:tenantId/sop/tickets
+ * Fetch synthesized SOP tickets for a firm.
+ */
+export async function getSopTickets(req: AuthRequest, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { tenantId } = req.params;
+
+    const { SopSynthesisService } = await import('../services/sop/sopSynthesis.service');
+    const tickets = await SopSynthesisService.getTickets(tenantId);
+
+    return res.json({ tickets });
+  } catch (err: any) {
+    console.error('[Stage 7] getSopTickets failed:', err);
+    return res.status(500).json({ error: 'TICKET_FETCH_FAILED', message: err.message });
   }
 }

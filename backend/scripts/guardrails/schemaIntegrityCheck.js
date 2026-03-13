@@ -23,6 +23,8 @@ const baseline = fs.readFileSync(baselinePath).toString()
 if (baseline !== hash) {
   console.error("SCHEMA AUTHORITY VIOLATION")
   console.error("schema.ts was modified without migration ticket")
+  console.error("Actual hash:   |" + hash + "| (length: " + hash.length + ")")
+  console.error("Expected hash: |" + baseline + "| (length: " + baseline.length + ")")
   process.exit(1)
 }
 

@@ -24,7 +24,7 @@ export class Stage6ExpansionService {
         // 1. Load items from the Selection Envelope
         const items = await db.select()
             .from(selectionEnvelopeItems)
-            .where(eq(selectionEnvelopeItems.envelopeId, selectionEnvelopeId));
+            .where(eq(selectionEnvelopeItems.selectionEnvelopeId, selectionEnvelopeId));
 
         if (items.length === 0) {
             return [];

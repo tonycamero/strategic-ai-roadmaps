@@ -37,7 +37,7 @@ export class Stage6CompilationService {
         })
             .from(selectionEnvelopeItems)
             .innerJoin(sasProposals, eq(selectionEnvelopeItems.proposalId, sasProposals.id))
-            .where(eq(selectionEnvelopeItems.envelopeId, selectionEnvelopeId))
+            .where(eq(selectionEnvelopeItems.selectionEnvelopeId, selectionEnvelopeId))
             .limit(1);
 
         if (!envelopeRecord) {
@@ -55,10 +55,9 @@ export class Stage6CompilationService {
         const projectionHash = runRecord?.artifactState ? JSON.stringify(runRecord.artifactState) : 'UNKNOWN';
         const generationEventId = randomUUID();
 
-        // 2. Load Selection Envelope Items (The true provenance source)
         const items = await db.select()
             .from(selectionEnvelopeItems)
-            .where(eq(selectionEnvelopeItems.envelopeId, selectionEnvelopeId));
+            .where(eq(selectionEnvelopeItems.selectionEnvelopeId, selectionEnvelopeId));
 
         const totalEnvelopeItems = items.length;
 

@@ -2,6 +2,7 @@ import { db } from '../db/index';
 import { sopTickets } from '../db/schema';
 import { randomUUID, createHash } from 'crypto';
 import { CanonicalFindingsObject, CanonicalTicket, TicketClass } from '@roadmap/shared/src/canon';
+import { conceptHash } from './sas/sasSynthesis.service';
 
 export class TicketGenerationError extends Error {
     constructor(public code: string, message: string) {
@@ -41,8 +42,8 @@ export async function generateTicketsFromFindings(
                 return; // Facts do not spawn tickets directly
         }
 
-        const findingIdDigest = createHash('sha256').update(finding.id).digest('hex').substring(0, 8);
         const fullTitle = `${titlePrefix} ${finding.description}`;
+        const hash = conceptHash(fullTitle);
 
         proposals.push({
             tenantId,
@@ -57,10 +58,10 @@ export async function generateTicketsFromFindings(
                 findingId: finding.id,
                 findingType: finding.type,
                 idx,
-                sourceHash: findingIdDigest
+                sourceHash: hash
             },
             agentModel: 'gpt-4o',
-            conceptHash: findingIdDigest,
+            conceptHash: hash,
             createdAt: new Date()
         });
     });

@@ -820,11 +820,16 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         }
 
         // Stage 6: Ticket Moderation
-        const ticketsModerated = projection.tickets.total > 0 && projection.tickets.pending === 0;
-        if (stage === 6) return ticketsModerated ? 'COMPLETE' : (projection.derived.canGenerateTickets ? 'READY' : 'LOCKED');
+        if (stage === 6) {
+            if (projection.stageState.stage7SynthesisReady || projection.stageState.stage7TicketsExist) return 'COMPLETE';
+            return projection.stageState.stage6ModerationReady ? 'READY' : 'LOCKED';
+        }
 
         // Stage 7: Roadmap
-        if (stage === 7) return projection.artifacts.hasRoadmap ? 'COMPLETE' : (projection.derived.canAssembleRoadmap ? 'READY' : 'LOCKED');
+        if (stage === 7) {
+            if (projection.artifacts.hasRoadmap) return 'COMPLETE';
+            return projection.stageState.stage7SynthesisReady ? 'READY' : 'LOCKED';
+        }
 
         return 'LOCKED';
     };
@@ -1261,9 +1266,9 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                         label: 'Ticket Moderation',
                                         status: getCanonicalStatus(6),
                                         action: (() => {
-                                            const ticketsExist = projection.tickets.total > 0;
+                                            const ticketsExist = projection.stageState.stage7TicketsExist;
 
-                                            if (projection.derived.canGenerateTickets && !ticketsExist) {
+                                            if (projection.stageState.stage6ModerationReady && !ticketsExist) {
                                                 return (
                                                     <button
                                                         onClick={handleActivateModeration}
@@ -1442,12 +1447,12 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                         {projection.lifecycle.intakeWindowState === 'CLOSED' && (
                             <AuthorityGuard requiredCategory={AuthorityCategory.EXECUTIVE}>
                                 <div>
-                                    <div className="text-[10px] text-slate-500 uppercase font-extrabold mb-2">Ticket Moderation {projection.artifacts.diagnostic.exists ? '(Active)' : '(Pending)'}</div>
-                                    {projection.artifacts.diagnostic.exists ? (
+                                    <div className="text-[10px] text-slate-500 uppercase font-extrabold mb-2">Ticket Moderation {projection.stageState.stage6ModerationReady ? '(Active)' : '(Pending)'}</div>
+                                    {projection.stageState.stage6ModerationReady ? (
                                         <div className="space-y-4">
                                             {/* Stage 6 Activation Trigger — EXEC-TICKET-SAS-COMPLETION-REALIGN-001 */}
                                             {/* Banner requires canonical findings (not getCanonicalStatus(5) which was ghost-driven) */}
-                                            {projection.artifacts.hasCanonicalFindings && projection.tickets.total > 0 && (
+                                            {projection.artifacts.hasCanonicalFindings && projection.stageState.stage7TicketsExist && (
                                                 <div className="p-6 bg-indigo-900/10 border border-indigo-500/30 rounded-xl mb-4">
                                                     <div className="flex items-center justify-between gap-6">
                                                         <div className="flex-1">
@@ -1471,6 +1476,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                                 diagnosticId={latestDiagnostic?.id || ''}
                                                 tickets={tickets}
                                                 status={moderationStatus}
+                                                projection={projection}
                                                 onStatusChange={refreshData}
                                             />
                                         </div>
@@ -1497,21 +1503,10 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                             <AuthorityGuard requiredCategory={AuthorityCategory.EXECUTIVE}>
                                 <RoadmapReadinessPanel
                                     tenantId={tenant.id}
-                                    intakeWindowState={projection.lifecycle.intakeWindowState}
-                                    briefStatus={projection.governance.executiveBriefStatus || null}
-                                    moderationStatus={moderationStatus ? {
-                                        readyForRoadmap: moderationStatus.readyForRoadmap,
-                                        pending: moderationStatus.pending,
-                                        approved: moderationStatus.approved
-                                    } : null}
-                                    roadmapStatus={latestRoadmap?.status || roadmaps?.[0]?.status || null}
+                                    projection={projection}
+                                    roadmapStatus={data?.roadmaps?.lastRoadmap?.status || null}
                                     onFinalize={handleFinalizeRoadmap}
                                     isGenerating={isGenerating}
-                                    readinessFlags={{
-                                        knowledgeBaseReady: projection.artifacts.diagnostic.exists,
-                                        rolesValidated: true,
-                                        execReady: projection.governance.executiveBriefStatus === 'APPROVED'
-                                    }}
                                 />
                             </AuthorityGuard>
                         )}
