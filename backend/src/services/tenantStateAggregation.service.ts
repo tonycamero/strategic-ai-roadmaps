@@ -1263,6 +1263,14 @@ export interface TenantLifecycleSnapshot {
         latest: any | null;
         all: any[];
     };
+
+    // [INTEGRITY_GATE_CONFORMANCE]
+    // Top-level mirrors required by TrustAgent
+    diagnostics: any | null;
+    findings: any | null;
+    notes: any[];
+    signals: any[];
+    
     tickets: any[];
     recentActivity: any[];
     identity: {
@@ -1427,6 +1435,12 @@ export async function resolveTenantLifecycleSnapshot(
             latest: roadmapList[0] ?? null,
             all: roadmapList
         },
+        // [INTEGRITY_GATE_CONFORMANCE]
+        diagnostics: normalizedArtifacts.diagnostic,
+        findings: projection.artifacts.canonicalFindings ?? null,
+        notes: artifactsFromService.notes ?? [],
+        signals: [], // Placeholder for SAR Shield signals
+        
         tickets: ticketList,
         recentActivity: activityList,
         identity: {

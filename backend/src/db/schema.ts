@@ -499,7 +499,6 @@ export const selectionEnvelopes = pgTable('selection_envelopes', {
 
   canonicalFindingsHash: varchar('canonical_findings_hash', { length: 64 }),
   registryVersion: varchar('registry_version', { length: 50 }),
-  envelopeVersion: varchar('envelope_version', { length: 50 }),
 
   executionEnvelope: jsonb('execution_envelope'),
   inventoryIds: jsonb('inventory_ids'),
@@ -507,7 +506,9 @@ export const selectionEnvelopes = pgTable('selection_envelopes', {
   findingIds: jsonb('finding_ids'),
 
   selectionHash: varchar('selection_hash', { length: 64 }),
-  envelopeHash: text('envelope_hash'), // Included in user dump
+  envelopeHash: text('envelope_hash'),
+  envelopeVersion: integer('envelope_version').default(1),
+  parentEnvelopeId: uuid('parent_envelope_id').references(() => selectionEnvelopes.id),
   sasRunId: uuid('sas_run_id').references(() => sasRuns.id, { onDelete: 'cascade' }),
 
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -907,6 +908,7 @@ export const sopTickets = pgTable('sop_tickets', {
 
   // EXEC-TICKET-S6-07 (TICKET PROVENANCE ENFORCEMENT)
   sourceFindingIds: jsonb('source_finding_ids').$type<string[]>(),
+  originProposalId: uuid('origin_proposal_id').references(() => sasProposals.id, { onDelete: 'set null' }),
   proposalId: uuid('proposal_id').references(() => sasProposals.id),
   capabilityNamespace: varchar('capability_namespace', { length: 100 }),
   envelopeVersion: integer('envelope_version'),
@@ -1419,6 +1421,58 @@ export const roadmapGraphEdges = pgTable('roadmap_graph_edges', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ============================================================================
+// ORGANIZATIONAL SNAPSHOTS (PHASE 1.5)
+// Daily immutable records of computed organizational state.
+// ============================================================================
+
+export const organizationalSnapshots = pgTable('organizational_snapshots', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  snapshotDate: date('snapshot_date').notNull(),
+  snapshotHash: text('snapshot_hash').notNull(),
+  state: jsonb('state').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  tenantDateUnique: uniqueIndex('idx_org_snapshot_tenant_date').on(table.tenantId, table.snapshotDate),
+}));
+
+// ============================================================================
+// EXECUTION SIGNALS (PHASE 2)
+// Raw operational telemetry from external systems.
+// ============================================================================
+
+export const executionSignals = pgTable('execution_signals', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  signalType: varchar('signal_type', { length: 50 }).notNull(), // TASK_OVERDUE | RESPONSE_DELAY | etc.
+  source: varchar('source', { length: 50 }).notNull(), // GHL | NetSuite | etc.
+  relatedTicketId: uuid('related_ticket_id').references(() => sopTickets.id, { onDelete: 'set null' }),
+  severity: varchar('severity', { length: 20 }).notNull(), // low | medium | high | critical
+  payload: jsonb('payload').default({}),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  idx_execution_signals_tenant: index('idx_execution_signals_tenant').on(table.tenantId),
+  idx_execution_signals_type: index('idx_execution_signals_type').on(table.signalType),
+}));
+
+// ============================================================================
+// STRATEGIC SIGNALS (PHASE 2)
+// Compressed operational patterns for agent reasoning.
+// ============================================================================
+
+export const strategicSignals = pgTable('strategic_signals', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  signalType: varchar('signal_type', { length: 50 }).notNull(),
+  severity: varchar('severity', { length: 20 }).notNull(),
+  supportingSignalIds: uuid('supporting_signal_ids').array(),
+  generatedAt: timestamp('generated_at', { withTimezone: true }).notNull().defaultNow(),
+  status: varchar('status', { length: 20 }).notNull().default('active'), // active | archived | resolved
+}, (table) => ({
+  idx_strategic_signals_tenant: index('idx_strategic_signals_tenant').on(table.tenantId),
+}));
+
 export type RoadmapGraph = typeof roadmapGraphs.$inferSelect;
 export type NewRoadmapGraph = typeof roadmapGraphs.$inferInsert;
 
@@ -1427,3 +1481,12 @@ export type NewRoadmapGraphNode = typeof roadmapGraphNodes.$inferInsert;
 
 export type RoadmapGraphEdge = typeof roadmapGraphEdges.$inferSelect;
 export type NewRoadmapGraphEdge = typeof roadmapGraphEdges.$inferInsert;
+
+export type OrganizationalSnapshot = typeof organizationalSnapshots.$inferSelect;
+export type NewOrganizationalSnapshot = typeof organizationalSnapshots.$inferInsert;
+
+export type ExecutionSignal = typeof executionSignals.$inferSelect;
+export type NewExecutionSignal = typeof executionSignals.$inferInsert;
+
+export type StrategicSignal = typeof strategicSignals.$inferSelect;
+export type NewStrategicSignal = typeof strategicSignals.$inferInsert;

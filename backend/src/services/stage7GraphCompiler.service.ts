@@ -9,6 +9,7 @@ import {
 
 import { eq } from 'drizzle-orm';
 import { loadInventory } from '../trustagent/services/inventory.service';
+import { DagAuthorityService } from './dagAuthority.service';
 
 export interface RoadmapNode {
     ticketId: string;
@@ -17,6 +18,7 @@ export interface RoadmapNode {
     namespace: string;
     complexityTier: string;
     stage: number;
+    originProposalId?: string;
 }
 
 export interface DependencyEdge {
@@ -114,7 +116,8 @@ export class Stage7GraphCompilerService {
                     (inventoryItem
                         ? complexityMap[inventoryItem.complexity] || 'T1'
                         : 'T1'),
-                stage: 0
+                stage: 0,
+                originProposalId: (ticket as any).originProposalId || undefined
             });
         }
 
@@ -265,8 +268,20 @@ export class Stage7GraphCompilerService {
     static async compileAndPersistGraph(selectionEnvelopeId: string) {
 
         return await db.transaction(async (tx) => {
-
             const graph = await this.compileGraph(selectionEnvelopeId);
+
+            // [SAR_SHIELD_AUTHORITY_GATE]
+            // Validate the graph results against the sealed envelope
+            const validation = await DagAuthorityService.validateRoadmapDag(
+                selectionEnvelopeId,
+                graph.nodes.map(n => ({ id: n.ticketId, originProposalId: n.originProposalId })),
+                graph.edges.map(e => ({ from: e.fromTicketId, to: e.toTicketId }))
+            );
+
+            if (!validation.valid) {
+                console.error(`[Stage7GraphCompiler] AUTHORITY_VIOLATION: ${validation.reason}`);
+                throw new Error(`ROADMAP_ACTIVATION_BLOCKED: ${validation.reason}`);
+            }
 
             const [envelope] = await tx.select({
                 tenantId: selectionEnvelopes.tenantId,
