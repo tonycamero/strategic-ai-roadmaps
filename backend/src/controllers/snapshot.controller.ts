@@ -32,7 +32,7 @@ export const getTenantSnapshot = async (req: AuthRequest, res: Response) => {
     }
 
     // === CANONICAL LIFECYCLE RESOLVER ===
-    const snapshot = await resolveTenantLifecycleSnapshot(tenantId);
+    const snapshot = await resolveTenantLifecycleSnapshot(tenantId, currentUser?.userId);
 
     return res.status(200).json({
       success: true,

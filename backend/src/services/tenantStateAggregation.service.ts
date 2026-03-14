@@ -29,12 +29,14 @@ import {
     discoveryNotesLog,
     sasProposals,
     selectionEnvelopes,
-    sasRuns
+    sasRuns,
+    selectionEnvelopeItems
 } from '../db/schema';
-import { eq, ne, and, desc, asc, sql } from 'drizzle-orm';
+import { eq, ne, and, or, isNull, desc, asc, sql } from 'drizzle-orm';
 import { AUDIT_EVENT_TYPES } from '../constants/auditEventTypes';
 import { computeCanonicalFindingsHash } from './canonicalFindingsHash.util';
 import { getProjection, setProjection } from './projectionCache.service';
+import { AuthorityCategory, RoleToAuthorityMap } from '@roadmap/shared';
 
 export const PROJECTION_VERSION = "1.0.0";
 /**
@@ -78,6 +80,7 @@ export interface TenantLifecycleView {
         hasOutstandingClarifications: boolean
         hasPendingCoachingFeedback: boolean
         discoveryIngested: boolean
+        knowledgeBaseReady: boolean
     }
 
     tickets: {
@@ -88,6 +91,14 @@ export interface TenantLifecycleView {
         approvedProposalCount: number
         pendingProposalCount: number
         rejectedProposalCount: number
+        
+        // UI Flattening
+        approved: number
+        pending: number
+        rejected: number
+        readyForRoadmap: boolean
+        proposalCount?: number
+
         moderationSessionActive: boolean
         selectionEnvelopeBinding: string | null
         stageState: {
@@ -163,6 +174,16 @@ export interface TenantLifecycleView {
             ready: boolean
         }
         blockingReasons: string[]
+    }
+
+    stages: {
+        intake: "READY" | "ACTIVE" | "COMPLETE"
+        executiveBrief: "LOCKED" | "READY" | "ACTIVE" | "COMPLETE"
+        diagnostic: "LOCKED" | "READY" | "ACTIVE" | "COMPLETE"
+        discovery: "LOCKED" | "READY" | "ACTIVE" | "COMPLETE"
+        synthesis: "LOCKED" | "READY" | "ACTIVE" | "COMPLETE"
+        moderation: "LOCKED" | "READY" | "ACTIVE" | "COMPLETE"
+        roadmap: "LOCKED" | "READY" | "ACTIVE" | "COMPLETE"
     }
 
     capabilities: {
@@ -312,6 +333,7 @@ async function buildTenantLifecycleView(
         },
         stageState: tickets.stageState,
         derived: publicDerived,
+        stages: resolveStageStatuses(lifecycle, governance, workflow, artifacts, tickets, publicDerived),
         capabilities: buildCapabilityMatrix({ derived, artifacts }),
         meta: {
             projectionVersion: PROJECTION_VERSION,
@@ -344,16 +366,18 @@ async function resolveOperator(tenantId: string, trx?: any): Promise<TenantLifec
 async function resolveLifecycle(tenantId: string, trx?: any): Promise<TenantLifecycleView['lifecycle']> {
     const [tenant] = await (trx || db)
         .select({
-            intakeWindowState: tenants.intakeWindowState
+            intakeWindowState: tenants.intakeWindowState,
+            intakePhase: tenants.intakePhase,
+            intakeVersion: tenants.intakeVersion
         })
         .from(tenants)
         .where(eq(tenants.id, tenantId))
         .limit(1);
 
     return {
-        intakeWindowState: tenant?.intakeWindowState ?? "CLOSED",
-        intakeVersion: 0,
-        currentPhase: "UNKNOWN"
+        intakeWindowState: (tenant?.intakeWindowState as "OPEN" | "CLOSED") ?? "CLOSED",
+        intakeVersion: tenant?.intakeVersion ?? 1,
+        currentPhase: tenant?.intakePhase ?? "OPEN_INITIAL"
     };
 }
 
@@ -547,6 +571,23 @@ async function resolveWorkflow(tenantId: string, trx?: any): Promise<TenantLifec
         discoveryIngested = false;
     }
 
+    // 8. Knowledge Base Ready (via approved decisions in envelope items)
+    let knowledgeBaseReady = false;
+    try {
+        const [kbRows] = await (trx || db)
+            .select({ count: sql<number>`count(*)` })
+            .from(selectionEnvelopeItems)
+            .innerJoin(selectionEnvelopes, eq(selectionEnvelopes.id, selectionEnvelopeItems.selectionEnvelopeId))
+            .where(and(
+                eq(selectionEnvelopes.tenantId, tenantId),
+                eq(selectionEnvelopeItems.decision, 'keep')
+            ));
+        knowledgeBaseReady = Number(kbRows?.count || 0) > 0;
+    } catch {
+        // Fail closed
+        knowledgeBaseReady = false;
+    }
+
     return {
         intakesComplete,
         rolesCompleted,
@@ -559,7 +600,8 @@ async function resolveWorkflow(tenantId: string, trx?: any): Promise<TenantLifec
         roadmapComplete,
         hasOutstandingClarifications,
         hasPendingCoachingFeedback,
-        discoveryIngested
+        discoveryIngested,
+        knowledgeBaseReady
     };
 }
 
@@ -681,21 +723,27 @@ async function resolveTickets(tenantId: string, trx?: any): Promise<TenantLifecy
             ))
         : [{ approved: 0, pending: 0, rejected: 0, total: 0 }];
 
-    const [sopStats] = runId
-        ? await (trx || db)
-            .select({
-                total: sql<number>`count(*)`.mapWith(Number),
-                pending: sql<number>`count(*) filter (where ${sopTickets.status} = 'pending')`.mapWith(Number),
-                approved: sql<number>`count(*) filter (where ${sopTickets.status} = 'approved')`.mapWith(Number),
-                rejected: sql<number>`count(*) filter (where ${sopTickets.status} = 'rejected')`.mapWith(Number)
-            })
-            .from(sopTickets)
-            .innerJoin(selectionEnvelopes, eq(sopTickets.selectionEnvelopeId, selectionEnvelopes.id))
-            .where(and(
-                eq(selectionEnvelopes.tenantId, tenantId),
-                eq(selectionEnvelopes.sasRunId, runId)
-            ))
-        : [{ total: 0, pending: 0, approved: 0, rejected: 0 }];
+    const [tenantPointer] = await (trx || db)
+        .select({ lastDiagnosticId: tenants.lastDiagnosticId })
+        .from(tenants)
+        .where(eq(tenants.id, tenantId))
+        .limit(1);
+    const diagId = tenantPointer?.lastDiagnosticId;
+
+    const [sopStats] = await (trx || db)
+        .select({
+            total: sql<number>`count(*)`.mapWith(Number),
+            pending: sql<number>`count(*) filter (where ${sopTickets.status} = 'pending')`.mapWith(Number),
+            approved: sql<number>`count(*) filter (where ${sopTickets.status} = 'approved')`.mapWith(Number),
+            rejected: sql<number>`count(*) filter (where ${sopTickets.status} = 'rejected')`.mapWith(Number)
+        })
+        .from(sopTickets)
+        .leftJoin(selectionEnvelopes, eq(sopTickets.selectionEnvelopeId, selectionEnvelopes.id))
+        .where(and(
+            eq(sopTickets.tenantId, tenantId),
+            diagId ? eq(sopTickets.diagnosticId, diagId) : sql`true`,
+            runId ? or(eq(selectionEnvelopes.sasRunId, runId), isNull(sopTickets.selectionEnvelopeId)) : sql`true`
+        ));
 
     const [latestEnvelope] = await (trx || db)
         .select({
@@ -711,6 +759,8 @@ async function resolveTickets(tenantId: string, trx?: any): Promise<TenantLifecy
     const approvedProposalCount = sasStats?.approved || 0;
     const ticketCount = sopStats?.total || 0;
 
+    const isDraftMode = proposalCount > 0;
+
     return {
         ticketCount,
         sopPendingCount: sopStats?.pending || 0,
@@ -719,7 +769,18 @@ async function resolveTickets(tenantId: string, trx?: any): Promise<TenantLifecy
         approvedProposalCount,
         pendingProposalCount: sasStats?.pending || 0,
         rejectedProposalCount: sasStats?.rejected || 0,
-        moderationSessionActive: proposalCount > 0,
+        
+        // UI Flattening (DiagnosticModerationSurface expectations)
+        // PREFERENCE: If we have synthesized SOP tickets, use them. Otherwise show draft proposals.
+        approved: (sopStats?.total || 0) > 0 ? (sopStats?.approved || 0) : approvedProposalCount,
+        pending: (sopStats?.total || 0) > 0 ? (sopStats?.pending || 0) : (sasStats?.pending || 0),
+        rejected: (sopStats?.total || 0) > 0 ? (sopStats?.rejected || 0) : (sasStats?.rejected || 0),
+        readyForRoadmap: (sopStats?.total || 0) > 0 
+            ? (sopStats?.pending === 0 && (sopStats?.approved || 0) > 0)
+            : (sasStats?.pending === 0 && approvedProposalCount > 0),
+        proposalCount: isDraftMode ? proposalCount : undefined,
+
+        moderationSessionActive: isDraftMode,
         selectionEnvelopeBinding: latestEnvelope?.selectionHash || latestEnvelope?.id || null,
         stageState: {
             stage6ModerationReady: proposalCount > 0,
@@ -825,9 +886,18 @@ function computeDerivedFlags(
         !workflow.hasPendingCoachingFeedback;
 
     const canAssembleRoadmap =
-        artifacts.diagnostic.exists &&
-        workflow.intakesComplete &&
-        tickets.ticketCount > 0;
+        // Intake gate: window closed
+        lifecycle.intakeWindowState === 'CLOSED' &&
+        // Brief gate: reviewed by executive
+        briefReviewed &&
+        // Knowledge gate: moderation decisions exist in envelope
+        workflow.knowledgeBaseReady &&
+        // Roles gate: at least 2 stakeholder vectors
+        workflow.vectorCount >= 2 &&
+        // Authority gate: operator confirmed sufficiency
+        operator.confirmedSufficiency === true &&
+        // Structural gate: diagnostic must exist
+        artifacts.diagnostic.exists;
 
     const canSynthesizeTickets = tickets.approvedProposalCount > 0;
 
@@ -842,6 +912,7 @@ function computeDerivedFlags(
     if (workflow.hasOutstandingClarifications) blockingReasons.push('OUTSTANDING_CLARIFICATIONS');
     if (workflow.hasPendingCoachingFeedback) blockingReasons.push('PENDING_COACHING_FEEDBACK');
     if (!workflow.discoveryIngested) blockingReasons.push('DISCOVERY_NOT_INGESTED');
+    if (!workflow.knowledgeBaseReady) blockingReasons.push('KNOWLEDGE_BASE_NOT_READY');
     // Ticket generation is enabled even if 0 tickets exist (Phase 6 entry)
 
     // Phase 5 synthesis readiness: ITERATIVE doctrine (decoupled from proposal state)
@@ -936,6 +1007,91 @@ function buildCapabilityMatrix(opts: { derived: InternalDerivedFlags, artifacts:
 // ============================================================================
 // Executive Analytics Pure Resolver
 // ============================================================================
+/**
+ * Authoritative mapping from internal states to UI pipeline statuses.
+ */
+function resolveStageStatuses(
+    lifecycle: TenantLifecycleView['lifecycle'],
+    governance: TenantLifecycleView['governance'],
+    workflow: TenantLifecycleView['workflow'],
+    artifacts: TenantLifecycleView['artifacts'],
+    tickets: TenantLifecycleView['tickets'],
+    derived: any
+): TenantLifecycleView['stages'] {
+    // 1. Intake
+    const intakeStatus = (lifecycle.currentPhase.startsWith('CLOSED_') || lifecycle.currentPhase === 'LOCKED_FINAL')
+        ? "COMPLETE"
+        : "ACTIVE";
+
+    // 2. Executive Brief
+    let briefStatus: "LOCKED" | "READY" | "ACTIVE" | "COMPLETE" = "LOCKED";
+    if (governance.executiveBriefStatus === 'APPROVED' || governance.executiveBriefStatus === 'DELIVERED') {
+        briefStatus = "COMPLETE";
+    } else if (governance.executiveBriefStatus === 'DRAFT') {
+        briefStatus = "ACTIVE";
+    } else if (intakeStatus === 'COMPLETE') {
+        briefStatus = "READY";
+    }
+
+    // 3. Diagnostic
+    let diagnosticStatus: "LOCKED" | "READY" | "ACTIVE" | "COMPLETE" = "LOCKED";
+    if (artifacts.diagnostic.status === 'published' || artifacts.diagnostic.status === 'locked' || artifacts.diagnostic.status === 'generated') {
+        diagnosticStatus = "COMPLETE";
+    } else if (derived.canGenerateDiagnostic) {
+        diagnosticStatus = "ACTIVE";
+    } else if (briefStatus === 'COMPLETE') {
+        diagnosticStatus = "READY";
+    }
+
+    // 4. Discovery
+    let discoveryStatus: "LOCKED" | "READY" | "ACTIVE" | "COMPLETE" = "LOCKED";
+    if (workflow.discoveryIngested) {
+        discoveryStatus = "COMPLETE";
+    } else if (derived.canIngestDiscoveryNotes) {
+        discoveryStatus = "ACTIVE";
+    } else if (diagnosticStatus === 'COMPLETE') {
+        discoveryStatus = "READY";
+    }
+
+    // 5. Synthesis
+    let synthesisStatus: "LOCKED" | "READY" | "ACTIVE" | "COMPLETE" = "LOCKED";
+    if (artifacts.hasCanonicalFindings) {
+        synthesisStatus = "COMPLETE";
+    } else if (derived.synthesis.ready) {
+        synthesisStatus = "ACTIVE";
+    } else if (discoveryStatus === 'COMPLETE') {
+        synthesisStatus = "READY";
+    }
+
+    // 6. Moderation
+    let moderationStatus: "LOCKED" | "READY" | "ACTIVE" | "COMPLETE" = "LOCKED";
+    if (tickets.stageState.stage7TicketsExist) {
+        moderationStatus = "COMPLETE";
+    } else if (tickets.stageState.stage6ModerationReady) {
+        moderationStatus = "ACTIVE";
+    } else if (synthesisStatus === 'COMPLETE') {
+        moderationStatus = "READY";
+    }
+
+    // 7. Roadmap
+    let roadmapStatus: "LOCKED" | "READY" | "ACTIVE" | "COMPLETE" = "LOCKED";
+    if (artifacts.hasRoadmap) {
+        roadmapStatus = "COMPLETE";
+    } else if (moderationStatus === 'COMPLETE' || tickets.stageState.stage7TicketsExist) {
+        roadmapStatus = "READY";
+    }
+
+    return {
+        intake: intakeStatus,
+        executiveBrief: briefStatus,
+        diagnostic: diagnosticStatus,
+        discovery: discoveryStatus,
+        synthesis: synthesisStatus,
+        moderation: moderationStatus,
+        roadmap: roadmapStatus
+    };
+}
+
 function resolveExecutiveAnalytics(input: {
     tickets: any[];
     diagnostic: { status: string; exists: boolean };
@@ -1109,6 +1265,12 @@ export interface TenantLifecycleSnapshot {
     };
     tickets: any[];
     recentActivity: any[];
+    identity: {
+        currentUserId: string | null;
+        ownerUserId: string | null;
+        role: string | null;
+        authorityCategory: string | null;
+    };
 }
 
 /**
@@ -1150,7 +1312,8 @@ function normalizeArtifacts({
  * Acts as the SSOT for the /snapshot endpoint.
  */
 export async function resolveTenantLifecycleSnapshot(
-    tenantId: string
+    tenantId: string,
+    currentUserId?: string
 ): Promise<TenantLifecycleSnapshot> {
     // === CANONICAL PROJECTION SPINE ===
     const projection = await getTenantLifecycleView(tenantId);
@@ -1165,7 +1328,8 @@ export async function resolveTenantLifecycleSnapshot(
         roadmapList,
         activityList,
         ticketList,
-        artifactsFromService
+        artifactsFromService,
+        currentAuthUser
     ] = await Promise.all([
         db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1),
 
@@ -1199,11 +1363,18 @@ export async function resolveTenantLifecycleSnapshot(
         db.select().from(sopTickets).where(eq(sopTickets.tenantId, tenantId)),
 
         // Stage-5 Artifact SSOT
-        getStage5Artifacts(tenantId)
+        getStage5Artifacts(tenantId),
+
+        // Identity resolution
+        currentUserId ? db.select().from(users).where(eq(users.id, currentUserId)).limit(1) : Promise.resolve([])
     ]);
 
     const tenantRow = tenantDetails[0] ?? null;
     const ownerRow = ownerDetails[0] ?? null;
+    const user = (currentAuthUser as any)?.[0] ?? null;
+
+    // Resolve authority category from user role (Canonical Mapping)
+    const authorityCategory = user?.role ? (RoleToAuthorityMap as any)[user.role] : null;
 
     // === ARTIFACT RESOLUTION [SNAPSHOT_ARTIFACT_STABILIZATION] ===
     const executiveBrief = await db
@@ -1257,7 +1428,13 @@ export async function resolveTenantLifecycleSnapshot(
             all: roadmapList
         },
         tickets: ticketList,
-        recentActivity: activityList
+        recentActivity: activityList,
+        identity: {
+            currentUserId: user?.id ?? null,
+            ownerUserId: projection.identity.ownerUserId ?? null,
+            role: user?.role ?? null,
+            authorityCategory: authorityCategory ?? null
+        }
     };
 }
 

@@ -76,12 +76,15 @@ export class Stage6CompilationService {
         // Group finding IDs by capability
         const capabilityToFindings = new Map<string, string[]>();
         for (const item of items) {
-            if (!item.capabilityId) continue; // Skip items without Stage-5 assigned capability
+            const capabilityId = item.capabilityId ?? (item as any).capability_id;
+            const findingId = item.proposalId ?? (item as any).findingId ?? (item as any).finding_id;
 
-            if (!capabilityToFindings.has(item.capabilityId)) {
-                capabilityToFindings.set(item.capabilityId, []);
+            if (!capabilityId) continue; // Skip items without Stage-5 assigned capability
+
+            if (!capabilityToFindings.has(capabilityId)) {
+                capabilityToFindings.set(capabilityId, []);
             }
-            capabilityToFindings.get(item.capabilityId)!.push(item.proposalId);
+            capabilityToFindings.get(capabilityId)!.push(findingId);
         }
 
         const ticketsToCreate: any[] = [];

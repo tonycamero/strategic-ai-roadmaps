@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { superadminApi } from '../api';
+import { getLifecycle } from '../../services/projectionLifecycleAdapter';
 
 type AnyRecord = Record<string, any>;
 
@@ -9,87 +10,47 @@ interface RoadmapGenerationPanelProps {
     tenantId: string;
     firmData: AnyRecord | null;
     onRefresh: () => Promise<void>;
+    onRunSynthesis?: () => Promise<void>;
+    onGenerateRoadmap?: () => Promise<void>;
+    isGenerating?: boolean;
 }
 
-export function RoadmapGenerationPanel({ tenantId, firmData, onRefresh }: RoadmapGenerationPanelProps) {
+export function RoadmapGenerationPanel({ 
+    tenantId, 
+    firmData, 
+    onRefresh,
+    onRunSynthesis,
+    onGenerateRoadmap,
+    isGenerating = false 
+}: RoadmapGenerationPanelProps) {
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
 
-    const [isGeneratingTickets, setIsGeneratingTickets] = useState(false);
-
-    // Disabled features pending API implementation
-    // const [isAssembling, setIsAssembling] = useState(false);
-    // const [isPublishing, setIsPublishing] = useState(false);
-    // const [isRerunning, setIsRerunning] = useState(false);
-    // const [showRerunModal, setShowRerunModal] = useState(false);
-
-    // ---- Derivations (fail-closed, tolerant of schema drift) ----
+    // ---- Derivations (Strictly consuming SSOT Projection) ----
     const derived = useMemo(() => {
-        const tenant = firmData?.tenant ?? firmData?.firm ?? firmData?.data?.tenant ?? {};
-        const diag = firmData?.latestDiagnostic ?? tenant?.latestDiagnostic ?? tenant?.diagnostic ?? {};
-        const brief = firmData?.latestExecutiveBrief ?? tenant?.latestExecutiveBrief ?? tenant?.executiveBrief ?? {};
-        const workflow = firmData?.workflow ?? firmData?.workflowStatus ?? firmData?.firmWorkflowStatus ?? {};
+        const projection = firmData?.projection;
+        if (!projection) return null;
 
-        const intakeWindowState =
-            tenant?.intakeWindowState ??
-            workflow?.intakeWindowState ??
-            firmData?.intakeWindowState ??
-            tenant?.intake_window_state ??
-            null;
+        const lifecycle = getLifecycle(projection);
+        
+        // Stage statuses derived from Projection Lifecycle
+        const intakeClosed = lifecycle.stage1.status === 'COMPLETE';
+        const briefApproved = lifecycle.stage2.status === 'COMPLETE';
+        const diagnosticStatus = lifecycle.stage3.status;
+        const discoveryStatus = lifecycle.stage4.status;
+        const synthesisStatus = lifecycle.stage5.status;
+        const moderationStatus = lifecycle.stage6.status;
+        const roadmapStatus = lifecycle.stage7.status;
 
-        const intakeClosed =
-            intakeWindowState === 'CLOSED' ||
-            intakeWindowState === 'LOCKED' ||
-            intakeWindowState === 'COMPLETE' ||
-            workflow?.intakeClosed === true ||
-            tenant?.intakeClosed === true;
-
-        const briefStatus =
-            brief?.status ?? tenant?.executiveBriefStatus ?? workflow?.executiveBriefStatus ?? tenant?.executive_brief_status;
-
-        const briefApproved =
-            briefStatus === 'APPROVED' ||
-            briefStatus === 'ACKNOWLEDGED' ||
-            briefStatus === 'COMPLETE' ||
-            brief?.isApproved === true ||
-            workflow?.briefApproved === true;
-
-        const diagnosticId =
-            diag?.id ??
-            tenant?.lastDiagnosticId ??
-            tenant?.last_diagnostic_id ??
-            workflow?.diagnosticId ??
-            null;
-
-        const diagnosticStatus = diag?.status ?? tenant?.diagnosticStatus ?? workflow?.diagnosticStatus ?? null;
-
-        const hasDiagnostic =
-            Boolean(diagnosticId) ||
-            diagnosticStatus === 'COMPLETE' ||
-            diagnosticStatus === 'PUBLISHED' ||
-            diagnosticStatus === 'READY';
+        const hasDiagnostic = diagnosticStatus === 'COMPLETE';
+        
+        const diag = projection?.artifacts?.diagnostic ?? {};
 
         // "ticket counts" / findings count: tolerate multiple shapes
-        const findingsTotal =
-            Number(diag?.ticketStats?.total ?? diag?.findingsCount ?? diag?.stats?.total ?? diag?.totals?.findings ?? 0) || 0;
+        const findingsTotal = Number(diag?.ticketStats?.total ?? diag?.findingsCount ?? projection?.artifacts?.hasCanonicalFindings ? 1 : 0) || 0;
 
-        const moderation = firmData?.moderation ?? tenant?.moderation ?? workflow?.moderation ?? {};
-        const moderationPending = Number(moderation?.pending ?? workflow?.pendingModerationCount ?? 0) || 0;
-        const moderationApproved = Number(moderation?.approved ?? workflow?.approvedModerationCount ?? 0) || 0;
-
-        const discoveryStatus =
-            firmData?.discoveryStatus ??
-            tenant?.discoveryStatus ??
-            workflow?.discoveryStatus ??
-            firmData?.discovery ??
-            tenant?.discovery ??
-            {};
-
-        const discoveryComplete =
-            discoveryStatus?.complete === true ||
-            discoveryStatus?.status === 'COMPLETE' ||
-            discoveryStatus?.status === 'READY' ||
-            workflow?.discoveryComplete === true;
+        const moderationPending = Number(projection?.artifacts?.moderation?.pending ?? 0) || 0;
+        const moderationApproved = Number(projection?.artifacts?.moderation?.approved ?? 0) || 0;
 
         const ticketLabel = !hasDiagnostic
             ? 'Diagnostic NOT generated'
@@ -102,91 +63,65 @@ export function RoadmapGenerationPanel({ tenantId, firmData, onRefresh }: Roadma
                         : 'Findings present (moderation not started)';
 
         const ticketIcon = !hasDiagnostic ? '⏳' : findingsTotal === 0 ? '⚠️' : moderationPending > 0 ? '🟠' : '✅';
-
         const ticketColor = !hasDiagnostic ? '#94a3b8' : findingsTotal === 0 ? '#f59e0b' : moderationPending > 0 ? '#fb923c' : '#10b981';
 
-        // Gate logic
-        const canGenerate =
-            Boolean(tenantId) && Boolean(diagnosticId) && intakeClosed && briefApproved && hasDiagnostic && discoveryComplete && findingsTotal > 0;
+        // Gate logic aligned with SSOT
+        // For "Generate Tickets" (Stage 5 synthesis)
+        const canRunSynthesis = synthesisStatus === 'READY';
+        
+        // For "Generate Roadmap" (Stage 7)
+        const canGenerateRoadmap = roadmapStatus === 'READY' || roadmapStatus === 'COMPLETE';
 
-        const canAssemble = Boolean(tenantId) && intakeClosed && briefApproved && hasDiagnostic && findingsTotal > 0;
-
-        // Rerun SOP-01 if diagnostic exists but produced 0 findings
-        const canRerun = Boolean(tenantId) && hasDiagnostic && findingsTotal === 0;
+        const canRerun = hasDiagnostic && findingsTotal === 0;
 
         return {
-            tenant,
-            diag,
-            brief,
-
             intakeClosed,
             briefApproved,
             hasDiagnostic,
-
-            diagnosticId,
             findingsTotal,
-
             moderationPending,
             moderationApproved,
-
-            discoveryComplete,
-
             ticketLabel,
             ticketIcon,
             ticketColor,
-
-            canGenerate,
-            canAssemble,
+            canRunSynthesis,
+            canGenerateRoadmap,
             canRerun,
+            synthesisStatus,
+            roadmapStatus
         };
     }, [firmData, tenantId]);
 
     // ---- Handlers ----
-    const handleGenerateTickets = async () => {
-        setIsGeneratingTickets(true);
+    const handleRunSynthesisClick = async () => {
+        if (!onRunSynthesis) return;
         setError(null);
         setMessage(null);
-
         try {
-            const diagId = derived.diagnosticId;
-            if (!diagId) throw new Error('No diagnostic ID');
-
-            // Expected API (shape may vary; we fail loudly if backend rejects)
-            const data = await superadminApi.generateTickets(tenantId, diagId);
-
-            const ticketCount = data?.ticketCount ?? 0;
-            setMessage(`✅ Generated ${ticketCount} tickets from Discovery.`);
-            await onRefresh();
+            await onRunSynthesis();
+            setMessage('✅ Assisted Synthesis run successfully.');
         } catch (err: any) {
-            setError(err?.message ?? 'Failed to generate tickets');
-        } finally {
-            setIsGeneratingTickets(false);
+            setError(err?.message ?? 'Failed to run assisted synthesis');
         }
     };
 
-    /* 
-    // METHODS DISABLED: Not present in SuperAdmin API surface (Strike 1)
-    
-    const handleAssemble = async () => {
-        setIsAssembling(true);
-        // ...
+    const handleGenerateRoadmapClick = async () => {
+        if (!onGenerateRoadmap) return;
+        setError(null);
+        setMessage(null);
+        try {
+            await onGenerateRoadmap();
+            setMessage('✅ Strategic Roadmap generated successfully.');
+        } catch (err: any) {
+            setError(err?.message ?? 'Failed to generate roadmap');
+        }
     };
-
-    const handlePublish = async () => {
-        setIsPublishing(true);
-        // ...
-    };
-
-    const handleRerunConfirm = async () => {
-        setShowRerunModal(false);
-        setIsRerunning(true);
-        // ...
-    };
-    */
 
     const handleViewRoadmap = () => {
         window.open(`/roadmap/${tenantId}`, '_blank');
     };
+
+    if (!derived) return null;
 
     // ---- UI state ----
     const intakeClosed = derived.intakeClosed;
@@ -199,41 +134,40 @@ export function RoadmapGenerationPanel({ tenantId, firmData, onRefresh }: Roadma
 
     const canRerun = derived.canRerun;
 
-    const canGenerateTickets = derived.canGenerate;
-
-
     return (
-        <div className="bg-slate-950 border border-slate-800 rounded-xl p-6 mt-6">
-            <h3 className="text-lg font-semibold text-slate-100 mb-4">Strategic Roadmap Generation</h3>
+        <div className="bg-slate-950 border border-slate-800 rounded-xl p-6">
+            <h3 className="text-[10px] uppercase tracking-widest text-slate-600 font-inter font-extrabold mb-4">
+                PIPELINE CONTROLS
+            </h3>
 
             {/* Readiness Checklist */}
             <div className="mb-5">
-                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Prerequisites</h4>
+                <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3">Prerequisites (Stage 1-4)</h4>
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
                         <span className="text-base">{intakeClosed ? '✅' : '⏳'}</span>
-                        <span className="text-sm" style={{ color: intakeClosed ? '#10b981' : '#94a3b8' }}>
+                        <span className="text-xs" style={{ color: intakeClosed ? '#10b981' : '#94a3b8' }}>
                             Intake Window CLOSED
                         </span>
                     </div>
 
                     <div className="flex items-center gap-2">
                         <span className="text-base">{briefApproved ? '✅' : '⏳'}</span>
-                        <span className="text-sm" style={{ color: briefApproved ? '#10b981' : '#94a3b8' }}>
+                        <span className="text-xs" style={{ color: briefApproved ? '#10b981' : '#94a3b8' }}>
                             Executive Brief APPROVED/ACKNOWLEDGED
                         </span>
                     </div>
 
                     <div className="flex items-center gap-2">
                         <span className="text-base">{hasDiagnostic ? '✅' : '⏳'}</span>
-                        <span className="text-sm" style={{ color: hasDiagnostic ? '#10b981' : '#94a3b8' }}>
+                        <span className="text-xs" style={{ color: hasDiagnostic ? '#10b981' : '#94a3b8' }}>
                             Diagnostic Generated
                         </span>
                     </div>
 
                     <div className="flex items-center gap-2">
                         <span className="text-base">{ticketIcon}</span>
-                        <span className="text-sm" style={{ color: ticketColor }}>
+                        <span className="text-xs" style={{ color: ticketColor }}>
                             {ticketLabel}
                         </span>
                     </div>
@@ -242,29 +176,20 @@ export function RoadmapGenerationPanel({ tenantId, firmData, onRefresh }: Roadma
 
             {/* Zero-ticket recovery helper */}
             {canRerun && (
-                <div className="mb-4 p-3 bg-amber-950 border border-amber-900 rounded-lg">
-                    <p className="text-xs text-amber-200 mb-2">
-                        Diagnostic completed but produced no findings. Rerun functionality is currently unavailable in SuperAdmin Console.
+                <div className="mb-4 p-3 bg-amber-950/20 border border-amber-900/30 rounded-lg">
+                    <p className="text-[10px] text-amber-200/70 mb-2">
+                        Diagnostic completed but produced no findings. Ensure discovery notes are thorough.
                     </p>
-                    {/* 
-                    <button
-                        onClick={() => setShowRerunModal(true)}
-                        disabled={isRerunning}
-                        className="..."
-                    >
-                        {isRerunning ? 'Re-running...' : 'Re-run SOP-01 (Overwrite Diagnostic)'}
-                    </button>
-                    */}
                 </div>
             )}
 
             {/* Status Messages */}
             {error && (
-                <div className="p-3 bg-red-950 border border-red-900 rounded-lg mb-4 text-red-200 text-sm">{error}</div>
+                <div className="p-3 bg-red-950/20 border border-red-900/30 rounded-lg mb-4 text-red-400 text-xs">{error}</div>
             )}
 
             {message && (
-                <div className="p-3 bg-emerald-950 border border-emerald-900 rounded-lg mb-4 text-emerald-200 text-sm">
+                <div className="p-3 bg-emerald-950/20 border border-emerald-900/30 rounded-lg mb-4 text-emerald-400 text-xs">
                     {message}
                 </div>
             )}
@@ -272,48 +197,34 @@ export function RoadmapGenerationPanel({ tenantId, firmData, onRefresh }: Roadma
             {/* Action Buttons */}
             <div className="flex gap-3 flex-wrap">
                 <button
-                    onClick={handleGenerateTickets}
-                    disabled={!canGenerateTickets || isGeneratingTickets}
-                    className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${canGenerateTickets
-                        ? 'bg-sky-600 hover:bg-sky-500 text-white cursor-pointer'
+                    onClick={handleRunSynthesisClick}
+                    disabled={!derived.canRunSynthesis || isGenerating}
+                    className={`px-5 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${derived.canRunSynthesis && !isGenerating
+                        ? 'bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer shadow-lg shadow-indigo-600/20'
                         : 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                        } ${isGeneratingTickets ? 'opacity-70' : ''}`}
-                    title={
-                        canGenerateTickets
-                            ? 'Generate Tickets from Discovery'
-                            : 'Locked until Intake closed, Brief approved, Diagnostic exists, Discovery complete, and Findings > 0'
-                    }
+                        }`}
                 >
-                    {isGeneratingTickets ? 'Generating...' : 'Generate Tickets'}
+                    {isGenerating ? 'Running...' : 'Run Assisted Synthesis'}
                 </button>
 
                 <button
-                    disabled={true} // FORCE DISABLED
-                    // onClick={handleAssemble}
-                    className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all bg-slate-800 text-slate-600 cursor-not-allowed opacity-50`}
-                    title="API Endpoint Not Available"
+                    onClick={handleGenerateRoadmapClick}
+                    disabled={!derived.canGenerateRoadmap || isGenerating}
+                    className={`px-5 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${derived.canGenerateRoadmap && !isGenerating
+                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer shadow-lg shadow-emerald-600/20'
+                        : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                        }`}
                 >
-                    Assemble Draft Roadmap (Disabled)
-                </button>
-
-                <button
-                    disabled={true} // FORCE DISABLED
-                    // onClick={handlePublish}
-                    className={`px-5 py-2.5 bg-slate-800 text-slate-600 rounded-lg text-sm font-medium cursor-not-allowed opacity-50`}
-                    title="API Endpoint Not Available"
-                >
-                    Publish Roadmap (Disabled)
+                    {isGenerating ? 'Generating...' : 'Generate Roadmap'}
                 </button>
 
                 <button
                     onClick={handleViewRoadmap}
-                    className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-sm font-medium cursor-pointer transition-all"
+                    className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-lg text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all"
                 >
                     View Latest Roadmap
                 </button>
             </div>
-
-            {/* Modal removed/gated */}
         </div>
     );
 }

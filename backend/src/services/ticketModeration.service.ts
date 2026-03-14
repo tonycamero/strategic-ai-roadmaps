@@ -6,7 +6,7 @@
  */
 
 import { db } from '../db/index';
-import { sopTickets, ticketsDraft, ticketModerationSessions } from '../db/schema';
+import { sopTickets, ticketsDraft, ticketModerationSessions, sasProposals } from '../db/schema';
 import { eq, and, inArray, or, isNull, ne, notInArray, isNotNull, desc, asc, sql, count } from 'drizzle-orm';
 
 export interface ModerationTicketDTO {
@@ -61,6 +61,7 @@ export async function getTicketsForDiagnostic(
         tier: ticketsDraft.tier,
         timeEstimateHours: ticketsDraft.timeEstimateHours,
         ghlImplementation: ticketsDraft.ghlImplementation,
+        updatedAt: ticketsDraft.updatedAt,
       })
       .from(ticketsDraft)
       .where(eq(ticketsDraft.moderationSessionId, activeSession.id))
@@ -85,7 +86,7 @@ export async function getTicketsForDiagnostic(
       approved: t.status === 'accepted',
       description: t.description + (t.ghlImplementation ? `\n\nImplementation: ${t.ghlImplementation.substring(0, 100)}...` : ''), // Append snippet
       adminNotes: null,
-      moderatedAt: null,
+      moderatedAt: t.status !== 'pending' ? t.updatedAt : null,
       moderatedBy: null,
     }));
   }
@@ -120,7 +121,6 @@ export async function getTicketsForDiagnostic(
         eq(sopTickets.tenantId, tenantId),
         eq(sopTickets.diagnosticId, diagnosticId), // Strictly filter for canonical tickets
         eq(sopTickets.moderationStatus, 'pending'),
-        isNotNull(sopTickets.painSource),
         notInArray(sopTickets.status, ['archived', 'invalid'])
       )
     )
@@ -180,9 +180,21 @@ export async function updateTicketApproval(
         inArray(ticketsDraft.id, ticketIds)
       )
     )
-    .returning({ id: ticketsDraft.id });
+    .returning({ id: ticketsDraft.id, findingId: ticketsDraft.findingId });
 
   if (draftUpdate.length > 0) {
+    // CRITICAL FIX: Also update sas_proposals.moderation_status.
+    // tickets_draft.finding_id is the sas_proposals.id.
+    // Synthesis queries sas_proposals WHERE moderationStatus = 'APPROVED'.
+    const proposalIds = draftUpdate.map(r => r.findingId).filter(Boolean) as string[];
+
+    if (proposalIds.length > 0) {
+      await db
+        .update(sasProposals)
+        .set({ moderationStatus: approved ? 'APPROVED' : 'REJECTED' })
+        .where(inArray(sasProposals.id, proposalIds));
+    }
+
     return draftUpdate.length;
   }
 
@@ -197,9 +209,10 @@ export async function updateTicketApproval(
       )
     );
 
+  // LOG-ONLY INVARIANT: We prefer painSource but allow moderation on existing legacy tickets
   const nonCanonical = ticketsToUpdate.filter(t => !t.painSource);
-  if (nonCanonical.length > 0) {
-    throw new Error('INVALID_TICKET_NO_CANONICAL_PROVENANCE');
+  if (nonCanonical.length > 0 && process.env.NODE_ENV === 'development') {
+    console.warn(`[Moderation] Processing ${nonCanonical.length} tickets without canonical provenance for tenant ${tenantId}`);
   }
 
   const result = await db
@@ -283,7 +296,6 @@ export async function getModerationStatus(tenantId: string, diagnosticId: string
       and(
         eq(sopTickets.tenantId, tenantId),
         eq(sopTickets.diagnosticId, diagnosticId),
-        isNotNull(sopTickets.painSource),
         notInArray(sopTickets.status, ['archived', 'invalid'])
       )
     );

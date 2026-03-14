@@ -19,7 +19,8 @@ interface DiagnosticReviewModalProps {
             sop01AiLeverageMarkdown?: string;
             sop01RoadmapSkeletonMarkdown?: string;
         };
-    } | null;
+        raw?: any;
+    } | any;
     status?: string;
 }
 
@@ -29,7 +30,7 @@ export function DiagnosticReviewModal({ open, onClose, data, status }: Diagnosti
     if (!open) return null;
 
     // Graceful degradation if no data
-    if (!data || !data.outputs) {
+    if (!data || (!data.outputs && !data?.raw?.outputs && !data?.raw?.overview)) {
         return (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                 <div className="bg-slate-900 border border-slate-700 rounded-lg shadow-2xl w-full max-w-5xl max-h-[80vh] flex flex-col">
@@ -66,7 +67,7 @@ export function DiagnosticReviewModal({ open, onClose, data, status }: Diagnosti
         );
     }
 
-    const displayStatus = status || data.status || 'GENERATED';
+    const displayStatus = status || data?.raw?.status || data?.status || 'GENERATED';
 
     const unwrapDiagnosticText = (value: any): string => {
         if (!value) return '';
@@ -84,26 +85,34 @@ export function DiagnosticReviewModal({ open, onClose, data, status }: Diagnosti
         return JSON.stringify(value, null, 2);
     };
 
+    // Resolve canonical properties across outputs and raw layers
+    const outputs = data?.outputs || {};
+    const raw = data?.raw || {};
+
+    const getProperty = (key: string, legacyKey?: string) => {
+        return outputs[key] || raw[key] || (legacyKey ? (outputs[legacyKey] || raw[legacyKey]) : undefined);
+    };
+
     const tabs = [
         {
             key: 'overview',
             title: 'Diagnostic Overview',
-            content: unwrapDiagnosticText(data.outputs.overview || data.outputs.sop01DiagnosticMarkdown)
+            content: unwrapDiagnosticText(getProperty('overview', 'sop01DiagnosticMarkdown'))
         },
         {
             key: 'aiOpportunities',
             title: 'AI Leverage Opportunities',
-            content: unwrapDiagnosticText(data.outputs.aiOpportunities || data.outputs.sop01AiLeverageMarkdown)
+            content: unwrapDiagnosticText(getProperty('aiOpportunities', 'sop01AiLeverageMarkdown'))
         },
         {
             key: 'roadmapSkeleton',
             title: 'Roadmap Skeleton',
-            content: unwrapDiagnosticText(data.outputs.roadmapSkeleton || data.outputs.sop01RoadmapSkeletonMarkdown)
+            content: unwrapDiagnosticText(getProperty('roadmapSkeleton', 'sop01RoadmapSkeletonMarkdown'))
         },
         {
             key: 'discoveryQuestions',
             title: 'Discovery Questions',
-            content: unwrapDiagnosticText(data.outputs.discoveryQuestions)
+            content: unwrapDiagnosticText(getProperty('discoveryQuestions'))
         },
     ].filter(tab => tab.content);
 
@@ -175,8 +184,8 @@ export function DiagnosticReviewModal({ open, onClose, data, status }: Diagnosti
                 {/* Footer */}
                 <div className="flex items-center justify-between px-6 py-4 border-t border-slate-800 bg-slate-950/50">
                     <div className="text-xs text-slate-500">
-                        {data.createdAt && (
-                            <span>Generated {new Date(data.createdAt).toLocaleDateString()}</span>
+                        {(data.createdAt || data?.raw?.createdAt) && (
+                            <span>Generated {new Date(data.createdAt || data?.raw?.createdAt).toLocaleDateString()}</span>
                         )}
                     </div>
                     <button

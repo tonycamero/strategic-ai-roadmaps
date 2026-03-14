@@ -42,7 +42,7 @@ export async function generateTicketsFromFindings(
                 return; // Facts do not spawn tickets directly
         }
 
-        const fullTitle = `${titlePrefix} ${finding.description}`;
+        const fullTitle = `${titlePrefix} ${finding.content || (finding as any).description}`;
         const hash = conceptHash(fullTitle);
 
         proposals.push({
@@ -51,7 +51,7 @@ export async function generateTicketsFromFindings(
             proposalType: 'ticket',
             content: fullTitle,
             title: fullTitle.substring(0, 255),
-            description: `Generated from Finding ${finding.id}: "${finding.description}"`,
+            description: `Generated from Finding ${finding.id}: "${finding.content || (finding as any).description}"`,
             status: 'draft',
             confidence: 1.0, // SSOT Default for canonical findings
             sourceAnchors: {

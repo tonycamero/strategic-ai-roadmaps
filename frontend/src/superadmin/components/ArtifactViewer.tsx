@@ -44,13 +44,14 @@ function extractArtifactText(artifact: any): string {
                 .join("\n\n---\n\n");
         }
 
-        // 4. Diagnostic sections directly on raw
-        if (raw.overview || raw.aiOpportunities || raw.roadmapSkeleton) {
+        // 4. Diagnostic sections — prioritize the multi-field structure if available
+        const diagSource = raw || outputs;
+        if (diagSource.overview || diagSource.aiOpportunities || diagSource.roadmapSkeleton || diagSource.discoveryQuestions) {
             const sections = {
-                overview: raw.overview,
-                aiOpportunities: raw.aiOpportunities,
-                roadmapSkeleton: raw.roadmapSkeleton,
-                discoveryQuestions: raw.discoveryQuestions
+                overview: diagSource.overview,
+                aiOpportunities: diagSource.aiOpportunities,
+                roadmapSkeleton: diagSource.roadmapSkeleton,
+                discoveryQuestions: diagSource.discoveryQuestions
             };
             return Object.entries(sections)
                 .map(([key, val]) => {

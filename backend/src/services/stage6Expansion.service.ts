@@ -31,7 +31,10 @@ export class Stage6ExpansionService {
         }
 
         // 2. Load proposal details (to get capabilityId and original text)
-        const proposalIds = items.map(i => i.proposalId);
+        const proposalIds = items.map((i: any) => i.proposalId ?? i.findingId ?? i.finding_id);
+        
+        console.log("[Stage6Expansion] Envelope items:", items.length);
+        console.log("[Stage6Expansion] Resolved proposalIds:", proposalIds.length);
         const proposals = await db.select()
             .from(sasProposals)
             .where(inArray(sasProposals.id, proposalIds));
@@ -41,18 +44,34 @@ export class Stage6ExpansionService {
         // PASS 1: Direct finding -> inventory mapping
         // META-TICKET SAS-CAPABILITY-ROLLBACK-01: Extract capabilityId from sourceAnchors JSONB
         for (const proposal of proposals) {
-            const anchors = (proposal.sourceAnchors as any[]) || [];
-            const inferenceAnchor = anchors.find((a: any) => a.sourceType === 'sas_inference');
-            const capabilityId = inferenceAnchor?.capabilityId;
-            if (capabilityId) {
-                candidates.push({
-                    inventoryId: capabilityId,
-                    sourceFindingIds: [proposal.id], // The proposal linked to finding
-                    provenanceType: 'canonical_anchor',
-                    candidateText: proposal.content,
-                    contextData: { proposalType: proposal.proposalType }
-                });
+            const envItem = items.find((i: any) => 
+                (i.proposalId ?? i.findingId ?? i.finding_id) === proposal.id
+            ) as any;
+            
+            let capabilityId = envItem?.capabilityId ?? envItem?.capability_id;
+
+            if (!capabilityId) {
+                if (Array.isArray(proposal.sourceAnchors)) {
+                    const inferenceAnchor = proposal.sourceAnchors.find((a: any) => a.sourceType === 'sas_inference');
+                    capabilityId = inferenceAnchor?.capabilityId;
+                }
+                
+                if (!capabilityId && (proposal.sourceAnchors as any)?.capabilityId) {
+                    capabilityId = (proposal.sourceAnchors as any).capabilityId;
+                }
             }
+
+            if (!capabilityId) {
+                continue;
+            }
+
+            candidates.push({
+                inventoryId: capabilityId,
+                sourceFindingIds: [proposal.id], // The proposal linked to finding
+                provenanceType: 'canonical_anchor',
+                candidateText: proposal.content,
+                contextData: { proposalType: proposal.proposalType }
+            });
         }
 
         // PASS 2: Structural amplification (Placeholder for pre-defined expansion rules)
@@ -60,6 +79,8 @@ export class Stage6ExpansionService {
         // For now, this stays minimal as Stage-6 must be deterministic.
 
         // PASS 3: Risk monitoring (Placeholder for pre-defined risk rules)
+
+        console.log("[Stage6Expansion] Expanded candidates:", candidates.length);
 
         return candidates;
     }

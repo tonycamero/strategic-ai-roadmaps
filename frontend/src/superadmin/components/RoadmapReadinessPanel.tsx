@@ -20,9 +20,18 @@ export function RoadmapReadinessPanel({
 
     // REBIND: Gates are now derived purely from projection (SSOT)
     const isIntakeReady = projection.lifecycle.intakeWindowState === 'CLOSED';
-    const isBriefReady = projection.governance.executiveBriefStatus === 'APPROVED' || projection.governance.executiveBriefStatus === 'DELIVERED';
-    const isModerationReady = projection.tickets.pending === 0 && projection.tickets.total > 0;
-    const isKBReady = projection.workflow.intakesComplete;
+    
+    const briefStatus = projection.governance.executiveBriefStatus;
+    const isBriefReady = briefStatus === 'APPROVED' || briefStatus === 'DELIVERED';
+    
+    // Moderation data from tickets projection (SSOT)
+    const approvedCount = projection.tickets.approved ?? 0;
+    const pendingCount = projection.tickets.pending ?? 0;
+    const rejectedCount = projection.tickets.rejected ?? 0;
+    const totalFindings = approvedCount + pendingCount + rejectedCount;
+    const isModerationReady = projection.tickets.readyForRoadmap;
+
+    const isKBReady = projection.workflow.knowledgeBaseReady;
     const isRolesReady = projection.workflow.vectorCount >= 2;
     const isExecReady = projection.operator.confirmedSufficiency;
 
@@ -102,9 +111,11 @@ export function RoadmapReadinessPanel({
                     <GateCheck
                         label="Ticket Moderation Complete"
                         isReady={isModerationReady}
-                        detail={isModerationReady
-                            ? `${approvedCount} Approved`
-                            : `${pendingCount} Pending`}
+                        detail={totalFindings === 0 
+                            ? 'AWAITING FINDINGS'
+                            : isModerationReady
+                                ? `${approvedCount} Approved`
+                                : `${pendingCount} Pending`}
                     />
                     <GateCheck
                         label="Knowledge Base Ready"
@@ -117,7 +128,7 @@ export function RoadmapReadinessPanel({
                         detail={isRolesReady ? 'VALIDATED' : 'PENDING'}
                     />
                     <GateCheck
-                        label="Authority Overide Ready"
+                        label="Authority Override Ready"
                         isReady={isExecReady}
                         detail={isExecReady ? 'SIGNALED' : 'PENDING'}
                     />
@@ -192,8 +203,6 @@ function GateCheck({ label, isReady, detail }: { label: string; isReady: boolean
                     }`}>
                     {isReady ? (
                         <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 130l4 4L19 7" />
-                            {/* Simple checkmark */}
                             <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
                         </svg>
                     ) : (

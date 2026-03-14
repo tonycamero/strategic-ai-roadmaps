@@ -10,24 +10,38 @@
 
 import { Resend } from 'resend';
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-// keep DEFAULT_FROM if you want it for docs/reference, but DO NOT use it as fallback.
-const DEFAULT_FROM = "hello@mail.strategicai.app";
-const FROM_EMAIL = (process.env.FROM_EMAIL ?? "").trim();
-if (!FROM_EMAIL) {
-  throw new Error("FROM_EMAIL environment variable is not defined");
-}
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
-const REPLY_TO = process.env.RESEND_REPLY_TO;
-
-const fromHeader = `StrategicAI <${FROM_EMAIL}>`;
-const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
-
 function isDev() {
   return process.env.NODE_ENV === 'development';
 }
 
-function assertResendConfigured(opName: string) {
+function getResendClient() {
+  const rawKey = process.env.RESEND_API_KEY;
+  if (!rawKey) return null;
+
+  const key = rawKey
+    .trim()
+    .replace(/^['"]|['"]$/g, '');
+
+  console.log("[EmailService] RESEND key prefix:", key?.slice(0, 6));
+
+  return new Resend(key);
+}
+
+function getFromHeader() {
+  const DEFAULT_FROM = "hello@mail.strategicai.app";
+  const fromEmail = (process.env.FROM_EMAIL ?? process.env.EMAIL_FROM ?? DEFAULT_FROM).trim();
+  return `StrategicAI <${fromEmail}>`;
+}
+
+function getFrontendUrl() {
+  return process.env.FRONTEND_URL || 'http://localhost:5173';
+}
+
+function getReplyTo() {
+  return process.env.RESEND_REPLY_TO;
+}
+
+function assertResendConfigured(resend: Resend | null, opName: string) {
   if (resend) return;
   if (isDev()) return;
 
@@ -40,8 +54,10 @@ function assertResendConfigured(opName: string) {
 // ============================================================================
 
 export async function sendPasswordResetEmail(to: string, resetToken: string) {
-  assertResendConfigured('sendPasswordResetEmail');
-  const resetUrl = `${FRONTEND_URL}/reset-password/${resetToken}`;
+  const resend = getResendClient();
+  assertResendConfigured(resend, 'sendPasswordResetEmail');
+  const frontendUrl = getFrontendUrl();
+  const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
   if (!resend) {
     if (isDev()) {
@@ -53,7 +69,7 @@ export async function sendPasswordResetEmail(to: string, resetToken: string) {
   }
 
   const { data, error } = await resend.emails.send({
-    from: fromHeader,
+    from: getFromHeader(),
     to,
     subject: 'Reset your password',
     html: `
@@ -100,8 +116,10 @@ export async function sendInviteEmail(
   companyName: string,
   roleLabel?: string
 ) {
-  assertResendConfigured('sendInviteEmail');
-  const inviteUrl = `${FRONTEND_URL}/accept-invite/${inviteToken}`;
+  const resend = getResendClient();
+  assertResendConfigured(resend, 'sendInviteEmail');
+  const frontendUrl = getFrontendUrl();
+  const inviteUrl = `${frontendUrl}/accept-invite/${inviteToken}`;
 
   if (!resend) {
     if (isDev()) {
@@ -117,9 +135,9 @@ export async function sendInviteEmail(
     : `${inviterName} has invited you to Strategic AI Roadmaps for ${companyName}`;
 
   const { data, error } = await resend.emails.send({
-    from: fromHeader,
+    from: getFromHeader(),
     to,
-    reply_to: REPLY_TO,
+    reply_to: getReplyTo(),
     subject,
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
@@ -168,8 +186,10 @@ export async function sendClarificationRequestEmail(
     token_fragment: token.substring(0, 6)
   }));
 
-  assertResendConfigured('sendClarificationRequestEmail');
-  const clarificationUrl = `${FRONTEND_URL}/clarify/${token}`;
+  const resend = getResendClient();
+  assertResendConfigured(resend, 'sendClarificationRequestEmail');
+  const frontendUrl = getFrontendUrl();
+  const clarificationUrl = `${frontendUrl}/clarify/${token}`;
 
   if (!resend) {
     if (isDev()) {
@@ -181,9 +201,9 @@ export async function sendClarificationRequestEmail(
   }
 
   const { data, error } = await resend.emails.send({
-    from: fromHeader,
+    from: getFromHeader(),
     to,
-    reply_to: REPLY_TO,
+    reply_to: getReplyTo(),
     subject: 'Clarification Requested on Your Intake Response',
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
@@ -241,6 +261,8 @@ export async function sendEmail(args: {
 }) {
   const { to, subject, text, html, attachments } = args;
 
+  const resend = getResendClient();
+
   if (!resend) {
     if (isDev()) {
       console.warn('[EmailService] RESEND_API_KEY not set, not sending email.');
@@ -257,7 +279,7 @@ export async function sendEmail(args: {
   }
 
   // In non-dev, fail closed if configured incorrectly (shouldn't happen here because resend truthy)
-  assertResendConfigured('sendEmail');
+  assertResendConfigured(resend, 'sendEmail');
 
   const resendAttachments =
     attachments?.map((att) => ({
@@ -266,9 +288,9 @@ export async function sendEmail(args: {
     })) || undefined;
 
   const { data, error } = await resend.emails.send({
-    from: fromHeader,
+    from: getFromHeader(),
     to,
-    reply_to: REPLY_TO,
+    reply_to: getReplyTo(),
     subject,
     text,
     html,
@@ -280,6 +302,6 @@ export async function sendEmail(args: {
     throw error;
   }
 
-  console.log(`[EmailService] Email sent to ${to} from ${fromHeader}, ID: ${data?.id}`);
+  console.log(`[EmailService] Email sent to ${to} from ${getFromHeader()}, ID: ${data?.id}`);
   return data;
 }

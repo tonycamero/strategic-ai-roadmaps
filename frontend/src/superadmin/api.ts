@@ -290,6 +290,25 @@ async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function apiPostGeneric<T>(path: string, body?: unknown): Promise<T> {
+  const token = getToken();
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({ message: res.statusText }));
+    const error = new Error(errBody.message || `API error: ${res.status}`);
+    (error as any).status = res.status;
+    throw error;
+  }
+  return res.json() as Promise<T>;
+}
+
 async function downloadFile(path: string, filename: string): Promise<void> {
   const token = getToken();
   const res = await fetch(`${BASE}${path}`, {
@@ -657,4 +676,20 @@ export const superadminApi = {
     apiGet<{ tickets: any[] }>(`/firms/${tenantId}/sop/tickets`),
   patchTicketStatus: (ticketId: string, status: string) =>
     apiPatch<{ ok: boolean }>(`/tickets/${ticketId}/status`, { status }),
+
+  // Canonical Actions (Wiring per Step Id: 5707)
+  runAssistedSynthesis: (tenantId: string, options: { sasRunId?: string; diagnosticId?: string; force?: boolean } = {}) =>
+    apiPost<any>(`/firms/${tenantId}/assisted-synthesis/generate-proposals${options.force ? '?force=true' : ''}`, {}),
+
+  startTicketModeration: (tenantId: string) =>
+    apiPost<any>(`/firms/${tenantId}/ticket-moderation/activate`, {}),
+
+  generateRoadmap: (tenantId: string) =>
+    apiPost<any>(`/firms/${tenantId}/assemble-roadmap`, {}),
+
+  generateDiagnosticCanonical: (tenantId: string) =>
+    apiPost<any>(`/firms/${tenantId}/generate-diagnostics`, {}),
+
+  generateExecutiveBriefCanonical: (tenantId: string) =>
+    apiPost<any>(`/firms/${tenantId}/executive-brief/generate`, {}),
 };

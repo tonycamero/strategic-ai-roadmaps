@@ -8,6 +8,13 @@ interface ExecutiveBriefModalProps {
     loading?: boolean;
     data: {
         status?: string;
+        raw?: {
+            status?: string;
+            synthesis?: any;
+        };
+        outputs?: {
+            synthesis?: any;
+        };
         synthesis?: {
             executiveSummary?: string;
             operatingReality?: string;
@@ -86,10 +93,12 @@ export function ExecutiveBriefModal({
 }: ExecutiveBriefModalProps) {
     const [activeTab, setActiveTab] = useState('executiveSummary');
     const [layer, setLayer] = useState<'facts' | 'mirror'>('facts');
-
     if (!open) return null;
 
-    if (!data || !data.synthesis) {
+    const synthesis = data?.raw?.synthesis || data?.outputs?.synthesis || data?.synthesis;
+    const content = synthesis?.content;
+
+    if (!data || (!data.synthesis && !data?.raw?.synthesis && !data?.outputs?.synthesis)) {
         return (
             <div className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto pt-16">
                 <div className="bg-slate-900 border border-slate-700 rounded-lg shadow-2xl w-full max-w-4xl max-h-[80vh] flex flex-col">
@@ -126,7 +135,7 @@ export function ExecutiveBriefModal({
         );
     }
 
-    const displayStatus = status || data?.status || 'DRAFT';
+    const displayStatus = status || data?.raw?.status || data?.status || 'DRAFT';
     const isDelivered = displayStatus === 'DELIVERED';
 
     // Static orientation text for Executive Summary
@@ -145,9 +154,6 @@ No synthesis, prioritization, or reframing has been applied yet. The purpose of 
 `;
 
     // Define tabs
-    const synthesis = data?.synthesis;
-    const content = synthesis?.content;
-
     const tabs = [
         {
             key: 'executiveSummary',

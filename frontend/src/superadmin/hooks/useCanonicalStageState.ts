@@ -114,7 +114,13 @@ export function useCanonicalStageState(
     // --- SYNTHESIS ---
     // Ready only when all upstream stages are satisfied
     // EXEC-CYCLE-1: Anchor to projection authority for Stage 6/7
-    const isSynthesisReady = (tenant as any)?.projection?.stageState?.stage7SynthesisReady ?? (discovery.exists && diagnostic.complete && intake.complete);
+    const projectionReady =
+  (tenant as any)?.projection?.stageState?.stage7SynthesisReady;
+
+const isSynthesisReady =
+  typeof projectionReady === 'boolean'
+    ? projectionReady
+    : (discovery.exists && diagnostic.complete && intake.complete);
     
     const synthesis = {
         ready: isSynthesisReady,

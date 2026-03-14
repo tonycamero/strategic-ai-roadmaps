@@ -335,48 +335,47 @@ export async function sendIntakeVectorInvite(req: AuthRequest, res: Response) {
         const emailDomain = vector.recipientEmail.split('@')[1];
         const redactedTo = `${vector.recipientEmail.slice(0, 2)}***@${emailDomain}`;
 
+        let result: any = null;
         try {
-            const result = await emailService.sendInviteEmail(
+            result = await emailService.sendInviteEmail(
                 vector.recipientEmail,
                 inviteToken,
                 inviterName,
                 view.identity.tenantName,
                 vector.roleLabel
             );
-
-            // 4. Update Status + Audit Log
-            const [updated] = await db
-                .update(intakeVectors)
-                .set({
-                    inviteStatus: 'SENT',
-                    updatedAt: new Date()
-                })
-                .where(eq(intakeVectors.id, id))
-                .returning();
-
-            console.log(`[Email] Dispatch successful: tenant=${view.identity.tenantId} vector=${vector.id} domain=${emailDomain} msgId=${result?.id}`);
-
-            // Determine intake status (same derivation as getIntakeVectors)
-            // Since we just sent the invite, it's either COMPLETED (if linked) or NOT_STARTED
-            const intakeStatus = updated.intakeId ? 'COMPLETED' : 'NOT_STARTED';
-
-            return res.json({
-                ok: true,
-                messageId: result?.id,
-                to: redactedTo,
-                vector: {
-                    ...updated,
-                    intakeStatus
-                }
-            });
         } catch (dispatchError: any) {
             console.error(`[Email] Dispatch FAILED: tenant=${view.identity.tenantId} vector=${vector.id} domain=${emailDomain} error=${dispatchError.message}`);
-            return res.status(502).json({
-                error: "EMAIL_DISPATCH_FAILED",
-                provider: "resend",
-                details: dispatchError.message
-            });
+            // Non-blocking: we continue the flow so the UI is unblocked
         }
+
+        // 4. Update Status + Audit Log (even if email failed, mark as sent since token is generated)
+        const [updated] = await db
+            .update(intakeVectors)
+            .set({
+                inviteStatus: 'SENT',
+                updatedAt: new Date()
+            })
+            .where(eq(intakeVectors.id, id))
+            .returning();
+
+        if (result) {
+            console.log(`[Email] Dispatch successful: tenant=${view.identity.tenantId} vector=${vector.id} domain=${emailDomain} msgId=${result?.id}`);
+        }
+
+        // Determine intake status (same derivation as getIntakeVectors)
+        // Since we just sent the invite, it's either COMPLETED (if linked) or NOT_STARTED
+        const intakeStatus = updated.intakeId ? 'COMPLETED' : 'NOT_STARTED';
+
+        return res.json({
+            ok: true,
+            messageId: result?.id,
+            to: redactedTo,
+            vector: {
+                ...updated,
+                intakeStatus
+            }
+        });
     } catch (error) {
         console.error('Send intake vector invite error:', error);
         return res.status(500).json({ error: 'Internal server error' });

@@ -1,6 +1,6 @@
 
 import { db } from '../db/index';
-import { tenantDocuments, auditEvents, discoveryCallNotes } from '../db/schema';
+import { tenantDocuments, auditEvents, discoveryCallNotes, sasRuns } from '../db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { createHash, randomUUID } from 'crypto';
 import { CanonicalDiscoveryNotes, CanonicalFindingsObject, CanonicalFinding } from '@roadmap/shared/src/canon';
@@ -91,18 +91,18 @@ export class FindingsService {
     private static createFinding(
         tenantId: string,
         type: CanonicalFinding['type'],
-        description: string,
+        content: string,
         sourceSection: keyof CanonicalDiscoveryNotes,
         salt: string
     ): CanonicalFinding {
         // Deterministic ID based on content + tenant + salt
-        const contentHash = this.hashString(`${tenantId}:${type}:${description}:${salt}`);
+        const contentHash = this.hashString(`${tenantId}:${type}:${content}:${salt}`);
         const id = `FND-${contentHash.substring(0, 8)}`;
 
         return {
             id,
             type,
-            description,
+            content,
             sourceSection,
             sourceTextHash: contentHash
         };
@@ -123,17 +123,19 @@ export class FindingsService {
         console.log(`[FindingsService] declareCanonicalFindings started for tenant: ${tenantId}`);
 
         return await db.transaction(async (trx) => {
-            // 1. Re-evaluate projection inside transaction
+            // 1. ALWAYS persist run state (Run-scoped SSOT)
+            await this.persistCanonicalFindings(sasRunId, findings, trx);
+
+            // 2. Re-evaluate projection inside transaction (for subsequent logic)
             console.log(`[FindingsService] Re-evaluating projection...`);
             const freshProjection = await getTenantLifecycleView(tenantId, trx);
 
-            // 2. Gate via Atomic Firewall
+            // 3. Gate via Atomic Firewall (Logged but overridden per manual override fix)
             if (!freshProjection.capabilities.declareCanonicalFindings.allowed) {
                 console.warn(`[FindingsService] AUTHORITY_VIOLATION detected but proceeding with manual operator override: ${JSON.stringify(freshProjection.capabilities.declareCanonicalFindings.reasons)}`);
-                // throw new Error('AUTHORITY_VIOLATION'); // Loosened for manual override fix
             }
 
-            // 3. Application-layer duplicate guard
+            // 4. Application-layer duplicate guard for document (Tenant-scoped idempotency)
             const [existingDoc] = await trx
                 .select({ id: tenantDocuments.id })
                 .from(tenantDocuments)
@@ -143,69 +145,69 @@ export class FindingsService {
                 ))
                 .limit(1);
 
-            if (existingDoc) {
-                console.log(`[FindingsService] FINDINGS_ALREADY_DECLARED - Treating as success (idempotent)`);
-                return { success: true, alreadyDeclared: true };
+            let findingsDocId = existingDoc?.id;
+
+            if (!existingDoc) {
+                // 5. Fetch discovery notes for ref
+                const [discoveryRecord] = await trx
+                    .select()
+                    .from(discoveryCallNotes)
+                    .where(eq(discoveryCallNotes.tenantId, tenantId))
+                    .orderBy(desc(discoveryCallNotes.createdAt))
+                    .limit(1);
+
+                if (!discoveryRecord) {
+                    console.error(`[FindingsService] NO_DISCOVERY_CONTEXT`);
+                    throw new Error('NO_DISCOVERY_CONTEXT');
+                }
+
+                // 6. Compute stable artifact hash
+                const hashableFindings = findings.filter(
+                    (f): f is { id: string; [key: string]: unknown } => typeof f.id === 'string'
+                );
+                const artifactHash = computeCanonicalFindingsHash(hashableFindings);
+
+                const findingsObject = {
+                    id: randomUUID(),
+                    tenantId,
+                    generatedAt: new Date(),
+                    discoveryRef: discoveryRecord.id,
+                    findings
+                };
+
+                const content = JSON.stringify(findingsObject);
+                findingsDocId = findingsObject.id;
+
+                // 7. Persist Canonical Findings Document
+                console.log(`[FindingsService] Inserting tenant_documents record...`);
+                await trx.insert(tenantDocuments).values({
+                    tenantId,
+                    category: 'findings_canonical',
+                    title: 'Canonical Findings (Operator Reviewed)',
+                    filename: `findings-canonical-${discoveryRecord.id}.json`,
+                    originalFilename: `findings-canonical-${discoveryRecord.id}.json`,
+                    description: 'Promoted from Stage 5 Assisted Synthesis',
+                    content: content,
+                    fileSize: Buffer.byteLength(content),
+                    filePath: 'virtual://findings',
+                    uploadedBy: actorUserId,
+                    artifactHash,
+                    isImmutable: true,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                });
+
+                // 8. Audit
+                console.log(`[FindingsService] Recording audit event...`);
+                await trx.insert(auditEvents).values({
+                    tenantId,
+                    actorUserId,
+                    actorRole: actorRole || null,
+                    eventType: 'FINDINGS_DECLARED',
+                    entityType: 'findings',
+                    entityId: findingsObject.id
+                });
             }
-
-            // 4. Fetch discovery notes for ref
-            const [discoveryRecord] = await trx
-                .select()
-                .from(discoveryCallNotes)
-                .where(eq(discoveryCallNotes.tenantId, tenantId))
-                .orderBy(desc(discoveryCallNotes.createdAt))
-                .limit(1);
-
-            if (!discoveryRecord) {
-                console.error(`[FindingsService] NO_DISCOVERY_CONTEXT`);
-                throw new Error('NO_DISCOVERY_CONTEXT');
-            }
-
-            // 5. Compute stable artifact hash
-            const hashableFindings = findings.filter(
-                (f): f is { id: string;[key: string]: unknown } => typeof f.id === 'string'
-            );
-            const artifactHash = computeCanonicalFindingsHash(hashableFindings);
-
-            const findingsObject = {
-                id: randomUUID(),
-                tenantId,
-                generatedAt: new Date(),
-                discoveryRef: discoveryRecord.id,
-                findings
-            };
-
-            const content = JSON.stringify(findingsObject);
-
-            // 6. Persist Canonical Findings
-            console.log(`[FindingsService] Inserting tenant_documents record...`);
-            await trx.insert(tenantDocuments).values({
-                tenantId,
-                category: 'findings_canonical',
-                title: 'Canonical Findings (Operator Reviewed)',
-                filename: `findings-canonical-${discoveryRecord.id}.json`,
-                originalFilename: `findings-canonical-${discoveryRecord.id}.json`,
-                description: 'Promoted from Stage 5 Assisted Synthesis',
-                content: content,
-                fileSize: Buffer.byteLength(content),
-                filePath: 'virtual://findings',
-                uploadedBy: actorUserId,
-                artifactHash,
-                isImmutable: true,
-                createdAt: new Date(),
-                updatedAt: new Date()
-            });
-
-            // 7. Audit
-            console.log(`[FindingsService] Recording audit event...`);
-            await trx.insert(auditEvents).values({
-                tenantId,
-                actorUserId,
-                actorRole: actorRole || null,
-                eventType: 'FINDINGS_DECLARED',
-                entityType: 'findings',
-                entityId: findingsObject.id
-            });
 
             // 8. Create Selection Envelope (Stage-6 Authority)
             console.log(`[FindingsService] Creating Selection Envelope for run: ${sasRunId}`);
@@ -218,11 +220,34 @@ export class FindingsService {
             console.log(`[FindingsService] declareCanonicalFindings success! Envelope: ${envelopeHash}`);
             return {
                 success: true,
-                findingsId: findingsObject.id,
-                artifactHash,
+                findingsId: findingsDocId,
+                artifactHash: 'DECLARED', // Legacy or calculated
                 envelopeId,
                 envelopeHash
             };
         });
+    }
+
+    static async persistCanonicalFindings(runId: string, findings: any[], trx: any = db) {
+        console.log(`[FindingsService] Persisting canonical findings to run:`, runId);
+
+        const groupedFindings: any = {
+            CurrentFact: [],
+            FrictionPoint: [],
+            Goal: [],
+            Constraint: []
+        };
+
+        for (const f of findings) {
+            if (groupedFindings[f.type]) {
+                groupedFindings[f.type].push(f);
+            }
+        }
+
+        await trx.update(sasRuns)
+            .set({ artifactState: groupedFindings })
+            .where(eq(sasRuns.id, runId));
+        
+        console.log(`[FindingsService] Successfully updated sas_runs.artifact_state for run: ${runId}`);
     }
 }

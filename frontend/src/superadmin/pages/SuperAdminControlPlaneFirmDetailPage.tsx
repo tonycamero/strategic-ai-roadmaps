@@ -8,6 +8,7 @@ import { DiagnosticModerationSurface } from '../components/DiagnosticModerationS
 import { DiagnosticCompleteCard } from '../components/DiagnosticCompleteCard';
 
 import { RoadmapReadinessPanel } from '../components/RoadmapReadinessPanel';
+import { RoadmapGenerationPanel } from '../components/RoadmapGenerationPanel';
 import { ExecutiveSnapshotPanel } from '../components/ExecutiveSnapshotPanel';
 import { ExecutiveBriefPanel } from '../components/ExecutiveBriefPanel';
 import { ExecutiveBriefModal } from '../components/ExecutiveBriefModal';
@@ -19,7 +20,7 @@ import { BriefCompleteCard } from '../components/BriefCompleteCard';
 import { DiscoveryNotesModal } from '../components/DiscoveryNotesModal';
 import { AssistedSynthesisModal } from '../components/AssistedSynthesisModal';
 import { BaselineSummaryPanel } from '../components/BaselineSummaryPanel';
-import { useCanonicalStageState } from '../hooks/useCanonicalStageState';
+import { getLifecycle } from '../../services/projectionLifecycleAdapter';
 // @ANCHOR:SA_FIRM_DETAIL_IMPORTS_END
 
 import { superadminApi } from '../api';
@@ -116,10 +117,10 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     const [impersonating, setImpersonating] = useState(false);
     const { category } = useSuperAdminAuthority();
 
-    const refreshData = async () => {
+    const refreshData = async (silent = false) => {
         if (!params?.tenantId) return;
 
-        setLoading(true);
+        if (!silent) setLoading(true);
 
         try {
             // PHASE 1: Collapse to Single Orchestrator Call
@@ -140,7 +141,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                 setError(err.message || 'Failed to load consolidated snapshot');
             }
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
@@ -202,12 +203,17 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     // ============================================================================
 
 
-    const getStatusStyles = (status: 'LOCKED' | 'READY' | 'COMPLETE') => {
+    const getStatusStyles = (status: 'LOCKED' | 'READY' | 'ACTIVE' | 'COMPLETE') => {
         switch (status) {
             case 'COMPLETE':
                 return {
                     container: 'bg-emerald-900/20 border-emerald-500/50 text-emerald-400',
                     dot: 'bg-emerald-500'
+                };
+            case 'ACTIVE':
+                return {
+                    container: 'bg-indigo-900/40 border-indigo-500/60 text-indigo-300 shadow-[0_0_15px_rgba(99,102,241,0.1)]',
+                    dot: 'bg-indigo-400 animate-pulse'
                 };
             case 'READY':
                 return {
@@ -217,8 +223,8 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
             case 'LOCKED':
             default:
                 return {
-                    container: 'bg-red-900/20 border-red-500/50 text-red-500',
-                    dot: 'bg-red-500'
+                    container: 'bg-slate-900/40 border-slate-800 text-slate-500',
+                    dot: 'bg-slate-700'
                 };
         }
     };
@@ -282,7 +288,8 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         setIsGenerating(true);
         setGateLockedMessage(null);
         try {
-            await superadminApi.assembleRoadmap(params.tenantId);
+            // Point to canonical generator
+            await superadminApi.generateRoadmap(params.tenantId);
             await refreshData();
         } catch (err: any) {
             console.error('Finalization error:', err);
@@ -371,15 +378,15 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
 
     const handleGenerateDiagnostic = async () => {
         if (!params?.tenantId) return;
-        if (isGenerating) return;  // ✅ Guard against double-click
+        if (isGenerating) return;
         setIsGenerating(true);
-        setGateLockedMessage(null); // Clear previous lock message
+        setGateLockedMessage(null);
         try {
-            await superadminApi.generateDiagnostics(params.tenantId);
+            // Wiring per Step Id: 5707 (Canonical path)
+            await superadminApi.generateDiagnosticCanonical(params.tenantId);
             await refreshData();
         } catch (err: any) {
             console.error('Diagnostic Generation Error:', err);
-            // Handle GATE_LOCKED as a state, not a platform crash
             if (err.errorCode === 'GATE_LOCKED' || err.status === 403) {
                 setGateLockedMessage(err.message || 'Next step is currently locked by business logic.');
             } else {
@@ -392,7 +399,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
 
     // Lock & Publish Diagnostic require diagnosticId
     const handleGenerateTickets = async () => {
-        if (!params?.tenantId || !data?.tenant?.lastDiagnosticId) return;
+        if (!params?.tenantId || !tenant?.lastDiagnosticId) return;
         if (isGenerating) return;
         setIsGenerating(true);
         try {
@@ -423,13 +430,14 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     const handleActivateModeration = async () => {
         if (!params?.tenantId || isGenerating) return;
 
-        const confirmed = window.confirm('This will start a new moderation cycle tied to the current canonical findings. Legacy tickets will not be used. Proceed?');
+        const confirmed = window.confirm('This will start a new moderation cycle tied to the current canonical findings. Proceed?');
         if (!confirmed) return;
 
         setIsGenerating(true);
         setGateLockedMessage(null);
         try {
-            await superadminApi.activateTicketModeration(params.tenantId);
+            // Wiring per Step Id: 5707 (Canonical path)
+            await superadminApi.startTicketModeration(params.tenantId);
             await refreshData();
         } catch (err: any) {
             console.error('Moderation Activation Error:', err);
@@ -443,8 +451,43 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         }
     };
 
+    const handleRunAssistedSynthesis = async () => {
+        if (!params?.tenantId || isGenerating) return;
+        setIsGenerating(true);
+        console.log('[SAS] Starting Assisted Synthesis Run...');
+        try {
+            // Wiring per Step Id: 5707 (Canonical path)
+            await superadminApi.runAssistedSynthesis(params.tenantId);
+            console.log('[SAS] Run complete, refreshing data silent...');
+            await refreshData(true);
+            console.log('[SAS] Opening modal...');
+            setSynthesisOpen(true);
+        } catch (err: any) {
+            console.error('Assisted Synthesis Error:', err);
+            setError(err.message || 'Failed to run assisted synthesis');
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleGenerateStrategicRoadmap = async () => {
+        if (!params?.tenantId || isGenerating) return;
+        setIsGenerating(true);
+        try {
+            // Wiring per Step Id: 5707 (Canonical path)
+            await superadminApi.generateRoadmap(params.tenantId);
+            await refreshData();
+        } catch (err: any) {
+            console.error('Roadmap Generation Error:', err);
+            setError(err.message || 'Failed to generate roadmap');
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     const handleLockDiagnostic = async () => {
-        if (!params?.tenantId || !data?.latestDiagnostic?.id) return;
+        const diagId = latestDiagnostic?.id;
+        if (!params?.tenantId || !diagId) return;
         if (!window.confirm('Lock Diagnostic? This prevents further regeneration.')) return;
         setIsGenerating(true);
         setGateLockedMessage(null);
@@ -464,12 +507,16 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
     };
 
     const handlePublishDiagnostic = async () => {
-        if (!params?.tenantId || !data?.latestDiagnostic?.id) return;
+        const diagId = latestDiagnostic?.id;
+        if (!params?.tenantId || !diagId) {
+            console.error('Missing tenantId or diagnosticId for publishing', { tenantId: params?.tenantId, diagId });
+            return;
+        }
         if (!window.confirm('Publish Diagnostic? This makes artifacts visible to Discovery.')) return;
         setIsGenerating(true);
         setGateLockedMessage(null);
         try {
-            await superadminApi.publishDiagnostic(params.tenantId, latestDiagnostic?.id!);
+            await superadminApi.publishDiagnostic(params.tenantId, diagId);
             await refreshData();
         } catch (err: any) {
             console.error('Publish Diagnostic Error:', err);
@@ -549,7 +596,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
         setIsGenerating(true);
         setGateLockedMessage(null);
         try {
-            await superadminApi.generateExecutiveBrief(params.tenantId);
+            await superadminApi.generateExecutiveBriefCanonical(params.tenantId);
             await refreshData();
         } catch (err: any) {
             console.error('Executive Brief Generation Error:', err);
@@ -796,42 +843,11 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
 
     const synthesisNotes = discoveryNotesLog[0]?.delta ?? null;
 
-    // Canonical Status Helper using strictly projection bindings
-    const getCanonicalStatus = (stage: number): 'LOCKED' | 'READY' | 'COMPLETE' => {
-        // Stage 1: Intake
-        if (stage === 1) return projection.lifecycle.intakeWindowState === "CLOSED" ? 'COMPLETE' : 'READY';
+    const lifecycle = getLifecycle(projection);
 
-        // Stage 2: Executive Brief
-        const isBriefComplete = ['APPROVED', 'DELIVERED', 'REVIEWED', 'ACKNOWLEDGED', 'WAIVED'].includes(projection.governance.executiveBriefStatus);
-        if (stage === 2) return isBriefComplete ? 'COMPLETE' : (projection.lifecycle.intakeWindowState === 'CLOSED' ? 'READY' : 'LOCKED');
-
-        // Stage 3: Diagnostic
-        if (stage === 3) return projection.artifacts.diagnostic.exists ? 'COMPLETE' : (projection.derived.canGenerateDiagnostic ? 'READY' : 'LOCKED');
-
-        // Stage 4: Discovery Notes
-        if (stage === 4) return projection.workflow.discoveryComplete ? 'COMPLETE' : (projection.derived.canIngestDiscoveryNotes ? 'READY' : 'LOCKED');
-
-        // Stage 5: Assisted Synthesis
-        // COMPLETION requires canonical findings — draft proposals are NOT completion.
-        // EXEC-TICKET-SAS-COMPLETION-REALIGN-001
-        if (stage === 5) {
-            if (projection.artifacts.hasCanonicalFindings) return 'COMPLETE';
-            return projection.derived.synthesis.ready ? 'READY' : 'LOCKED';
-        }
-
-        // Stage 6: Ticket Moderation
-        if (stage === 6) {
-            if (projection.stageState.stage7SynthesisReady || projection.stageState.stage7TicketsExist) return 'COMPLETE';
-            return projection.stageState.stage6ModerationReady ? 'READY' : 'LOCKED';
-        }
-
-        // Stage 7: Roadmap
-        if (stage === 7) {
-            if (projection.artifacts.hasRoadmap) return 'COMPLETE';
-            return projection.stageState.stage7SynthesisReady ? 'READY' : 'LOCKED';
-        }
-
-        return 'LOCKED';
+    const getCanonicalStatus = (stage: number) => {
+        const key = `stage${stage}` as keyof typeof lifecycle;
+        return lifecycle[key]?.status || 'LOCKED';
     };
 
     // Filter exec-only actions from activity log (Defense-in-depth)
@@ -1245,10 +1261,24 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                         label: 'Assisted Synthesis',
                                         status: getCanonicalStatus(5),
                                         action: (() => {
-                                            // EXEC-TICKET-SAS-COMPLETION-REALIGN-001
-                                            // Access gate uses canonical findings OR synthesis.ready.
-                                            // But completion badge is strictly hasCanonicalFindings.
-                                            if (projection.artifacts.hasCanonicalFindings || projection.derived.synthesis.ready) {
+                                            const status = getCanonicalStatus(5);
+                                            const hasFindings = projection.artifacts.hasCanonicalFindings;
+
+                                            // If READY (means Stage 1-4 are good) but no findings yet → allow Run
+                                            if (status === 'READY' && !hasFindings) {
+                                                return (
+                                                    <button
+                                                        onClick={handleRunAssistedSynthesis}
+                                                        disabled={isGenerating}
+                                                        className="mt-2 text-[10px] uppercase font-bold text-indigo-400 hover:text-indigo-300 border border-indigo-900/50 bg-indigo-950/30 px-3 py-1.5 rounded transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                                                    >
+                                                        {isGenerating ? 'Running...' : 'Run Assisted Synthesis'}
+                                                    </button>
+                                                );
+                                            }
+
+                                            // If COMPLETE or Findings exist → allow Review
+                                            if (hasFindings || projection.derived.synthesis.ready) {
                                                 return (
                                                     <button
                                                         onClick={openSynthesisModal}
@@ -1268,7 +1298,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                         action: (() => {
                                             const ticketsExist = projection.stageState.stage7TicketsExist;
 
-                                            if (projection.stageState.stage6ModerationReady && !ticketsExist) {
+                                            if (projection.artifacts.hasCanonicalFindings && !projection.stageState.stage6ModerationReady && !ticketsExist) {
                                                 return (
                                                     <button
                                                         onClick={handleActivateModeration}
@@ -1287,7 +1317,43 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                         id: 7,
                                         label: 'Roadmap Generation',
                                         status: getCanonicalStatus(7),
-                                        action: null
+                                        action: (() => {
+                                            const status = getCanonicalStatus(7);
+                                            const hasRoadmap = projection.artifacts.hasRoadmap;
+
+                                            if (status === 'READY' || (status === 'COMPLETE' && !hasRoadmap)) {
+                                                return (
+                                                    <button
+                                                        onClick={handleGenerateStrategicRoadmap}
+                                                        disabled={isGenerating}
+                                                        className="mt-2 text-[10px] uppercase font-bold text-emerald-400 hover:text-emerald-300 border border-emerald-900/50 bg-emerald-950/30 px-3 py-1.5 rounded transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                                                    >
+                                                        {isGenerating ? 'Generating...' : 'Generate Roadmap'}
+                                                    </button>
+                                                );
+                                            }
+
+                                            if (hasRoadmap) {
+                                                return (
+                                                    <div className="flex gap-2 mt-2">
+                                                        <button
+                                                            onClick={() => window.open(`/roadmap/${params.tenantId}`, '_blank')}
+                                                            className="text-[10px] uppercase font-bold text-emerald-400 hover:text-emerald-300 border border-emerald-900/50 bg-emerald-950/30 px-3 py-1.5 rounded transition-colors"
+                                                        >
+                                                            View
+                                                        </button>
+                                                        <button
+                                                            onClick={handleGenerateStrategicRoadmap}
+                                                            disabled={isGenerating}
+                                                            className="text-[10px] uppercase font-bold text-indigo-400 hover:text-indigo-300 border border-indigo-900/50 bg-indigo-950/30 px-3 py-1.5 rounded transition-colors disabled:opacity-50"
+                                                        >
+                                                            Regen
+                                                        </button>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        })()
                                     }
                                 ];
 
@@ -1447,12 +1513,11 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                         {projection.lifecycle.intakeWindowState === 'CLOSED' && (
                             <AuthorityGuard requiredCategory={AuthorityCategory.EXECUTIVE}>
                                 <div>
-                                    <div className="text-[10px] text-slate-500 uppercase font-extrabold mb-2">Ticket Moderation {projection.stageState.stage6ModerationReady ? '(Active)' : '(Pending)'}</div>
-                                    {projection.stageState.stage6ModerationReady ? (
+                                    <div className="text-[10px] text-slate-500 uppercase font-extrabold mb-2">Ticket Moderation {projection.artifacts.hasCanonicalFindings ? (projection.stageState.stage6ModerationReady ? '(Active)' : '(Ready)') : '(Pending)'}</div>
+                                    {projection.artifacts.hasCanonicalFindings ? (
                                         <div className="space-y-4">
                                             {/* Stage 6 Activation Trigger — EXEC-TICKET-SAS-COMPLETION-REALIGN-001 */}
-                                            {/* Banner requires canonical findings (not getCanonicalStatus(5) which was ghost-driven) */}
-                                            {projection.artifacts.hasCanonicalFindings && projection.stageState.stage7TicketsExist && (
+                                            {!projection.stageState.stage6ModerationReady && (
                                                 <div className="p-6 bg-indigo-900/10 border border-indigo-500/30 rounded-xl mb-4">
                                                     <div className="flex items-center justify-between gap-6">
                                                         <div className="flex-1">
@@ -1471,14 +1536,16 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                                 </div>
                                             )}
 
-                                            <DiagnosticModerationSurface
-                                                tenantId={tenant.id}
-                                                diagnosticId={latestDiagnostic?.id || ''}
-                                                tickets={tickets}
-                                                status={moderationStatus}
-                                                projection={projection}
-                                                onStatusChange={refreshData}
-                                            />
+                                            {projection.stageState.stage6ModerationReady && (
+                                                <DiagnosticModerationSurface
+                                                    tenantId={tenant.id}
+                                                    diagnosticId={latestDiagnostic?.id || ''}
+                                                    tickets={tickets}
+                                                    status={moderationStatus}
+                                                    projection={projection}
+                                                    onStatusChange={refreshData}
+                                                />
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="p-6 border border-slate-800 border-dashed rounded-lg flex flex-col items-center justify-center text-center opacity-60">
@@ -1487,9 +1554,9 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                                 </svg>
                                             </div>
-                                            <h3 className="text-sm font-medium text-slate-400">Diagnostic Not Generated</h3>
+                                            <h3 className="text-sm font-medium text-slate-400">Canonical Findings Required</h3>
                                             <p className="text-xs text-slate-500 mt-1 max-w-[200px]">
-                                                Ticket moderation will be available once the diagnostic synthesis is complete.
+                                                Ticket moderation will be available once the Assisted Synthesis is complete and canonical findings are declared.
                                             </p>
                                         </div>
                                     )}
@@ -1498,16 +1565,27 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                         )}
 
 
-                        {/* 4. Roadmap Readiness (when available) */}
-                        {projection.lifecycle.intakeWindowState === 'CLOSED' && projection.artifacts.hasRoadmap && (
+                        {/* 4. Roadmap Readiness / Generation (Waterfall Step 7) */}
+                        {projection.lifecycle.intakeWindowState === 'CLOSED' && (
                             <AuthorityGuard requiredCategory={AuthorityCategory.EXECUTIVE}>
-                                <RoadmapReadinessPanel
-                                    tenantId={tenant.id}
-                                    projection={projection}
-                                    roadmapStatus={data?.roadmaps?.lastRoadmap?.status || null}
-                                    onFinalize={handleFinalizeRoadmap}
-                                    isGenerating={isGenerating}
-                                />
+                                <div className="space-y-6">
+                                    <RoadmapReadinessPanel
+                                        tenantId={tenant.id}
+                                        projection={projection}
+                                        roadmapStatus={data?.roadmaps?.lastRoadmap?.status || null}
+                                        onFinalize={handleGenerateStrategicRoadmap}
+                                        isGenerating={isGenerating}
+                                    />
+                                    
+                                    <RoadmapGenerationPanel
+                                        tenantId={tenant.id}
+                                        firmData={data}
+                                        onRefresh={refreshData}
+                                        onRunSynthesis={handleRunAssistedSynthesis}
+                                        onGenerateRoadmap={handleGenerateStrategicRoadmap}
+                                        isGenerating={isGenerating}
+                                    />
+                                </div>
                             </AuthorityGuard>
                         )}
                     </main>

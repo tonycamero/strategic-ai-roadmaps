@@ -293,6 +293,9 @@ router.post('/intake-vectors/:id/send-invite', intakeVectorController.sendIntake
 // POST /api/superadmin/intakes/:intakeId/reopen - Re-open completed intake
 router.post('/intakes/:intakeId/reopen', requireExecutive(), superadminController.reopenIntake);
 
+// INTAKE-LIFECYCLE-TRANSITION-ENGINE
+router.post('/tenants/:tenantId/intake/transition', superadminController.transitionIntakePhase);
+
 // POST /api/superadmin/tenants/:tenantId/repair-stakeholders - Backfill intake_vectors from legacy intakes (EXECUTIVE ONLY)
 router.post('/tenants/:tenantId/repair-stakeholders', requireExecutive(), stakeholderRepairController.repairStakeholdersForTenant);
 

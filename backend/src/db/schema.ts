@@ -27,6 +27,13 @@ export const tenants = pgTable('tenants', {
   intakeLockedAt: timestamp('intake_locked_at', { withTimezone: true }),
   intakeLockedByUserId: uuid('intake_locked_by_user_id').references(() => users.id),
 
+  // INTAKE-LIFECYCLE-TRANSITION-ENGINE
+  intakePhase: varchar('intake_phase', { length: 30 }).notNull().default('OPEN_INITIAL'),
+  intakeVersion: integer('intake_version').default(1),
+  intakeReopenedAt: timestamp('intake_reopened_at', { withTimezone: true }),
+  intakeReopenedBy: uuid('intake_reopened_by').references(() => users.id),
+  intakeReopenReason: text('intake_reopen_reason'),
+
   notes: text('notes'),
 
 

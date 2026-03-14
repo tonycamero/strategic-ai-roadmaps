@@ -35,7 +35,7 @@ export class SopSynthesisService {
       );
 
     if (approvedProposals.length === 0) {
-      return [];
+      throw new Error("PIPELINE_STATE_INVALID: 0 approved signals found for synthesis.");
     }
 
     // 2. Map to ticket structure
@@ -47,15 +47,26 @@ export class SopSynthesisService {
       const ticketId = `S7-P${p.id.substring(0, 4)}`;
       const ticketKey = `syn:${p.id}`;
 
+      // PROBLEM 1 FIX: Build title with correct prefix and reference content
+      let titlePrefix = '';
+      switch (p.proposalType) {
+        case 'FrictionPoint': titlePrefix = 'Investigate: '; break;
+        case 'Goal': titlePrefix = 'Build Capability: '; break;
+        case 'Constraint': titlePrefix = 'Verify Constraint: '; break;
+      }
+
+      const fullTitle = `${titlePrefix}${p.content}`;
+
       return {
         tenantId,
         proposalId: p.id,
         ticketId,
         ticketKey,
-        title: p.content.substring(0, 200),
+        title: fullTitle.substring(0, 255),
         description: p.content,
         capabilityNamespace,
         sourceAnchors: p.sourceAnchors,
+        sasRunId,
         status: 'generated',
         moderationStatus: 'pending', // Stage-7 tickets start as pending SOP review
         executionStatus: 'OPEN'
@@ -81,6 +92,36 @@ export class SopSynthesisService {
         }
       })
       .returning();
+      
+    // PROBLEM 2: Implementation Snapshot Write
+    const artifactState = {
+      runId: sasRunId,
+      findings: approvedProposals,
+      tickets: createdTickets,
+      generatedAt: new Date().toISOString()
+    };
+
+    try {
+      // Ensure table exists (idempotent)
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS artifact_state (
+          id integer PRIMARY KEY,
+          jsonb_pretty jsonb
+        )
+      `);
+
+      // Update or Insert Stage 6 snapshot
+      await db.execute(sql`
+        INSERT INTO artifact_state (id, jsonb_pretty)
+        VALUES (1, ${JSON.stringify(artifactState)}::jsonb)
+        ON CONFLICT (id) DO UPDATE
+        SET jsonb_pretty = EXCLUDED.jsonb_pretty
+      `);
+      console.log("[SopSynthesis] artifact_state snapshot persisted.");
+    } catch (snapshotErr) {
+      console.error("[SopSynthesis] Failed to persist artifact_state snapshot:", snapshotErr);
+      // Non-blocking error
+    }
       
     invalidateProjection(`tenant:lifecycle:${tenantId}`);
 

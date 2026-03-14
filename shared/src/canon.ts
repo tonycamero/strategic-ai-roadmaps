@@ -15,7 +15,8 @@ export interface CanonicalDiscoveryNotes {
 export interface CanonicalFinding {
     id: string; // FND-<SessionDate>-<SectionHash>-<Index>
     type: 'CurrentFact' | 'FrictionPoint' | 'Goal' | 'Constraint';
-    description: string; // Verbatim substring
+    description?: string; // Verbatim substring (Legacy)
+    content: string; // Verbatim content
     sourceSection: keyof CanonicalDiscoveryNotes;
     sourceTextHash: string;
     // Optional typed fields per schema

@@ -34,7 +34,7 @@ import { persistSop01OutputsForTenant } from '../services/sop01Persistence';
 import { buildNormalizedIntakeContext } from '../services/intakeNormalizer';
 import { validateBriefModeSchema } from '../services/schemaGuard.service';
 import { generateFinalRoadmapForTenant } from '../services/finalRoadmap.service';
-import { getTenantLifecycleView, getStage5Artifacts } from '../services/tenantStateAggregation.service';
+import { getTenantLifecycleView, getStage5Artifacts, resolveLatestRunId } from '../services/tenantStateAggregation.service';
 import { invalidateProjection } from '../services/projectionCache.service';
 import { lockDiagnosticAndSyncSop01Outputs, publishDiagnostic as publishDiagnosticService } from '../services/diagnosticsGeneration.service';
 import { FindingsService } from '../services/findings.service';
@@ -44,6 +44,7 @@ import { SELECTION_ENGINE_VERSION } from '../trustagent/constants/selectionEngin
 import { AssistedSynthesisArtifactContract } from '../services/assistedSynthesisProposals.service';
 import { SasSignalsService } from '../services/sas/sasSignals.service';
 import { updateTicketStatus } from '../services/sop/sopTicket.service';
+import { IntakeLifecycleService } from '../services/intakeLifecycle.service';
 
 const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 
@@ -601,6 +602,37 @@ export async function reopenIntake(req: AuthRequest<{ intakeId: string }>, res: 
   } catch (error) {
     console.error('Re-open intake error:', error);
     return res.status(500).json({ error: 'Failed to re-open intake' });
+  }
+}
+
+/**
+ * transitionIntakePhase
+ * POST /api/superadmin/tenants/:tenantId/intake/transition
+ */
+export async function transitionIntakePhase(req: AuthRequest<{ tenantId: string }, any, { nextPhase: string, reason?: string }>, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+
+    const { tenantId } = req.params;
+    const { nextPhase, reason } = req.body;
+
+    if (!nextPhase) {
+      return res.status(400).json({ error: 'Missing nextPhase' });
+    }
+
+    const result = await IntakeLifecycleService.transitionIntakePhase(
+      tenantId,
+      nextPhase as any,
+      req.user?.userId as string,
+      reason
+    );
+
+    return res.json(result);
+  } catch (error: any) {
+    console.error('Transition intake phase error:', error);
+    return res.status(error.message?.includes('Invalid lifecycle transition') ? 400 : 500).json({ 
+      error: error.message || 'Failed to transition intake phase' 
+    });
   }
 }
 
@@ -4331,6 +4363,7 @@ export async function declareCanonicalFindings(req: AuthRequest, res: Response) 
     if (!requireSuperAdmin(req, res)) return;
     const { tenantId } = req.params;
     const { findings, sasRunId } = req.body;
+    console.log("CANONICAL FINDINGS", findings);
 
     // S6-18: Guard against empty canonical declaration
     if (!findings || !Array.isArray(findings) || findings.length === 0) {
@@ -4341,10 +4374,22 @@ export async function declareCanonicalFindings(req: AuthRequest, res: Response) 
       return res.status(400).json({ error: 'MISSING_SAS_RUN_ID', message: 'Selection Envelope requires a valid sasRunId.' });
     }
 
+    let resolvedSasRunId = sasRunId;
+    if (resolvedSasRunId === "latest") {
+      resolvedSasRunId = await resolveLatestRunId(tenantId);
+
+      if (!resolvedSasRunId) {
+        return res.status(404).json({
+          error: 'SAS_RUN_NOT_FOUND',
+          message: 'No run found for tenant'
+        });
+      }
+    }
+
     const result = await FindingsService.declareCanonicalFindings({
       tenantId,
       findings,
-      sasRunId,
+      sasRunId: resolvedSasRunId,
       actorUserId: req.user!.userId,
       actorRole: req.user?.role
     });
@@ -4852,6 +4897,22 @@ export async function recordProposalElection(req: AuthRequest, res: Response) {
         note: note || null,
         decidedByUserId: req.user!.userId
       })
+
+      // 3. Promote election decision to sas_proposals.moderation_status (synthesis gate)
+      // Maps: keep → APPROVED | trash → REJECTED
+      // Scoped by proposalId + sasRunId + tenantId per run-scope requirement.
+      await tx
+        .update(sasProposals)
+        .set({
+          moderationStatus: decision === 'keep' ? 'APPROVED' : 'REJECTED'
+        })
+        .where(
+          and(
+            eq(sasProposals.id, proposalId),
+            eq(sasProposals.sasRunId, proposal.sasRunId),
+            eq(sasProposals.tenantId, tenantId)
+          )
+        );
     });
 
     invalidateProjection(`tenant:lifecycle:${tenantId}`);
@@ -5099,19 +5160,12 @@ export async function synthesizeSopTickets(req: AuthRequest, res: Response) {
     const { tenantId } = (req as any).params;
     let { sasRunId } = (req as any).body;
 
-    if (!sasRunId) {
-      // Auto-resolve latest run if not provided
-      const [latestRun] = await db
-        .select()
-        .from(sasRuns)
-        .where(eq(sasRuns.tenantId, tenantId))
-        .orderBy(desc(sasRuns.createdAt))
-        .limit(1);
+    if (!sasRunId || sasRunId === "latest") {
+      sasRunId = await resolveLatestRunId(tenantId);
       
-      if (!latestRun) {
+      if (!sasRunId) {
         return res.status(404).json({ error: 'NO_RUN_FOUND', message: 'Cannot synthesize without a SAS run.' });
       }
-      sasRunId = latestRun.id;
     }
 
     const { SopSynthesisService } = await import('../services/sop/sopSynthesis.service');
