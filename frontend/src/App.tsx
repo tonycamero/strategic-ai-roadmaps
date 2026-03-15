@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Router, Route, Switch, useLocation } from 'wouter';
+import { Router, Route, Switch, useLocation, Redirect } from 'wouter';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { TenantProvider } from './context/TenantContext';
 import { OnboardingProvider } from './context/OnboardingContext';
@@ -23,6 +23,8 @@ import { SuperAdminLayout } from './superadmin/SuperAdminLayout';
 import RoadmapViewer from './pages/RoadmapViewer';
 import TicketModeration from './components/TicketModeration';
 import BusinessProfile from './pages/BusinessProfile';
+import ExecutiveConsole from './pages/executive/ExecutiveConsole';
+import ExecConsolePage from './pages/executive/ExecConsolePage';
 import OrganizationType from './pages/OrganizationType';
 import InviteTeam from './pages/InviteTeam';
 import TeamIntakesReview from './pages/TeamIntakesReview';
@@ -33,6 +35,12 @@ import RequestPasswordReset from './pages/RequestPasswordReset';
 import ResetPassword from './pages/ResetPassword';
 import { OnboardingLayout } from './layouts/OnboardingLayout';
 import { TrustAgentShell as SmartShell } from './trustagent/TrustAgentShell';
+import { resolveRoute } from './lib/roleResolver';
+
+// Operational Surfaces
+import ExecutionOpsPage from './pages/ops/ExecutionOpsPage';
+import ExceptionsOpsPage from './pages/ops/ExceptionsOpsPage';
+import CoordinationOpsPage from './pages/ops/CoordinationOpsPage';
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -49,22 +57,27 @@ function RootRedirect() {
   const { isAuthenticated, user } = useAuth();
 
   useEffect(() => {
-    if (location !== '/') return;
+    // Only redirect if at the root path (/)
+    // This allows deep links (like previews) to persist without being
+    // forced to the role-based home.
+    if (location !== '/' && location !== '/login' && location !== '/auth') {
+      return;
+    }
 
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user) {
       setLocation('/login', { replace: true });
       return;
     }
 
-    if (user?.role === 'superadmin') {
-      setLocation('/superadmin/firms', { replace: true });
-      return;
-    }
+    // Delegate to Role Resolver for the correct operational home
+    const doResolve = async () => {
+      const route = await resolveRoute(user as any, user?.tenantId || 'demo');
+      setLocation(route, { replace: true });
+    };
 
-    // Default for everyone else
-    setLocation('/dashboard', { replace: true });
+    doResolve();
 
-  }, [location, isAuthenticated, user, setLocation]);
+  }, [isAuthenticated, user, setLocation, location]);
 
   return null;
 }
@@ -184,6 +197,12 @@ function App() {
                   </OnboardingLayout>
                 </ProtectedRoute>
 
+                <ProtectedRoute path="/journey">
+                  <OnboardingLayout>
+                    <RoadmapViewer />
+                  </OnboardingLayout>
+                </ProtectedRoute>
+
                 <ProtectedRoute path="/owner/case-study/:docId">
                   <OnboardingLayout>
                     <CaseStudyViewer />
@@ -191,7 +210,48 @@ function App() {
                 </ProtectedRoute>
 
                 {/* Non-onboarding */}
-                <ProtectedRoute path="/owner/transformation" component={TransformationDashboard} />
+                <ProtectedRoute path="/executive">
+                  <OnboardingLayout>
+                    <ExecutiveConsole />
+                  </OnboardingLayout>
+                </ProtectedRoute>
+
+                {/* AG-TICKET-EXEC-ROUTE: Decisional pilot surface */}
+                <ProtectedRoute path="/exec/:tenantId">
+                  <OnboardingLayout>
+                    <ExecConsolePage />
+                  </OnboardingLayout>
+                </ProtectedRoute>
+                
+                <ProtectedRoute path="/exec">
+                  <OnboardingLayout>
+                    <ExecConsolePage />
+                  </OnboardingLayout>
+                </ProtectedRoute>
+                <ProtectedRoute path="/owner/transformation">
+                  <OnboardingLayout>
+                    <TransformationDashboard />
+                  </OnboardingLayout>
+                </ProtectedRoute>
+
+                {/* Pilot Operational Surfaces */}
+                <ProtectedRoute path="/ops/execution">
+                  <OnboardingLayout>
+                    <ExecutionOpsPage />
+                  </OnboardingLayout>
+                </ProtectedRoute>
+
+                <ProtectedRoute path="/ops/exceptions">
+                  <OnboardingLayout>
+                    <ExceptionsOpsPage />
+                  </OnboardingLayout>
+                </ProtectedRoute>
+
+                <ProtectedRoute path="/ops/coordination">
+                  <OnboardingLayout>
+                    <CoordinationOpsPage />
+                  </OnboardingLayout>
+                </ProtectedRoute>
                 <ProtectedRoute path="/owner/summary" component={LeadershipSummaryPage} />
                 <ProtectedRoute path="/agents/inbox" component={AgentInbox} />
                 <ProtectedRoute path="/case-study/:docId" component={CaseStudyViewer} />
@@ -210,14 +270,9 @@ function App() {
                 <ProtectedRoute path="/superadmin/firms/:tenantId/case-study/:docId" component={CaseStudyViewer} requireRole="superadmin" />
                 <ProtectedRoute path="/superadmin/tickets/:tenantId/:diagnosticId" component={TicketModeration} requireRole="superadmin" />
 
-                {/* 404 */}
+                {/* Global Fallback / 404 */}
                 <Route>
-                  <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                    <div className="text-center">
-                      <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
-                      <p className="text-gray-600">Page not found</p>
-                    </div>
-                  </div>
+                  <Redirect to="/dashboard" />
                 </Route>
               </Switch>
             </Router>

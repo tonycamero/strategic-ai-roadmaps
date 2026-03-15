@@ -5,6 +5,7 @@ import { getInteractionMode } from '../utils/roleAwareness';
 import { api } from '../lib/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { agentContextStore } from '../console/agentContext';
 
 type RoleType = 'owner' | 'ops' | 'sales' | 'delivery' | 'agent_support';
 
@@ -71,38 +72,28 @@ export function AgentChatPanel({
   const queryMutation = useMutation({
     mutationFn: async (message: string) => {
       const token = localStorage.getItem('token');
+      const consoleContext = agentContextStore.getContext();
 
-      // Decode JWT to check role
-      const payload = token ? JSON.parse(atob(token.split('.')[1])) : null;
-      const isSuperadmin = payload?.role === 'superadmin';
+      const res = await fetch('/api/agent/query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ 
+          question: message, 
+          tenantId: user?.tenantId,
+          role: selectedRole,
+          consoleContext
+        }),
+      });
 
-      if (isSuperadmin) {
-        // Superadmin uses legacy console agent
-        const res = await fetch('/api/agent/query', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ message, context: {} }),
-        });
-
-        if (!res.ok) {
-          const error = await res.json();
-          throw new Error(error.error || 'Agent query failed');
-        }
-
-        return res.json();
-      } else {
-        // Owner/team uses new Roadmap Agent (Unified TrustAgent)
-        // We bypass the legacy role-based routing for now as the Roadmap Agent is the single source of truth
-        const res = await api.askRoadmapQuestion({
-          question: message,
-          // We can add section context here later if needed
-        });
-
-        return { reply: res.answer };
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Agent query failed');
       }
+
+      return res.json();
     },
     onSuccess: (data) => {
       setMessages((prev) => [

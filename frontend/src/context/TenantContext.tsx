@@ -51,11 +51,14 @@ export interface TenantProviderProps {
 }
 
 export const TenantProvider: React.FC<TenantProviderProps> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const searchParams = new URLSearchParams(window.location.search);
+  const urlTenantId = searchParams.get('tenantId');
+  const isSuperAdmin = user?.role?.toLowerCase() === 'superadmin';
 
   const { data: tenantData, isLoading } = useQuery({
-    queryKey: ['tenant'],
-    queryFn: () => api.getTenant(),
+    queryKey: ['tenant', isSuperAdmin ? urlTenantId : null],
+    queryFn: () => api.getTenant(isSuperAdmin ? urlTenantId || undefined : undefined),
     enabled: isAuthenticated, // Only fetch when user is logged in
     retry: false, // Don't retry 401s
     staleTime: 30000, // 30 seconds

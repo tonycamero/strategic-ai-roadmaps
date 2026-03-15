@@ -31,6 +31,7 @@ export type UserRole = z.infer<typeof UserRole>;
 
 export const User = z.object({
   id: z.string().uuid(),
+  tenantId: z.string().uuid().optional().nullable(),
   email: z.string().email(),
   role: UserRole,
   name: z.string(),

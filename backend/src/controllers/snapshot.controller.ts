@@ -20,16 +20,10 @@ export const getTenantSnapshot = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Tenant ID is required' });
     }
 
-    const isInternalConsultant =
-      currentUser?.isInternal &&
-      ['superadmin', 'delegate'].includes(currentUser.role);
-
-    const isTenantOwner =
-      !currentUser?.isInternal && currentUser?.role === 'owner';
-
-    if (!isInternalConsultant && !isTenantOwner) {
-      return res.status(403).json({ error: 'Snapshot access restricted.' });
-    }
+    // Authority boundary is enforced by requireTenantAccess() middleware.
+    // Any user who reaches this point has already been validated.
+    // SuperAdmin may inspect any tenant; tenant roles may only access their own.
+    // No secondary role check needed here — middleware is the single authority boundary.
 
     // === CANONICAL LIFECYCLE RESOLVER ===
     const snapshot = await resolveTenantLifecycleSnapshot(tenantId, currentUser?.userId);

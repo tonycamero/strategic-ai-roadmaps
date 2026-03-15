@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '../context/AuthContext';
 import { api, ApiError } from '../lib/api';
+import { resolveRoute, User } from '../lib/roleResolver';
 
-function resolvePostAuthRedirect(role: string, nextParam?: string | null): string {
+async function resolvePostAuthRedirect(user: any, nextParam?: string | null): Promise<string> {
   // 1) honor ?next= only if it is internal AND allowed for this role
   if (nextParam) {
     const decoded = decodeURIComponent(nextParam);
@@ -12,7 +13,7 @@ function resolvePostAuthRedirect(role: string, nextParam?: string | null): strin
 
     if (isInternal) {
       if (isSuperadminRoute) {
-        if (role === 'superadmin') return decoded;
+        if (user.role === 'superadmin') return decoded;
       } else {
         // non-superadmin routes are allowed for everyone authenticated
         return decoded;
@@ -20,13 +21,8 @@ function resolvePostAuthRedirect(role: string, nextParam?: string | null): strin
     }
   }
 
-  // 2) role-based default
-  if (role === 'superadmin') return '/superadmin/firms';
-  if (role === 'ops' || role === 'sales' || role === 'delivery') return `/intake/${role}`;
-  if (role === 'exec_sponsor') return '/intake/exec_sponsor';
-
-  // 3) default
-  return '/dashboard';
+  // 2) Delegate to Role Resolver
+  return await resolveRoute(user);
 }
 
 // near top of Auth.tsx (above component)
@@ -93,7 +89,13 @@ export default function Auth() {
       if (!isAuthenticated || !user) return;
  
       const next = new URLSearchParams(window.location.search).get('next');
-      setLocation(resolvePostAuthRedirect(user.role, getNextParam()));
+      
+      const doRedirect = async () => {
+        const route = await resolvePostAuthRedirect(user, getNextParam());
+        setLocation(route);
+      };
+
+      doRedirect();
     }, [isAuthenticated, user, setLocation]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -108,8 +110,9 @@ export default function Auth() {
       // Small delay to ensure auth state is set before redirect
       const next = new URLSearchParams(window.location.search).get('next');
       
-      setTimeout(() => {
-        setLocation(resolvePostAuthRedirect(response.user.role, getNextParam()));
+      setTimeout(async () => {
+        const route = await resolvePostAuthRedirect(response.user, getNextParam());
+        setLocation(route);
       }, 100); 
 
     } catch (err) {

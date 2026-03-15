@@ -127,8 +127,11 @@ export function requireTenantAccess() {
       }
     }
 
-    // 3) Stash canonical tenant id for controllers
-    (req as any).tenantId = resolvedTenantId;
+    // 3) Stash canonical tenant id for controllers.
+    //    URL is the canonical tenant selector per Multi-Tenant Authority Model (META-TICKET-v2).
+    //    For SA: use requestedTenantId (URL param) so cross-tenant inspection works.
+    //    For tenant roles: requestedTenantId === resolvedTenantId (enforced above), either is fine.
+    (req as any).tenantId = requestedTenantId ?? resolvedTenantId;
 
     // 4) Audit log for TEAM access (non-owner, non-superadmin)
     if (role !== 'owner' && role !== 'superadmin') {

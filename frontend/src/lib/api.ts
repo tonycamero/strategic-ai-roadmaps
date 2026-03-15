@@ -156,12 +156,15 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  getMyIntake: () => fetchAPI<{ intake: Intake | null }>('/api/intake/mine'),
-
-  getOwnerIntakes: () => fetchAPI<{ intakes: Intake[] }>('/api/intake/owner'),
+  getMyIntake: (tenantId?: string) => 
+    fetchAPI<{ intake: Intake | null }>(`/api/intake/mine${tenantId ? `?tenantId=${tenantId}` : ''}`),
+ 
+  getOwnerIntakes: (tenantId?: string) => 
+    fetchAPI<{ intakes: Intake[] }>(`/api/intake/owner${tenantId ? `?tenantId=${tenantId}` : ''}`),
 
   // Document endpoints
-  listDocuments: () => fetchAPI<{ documents: any[] }>('/api/documents'),
+  listDocuments: (tenantId?: string) => 
+    fetchAPI<{ documents: any[] }>(`/api/documents${tenantId ? `?tenantId=${tenantId}` : ''}`),
 
   // Roadmap endpoints
   getRoadmapSections: () =>
@@ -183,7 +186,8 @@ export const api = {
     fetchAPI<{ messages: any[] }>(`/api/agents/threads/${threadId}/messages`),
 
   // Roadmap Tickets endpoint
-  getRoadmapTickets: () => fetchAPI<{ tickets: any[] }>('/api/roadmap/tickets'),
+  getRoadmapTickets: (tenantId?: string) => 
+    fetchAPI<{ tickets: any[] }>(`/api/roadmap/tickets${tenantId ? `?tenantId=${tenantId}` : ''}`),
 
   // Roadmap Q&A endpoint
   askRoadmapQuestion: (payload: {
@@ -208,10 +212,11 @@ export const api = {
     fetchAPI<any>(`/api/tenants/${tenantId}/onboarding`),
 
   // Tenant endpoints
-  getTenant: () => fetchAPI<{ tenant: any }>('/api/tenants/me'),
+  getTenant: (tenantId?: string) => 
+    fetchAPI<{ tenant: any }>(`/api/tenants/me${tenantId ? `?tenantId=${tenantId}` : ''}`),
 
   // Advisor threads (shared Tap-In threads)
-  listAdvisorThreads: () =>
+  listAdvisorThreads: (tenantId?: string) =>
     fetchAPI<{
       threads: Array<{
         id: string;
@@ -220,7 +225,7 @@ export const api = {
         lastActivityAt: string;
         preview: string;
       }>;
-    }>('/api/dashboard/owner/advisor-threads'),
+    }>(`/api/dashboard/owner/advisor-threads${tenantId ? `?tenantId=${tenantId}` : ''}`),
 
   // Intake Vector endpoints
   listIntakeVectors: (tenantId: string) =>
@@ -278,6 +283,23 @@ export const api = {
     fetchAPI<any>(`/api/clarify/${token}`, {
       method: 'POST',
       body: JSON.stringify({ response }),
+    }),
+
+  // Surface Assignment System (DB-BACKED)
+  getSurfaceAssignment: (tenantId: string, email: string) =>
+    fetchAPI<{ assignment: { surface: string } | null }>(
+      `/api/superadmin/firms/${tenantId}/surface-assignments?email=${email}`
+    ),
+
+  listSurfaceAssignments: (tenantId: string) =>
+    fetchAPI<{ assignments: { userEmail: string; surface: string }[] }>(
+      `/api/superadmin/firms/${tenantId}/surface-assignments`
+    ),
+
+  setSurfaceAssignment: (tenantId: string, email: string, surface: string) =>
+    fetchAPI<{ ok: true }>(`/api/superadmin/firms/${tenantId}/surface-assignments`, {
+      method: 'POST',
+      body: JSON.stringify({ email, surface }),
     }),
 };
 

@@ -287,10 +287,40 @@ export async function getMyIntake(req: AuthRequest, res: Response) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
+    const tenantId = (req as any).tenantId;
+    const isSuperAdmin = req.user?.role === 'superadmin';
+
+    // If superadmin is previewing a tenant, they don't have their own intake.
+    // We return the owner's intake (or the first found intake) for that tenant.
+    if (isSuperAdmin && tenantId) {
+      const tenant = await db.query.tenants.findFirst({
+        where: eq(tenants.id, tenantId),
+      });
+
+      if (tenant?.ownerUserId) {
+        const [ownerIntake] = await db
+          .select()
+          .from(intakes)
+          .where(and(eq(intakes.userId, tenant.ownerUserId), eq(intakes.tenantId, tenantId)))
+          .limit(1);
+        
+        if (ownerIntake) return res.json({ intake: ownerIntake });
+      }
+
+      // Fallback: any intake for this tenant
+      const [anyIntake] = await db
+        .select()
+        .from(intakes)
+        .where(eq(intakes.tenantId, tenantId))
+        .limit(1);
+
+      return res.json({ intake: anyIntake || null });
+    }
+
     const [intake] = await db
       .select()
       .from(intakes)
-      .where(eq(intakes.userId, req.user.userId))
+      .where(and(eq(intakes.userId, req.user.userId), eq(intakes.tenantId, tenantId)))
       .limit(1);
 
     return res.json({ intake: intake || null });

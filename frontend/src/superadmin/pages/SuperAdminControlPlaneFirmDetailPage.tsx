@@ -21,6 +21,12 @@ import { DiscoveryNotesModal } from '../components/DiscoveryNotesModal';
 import { AssistedSynthesisModal } from '../components/AssistedSynthesisModal';
 import { BaselineSummaryPanel } from '../components/BaselineSummaryPanel';
 import { getLifecycle } from '../../services/projectionLifecycleAdapter';
+import { 
+  getSurfaceAssignment, 
+  setSurfaceAssignment, 
+  mapSurfaceToRoute, 
+  OperationalSurface 
+} from '../../services/surfaceAssignmentService';
 // @ANCHOR:SA_FIRM_DETAIL_IMPORTS_END
 
 import { superadminApi } from '../api';
@@ -1072,6 +1078,7 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                         }}
                         stakeholderDotColorHelper={getStakeholderDotColor}
                         readOnly={projection.lifecycle.intakeWindowState === 'CLOSED'}
+                        tenantId={params?.tenantId || 'demo'}
                     />
                 </AuthorityGuard>
 
@@ -1543,7 +1550,9 @@ export default function SuperAdminControlPlaneFirmDetailPage() {
                                                     tickets={tickets}
                                                     status={moderationStatus}
                                                     projection={projection}
-                                                    onStatusChange={refreshData}
+                                                    onStatusChange={() => {
+                                                        refreshData();
+                                                    }}
                                                 />
                                             )}
                                         </div>
@@ -1697,7 +1706,8 @@ function StrategicStakeholdersPanel({
     onAddRole,
     onViewIntake,
     readOnly,
-    stakeholderDotColorHelper
+    stakeholderDotColorHelper,
+    tenantId
 }: {
     roles: IntakeRoleDefinition[];
     intakes: any[];
@@ -1705,12 +1715,48 @@ function StrategicStakeholdersPanel({
     onViewIntake: (intake: any) => void;
     readOnly: boolean;
     stakeholderDotColorHelper: (role: IntakeRoleDefinition) => string;
+    tenantId: string;
 }) {
     const [isModalOpen, setIsModalOpen] = React.useState(false);
+    const [assignments, setAssignments] = React.useState<Record<string, OperationalSurface>>({});
+    const [loadingAssignments, setLoadingAssignments] = React.useState(true);
+
+    // EXEC-078E: Load assignments on mount
+    React.useEffect(() => {
+        const loadAssignments = async () => {
+            try {
+                const { listSurfaceAssignments } = await import('../../services/surfaceAssignmentService');
+                const data = await listSurfaceAssignments(tenantId);
+                setAssignments(data);
+            } catch (err) {
+                console.error('Failed to load surface assignments:', err);
+            } finally {
+                setLoadingAssignments(false);
+            }
+        };
+
+        if (tenantId) {
+            loadAssignments();
+        }
+    }, [tenantId]);
 
     const handleSubmit = async (data: any) => {
         await onAddRole(data);
         setIsModalOpen(false);
+    };
+
+    const handleSurfaceChange = async (email: string, surface: OperationalSurface) => {
+        try {
+            const { setSurfaceAssignment: saveAssignment } = await import('../../services/surfaceAssignmentService');
+            await saveAssignment(email, tenantId, surface);
+            setAssignments(prev => ({
+                ...prev,
+                [email]: surface
+            }));
+        } catch (err) {
+            console.error('Failed to save surface assignment:', err);
+            alert('Failed to save surface assignment. Please try again.');
+        }
     };
 
     return (
@@ -1721,6 +1767,7 @@ function StrategicStakeholdersPanel({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                     {roles.map((role: any) => {
                         const intakeComplete = stakeholderDotColorHelper(role) === 'bg-emerald-500';
+                        const currentSurface = assignments[role.recipientEmail] || 'DASHBOARD';
 
                         return (
                             <div
@@ -1732,47 +1779,67 @@ function StrategicStakeholdersPanel({
                                         <div className="text-sm font-semibold text-slate-200 mb-1">{role.recipientName}</div>
                                         <div className="text-xs text-slate-500 truncate">{role.recipientEmail}</div>
                                     </div>
-                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                    <div className="flex items-center gap-1.5 flex-shrink-0">
                                         <div className="inline-block px-2 py-1 bg-indigo-900/30 border border-indigo-700/50 text-indigo-300 text-[10px] rounded uppercase tracking-wider">
                                             {role.roleLabel}
                                         </div>
-                                        <div className={`w-2.5 h-2.5 rounded-full ${stakeholderDotColorHelper(role)} shadow-[0_0_8px_rgba(16,185,129,0.4)]`} />
+                                        {intakeComplete && (
+                                            <button
+                                                onClick={(e: React.MouseEvent) => {
+                                                    e.stopPropagation();
+                                                    const fullIntake = intakes.find((i: any) =>
+                                                        (role.intakeId && i.id === role.intakeId) ||
+                                                        i.id === role.id ||
+                                                        i.vectorId === role.id
+                                                    );
+                                                    if (fullIntake) onViewIntake(fullIntake);
+                                                }}
+                                                className="p-1 hover:bg-emerald-500/20 rounded transition-colors group/btn"
+                                                title="View Intake Data"
+                                            >
+                                                <div className={`w-2.5 h-2.5 rounded-full ${stakeholderDotColorHelper(role)} shadow-[0_0_8px_rgba(16,185,129,0.4)] group-hover/btn:scale-110 transition-transform`} />
+                                            </button>
+                                        )}
+                                        {!intakeComplete && (
+                                            <div className={`w-2.5 h-2.5 rounded-full ${stakeholderDotColorHelper(role)} shadow-[0_0_8px_rgba(16,185,129,0.4)]`} />
+                                        )}
                                     </div>
                                 </div>
 
-
-                                {/* Hover Overlay with View Intake Button */}
-                                {intakeComplete && (
-                                    <div className="absolute inset-0 bg-slate-900/95 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center z-10 pointer-events-none group-hover:pointer-events-auto">
-                                        <button
-                                            onClick={(e: React.MouseEvent) => {
-                                                e.stopPropagation();
-                                                console.log('DEBUG: View Intake click info:');
-                                                console.log('- role object:', role);
-                                                console.log('- first intake in array:', intakes[0]);
-                                                console.log('- intakes array length:', intakes.length);
-
-                                                // Find the full intake data
-                                                const fullIntake = intakes.find((i: any) =>
-                                                    (role.intakeId && i.id === role.intakeId) ||
-                                                    i.id === role.id ||
-                                                    i.vectorId === role.id
-                                                );
-                                                console.log('DEBUG: Found intake result:', fullIntake);
-
-                                                if (fullIntake) {
-                                                    onViewIntake(fullIntake);
-                                                } else {
-                                                    console.error('DEBUG ERROR: No intake found for role ID:', role.id);
-                                                    console.log('DEBUG: Available IDs in intakes:', intakes.map((i: any) => ({ id: i.id, vectorId: i.vectorId })));
-                                                }
-                                            }}
-                                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors shadow-lg pointer-events-auto"
+                                {/* EXEC-078E: Quick Surface Assignment (DB-BACKED) */}
+                                <div className="mt-4 pt-4 border-t border-slate-800/50 space-y-3">
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Surface</label>
+                                        <select
+                                            className="bg-slate-900 border border-slate-700 text-[11px] font-bold text-slate-300 px-2 py-1.5 rounded focus:outline-none focus:border-indigo-500 w-full disabled:opacity-50"
+                                            value={currentSurface}
+                                            disabled={loadingAssignments}
+                                            onChange={(e) => handleSurfaceChange(role.recipientEmail, e.target.value as OperationalSurface)}
                                         >
-                                            View Intake
-                                        </button>
+                                            <option value="STRATEGIC">Strategic View</option>
+                                            <option value="EXECUTION">Execution Surface</option>
+                                            <option value="EXCEPTIONS">Exception Board</option>
+                                            <option value="COORDINATION">Coordination Console</option>
+                                            <option value="DASHBOARD">Standard Dashboard</option>
+                                        </select>
                                     </div>
-                                )}
+                                    
+                                    <button
+                                        onClick={() => {
+                                            let route = mapSurfaceToRoute(currentSurface);
+                                            if (tenantId) {
+                                                route += `?tenantId=${tenantId}`;
+                                            }
+                                            window.open(route, '_blank');
+                                        }}
+                                        className="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-black uppercase tracking-wider rounded border border-slate-700 transition-colors"
+                                    >
+                                        Preview Surface
+                                    </button>
+                                </div>
+
+
+                                {/* Hover Overlay Removed - Blocked Selectors */}
                             </div>
                         );
                     })}

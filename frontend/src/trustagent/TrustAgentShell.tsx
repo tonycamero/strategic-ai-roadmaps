@@ -25,6 +25,7 @@ import { trustagentApi } from './api';
 import { useRoadmap } from '../context/RoadmapContext';
 import { shapeOnepager } from '../lib/onepagerShaper';
 import { TrustAgentAvatar } from './TrustAgentAvatar';
+import { useAuth } from '../context/AuthContext';
 
 interface TrustAgentShellProps {
   // Future: allow disabling via prop
@@ -35,6 +36,7 @@ interface TrustAgentShellProps {
 
 export function TrustAgentShell({ enabled = true, mode: trustAgentMode = defaultMode, agentType = 'public' }: TrustAgentShellProps) {
   const { setPayload } = useRoadmap();
+  const { user } = useAuth();
   const [introOpen, setIntroOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [mode] = useState<'simulated' | 'live'>('live');
@@ -518,10 +520,17 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
         // We need to import 'api' from '../lib/api'. Since we can't easily add top-level imports in this specific tool call without viewing the top, 
         // and we know 'fetch' works, we'll inline the fetch for now to ensure correctness with the new 'answer' format.
         // Actually, let's use the fetch pattern to match trustagentApi but for roadmap.
-        const res = await fetch('/api/roadmap/qna', {
+        const res = await fetch('/api/agent/query', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-          body: JSON.stringify({ question: userMessage })
+          headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': `Bearer ${localStorage.getItem('token')}` 
+          },
+          body: JSON.stringify({ 
+            question: userMessage,
+            tenantId: user?.tenantId,
+            role: 'Owner' // Default role for portal users in this shell
+          })
         });
 
         if (!res.ok) {
@@ -533,8 +542,8 @@ export function TrustAgentShell({ enabled = true, mode: trustAgentMode = default
         // Adapt to TrustAgent ChatResponse format
         response = {
           sessionId: sessionId,
-          message: data.answer,
-          options: [], // Roadmap agent currently doesn't return options, but we could add suggested actions later
+          message: data.reply || data.response,
+          options: [], 
           cta: undefined
         };
 

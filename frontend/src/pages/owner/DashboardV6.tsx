@@ -16,20 +16,24 @@ export default function DashboardV6() {
   const { tenant, businessType } = useTenant();
   const [, setLocation] = useLocation();
 
+  const searchParams = new URLSearchParams(window.location.search);
+  const urlTenantId = searchParams.get('tenantId');
+  const isSuperAdmin = user?.role?.toLowerCase() === 'superadmin';
+
   const { data: intakesData } = useQuery({
-    queryKey: ['owner-intakes'],
-    queryFn: () => api.getOwnerIntakes(),
+    queryKey: ['owner-intakes', isSuperAdmin ? urlTenantId : null],
+    queryFn: () => api.getOwnerIntakes(isSuperAdmin ? urlTenantId || undefined : undefined),
     refetchInterval: 5000,
   });
 
   const { data: documentsData, isLoading: docsLoading } = useQuery({
-    queryKey: ['documents'],
-    queryFn: () => api.listDocuments(),
+    queryKey: ['documents', isSuperAdmin ? urlTenantId : null],
+    queryFn: () => api.listDocuments(isSuperAdmin ? urlTenantId || undefined : undefined),
   });
 
   const { data: advisorThreadsData, isLoading: advisorLoading } = useQuery({
-    queryKey: ['advisor-threads'],
-    queryFn: () => api.listAdvisorThreads(),
+    queryKey: ['advisor-threads', isSuperAdmin ? urlTenantId : null],
+    queryFn: () => api.listAdvisorThreads(isSuperAdmin ? urlTenantId || undefined : undefined),
   });
 
   const handleLogout = () => {

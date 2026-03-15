@@ -5226,3 +5226,63 @@ export async function patchTicketStatus(req: AuthRequest, res: Response) {
     return res.status(500).json({ error: error.message || 'Failed to update ticket status' });
   }
 }
+// ============================================================================
+// SURFACE ASSIGNMENT SYSTEM (DB-BACKED)
+// ============================================================================
+
+import * as surfaceAssignmentService from '../services/surfaceAssignment.service';
+
+/**
+ * GET /api/superadmin/firms/:tenantId/surface-assignments
+ * Note: For simplicity, we just fetch one if email is provided in query, or we might extend later
+ */
+export async function getSurfaceAssignments(req: AuthRequest<{ tenantId: string }, any, any, { email?: string }>, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { tenantId } = req.params;
+    const { email } = req.query;
+
+    if (!email) {
+      const results = await surfaceAssignmentService.listSurfaceAssignments(tenantId);
+      return res.json({ assignments: results });
+    }
+
+    const result = await surfaceAssignmentService.getSurfaceAssignment(tenantId, email);
+    return res.json({ assignment: result });
+  } catch (error) {
+    console.error('Get surface assignment error:', error);
+    return res.status(500).json({ error: 'Failed to fetch surface assignment' });
+  }
+}
+
+/**
+ * POST /api/superadmin/firms/:tenantId/surface-assignments
+ */
+export async function setSurfaceAssignment(req: AuthRequest<{ tenantId: string }, any, { email: string, surface: string }>, res: Response) {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+    const { tenantId } = req.params;
+    const { email, surface } = req.body;
+
+    if (!email || !surface) {
+      return res.status(400).json({ error: 'Missing email or surface' });
+    }
+
+    await surfaceAssignmentService.setSurfaceAssignment(tenantId, email, surface);
+    
+    // Audit log
+    await db.insert(auditEvents).values({
+      tenantId,
+      actorUserId: req.user?.userId,
+      actorRole: req.user?.role,
+      eventType: 'SURFACE_ASSIGNMENT_UPDATED',
+      entityType: 'user_surface_assignment',
+      metadata: { email, surface }
+    });
+
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error('Set surface assignment error:', error);
+    return res.status(500).json({ error: 'Failed to set surface assignment' });
+  }
+}

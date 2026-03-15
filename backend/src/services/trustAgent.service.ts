@@ -144,6 +144,7 @@ Return a valid JSON object matching the following structure:
 }
         `.trim();
 
+
         const response = await openai.chat.completions.create({
             model: 'gpt-4-turbo-preview',
             messages: [
@@ -157,5 +158,69 @@ Return a valid JSON object matching the following structure:
         if (!content) throw new Error("Agent failed to produce analysis content.");
 
         return JSON.parse(content);
+    }
+
+    /**
+     * Entry point for conversational queries.
+     * Grounded in the latest structural analysis and UI context.
+     */
+    static async query(tenantId: string, role: string, question: string, consoleContext?: any): Promise<string> {
+        // 1. Fetch Authoritative Ground Truth
+        const rawSnapshot = await resolveTenantLifecycleSnapshot(tenantId);
+
+        // 2. Snapshot Integrity Gate
+        const { snapshot } = snapshotIntegrityGate(rawSnapshot);
+
+        // 3. Context Assembly
+        const orgVector = this.resolveOrgVector(snapshot);
+        const context = this.assembleContext(snapshot, orgVector, role as TrustAgentRole);
+
+        // 4. Perform Grounded Query
+        // EXEC-TICKET-ROI-05: Include ROI context when available
+        const roiContext = consoleContext?.roi
+            ? `
+ROI ECONOMIC CONTEXT (from intake baseline):
+- Revenue Unlock Range: ${consoleContext.roi.revenueUnlock || 'Not available'}
+- Operational Hours Recovered: ${consoleContext.roi.hoursRecovered || 'Not available'}
+- Throughput Increase: ${consoleContext.roi.throughputLift || 'Not available'}
+- Speed to Value: ${consoleContext.roi.speedToValue || 'Not available'}
+
+When asked about revenue risk, trapped value, or financial impact, lead with these figures.
+Pattern: "Packaging coordination issues may reduce operational throughput by approximately [X]%, representing an estimated [revenue range] in annual revenue exposure if unresolved."
+`
+            : '';
+
+        const systemPrompt = `
+You are the Trust Console Agent.
+You are a strategic thinking partner for the [${role}] role.
+
+USER CONTEXT:
+The user is currently viewing the following area of the platform:
+- Page: ${consoleContext?.page || 'Strategic Overview'}
+- Panel: ${consoleContext?.panel || 'Primary Navigation'}
+
+Your responses MUST be grounded in the verified organizational snapshot provided below.
+If the question is related to the specific panel the user is viewing, prioritize those insights.
+${roiContext}
+ORGANIZATIONAL CONTEXT:
+${JSON.stringify(context, null, 2)}
+
+IDENTITY:
+- Reveal the physics of the organization.
+- Prioritize constraints and systemic risks.
+- Advisory-only. Suggest; do not execute.
+
+Keep responses concise, formatted with markdown, and professional.
+`.trim();
+
+        const response = await openai.chat.completions.create({
+            model: 'gpt-4-turbo-preview',
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: question }
+            ]
+        });
+
+        return response.choices[0].message.content || "Agent failed to produce a response.";
     }
 }

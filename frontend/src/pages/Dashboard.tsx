@@ -19,7 +19,8 @@ export default function Dashboard() {
   }
 
   // Team members (ops, sales, delivery, exec_sponsor) get simplified view
-  if (['ops', 'sales', 'delivery', 'exec_sponsor'].includes(user.role)) {
+  // Superadmins also get this view if they land here (e.g. previewing /dashboard)
+  if (['ops', 'sales', 'delivery', 'exec_sponsor', 'superadmin'].includes(user.role)) {
     return <TeamMemberDashboard />;
   }
 

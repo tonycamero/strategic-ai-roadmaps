@@ -28,10 +28,26 @@ export default function ProtectedRoute({ component: Component, children, require
   );
   return <Redirect to={`/login?reason=unauthorized&next=${next}`} />;
 }
-        if (requireRole && user?.role !== requireRole) {
-  // fail-closed: bounce them to their correct home
-  return <Redirect to="/dashboard" />;
-}
+        const userRole = user?.role?.toLowerCase();
+        const requiredRole = requireRole?.toLowerCase();
+        
+        // Superadmin bypass (EXEC-078G)
+        if (userRole === 'superadmin' || userRole === 'super_admin') {
+          if (Component) return <Component {...params} />;
+          return <>{children}</>;
+        }
+
+        if (requireRole) {
+          console.log('DEBUG: ProtectedRoute check:', { path: rest.path, userRole, requiredRole });
+          
+          const isSuperAdminMatch = (requiredRole === 'superadmin' || requiredRole === 'super_admin') && 
+                                   (userRole === 'superadmin' || userRole === 'super_admin');
+          
+          if (userRole !== requiredRole && !isSuperAdminMatch) {
+            console.log('DEBUG: ProtectedRoute bounce to /dashboard');
+            return <Redirect to="/dashboard" />;
+          }
+        }
 
         // Support either component prop or children
         if (Component) {

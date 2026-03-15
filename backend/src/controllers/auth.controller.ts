@@ -42,6 +42,7 @@ export async function login(req: Request, res: Response) {
       token,
       user: {
         id: user.id,
+        tenantId: user.tenantId,
         email: user.email,
         role: user.role,
         name: user.name,
@@ -142,6 +143,7 @@ export async function register(req: Request, res: Response) {
       token,
       user: {
         id: newUser.id,
+        tenantId: tenant.id,
         email: newUser.email,
         role: newUser.role,
         name: newUser.name,

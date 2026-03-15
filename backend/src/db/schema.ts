@@ -1490,3 +1490,23 @@ export type NewExecutionSignal = typeof executionSignals.$inferInsert;
 
 export type StrategicSignal = typeof strategicSignals.$inferSelect;
 export type NewStrategicSignal = typeof strategicSignals.$inferInsert;
+
+// ============================================================================
+// USER SURFACE ASSIGNMENTS TABLE
+// ============================================================================
+
+export const userSurfaceAssignments = pgTable('user_surface_assignments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  userEmail: text('user_email').notNull(),
+  surface: varchar('surface', { length: 50 }).notNull(), // STRATEGIC | EXECUTION | EXCEPTIONS | COORDINATION | DASHBOARD
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => {
+  return {
+    tenantUserIdx: uniqueIndex('user_surface_assignments_tenant_id_user_email_key').on(table.tenantId, table.userEmail),
+  };
+});
+
+export type UserSurfaceAssignment = typeof userSurfaceAssignments.$inferSelect;
+export type NewUserSurfaceAssignment = typeof userSurfaceAssignments.$inferInsert;

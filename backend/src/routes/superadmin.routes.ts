@@ -383,4 +383,8 @@ router.post('/firms/:tenantId/sas/synthesize', superadminController.synthesizeSo
 router.patch('/tickets/:ticketId/status', superadminController.patchTicketStatus);
 router.get('/firms/:tenantId/sop/tickets', superadminController.getSopTickets);
 
+// SURFACE ASSIGNMENT SYSTEM (DB-BACKED)
+router.get('/firms/:tenantId/surface-assignments', superadminController.getSurfaceAssignments);
+router.post('/firms/:tenantId/surface-assignments', superadminController.setSurfaceAssignment);
+
 export default router;

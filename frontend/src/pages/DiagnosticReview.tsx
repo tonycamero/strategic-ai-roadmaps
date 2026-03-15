@@ -9,11 +9,26 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { getOwnerDocumentLabel } from '../types/documents';
 
+// Map tab query param values to document titles
+const TAB_TO_TITLE: Record<string, string> = {
+  diagnostic: 'Company Diagnostic Map',
+  opportunities: 'AI Leverage & Opportunity Map',
+  roadmap: 'Strategic Roadmap Skeleton',
+  discovery: 'Discovery Call Preparation Questions',
+};
+
 export default function DiagnosticReview() {
   const { user, logout } = useAuth();
   const { tenant } = useTenant();
   const [, setLocation] = useLocation();
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
+
+  // Read ?tab= query param to support deep-linking from sidebar
+  const searchParams = new URLSearchParams(
+    typeof window !== 'undefined' ? window.location.search : ''
+  );
+  const tabParam = searchParams.get('tab');
+  const requestedTitle = tabParam ? TAB_TO_TITLE[tabParam] : null;
   const [docContent, setDocContent] = useState<string | null>(null);
   const [loadingContent, setLoadingContent] = useState(false);
 
@@ -47,12 +62,20 @@ export default function DiagnosticReview() {
     ? documents.find((d: any) => d.id === activeDocId)
     : diagnosticDocs[0];
 
-  // Auto-select first doc
+  // Auto-select: honour ?tab= param, otherwise fall back to first doc.
+  // Uses title match so the order in titleOrder doesn't gate this.
   useEffect(() => {
     if (!activeDocId && diagnosticDocs.length > 0) {
-      setActiveDocId(diagnosticDocs[0].id);
+      if (requestedTitle) {
+        const targetDoc = diagnosticDocs.find((d: any) => d.title === requestedTitle);
+        setActiveDocId(targetDoc ? targetDoc.id : diagnosticDocs[0].id);
+      } else {
+        // Default: show the Strategic Roadmap Skeleton if available, else first
+        const roadmapDoc = diagnosticDocs.find((d: any) => d.title === 'Strategic Roadmap Skeleton');
+        setActiveDocId(roadmapDoc ? roadmapDoc.id : diagnosticDocs[0].id);
+      }
     }
-  }, [activeDocId, diagnosticDocs]);
+  }, [activeDocId, diagnosticDocs, requestedTitle]);
 
   // Fetch document content when active doc changes
   useEffect(() => {

@@ -14,12 +14,19 @@ export default function TeamMemberDashboard() {
   const { user, logout } = useAuth();
   const profile = useBusinessTypeProfile();
 
+  const searchParams = new URLSearchParams(window.location.search);
+  const urlTenantId = searchParams.get('tenantId');
+  const isSuperAdmin = user?.role?.toLowerCase() === 'superadmin';
+
   const { data: intakeData, isLoading } = useQuery({
-    queryKey: ['my-intake'],
-    queryFn: () => api.getMyIntake(),
+    queryKey: ['my-intake', isSuperAdmin ? urlTenantId : null],
+    queryFn: () => api.getMyIntake(isSuperAdmin ? urlTenantId || undefined : undefined),
   });
 
-  // Ensure user.role is defined before accessing profile.roleLabels
+  const previewSuffix = isSuperAdmin && urlTenantId ? `?tenantId=${urlTenantId}` : '';
+  const effectiveRole = isSuperAdmin ? 'owner' : user?.role;
+  const intakeLink = `/intake/${effectiveRole}${previewSuffix}`;
+
   const roleLabel = user?.role
     ? (profile.roleLabels[user.role as keyof typeof profile.roleLabels] || 'Team Member')
     : 'Team Member';
@@ -34,10 +41,10 @@ export default function TeamMemberDashboard() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-slate-100">
-                {roleLabel} Dashboard
+                {isSuperAdmin ? 'Tenant Preview' : `${roleLabel} Dashboard`}
               </h1>
               <p className="text-sm text-slate-400 mt-1">
-                Welcome back, {user?.name || 'Team Member'}
+                {isSuperAdmin ? `Viewing as Super Admin` : `Welcome back, ${user?.name || 'Team Member'}`}
               </p>
             </div>
             <button
@@ -56,7 +63,7 @@ export default function TeamMemberDashboard() {
           {/* Intake Status Card */}
           <div className="bg-slate-900 rounded-lg border border-slate-800 p-6">
             <h2 className="text-lg font-semibold text-slate-100 mb-4">
-              Your Intake Status
+              {isSuperAdmin ? 'Owner Intake Status' : 'Your Intake Status'}
             </h2>
 
             {isLoading ? (
@@ -70,13 +77,15 @@ export default function TeamMemberDashboard() {
                   <span className="font-medium">Intake Complete</span>
                 </div>
                 <p className="text-slate-400 text-sm">
-                  Your {(roleLabel || 'team member').toLowerCase()} intake has been submitted. The owner will review your responses and incorporate them into the strategic roadmap.
+                  {isSuperAdmin 
+                    ? "The tenant owner's intake has been submitted."
+                    : `Your ${(roleLabel || 'team member').toLowerCase()} intake has been submitted. The owner will review your responses and incorporate them into the strategic roadmap.`}
                 </p>
                 <a
-                  href={`/intake/${user?.role}`}
+                  href={intakeLink}
                   className="inline-block text-sm text-blue-400 hover:text-blue-300 transition-colors"
                 >
-                  Update your responses →
+                  {isSuperAdmin ? 'View responses →' : 'Update your responses →'}
                 </a>
               </div>
             ) : (
@@ -88,13 +97,15 @@ export default function TeamMemberDashboard() {
                   <span className="font-medium">Intake Pending</span>
                 </div>
                 <p className="text-slate-400 text-sm">
-                  Please complete your {(roleLabel || 'team member').toLowerCase()} intake to help shape the strategic roadmap.
+                  {isSuperAdmin
+                    ? "The tenant owner has not yet completed their intake."
+                    : `Please complete your ${(roleLabel || 'team member').toLowerCase()} intake to help shape the strategic roadmap.`}
                 </p>
                 <a
-                  href={`/intake/${user?.role}`}
+                  href={intakeLink}
                   className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
                 >
-                  Complete Intake
+                  {isSuperAdmin ? 'Fill Ownership Intake' : 'Complete Intake'}
                 </a>
               </div>
             )}

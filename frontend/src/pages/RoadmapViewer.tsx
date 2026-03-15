@@ -34,13 +34,20 @@ export default function RoadmapViewer({ tenantId }: RoadmapViewerProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const mainRef = useRef<HTMLDivElement>(null);
 
-  // Determine which tenantId to use (Prop > Current User)
-  const effectiveTenantId = tenantId || (currentUser as any)?.tenantId;
+  const searchParams = new URLSearchParams(window.location.search);
+  const queryTenantId = searchParams.get("tenantId");
+
+  // Determine which tenantId to use (Prop > Query > Current User)
+  const effectiveTenantId = tenantId || queryTenantId || (currentUser as any)?.tenantId;
+  console.log("Resolved tenantId:", effectiveTenantId);
 
   // Fetch graph data
   useEffect(() => {
     const fetchGraph = async () => {
-      if (!effectiveTenantId) return;
+      if (!effectiveTenantId) {
+        setLoading(false);
+        return;
+      }
 
       try {
         const token = localStorage.getItem('token');
@@ -60,11 +67,12 @@ export default function RoadmapViewer({ tenantId }: RoadmapViewerProps) {
         setGraphData(data);
 
         // Set first stage as active if available
-        if (data.nodes.length > 0) {
+        if (data && data.nodes && data.nodes.length > 0) {
           const stages = Array.from(new Set(data.nodes.map(n => n.stage))).sort((a, b) => a - b);
           setActiveStage(stages[0]);
         }
       } catch (err: any) {
+        console.error('Graph fetch error:', err);
         setError(err.message);
       } finally {
         setLoading(false);
@@ -102,17 +110,28 @@ export default function RoadmapViewer({ tenantId }: RoadmapViewerProps) {
   if (!graphData || graphData.nodes.length === 0) {
     return (
       <div className="flex items-center justify-center h-screen bg-slate-950 p-6">
-        <div className="text-center bg-slate-900 border border-slate-800 p-8 rounded-2xl max-w-md w-full shadow-2xl">
-          <div className="text-blue-500 text-4xl mb-4">⌛</div>
-          <div className="text-slate-400 mb-6">
-            Execution Graph pending activation.
+        <div className="text-center bg-slate-900 border border-slate-800 p-10 rounded-3xl max-w-lg w-full shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 to-indigo-600" />
+          <div className="text-blue-500 text-5xl mb-6">🗺️</div>
+          <h2 className="text-xl font-bold text-white mb-2 font-outfit">Operational Map</h2>
+          <p className="text-slate-400 mb-8 leading-relaxed font-outfit text-sm">
+            The Operational Map is a live execution DAG generated from your Strategic Roadmap. 
+            Once your roadmap is finalized and the execution engine is activated, the tactical dependencies will appear here.
+          </p>
+          <div className="flex flex-col gap-3">
+             <button
+              onClick={() => setLocation('/diagnostic-review')}
+              className="w-full py-4 bg-white hover:bg-slate-100 text-slate-950 rounded-xl font-bold uppercase tracking-widest text-[10px] transition-all"
+            >
+              View Strategic Roadmap Document
+            </button>
+            <button
+              onClick={() => setLocation('/executive')}
+              className="w-full py-4 bg-slate-800/50 hover:bg-slate-800 text-slate-300 rounded-xl font-bold uppercase tracking-widest text-[10px] transition-all border border-slate-700"
+            >
+              Back to Executive Console
+            </button>
           </div>
-          <button
-            onClick={() => setLocation('/dashboard')}
-            className="text-blue-500 hover:text-blue-400 transition-colors font-bold uppercase tracking-widest text-sm"
-          >
-            ← Back to Control Plane
-          </button>
         </div>
       </div>
     );

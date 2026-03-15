@@ -90,9 +90,13 @@ export default function OwnerIntake() {
     chamber_exec_board_engagement: '',
   });
 
+  const searchParams = new URLSearchParams(window.location.search);
+  const urlTenantId = searchParams.get('tenantId');
+  const isSuperAdmin = user?.role?.toLowerCase() === 'superadmin';
+
   const { data: intakeData } = useQuery({
-    queryKey: ['my-intake'],
-    queryFn: () => api.getMyIntake(),
+    queryKey: ['my-intake', isSuperAdmin ? urlTenantId : null],
+    queryFn: () => api.getMyIntake(isSuperAdmin ? urlTenantId || undefined : undefined),
   });
 
   const coachingFeedback = (intakeData as any)?.intake?.coachingFeedback ?? {};

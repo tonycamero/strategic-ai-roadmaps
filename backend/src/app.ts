@@ -31,6 +31,9 @@ import agentConfigRoutes from './routes/agentConfig.routes';
 import clarificationRoutes from './routes/clarification.routes';
 import proposalEnvelopeRoutes from './routes/proposalEnvelope.routes';
 import signalRoutes from './routes/signal.routes';
+import snapshotRoutes from './routes/snapshot.routes';
+import firmsRoutes from './routes/firms.routes';
+
 
 const app = express();
 app.set('etag', false);
@@ -100,6 +103,8 @@ app.use('/api/tenants', onboardingRoutes); // Tenant onboarding progress
 app.use('/api/clarify', clarificationRoutes); // Stakeholder Clarification Form
 app.use('/api/envelopes', proposalEnvelopeRoutes); // Strategic Envelopes
 app.use('/api/signals', signalRoutes); // Operational Telemetry
+app.use('/api/snapshot', snapshotRoutes); // Lifecycle Snapshot (tenant-accessible, decoupled from AI)
+app.use('/api/firms', firmsRoutes);      // EXEC-TICKET-075-A: Tenant browser (SA-only)
 app.use('/api', leadRequestRoutes); // Public routes
 
 if (process.env.INTERNAL_EVIDENCE_TOKEN) {

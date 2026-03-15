@@ -23,8 +23,12 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const previousStateRef = useRef<OnboardingState | null>(null);
 
   const fetchOnboardingState = async () => {
-    // Only fetch for owner role
-    if (!user || user.role !== 'owner') {
+    const searchParams = new URLSearchParams(window.location.search);
+    const urlTenantId = searchParams.get('tenantId');
+    const isSuperAdmin = user?.role?.toLowerCase() === 'superadmin';
+
+    // Only fetch for owner role or superadmin in preview mode
+    if (!user || (user.role !== 'owner' && !isSuperAdmin)) {
       setLoading(false);
       return;
     }
@@ -33,18 +37,32 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       setLoading(true);
       setError(null);
       
-      // Get tenantId from JWT token
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No authentication token found');
+      let tenantId: string | null = null;
+
+      if (isSuperAdmin && urlTenantId) {
+        tenantId = urlTenantId;
+      } else {
+        // Get tenantId from JWT token
+        const token = localStorage.getItem('token');
+        if (!token) {
+          throw new Error('No authentication token found');
+        }
+        
+        try {
+          const decoded = jwtDecode<{ tenantId: string }>(token);
+          tenantId = decoded.tenantId;
+        } catch (e) {
+          console.error('Failed to decode token for onboarding:', e);
+        }
+      }
+
+      if (!tenantId) {
+        // If no tenant context, we can't fetch onboarding
+        setLoading(false);
+        return;
       }
       
-      const decoded = jwtDecode<{ tenantId: string }>(token);
-      if (!decoded.tenantId) {
-        throw new Error('No tenant ID in token');
-      }
-      
-      const data = await api.getOnboardingState(decoded.tenantId);
+      const data = await api.getOnboardingState(tenantId);
       
       previousStateRef.current = state;
       setState(data);
